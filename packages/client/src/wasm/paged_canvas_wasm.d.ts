@@ -90,7 +90,7 @@ export type ElementId = { kind: "textFrame"; id: string } | { kind: "rectangle";
  * instead of a single enum so a Batch aggregates by union without
  * losing per-node detail. Consumers (renderer, glyph cache, layout
  * cache) decide which lists to honour. Stays advisory — nothing in
- * `idml-mutate` invalidates anything itself.
+ * `paged-mutate` invalidates anything itself.
  */
 export interface InvalidationHint {
     frameGeometry: NodeId[];
@@ -946,7 +946,7 @@ export interface PathAnchorTriple {
 
 /**
  * Structural counts. The main thread surfaces these in the debug
- * HUD. Mirrors `idml-renderer::PipelineStats` but lives in serde-
+ * HUD. Mirrors `paged-renderer::PipelineStats` but lives in serde-
  * friendly form so it can cross the message channel.
  */
 export interface DocumentStats {
@@ -976,7 +976,7 @@ export type Operation = { kind: "SetProperty"; node: NodeId; path: PropertyPath;
 export type MainToWorkerKind = { kind: "hello" } | { kind: "loadDocument"; payload: { bytes: number[]; font?: number[] | null; cmykIccProfile?: number[] | null } } | { kind: "registerFont"; payload: { family: string; style?: string | null; bytes: number[] } } | { kind: "clearFontRegistry" } | { kind: "mutate"; payload: Mutation } | { kind: "requestPage"; payload: { pageId: PageId; lod: LodTier } } | { kind: "hitTest"; payload: { pageId: PageId; docPoint: [number, number]; filter: HitFilter } } | { kind: "requestSnapshot"; payload: { pageId: PageId; targetWidthPx: number; dpi?: number | null } } | { kind: "setSelection"; payload: { selection: ContentSelection | null } } | { kind: "requestSelectionGeometry"; payload: { selection: ContentSelection } } | { kind: "requestCaretGeometry"; payload: { selection: ContentSelection } } | { kind: "undo" } | { kind: "redo" } | { kind: "setElementSelection"; payload: { ids: ElementId[]; mode: SelectionMode } } | { kind: "requestMarqueeHits"; payload: { pageId: PageId; rect: [number, number, number, number] } } | { kind: "requestElementGeometry"; payload: { ids: ElementId[] } } | { kind: "requestGroupLeaves"; payload: { groupId: string } } | { kind: "requestPathAnchors"; payload: { id: ElementId } } | { kind: "requestLayers" } | { kind: "requestCollection"; payload: { name: CollectionName } } | { kind: "requestDocumentMeta" } | { kind: "requestColorPreview"; payload: { swatchId: string } } | { kind: "executeScript"; payload: { source: string } } | { kind: "requestElementProperties"; payload: { id: ElementId } } | { kind: "requestSceneTree" } | { kind: "beginGesture"; payload: { nodes: ElementId[]; gesture: GestureType; anchor?: GestureAnchor | null; cameraScale?: number | null } } | { kind: "updateGesture"; payload: { handle: GestureHandle; delta: [number, number]; modifiers: GestureModifiers } } | { kind: "commitGesture"; payload: { handle: GestureHandle } } | { kind: "cancelGesture"; payload: { handle: GestureHandle } };
 
 /**
- * Track J — wire-shape mirror of `idml_parse::PathAnchor`. The
+ * Track J — wire-shape mirror of `paged_parse::PathAnchor`. The
  * parse-side type doesn\'t carry `Deserialize`/`PartialEq`/`Tsify`,
  * and the mutate API needs all three so this Op crosses the wasm
  * boundary. The field shapes match exactly: `anchor` is the
@@ -990,7 +990,7 @@ export interface PathAnchorSpec {
 }
 
 /**
- * Track M — wire-shape mirror of `idml_parse::Layer`. Surfaces
+ * Track M — wire-shape mirror of `paged_parse::Layer`. Surfaces
  * everything the Layers panel needs without leaking parse-side
  * fields the wasm boundary doesn\'t understand. `z` is the layer\'s
  * zero-based index in `designmap.layers` (top-first, matching the
