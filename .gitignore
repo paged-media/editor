@@ -1,0 +1,19 @@
+# Node / pnpm
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Test + build artefacts
+test-results/
+playwright-report/
+*.actual.png
+
+# OS / editor / runtime
+.DS_Store
+.vscode/
+.idea/
+.claude/
+
+# NOTE: wasm-bindgen build output (the gitignored .js / *_bg.wasm; only the
+# .d.ts is tracked) is handled by the per-package .gitignore files under
+# apps/*/ and packages/client/.
