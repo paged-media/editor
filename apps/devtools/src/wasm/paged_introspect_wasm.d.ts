@@ -28,6 +28,24 @@ export interface InvalidationHint {
 }
 
 /**
+ * One stop of a gradient on the wire. Mirrors `GradientStopRef`.
+ */
+export interface GradientStopSpec {
+    /**
+     * `Color/<id>` reference for this stop.
+     */
+    stopColor: string;
+    /**
+     * 0..=100 position along the ramp.
+     */
+    locationPct: number;
+    /**
+     * 0..=100 midpoint to the next stop; `None` ⇒ linear (50).
+     */
+    midpointPct?: number | null;
+}
+
+/**
  * Phase H — address of one Bezier handle inside a `Polygon`\'s
  * `PathPointArray`. `index` is the flat anchor index across all
  * subpaths (compound polygons concatenate subpaths into one
@@ -90,10 +108,12 @@ export type NodeId = { kind: "TextFrame"; id: string } | { kind: "Rectangle"; id
 export type PageId = string;
 
 /**
- * The canonical mutation primitive. Five variants, closed set,
- * extended only with deliberation.
+ * The canonical mutation primitive. A closed set, extended only with
+ * deliberation. Collection mutations (swatches, styles) operate on the
+ * document\'s `BTreeMap` palettes/stylesheets rather than the scene
+ * tree, so they\'re top-level variants rather than `InsertNode`.
  */
-export type Operation = { kind: "SetProperty"; node: NodeId; path: PropertyPath; value: Value } | { kind: "InsertNode"; parent: NodeId; position: number; node: NodeSpec } | { kind: "RemoveNode"; node: NodeId } | { kind: "MoveNode"; node: NodeId; new_parent: NodeId; position: number } | { kind: "Batch"; ops: Operation[] } | { kind: "MoveLayer"; layer_id: string; new_index: number } | { kind: "InsertLayer"; position: number; name: string; self_id?: string | null } | { kind: "RemoveLayer"; layer_id: string } | { kind: "PathfinderBoolean"; kept: NodeId; others: NodeId[]; opKind: PathfinderKind };
+export type Operation = { kind: "SetProperty"; node: NodeId; path: PropertyPath; value: Value } | { kind: "InsertNode"; parent: NodeId; position: number; node: NodeSpec } | { kind: "RemoveNode"; node: NodeId } | { kind: "MoveNode"; node: NodeId; new_parent: NodeId; position: number } | { kind: "Batch"; ops: Operation[] } | { kind: "MoveLayer"; layer_id: string; new_index: number } | { kind: "InsertLayer"; position: number; name: string; self_id?: string | null } | { kind: "RemoveLayer"; layer_id: string } | { kind: "CreateSwatch"; spec: SwatchSpec } | { kind: "EditSwatch"; swatch_id: string; spec: SwatchSpec } | { kind: "DeleteSwatch"; swatch_id: string } | { kind: "CreateParagraphStyle"; self_id?: string | null; name?: string | null; based_on?: string | null; restore_json?: string | null } | { kind: "RenameParagraphStyle"; style_id: string; name: string } | { kind: "DeleteParagraphStyle"; style_id: string } | { kind: "CreateCharacterStyle"; self_id?: string | null; name?: string | null; based_on?: string | null; restore_json?: string | null } | { kind: "RenameCharacterStyle"; style_id: string; name: string } | { kind: "DeleteCharacterStyle"; style_id: string } | { kind: "CreateObjectStyle"; self_id?: string | null; name?: string | null; based_on?: string | null; restore_json?: string | null } | { kind: "RenameObjectStyle"; style_id: string; name: string } | { kind: "DeleteObjectStyle"; style_id: string } | { kind: "CreateCellStyle"; self_id?: string | null; name?: string | null; based_on?: string | null; restore_json?: string | null } | { kind: "RenameCellStyle"; style_id: string; name: string } | { kind: "DeleteCellStyle"; style_id: string } | { kind: "CreateTableStyle"; self_id?: string | null; name?: string | null; based_on?: string | null; restore_json?: string | null } | { kind: "RenameTableStyle"; style_id: string; name: string } | { kind: "DeleteTableStyle"; style_id: string } | { kind: "CreateGradient"; spec: GradientSpec } | { kind: "EditGradient"; gradient_id: string; spec: GradientSpec } | { kind: "DeleteGradient"; gradient_id: string } | { kind: "CreateColorGroup"; spec: ColorGroupSpec } | { kind: "EditColorGroup"; group_id: string; spec: ColorGroupSpec } | { kind: "DeleteColorGroup"; group_id: string } | { kind: "SetStyleProperty"; collection: StyleCollection; style_id: string; path: PropertyPath; value: Value } | { kind: "PathfinderBoolean"; kept: NodeId; others: NodeId[]; opKind: PathfinderKind };
 
 /**
  * Track J — wire-shape mirror of `paged_parse::PathAnchor`. The
@@ -125,6 +145,69 @@ export type Value = { type: "bounds"; value: [number, number, number, number] } 
  * enum shape.
  */
 export type PropertyPath = "frameBounds" | "frameFillColor" | "frameStrokeColor" | "frameStrokeWeight" | "frameOpacity" | "frameTransform" | "imageContentTransform" | "framePathPoint" | "pathPointInsert" | "pathPointRemove" | "pathPointCurveType" | "layerVisible" | "layerLocked" | "layerPrintable" | "layerName" | "characterFontSize" | "characterLeading" | "characterTracking" | "characterFillColor" | "paragraphSpaceBefore" | "paragraphSpaceAfter" | "paragraphFirstLineIndent" | "appliedParagraphStyle" | "appliedCharacterStyle" | "appliedObjectStyle" | "appliedCellStyle" | "appliedTableStyle" | "framePath" | "frameNonprinting" | "frameFillTint" | "frameDropShadowMode" | "frameDropShadowXOffset" | "frameDropShadowYOffset" | "frameDropShadowSize" | "frameDropShadowOpacity" | "frameDropShadowColor" | "frameDropShadow" | "frameFittingCrops" | "frameFittingType" | "frameTextWrapMode" | "frameTextWrapOffsets" | "paragraphJustification" | "frameStrokeEndCap" | "frameInsetSpacing" | "appliedConditions";
+
+/**
+ * Which style collection a `SetStyleProperty` targets.
+ */
+export type StyleCollection = "paragraph" | "character" | "object" | "cell" | "table";
+
+/**
+ * Wire description of a colour group, mirroring `ColorGroupEntry`.
+ */
+export interface ColorGroupSpec {
+    selfId?: string | null;
+    name?: string | null;
+    /**
+     * `Color/<id>` (or `Swatch/<id>`) member refs, in order.
+     */
+    members?: string[];
+}
+
+/**
+ * Wire description of a gradient swatch, mirroring `GradientEntry`.
+ */
+export interface GradientSpec {
+    selfId?: string | null;
+    name?: string | null;
+    /**
+     * `Type`: `\"Linear\"` | `\"Radial\"`.
+     */
+    kind: string;
+    stops: GradientStopSpec[];
+}
+
+/**
+ * Wire-format description of a colour swatch (`<Color>`), mirroring
+ * the editable fields of `paged_parse::ColorEntry` with primitive,
+ * `Deserialize`-able types (the AST `ColorEntry` is `Serialize`-only).
+ * Carried by the swatch-collection mutations so create / edit /
+ * delete-undo are lossless. `space` / `model` / `alternate_space` are
+ * the IDML attribute strings (`ColorSpace::as_attr` etc.).
+ */
+export interface SwatchSpec {
+    /**
+     * IDML `Self` id. `None` on create ⇒ the apply layer assigns a
+     * deterministic non-colliding `Color/u<n>`.
+     */
+    selfId?: string | null;
+    name?: string | null;
+    /**
+     * `Space` attribute: `\"CMYK\"` | `\"RGB\"` | `\"LAB\"` | `\"Gray\"`.
+     */
+    space: string;
+    /**
+     * Channel values in `space` (4 for CMYK, 3 for RGB/Lab, 1 for Gray).
+     */
+    value: number[];
+    /**
+     * `Model`: `\"Process\"` (default) | `\"Spot\"`.
+     */
+    model?: string | null;
+    alternateSpace?: string | null;
+    alternateValue?: number[];
+    tint?: number | null;
+    alpha?: number | null;
+}
 
 
 export class Inspector {
@@ -181,19 +264,19 @@ export interface InitOutput {
     readonly inspector_tree: (a: number) => [number, number, number, number];
     readonly inspector_undo: (a: number) => [number, number, number, number];
     readonly on_start: () => void;
-    readonly lut_inverse_interp16: (a: number, b: number, c: number) => number;
-    readonly qcms_profile_precache_output_transform: (a: number) => void;
-    readonly qcms_white_point_sRGB: (a: number) => void;
-    readonly qcms_transform_data_rgb_out_lut: (a: number, b: number, c: number, d: number) => void;
-    readonly qcms_transform_data_rgba_out_lut: (a: number, b: number, c: number, d: number) => void;
-    readonly qcms_transform_data_bgra_out_lut: (a: number, b: number, c: number, d: number) => void;
-    readonly qcms_transform_data_rgb_out_lut_precache: (a: number, b: number, c: number, d: number) => void;
-    readonly qcms_transform_data_rgba_out_lut_precache: (a: number, b: number, c: number, d: number) => void;
-    readonly qcms_transform_data_bgra_out_lut_precache: (a: number, b: number, c: number, d: number) => void;
-    readonly lut_interp_linear16: (a: number, b: number, c: number) => number;
     readonly qcms_enable_iccv4: () => void;
-    readonly qcms_profile_is_bogus: (a: number) => number;
+    readonly qcms_profile_precache_output_transform: (a: number) => void;
+    readonly qcms_transform_data_bgra_out_lut: (a: number, b: number, c: number, d: number) => void;
+    readonly qcms_transform_data_bgra_out_lut_precache: (a: number, b: number, c: number, d: number) => void;
+    readonly qcms_transform_data_rgb_out_lut: (a: number, b: number, c: number, d: number) => void;
+    readonly qcms_transform_data_rgb_out_lut_precache: (a: number, b: number, c: number, d: number) => void;
+    readonly qcms_transform_data_rgba_out_lut: (a: number, b: number, c: number, d: number) => void;
+    readonly qcms_transform_data_rgba_out_lut_precache: (a: number, b: number, c: number, d: number) => void;
     readonly qcms_transform_release: (a: number) => void;
+    readonly qcms_profile_is_bogus: (a: number) => number;
+    readonly qcms_white_point_sRGB: (a: number) => void;
+    readonly lut_inverse_interp16: (a: number, b: number, c: number) => number;
+    readonly lut_interp_linear16: (a: number, b: number, c: number) => number;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
