@@ -221,6 +221,12 @@ function ShellChrome({
   const [warnings, setWarnings] = useState<string[]>([]);
   const sabSupported = useMemo(() => supportsSharedArrayBuffer(), []);
 
+  // Editor-ops — the worker-message subscriber below needs the live
+  // document handle (to refresh the page grid on page-structure
+  // mutations) without re-subscribing per handle change.
+  const handleRef = useRef(handle);
+  handleRef.current = handle;
+
   // Publish main-thread FPS for the canvas HUD.
   const fps = useFps();
   useEffect(() => {
@@ -563,6 +569,22 @@ function ShellChrome({
           }
         }
         setLayoutCacheStats(msg.payload.cacheStats);
+        // Editor-ops — page-structure mutations (insert / delete /
+        // resize page, and their undo/redo) carry the refreshed page
+        // list + sizes; rebuild the document handle so the page grid
+        // follows without a reload. `pageIds` on these replies is the
+        // full post-mutation page list, ordered like `pageSizesPt`.
+        if (msg.payload.pageStructureChanged && msg.payload.pageSizesPt) {
+          const prev = handleRef.current;
+          if (prev) {
+            setHandle({
+              ...prev,
+              pageCount: msg.payload.pageIds.length,
+              pageIds: msg.payload.pageIds,
+              pageSizesPt: msg.payload.pageSizesPt,
+            });
+          }
+        }
       }
     });
     client
@@ -583,6 +605,7 @@ function ShellChrome({
     contentSelectionRef,
     setCaret,
     setGpuActive,
+    setHandle,
     setLayoutCacheStats,
     setResolution,
     setSelectionRects,

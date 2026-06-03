@@ -20,7 +20,7 @@
 // must update in lockstep — `scripts/check-protocol-version.sh`
 // catches drift on PRs that change the `.d.ts` structurally.
 
-export const PROTOCOL_VERSION = 23 as const;
+export const PROTOCOL_VERSION = 24 as const;
 
 export type {
   AnchorId,
@@ -83,7 +83,10 @@ export type {
   NodeSpec,
   NumberingMap,
   Operation,
+  GradientFeatherSpec,
+  GradientFeatherStopSpec,
   PageId,
+  PathAnchorSpec,
   PathAnchorsResult,
   PathAnchorTriple,
   PathPointAddress,

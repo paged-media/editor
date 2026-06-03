@@ -19,8 +19,9 @@ import type {
   PagedEditor,
 } from "@paged-media/shell";
 
+import { mutateAndSelect, CLICK_DRAG_THRESHOLD_PX } from "./shared";
+
 const MIN_SIZE_PT = 1;
-const CLICK_DRAG_THRESHOLD_PX = 4;
 
 export function createRectangleHandler(): GestureHandler {
   let paged: PagedEditor | null = null;
@@ -101,28 +102,13 @@ export function createRectangleHandler(): GestureHandler {
       // A click (no real drag) creates nothing — InDesign opens an
       // options dialog there; that's a follow-up.
       if (bottom - top < MIN_SIZE_PT || right - left < MIN_SIZE_PT) return;
-      void paged.client
-        .mutate({
-          op: "insertFrame",
-          args: { pageId, bounds },
-        })
-        .then((reply) => {
-          // `mutate` resolves with the worker reply; a rejected op comes
-          // back as `mutationFailed` (today: core has not implemented
-          // `Mutation::InsertFrame` — the editor path is complete, the
-          // engine op is the core follow-up).
-          if (reply.kind === "mutationFailed") {
-            // eslint-disable-next-line no-console
-            console.warn(
-              "insertFrame rejected by engine:",
-              JSON.stringify((reply as { payload?: unknown }).payload),
-            );
-          }
-        })
-        .catch((err) => {
-          // eslint-disable-next-line no-console
-          console.warn("insertFrame failed:", err);
-        });
+      // Engine op landed with protocol v24 — the reply's `createdId`
+      // selects the fresh frame (shared post-insert flow).
+      mutateAndSelect(
+        paged,
+        { op: "insertFrame", args: { pageId, bounds } },
+        "insertFrame",
+      );
     },
     onKey(e: KeyboardEvent) {
       if (e.key === "Escape") cancel();

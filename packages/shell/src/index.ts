@@ -91,6 +91,8 @@ export {
   useOptionalOverlaySignals,
   type MarqueeRectPageLocal,
   type SelectionState,
+  type ToolPreviewPolyline,
+  type ToolPreviewShape,
 } from "./state/overlay-signals-context";
 
 export {

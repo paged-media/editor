@@ -7,7 +7,11 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
-import type { SwatchSummary, Value } from "@paged-media/client";
+import type {
+  GradientSummary,
+  SwatchSummary,
+  Value,
+} from "@paged-media/client";
 
 import { useCanvasClient } from "../state/canvas-client-context";
 import { useBindings } from "../catalog/binding-hook";
@@ -24,12 +28,24 @@ import { contentSelectionInactive } from "../state/commands/tool-commands";
 // the Color / Swatches panels use (`useBindings` → `setElementProperty`),
 // so there is zero bespoke colour code here.
 //
-// Blocked-on-core (rendered disabled, with a documented seam):
-//   - the document-default write when nothing is selected (no
-//     `setDocumentMeta`-class Mutation exists);
-//   - the `[gradient]` apply (no `frameFillGradient` PropertyPath).
+// Editor-ops (protocol v24) — the two formerly blocked-on-core seams
+// are live:
+//   - with NOTHING selected the wells read/write the DOCUMENT
+//     defaults (`setDocumentDefaults`, whole-triple, not undoable —
+//     InDesign's "no selection = future objects" semantics); new
+//     shapes pick the defaults up engine-side;
+//   - `[gradient]` applies the last-used (else the document's first)
+//     `Gradient/<id>` ref through the SAME colorRef path a swatch
+//     takes (IDML's FillColor accepts either).
 
 const NONE: Value = { type: "colorRef", value: null };
+
+/** The document-default triple, mirrored from `documentMeta`. */
+interface DocDefaults {
+  fill: string | null;
+  stroke: string | null;
+  weight: number | null;
+}
 
 function colorRef(id: string | null): Value {
   return { type: "colorRef", value: id };
@@ -61,52 +77,195 @@ export function FillStrokeCluster() {
   const fill = useBindings(fillBinding).value;
   const stroke = useBindings(strokeBinding).value;
 
-  const fillRef = unwrapColorRef(fill.value);
-  const strokeRef = unwrapColorRef(stroke.value);
-  const fillHex = useColorHex(fillRef);
-  const strokeHex = useColorHex(strokeRef);
-
-  // Remember the last solid colour applied, for the `[colour]` button.
-  const lastSolid = useRef<string | null>(null);
-  useEffect(() => {
-    if (fillRef) lastSolid.current = fillRef;
-  }, [fillRef]);
-
-  const active = activeWell === "fill" ? fill : stroke;
-  const canApply = active.onCommit != null;
-
-  const apply = (id: string | null) => active.onCommit?.(colorRef(id));
-
-  const swap = () => {
-    if (!fill.onCommit || !stroke.onCommit) return;
-    const fv = fill.value ?? NONE;
-    const sv = stroke.value ?? NONE;
-    fill.onCommit(sv);
-    stroke.onCommit(fv);
-  };
-
-  // `D` default pair: no fill, black stroke (leaves stroke untouched
-  // when the document has no Black swatch).
+  // Editor-ops — document defaults (protocol v24). Loaded from
+  // `documentMeta`, refreshed on every applied mutation (the
+  // `setDocumentDefaults` write itself replies `mutationApplied`).
   const client = useCanvasClient();
-  const blackId = useRef<string | null>(null);
+  const [docDefaults, setDocDefaults] = useState<DocDefaults | null>(null);
   useEffect(() => {
     let cancelled = false;
-    void client
-      .collection<SwatchSummary>("swatches")
-      .then((list) => {
-        if (cancelled) return;
-        blackId.current =
-          list.find((s) => /black/i.test(s.name))?.selfId ?? null;
-      })
-      .catch(() => {});
+    const load = () =>
+      void client
+        .documentMeta()
+        .then((m) => {
+          if (cancelled) return;
+          setDocDefaults({
+            fill: m.defaultFillColor ?? null,
+            stroke: m.defaultStrokeColor ?? null,
+            weight: m.defaultStrokeWeight ?? null,
+          });
+        })
+        .catch(() => {});
+    load();
+    const off = client.subscribe((m) => {
+      if (
+        m.kind === "documentLoaded" ||
+        m.kind === "mutationApplied" ||
+        m.kind === "undoApplied" ||
+        m.kind === "redoApplied"
+      ) {
+        load();
+      }
+    });
     return () => {
       cancelled = true;
+      off();
     };
   }, [client]);
 
+  const writeDefault = (well: FillStrokeWell, ref: string | null) => {
+    const d = docDefaults ?? { fill: null, stroke: null, weight: null };
+    const next: DocDefaults = { ...d, [well]: ref };
+    setDocDefaults(next); // optimistic; the subscriber re-loads
+    void client
+      .mutate({
+        op: "setDocumentDefaults",
+        args: {
+          fillColor: next.fill,
+          strokeColor: next.stroke,
+          strokeWeight: next.weight,
+        },
+      })
+      .catch(() => {});
+  };
+
+  // Selection-backed value when a commit path exists; the document
+  // default otherwise (the wells are never inert).
+  const fillRef = fill.onCommit
+    ? unwrapColorRef(fill.value)
+    : docDefaults?.fill ?? null;
+  const strokeRef = stroke.onCommit
+    ? unwrapColorRef(stroke.value)
+    : docDefaults?.stroke ?? null;
+  const fillHex = useColorHex(fillRef);
+  const strokeHex = useColorHex(strokeRef);
+
+  // Remember the last solid colour / gradient applied, for the
+  // `[colour]` / `[gradient]` buttons.
+  const lastSolid = useRef<string | null>(null);
+  const lastGradient = useRef<string | null>(null);
+  useEffect(() => {
+    if (!fillRef) return;
+    if (fillRef.startsWith("Gradient/")) lastGradient.current = fillRef;
+    else lastSolid.current = fillRef;
+  }, [fillRef]);
+
+  // Editor-ops — the gradient list backs the `[gradient]` button
+  // (apply target fallback + enablement).
+  const [gradients, setGradients] = useState<GradientSummary[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    const load = () =>
+      void client
+        .collection<GradientSummary>("gradients")
+        .then((list) => {
+          if (!cancelled) setGradients([...list]);
+        })
+        .catch(() => {});
+    load();
+    const off = client.subscribe((m) => {
+      if (m.kind === "documentLoaded" || m.kind === "mutationApplied") load();
+    });
+    return () => {
+      cancelled = true;
+      off();
+    };
+  }, [client]);
+
+  const active = activeWell === "fill" ? fill : stroke;
+  // A well always has a write path now: the selection when one
+  // exists, the document defaults otherwise.
+  const canApply = active.onCommit != null || docDefaults != null;
+
+  const applyTo = (well: FillStrokeWell, id: string | null) => {
+    const binding = well === "fill" ? fill : stroke;
+    if (binding.onCommit) binding.onCommit(colorRef(id));
+    else writeDefault(well, id);
+  };
+  const apply = (id: string | null) => applyTo(activeWell, id);
+
+  const applyGradient = () => {
+    const id = lastGradient.current ?? gradients[0]?.selfId ?? null;
+    if (id) apply(id);
+  };
+
+  const swap = () => {
+    if (fill.onCommit && stroke.onCommit) {
+      const fv = fill.value ?? NONE;
+      const sv = stroke.value ?? NONE;
+      fill.onCommit(sv);
+      stroke.onCommit(fv);
+      return;
+    }
+    // No selection — swap the document defaults (single write).
+    if (!fill.onCommit && !stroke.onCommit && docDefaults) {
+      const next: DocDefaults = {
+        ...docDefaults,
+        fill: docDefaults.stroke,
+        stroke: docDefaults.fill,
+      };
+      setDocDefaults(next);
+      void client
+        .mutate({
+          op: "setDocumentDefaults",
+          args: {
+            fillColor: next.fill,
+            strokeColor: next.stroke,
+            strokeWeight: next.weight,
+          },
+        })
+        .catch(() => {});
+    }
+  };
+
+  // `D` default pair: no fill, black stroke (leaves stroke untouched
+  // when the document has no Black swatch). Resolved lazily so a D
+  // press right after document load doesn't race the swatches fetch.
+  const blackId = useRef<string | null>(null);
+  const resolveBlack = async (): Promise<string | null> => {
+    if (blackId.current) return blackId.current;
+    try {
+      const list = await client.collection<SwatchSummary>("swatches");
+      blackId.current =
+        list.find((s) => /black/i.test(s.name))?.selfId ?? null;
+    } catch {
+      /* keep null — stroke stays untouched */
+    }
+    return blackId.current;
+  };
+  useEffect(() => {
+    void resolveBlack();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client]);
+
   const applyDefault = () => {
-    fill.onCommit?.(NONE);
-    if (blackId.current) stroke.onCommit?.(colorRef(blackId.current));
+    void resolveBlack().then((black) => {
+      if (fill.onCommit || stroke.onCommit) {
+        fill.onCommit?.(NONE);
+        if (black) stroke.onCommit?.(colorRef(black));
+        return;
+      }
+      // No selection — one whole-triple defaults write (two
+      // sequential `writeDefault`s would clobber each other's
+      // optimistic state).
+      const d = docDefaults ?? { fill: null, stroke: null, weight: null };
+      const next: DocDefaults = {
+        ...d,
+        fill: null,
+        stroke: black ?? d.stroke,
+      };
+      setDocDefaults(next);
+      void client
+        .mutate({
+          op: "setDocumentDefaults",
+          args: {
+            fillColor: next.fill,
+            strokeColor: next.stroke,
+            strokeWeight: next.weight,
+          },
+        })
+        .catch(() => {});
+    });
   };
 
   // X / D / J chrome keys — registered HERE (not the tool class) so the
@@ -210,7 +369,7 @@ export function FillStrokeCluster() {
           type="button"
           title="Default fill and stroke (D)"
           data-fs-default
-          disabled={!fill.onCommit && !stroke.onCommit}
+          disabled={!fill.onCommit && !stroke.onCommit && !docDefaults}
           onClick={applyDefault}
           style={miniBtn}
         >
@@ -232,13 +391,21 @@ export function FillStrokeCluster() {
         </button>
         <button
           type="button"
-          title="Gradient (needs a gradient apply path — core follow-up)"
+          title={
+            gradients.length > 0
+              ? "Apply last gradient"
+              : "No gradient swatches in this document"
+          }
           data-fs-apply-gradient
-          disabled
-          style={{ ...miniBtn, opacity: 0.4, cursor: "not-allowed" }}
-        >
-          ▥
-        </button>
+          disabled={!canApply || gradients.length === 0}
+          onClick={applyGradient}
+          style={{
+            ...miniBtn,
+            ...(gradients.length > 0
+              ? { background: "linear-gradient(135deg, #111827, #e5e7eb)" }
+              : { opacity: 0.4, cursor: "not-allowed" }),
+          }}
+        />
         <button
           type="button"
           title="Apply None"
@@ -269,7 +436,7 @@ export function FillStrokeCluster() {
       </button>
 
       {!canApply && (
-        <div style={hintStyle} title="Select an object to apply colour">
+        <div style={hintStyle} title="Waiting for the document to load">
           —
         </div>
       )}

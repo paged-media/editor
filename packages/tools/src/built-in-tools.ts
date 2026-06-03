@@ -1,16 +1,25 @@
 // Concept 1 — the built-in InDesign tool catalog, transcribed from
 // `thoughts/docs/paged/editor/media/toolbar.png`. DATA only here:
 // id / title / icon / shortcut / flyout group / section / default.
-// Gesture handler factories are attached to the implemented tools in
-// Phase 2 (`tool-gestures.ts`); tools without a `gesture` appear in
-// the rail but are inert until their handler / engine op lands.
+// Gesture handler factories are attached to the implemented tools
+// (Rectangle, Line, Pencil, Shear, Scissors, Gradient Swatch,
+// Gradient Feather, Page — protocol v24); tools without a `gesture`
+// appear in the rail but are inert until their handler / engine op
+// lands.
 //
 // Registration order == toolbox reading order, so the rail's slot
 // order (first-seen group order) and section order come out right.
 
 import type { CursorSpec, ToolContribution } from "@paged-media/shell";
 
+import { createGradientFeatherHandler } from "./handlers/gradient-feather-tool";
+import { createGradientSwatchHandler } from "./handlers/gradient-tool";
+import { createLineHandler } from "./handlers/line-tool";
+import { createPageHandler } from "./handlers/page-tool";
+import { createPencilHandler } from "./handlers/pencil-tool";
 import { createRectangleHandler } from "./handlers/rectangle-tool";
+import { createScissorsHandler } from "./handlers/scissors-tool";
+import { createShearHandler } from "./handlers/shear-tool";
 
 export const BUILT_IN_TOOLS: ToolContribution[] = [
   // ── A · Selection tools ──────────────────────────────────────
@@ -41,6 +50,9 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "page",
     section: "selection",
     isGroupDefault: true,
+    // Editor-ops — click arms, Alt+click inserts after, drag resizes,
+    // Delete removes the armed page (engine ops landed, protocol v24).
+    gesture: createPageHandler,
   },
   {
     id: "paged.tool.gap",
@@ -99,6 +111,8 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "line",
     section: "drawType",
     isGroupDefault: true,
+    // Editor-ops — drag → `insertLine` (protocol v24).
+    gesture: createLineHandler,
   },
   {
     id: "paged.tool.pen",
@@ -146,6 +160,8 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     section: "drawType",
     order: 0,
     isGroupDefault: true,
+    // Editor-ops — freehand → RDP → `insertPath{smooth}` (v24).
+    gesture: createPencilHandler,
   },
   {
     id: "paged.tool.smooth",
@@ -236,6 +252,8 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "scissors",
     section: "transform",
     isGroupDefault: true,
+    // Editor-ops — anchor click → `pathOpenAt` (protocol v24).
+    gesture: createScissorsHandler,
   },
   {
     id: "paged.tool.freeTransform",
@@ -273,6 +291,8 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "transform",
     section: "transform",
     order: 3,
+    // Editor-ops — worker gesture `{kind:"shear"}` (protocol v24).
+    gesture: createShearHandler,
   },
   {
     id: "paged.tool.gradientSwatch",
@@ -282,6 +302,8 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "gradientSwatch",
     section: "transform",
     isGroupDefault: true,
+    // Editor-ops — drag → batched gradient angle+length (v24).
+    gesture: createGradientSwatchHandler,
   },
   {
     id: "paged.tool.gradientFeather",
@@ -291,6 +313,8 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "gradientFeather",
     section: "transform",
     isGroupDefault: true,
+    // Editor-ops — drag → whole-struct `frameGradientFeather` (v24).
+    gesture: createGradientFeatherHandler,
   },
 
   // ── D · Modification and Navigation tools ────────────────────

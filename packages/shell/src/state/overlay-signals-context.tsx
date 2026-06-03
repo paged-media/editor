@@ -36,6 +36,21 @@ export interface MarqueeRectPageLocal {
   rect: [number, number, number, number];
 }
 
+/**
+ * Editor-ops — a polyline tool preview (Line drag, Pencil stroke,
+ * Gradient axis). Page-local pt vertices; the overlay shifts by the
+ * page origin at draw time, same as the rect variant.
+ */
+export interface ToolPreviewPolyline {
+  pageId: PageId;
+  points: ReadonlyArray<[number, number]>;
+  /** Draw the closing edge (Pen/Polygon previews). */
+  close?: boolean;
+}
+
+/** What a tool handler can publish as its in-progress preview. */
+export type ToolPreviewShape = MarqueeRectPageLocal | ToolPreviewPolyline;
+
 interface OverlaySignalsValue {
   /** Last click hit-result. Cleared when the user clicks empty space. */
   hitSelection: SelectionState | null;
@@ -47,11 +62,11 @@ interface OverlaySignalsValue {
   snapLines: ReadonlyArray<SnapLine>;
   setSnapLines: (value: ReadonlyArray<SnapLine>) => void;
   /** Concept 1 — the active tool handler's in-progress preview (the
-   *  Rectangle rubber-band, a future Pen path, …). Writer: the
+   *  Rectangle rubber-band, the Line/Pencil polyline, …). Writer: the
    *  gesture handler via `paged.overlaySignals`; reader: the
    *  tool-preview overlay contribution. */
-  toolPreview: MarqueeRectPageLocal | null;
-  setToolPreview: (value: MarqueeRectPageLocal | null) => void;
+  toolPreview: ToolPreviewShape | null;
+  setToolPreview: (value: ToolPreviewShape | null) => void;
 }
 
 const Context = createContext<OverlaySignalsValue | null>(null);
@@ -73,7 +88,7 @@ export function OverlaySignalsProvider({ children }: PropsWithChildren) {
     null,
   );
   const [snapLines, setSnapLines] = useState<ReadonlyArray<SnapLine>>([]);
-  const [toolPreview, setToolPreview] = useState<MarqueeRectPageLocal | null>(
+  const [toolPreview, setToolPreview] = useState<ToolPreviewShape | null>(
     null,
   );
 

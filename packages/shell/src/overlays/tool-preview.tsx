@@ -14,6 +14,25 @@ function ToolPreviewRender(props: OverlayProps) {
   const p = signals.toolPreview;
   const pr = props.pageRects.get(p.pageId);
   if (!pr) return null;
+  // Editor-ops — polyline variant (Line drag, Pencil stroke,
+  // Gradient axis). Same stroke as the rect rubber-band so every
+  // tool preview reads as one visual family.
+  if ("points" in p) {
+    const pts = p.points
+      .map(([x, y]) => `${pr.x + x},${pr.y + y}`)
+      .join(" ");
+    const Tag = p.close ? "polygon" : "polyline";
+    return (
+      <Tag
+        points={pts}
+        fill="none"
+        stroke="#0f766e"
+        strokeWidth={1.25}
+        vectorEffect="non-scaling-stroke"
+        pointerEvents="none"
+      />
+    );
+  }
   const [top, left, bottom, right] = p.rect;
   return (
     <rect

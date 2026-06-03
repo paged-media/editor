@@ -8,4 +8,11 @@
 // (`@paged-media/tools` on npm once the org + token exist).
 
 export { BUILT_IN_TOOLS } from "./built-in-tools";
+export { createGradientFeatherHandler } from "./handlers/gradient-feather-tool";
+export { createGradientSwatchHandler } from "./handlers/gradient-tool";
+export { createLineHandler } from "./handlers/line-tool";
+export { createPageHandler } from "./handlers/page-tool";
+export { createPencilHandler } from "./handlers/pencil-tool";
 export { createRectangleHandler } from "./handlers/rectangle-tool";
+export { createScissorsHandler } from "./handlers/scissors-tool";
+export { createShearHandler } from "./handlers/shear-tool";
