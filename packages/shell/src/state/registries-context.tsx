@@ -15,7 +15,6 @@ import {
   createPanelRegistry,
   createSemanticGroupRegistry,
   createToolRegistry,
-  DEFAULT_TOOLS,
   type CommandRegistry,
   type KeybindingRegistry,
   type MenuRegistry,
@@ -59,14 +58,16 @@ export function RegistriesProvider({
   const keybindingsDisposeRef = useRef<(() => void) | null>(null);
   if (!ref.current) {
     const commands = createCommandRegistry(getEditor);
-    const keybindings = createKeybindingRegistry(commands);
+    // Pass `getEditor` as the keybinding state thunk too, so `when`
+    // predicates (e.g. the tool-shortcut text-suppression guard) read
+    // the live editor handle.
+    const keybindings = createKeybindingRegistry(commands, getEditor);
     keybindingsDisposeRef.current = () => keybindings.dispose();
-    const tools = createToolRegistry();
-    // Plan 2 §8.6 — seed the registry with the built-in tools so
-    // bundles that haven't run yet still get a populated toolbar.
-    // Future bundle authors register additional tools via
+    // Tools are supplied by the app via `<PagedShell tools={...}>` and
+    // registered in ShellChrome (mirrors panels/overlays), so the rail
+    // contains zero hardcoded entries. Bundles add more via
     // `useRegistries().tools.register(...)`.
-    for (const t of DEFAULT_TOOLS) tools.register(t);
+    const tools = createToolRegistry();
     ref.current = {
       panels: createPanelRegistry(),
       commands,

@@ -23,8 +23,13 @@ import {
 
 import type { SelectionMode } from "@paged-media/client";
 import { ViewportCanvas } from "../ui/ViewportCanvas";
+import { useGestureSpine } from "../ui/useGestureSpine";
 
 export function CanvasPanel(_props: PanelProps) {
+  // Phase 2 — the gesture spine. `toolGesture` is non-null only while
+  // the effective tool carries a handler (Rectangle, …); select/text
+  // keep `null` and run ViewportCanvas's proven legacy pointer path.
+  const { toolGesture, cursor: toolCursor } = useGestureSpine();
   const client = useCanvasClient();
   const { camera, setCamera, setViewportSize } = useCamera();
   const { handle, resolution } = useDocument();
@@ -243,6 +248,8 @@ export function CanvasPanel(_props: PanelProps) {
         camera={camera}
         onCameraChange={setCamera}
         activeTool={activeTool}
+        toolGesture={toolGesture}
+        cursor={toolCursor}
         elementSelection={elementSelection}
         elementGeometry={elementGeometry}
         onHit={onHit}

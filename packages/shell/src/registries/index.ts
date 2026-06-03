@@ -46,6 +46,10 @@ export {
   createToolRegistry,
   DEFAULT_TOOLS,
   type Tool,
+  type ToolContribution,
+  type ToolId,
+  type ToolGroupId,
+  type ToolSectionId,
   type ToolRegistry,
   type ToolRegistryEvent,
 } from "./tool";

@@ -26,6 +26,7 @@ import {
 
 import type { CanvasClient } from "@paged-media/client";
 import { viewportToDoc, type Camera } from "@paged-media/client";
+import type { CanvasPointerEvent } from "@paged-media/shell";
 import type {
   ElementGeometryItem,
   ElementId,
@@ -96,6 +97,19 @@ export interface ViewportCanvasProps {
     groupId: string,
     hitElement: ElementId | null,
   ) => void;
+  /** Phase 2 (Concept 1) — when set, the effective tool carries a
+   * gesture handler; ViewportCanvas resolves each pointer event to
+   * document coordinates and routes it here, bypassing the
+   * select/text / pan / marquee path. Null (the default) for
+   * select/text, so the proven legacy path runs untouched. */
+  toolGesture?: {
+    onDown: (e: CanvasPointerEvent) => void;
+    onMove: (e: CanvasPointerEvent) => void;
+    onUp: (e: CanvasPointerEvent) => void;
+  } | null;
+  /** Phase 3 — CSS cursor for the active tool. Overrides the default
+   * pan affordance when set. */
+  cursor?: string;
 }
 
 const CLICK_DRAG_THRESHOLD_PX = 4;
@@ -137,6 +151,14 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       pendingDelta: [number, number];
       target: ElementId[];
     };
+  } | null>(null);
+
+  // Phase 2 (Concept 1) — bookkeeping for a tool-gesture drag (the
+  // active GestureHandler owns the semantics; we only track the
+  // pointer + click-vs-drag delta).
+  const toolDragRef = useRef<{
+    startPointer: [number, number];
+    maxDelta: number;
   } | null>(null);
 
   // Phase A / E — marquee + snap guides live on OverlaySignalsContext.
@@ -229,9 +251,55 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
     lastFitSigRef.current = pageIdSig;
   }, [pageIdSig, rects, props]);
 
+  // Resolve a DOM pointer event to the document-coordinate
+  // CanvasPointerEvent a GestureHandler expects.
+  const buildToolPointer = useCallback(
+    (
+      e: React.PointerEvent<HTMLDivElement>,
+      maxDelta: number,
+    ): CanvasPointerEvent => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const [docX, docY] = viewportToDoc(
+        props.camera,
+        e.clientX - rect.left,
+        e.clientY - rect.top,
+      );
+      const containing = findContainingPage(rects, props.pageIds, docX, docY);
+      const pagePoint: [number, number] | null = containing
+        ? [docX - containing[1].x, docY - containing[1].y]
+        : null;
+      return {
+        pageId: containing ? containing[0] : null,
+        pagePoint,
+        docPoint: [docX, docY],
+        modifiers: {
+          shift: e.shiftKey,
+          alt: e.altKey,
+          cmd: e.metaKey,
+          ctrl: e.ctrlKey,
+        },
+        maxDelta,
+        button: e.button,
+        target: e.target,
+      };
+    },
+    [props.camera, props.pageIds, rects],
+  );
+
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.button !== 0 && e.button !== 1) return;
+      // Phase 2 — a handler-bearing tool (Rectangle, …) intercepts the
+      // pointer; the legacy select/text/pan path below is skipped.
+      if (props.toolGesture && e.button === 0) {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        toolDragRef.current = {
+          startPointer: [e.clientX, e.clientY],
+          maxDelta: 0,
+        };
+        props.toolGesture.onDown(buildToolPointer(e, 0));
+        return;
+      }
       e.currentTarget.setPointerCapture(e.pointerId);
       const modifiers: PointerModifiers = {
         shift: e.shiftKey,
@@ -404,6 +472,17 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
 
   const onPointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      // Phase 2 — route to the active tool handler while it owns the drag.
+      const toolDrag = toolDragRef.current;
+      if (toolDrag && props.toolGesture) {
+        const d = Math.hypot(
+          e.clientX - toolDrag.startPointer[0],
+          e.clientY - toolDrag.startPointer[1],
+        );
+        if (d > toolDrag.maxDelta) toolDrag.maxDelta = d;
+        props.toolGesture.onMove(buildToolPointer(e, toolDrag.maxDelta));
+        return;
+      }
       const drag = dragStateRef.current;
       if (!drag) return;
       const dx = e.clientX - drag.startPointer[0];
@@ -480,6 +559,14 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
 
   const onPointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      // Phase 2 — commit the active tool handler's gesture.
+      const toolDrag = toolDragRef.current;
+      if (toolDrag && props.toolGesture) {
+        toolDragRef.current = null;
+        e.currentTarget.releasePointerCapture(e.pointerId);
+        props.toolGesture.onUp(buildToolPointer(e, toolDrag.maxDelta));
+        return;
+      }
       const drag = dragStateRef.current;
       if (!drag) return;
       e.currentTarget.releasePointerCapture(e.pointerId);
@@ -741,7 +828,9 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
   return (
     <div
       ref={wrapperRef}
-      style={wrapperStyle}
+      // Phase 3 — the active tool's base cursor overrides the default
+      // pan affordance; the gesture handler may refine it per position.
+      style={props.cursor ? { ...wrapperStyle, cursor: props.cursor } : wrapperStyle}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

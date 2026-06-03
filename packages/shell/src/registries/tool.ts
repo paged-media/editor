@@ -1,50 +1,103 @@
-import type { Disposable } from "./types";
+import type { Disposable, VisibilityPredicate } from "./types";
+import type { CursorSpec } from "../tools/cursor";
+import type { GestureHandler } from "../tools/gesture-handler";
+import type { ToolOptionsSpec } from "../tools/tool-options";
 
 /**
- * Plan 2 §8.6 — declarative tool manifest. A `Tool` is a button-like
- * entry in the editor toolbar. The shell renders the registry as the
- * tool palette; bundles can register additional tools without
- * touching shell internals (mirrors `PanelContribution`).
+ * Concept 1 (toolbar) — the fifth registry / fifth Contribution-API
+ * arm alongside Panel / Command / SemanticGroup / Keybinding. A tool
+ * is DATA: an icon, a label, a shortcut, a flyout group, a cursor,
+ * optional options, an enablement predicate, and — once the gesture
+ * spine lands (Phase 2) — the `gesture` handler factory the spine
+ * mounts on the canvas overlay when the tool is active.
  *
- * Today's seed registry carries the two built-in tools (select / text).
- * `accepts` is reserved for future use: when wired, the gesture spine
- * can consult the active tool's predicate before dispatching a
- * gesture — e.g. a "scissors" tool that only accepts curve clicks.
+ * `gesture` / `cursor` / `options` are OPTIONAL so a tool can be
+ * registered as pure rail data before its handler / cursor / options
+ * exist. The rail renders whatever is registered; bundles contribute
+ * tools through the identical `register` path the built-ins use.
  */
-export interface Tool {
-  /** Stable identifier. Matches `ActiveTool` for built-in tools. */
-  key: string;
-  /** Short label shown in the toolbar button. */
-  label: string;
-  /** Keyboard shortcut (single letter, displayed in tooltips). */
-  shortcut: string;
-  /** Optional human-readable title for the button's `title` attribute.
-   *  Defaults to `"<key> tool (<shortcut>)"` when omitted. */
-  tooltip?: string;
-  /** Optional predicate. Reserved — not consulted by the current
-   *  gesture dispatch path. Bundles can supply one in anticipation
-   *  of the bundle-driven gesture routing follow-up. */
-  accepts?: (gesture: { kind: string }) => boolean;
+export type ToolId = string;
+
+/**
+ * Flyout group — one rail SLOT. Tools that share a group occupy the
+ * same slot, with the non-default members hidden behind the flyout
+ * triangle (e.g. Pen + Add/Delete/Convert-Anchor; Rectangle + Ellipse
+ * + Polygon). Free-form string so bundles can introduce new slots.
+ */
+export type ToolGroupId = string;
+
+/**
+ * The four lettered clusters of the InDesign toolbox (A–D). These are
+ * VISUAL section dividers between runs of slots, distinct from the
+ * flyout `group`. (The toolbar concept's single `ToolGroupId` enum is
+ * refined here into group = slot + section = divider, matching the
+ * `toolbar.png` reference: a section contains several flyout slots.)
+ */
+export type ToolSectionId = "selection" | "drawType" | "transform" | "modNav";
+
+export interface ToolContribution {
+  /** Stable id. Format `<namespace>.<tool>`, e.g. `paged.tool.pen`. */
+  id: ToolId;
+  /** Rail tooltip / label. */
+  title: string;
+  /** Icon name, resolved by the shared icon component. */
+  icon: string;
+  /** Single-key shortcut, e.g. `"v"`, `"a"`, `"shift+p"`. Claimed via
+   *  the KeybindingRegistry as a class with the text-suppression guard. */
+  shortcut?: string;
+  /** Flyout group (one rail slot). */
+  group: ToolGroupId;
+  /** Which A–D section divider the slot sits under. */
+  section: ToolSectionId;
+  /** Ordering within the group's flyout (and of slots within a section). */
+  order?: number;
+  /** Marks the group's default tool (the filled-square tools in the
+   *  image) — shown on the slot face at rest. */
+  isGroupDefault?: boolean;
+  /** Cursor while active. May be overridden per-position by the
+   *  handler's `cursorAt`. */
+  cursor?: CursorSpec;
+  /** The gesture handler factory the spine mounts on activation
+   *  (Phase 2). Absent for tools whose handler / engine op isn't
+   *  wired yet — they appear in the rail but don't mutate. */
+  gesture?: () => GestureHandler;
+  /** Optional tool-level options (e.g. Polygon sides), shown in a
+   *  double-click popover. */
+  options?: ToolOptionsSpec;
+  /** Optional enablement predicate against application state. */
+  when?: VisibilityPredicate;
+  /** Transitional bridge to the legacy scalar `ActiveTool` union
+   *  (`"select"` / `"text"`) the canvas spine still routes through.
+   *  Drop once consumers read `ToolId` directly. */
+  legacyKey?: "select" | "text";
 }
 
+/** Transitional alias — existing code that imported `Tool` keeps
+ *  compiling against the richer shape. */
+export type Tool = ToolContribution;
+
 export type ToolRegistryEvent =
-  | { kind: "registered"; tool: Tool }
-  | { kind: "unregistered"; key: string };
+  | { kind: "registered"; contribution: ToolContribution }
+  | { kind: "unregistered"; id: ToolId };
 
 export interface ToolRegistry {
-  register(tool: Tool): Disposable;
-  unregister(key: string): void;
-  get(key: string): Tool | undefined;
-  list(): Tool[];
+  register(contribution: ToolContribution): Disposable;
+  unregister(id: ToolId): void;
+  get(id: ToolId): ToolContribution | undefined;
+  list(): ToolContribution[];
+  /** Group → ordered members, derived. The rail renders one slot per
+   *  group, first-seen group order preserved; members sorted by
+   *  `order`. */
+  groups(): Map<ToolGroupId, ToolContribution[]>;
   onChange(handler: (event: ToolRegistryEvent) => void): Disposable;
 }
 
 /**
  * Default in-memory `ToolRegistry`. Insertion order is preserved so
- * the toolbar renders entries in registration order.
+ * the rail renders slots deterministically.
  */
 export function createToolRegistry(): ToolRegistry {
-  const byKey = new Map<string, Tool>();
+  const byId = new Map<ToolId, ToolContribution>();
   const listeners = new Set<(event: ToolRegistryEvent) => void>();
 
   function emit(event: ToolRegistryEvent) {
@@ -52,32 +105,46 @@ export function createToolRegistry(): ToolRegistry {
   }
 
   return {
-    register(tool) {
-      if (byKey.has(tool.key)) {
+    register(contribution) {
+      if (byId.has(contribution.id)) {
         throw new Error(
-          `ToolRegistry: key "${tool.key}" already registered`,
+          `ToolRegistry: id "${contribution.id}" already registered`,
         );
       }
-      byKey.set(tool.key, tool);
-      emit({ kind: "registered", tool });
+      byId.set(contribution.id, contribution);
+      emit({ kind: "registered", contribution });
       return {
         dispose() {
-          if (byKey.delete(tool.key)) {
-            emit({ kind: "unregistered", key: tool.key });
+          if (byId.delete(contribution.id)) {
+            emit({ kind: "unregistered", id: contribution.id });
           }
         },
       };
     },
-    unregister(key) {
-      if (byKey.delete(key)) {
-        emit({ kind: "unregistered", key });
+    unregister(id) {
+      if (byId.delete(id)) {
+        emit({ kind: "unregistered", id });
       }
     },
-    get(key) {
-      return byKey.get(key);
+    get(id) {
+      return byId.get(id);
     },
     list() {
-      return Array.from(byKey.values());
+      return Array.from(byId.values());
+    },
+    groups() {
+      // First-seen group order preserved (Map insertion order); members
+      // sorted by `order` (stable sort keeps registration order for ties).
+      const out = new Map<ToolGroupId, ToolContribution[]>();
+      for (const c of byId.values()) {
+        const arr = out.get(c.group);
+        if (arr) arr.push(c);
+        else out.set(c.group, [c]);
+      }
+      for (const arr of out.values()) {
+        arr.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      }
+      return out;
     },
     onChange(handler) {
       listeners.add(handler);
@@ -91,12 +158,34 @@ export function createToolRegistry(): ToolRegistry {
 }
 
 /**
- * Built-in tools the shell registers at startup. Bundles can
- * register additional tools later — the registry is open-ended.
- * Keys MUST match the `ActiveTool` literal union; the registry's
- * value type is `string` so future bundle-defined tools can join.
+ * Built-in tools seeded at shell startup so the rail is populated
+ * before any bundle runs. Phase 0 ships the two tools the canvas
+ * spine already routes pointer events through (Selection, Type); the
+ * full InDesign catalog (with gesture factories) lands as
+ * `BUILT_IN_TOOLS` in apps/canvas during Phase 1/2. Keys/shortcuts
+ * are lowercased to match `KeyboardEvent.key`.
  */
-export const DEFAULT_TOOLS: Tool[] = [
-  { key: "select", label: "V", shortcut: "V", tooltip: "Selection tool (V)" },
-  { key: "text", label: "T", shortcut: "T", tooltip: "Text tool (T)" },
+export const DEFAULT_TOOLS: ToolContribution[] = [
+  {
+    id: "paged.tool.select",
+    title: "Selection",
+    icon: "tool-select",
+    shortcut: "v",
+    group: "select",
+    section: "selection",
+    order: 0,
+    isGroupDefault: true,
+    legacyKey: "select",
+  },
+  {
+    id: "paged.tool.type",
+    title: "Type",
+    icon: "tool-type",
+    shortcut: "t",
+    group: "type",
+    section: "drawType",
+    order: 0,
+    isGroupDefault: true,
+    legacyKey: "text",
+  },
 ];

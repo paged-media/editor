@@ -24,6 +24,7 @@ import {
 import "@paged-media/shell/styles/globals.css";
 
 import { CanvasClient } from "@paged-media/client";
+import { BUILT_IN_TOOLS } from "./tools/built-in-tools";
 import { APP_KEYBINDINGS, APP_MENU_ITEMS, buildAppCommands } from "./app-commands";
 import { CanvasPanel } from "./panels/canvas-panel";
 import { CharacterPanel } from "./panels/character-panel";
@@ -75,6 +76,7 @@ import { documentBounds, fitCamera, layoutPages } from "./ui/layout";
 import { usePathEditMode } from "./ui/usePathEditMode";
 import { useTextEditing } from "./ui/useTextEditing";
 import { ZoomField } from "./ui/ZoomField";
+import { CorpusPicker } from "./ui/CorpusPicker";
 
 // Default overlay contributions for the canvas app. Order is
 // descriptive — actual paint order is determined by the
@@ -632,7 +634,13 @@ function CanvasAppRoot() {
       client={client}
       panels={BUILT_IN_PANELS}
       overlays={BUILT_IN_OVERLAYS}
-      headerExtras={<ZoomField />}
+      tools={BUILT_IN_TOOLS}
+      headerExtras={
+        <>
+          <CorpusPicker />
+          <ZoomField />
+        </>
+      }
     >
       <CanvasAppIntegration />
     </PagedShell>

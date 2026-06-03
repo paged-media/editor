@@ -98,16 +98,35 @@ function eventMatches(combo: KeyCombo, event: KeyboardEvent): boolean {
   return true;
 }
 
+/** Evaluate a keybinding's `when` predicate. Undefined → enabled. The
+ *  function form is called with the state snapshot; the string DSL
+ *  form is inert (treated as disabled) until an evaluator lands —
+ *  matching `VisibilityPredicate`'s documented contract. */
+function isEnabled(
+  when: VisibilityPredicate | undefined,
+  getState: (() => unknown) | undefined,
+): boolean {
+  if (when === undefined) return true;
+  if (typeof when === "function") {
+    try {
+      return Boolean(when(getState?.()));
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 /**
  * Backing for `register` / dispatch. Takes the command registry so
- * matched keybindings can invoke their target command; the
- * `getState` thunk supplies an application-state snapshot for
- * `when` predicate evaluation (Step 4 will use this; Step 4 MVP
- * skips predicate evaluation and treats every keybinding as
- * always-enabled).
+ * matched keybindings can invoke their target command; the optional
+ * `getState` thunk supplies an application-state snapshot for `when`
+ * predicate evaluation (Concept 1's tool shortcuts use this for the
+ * class-wide `contentSelection == null` text-suppression guard).
  */
 export function createKeybindingRegistry(
   commands: CommandRegistry,
+  getState?: () => unknown,
 ): KeybindingRegistry & Disposable {
   const bindings: ParsedBinding[] = [];
 
@@ -134,6 +153,10 @@ export function createKeybindingRegistry(
     }
     for (const b of bindings) {
       if (eventMatches(b.combo, event)) {
+        // A disabled binding yields to any lower-priority binding that
+        // also matches this combo (e.g. a guarded tool shortcut vs. a
+        // future unguarded one).
+        if (!isEnabled(b.contribution.when, getState)) continue;
         event.preventDefault();
         void commands.invoke(b.contribution.command);
         return;

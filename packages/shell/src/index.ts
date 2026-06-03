@@ -33,6 +33,54 @@ export {
   useContentSelection,
 } from "./state/content-selection-context";
 
+// ── Tool stack (Concept 1) ─────────────────────────────────────
+export {
+  ToolProvider,
+  useTool,
+  useOptionalTool,
+  SELECT_TOOL_ID,
+  TEXT_TOOL_ID,
+  type ActiveToolState,
+  type ToolChangeReason,
+  type ToolContextValue,
+} from "./state/tool-context";
+
+export {
+  ScreenModeProvider,
+  useScreenMode,
+  useOptionalScreenMode,
+  SCREEN_MODES,
+  type ScreenMode,
+} from "./state/screen-mode-context";
+
+export { resolveCursorCss } from "./tools/cursor";
+export type { CursorSpec, CssCursorToken } from "./tools/cursor";
+export type {
+  GestureHandler,
+  CanvasPointerEvent,
+  OverlayContext,
+  OverlayPrimitive,
+  DeactivateReason,
+} from "./tools/gesture-handler";
+export { GestureSpine } from "./tools/gesture-spine";
+export type {
+  ToolOptionsSpec,
+  ToolOptionField,
+  ToolSettings,
+} from "./tools/tool-options";
+export {
+  ToolSettingsProvider,
+  useToolSettings,
+} from "./state/tool-settings-context";
+
+export {
+  FormattingAffectsProvider,
+  useFormattingAffects,
+  useOptionalFormattingAffects,
+  type FillStrokeWell,
+  type FormattingAffects,
+} from "./state/formatting-affects-context";
+
 export {
   OverlaySignalsProvider,
   useOverlaySignals,
@@ -83,6 +131,10 @@ export {
   type PanelRegistryEvent,
   type SemanticGroupRegistry,
   type Tool,
+  type ToolContribution,
+  type ToolId,
+  type ToolGroupId,
+  type ToolSectionId,
   type ToolRegistry,
   type ToolRegistryEvent,
   type VisibilityPredicate,
@@ -114,6 +166,9 @@ export { PagedShell, type PagedShellProps } from "./PagedShell";
 // ── Chrome ─────────────────────────────────────────────────────
 export { CommandPalette } from "./chrome/CommandPalette";
 export { MenuBar } from "./chrome/MenuBar";
+
+// ── Icons (Concept 1 — shared tool + panel glyph resolver) ─────
+export { Icon, hasIcon, type IconProps } from "./icons";
 
 // ── Persistence ────────────────────────────────────────────────
 export {

@@ -10,6 +10,8 @@ import { useCanvasClient } from "./canvas-client-context";
 import { useCamera, type ViewportSize } from "./camera-context";
 import { useDocument } from "./document-context";
 import { useSelection } from "./selection-context";
+import { useTool } from "./tool-context";
+import { useScreenMode } from "./screen-mode-context";
 import { useContentSelection } from "./content-selection-context";
 import {
   RegistriesProvider,
@@ -41,6 +43,12 @@ export interface PagedEditor {
 
   /** Visual element selection. */
   selection: ReturnType<typeof useSelection>;
+
+  /** Active-tool stack (base + spring-load overrides). */
+  tool: ReturnType<typeof useTool>;
+
+  /** Screen mode (Normal / Preview / Bleed / Slug / Presentation). */
+  screenMode: ReturnType<typeof useScreenMode>;
 
   /** Text caret + range. */
   contentSelection: ReturnType<typeof useContentSelection>;
@@ -97,6 +105,8 @@ function PagedEditorBinder({
   const document = useDocument();
   const camera = useCamera();
   const selection = useSelection();
+  const tool = useTool();
+  const screenMode = useScreenMode();
   const contentSelection = useContentSelection();
   const registries = useRegistries();
   const substrate = useDockingSubstrate();
@@ -107,11 +117,13 @@ function PagedEditorBinder({
       document,
       camera,
       selection,
+      tool,
+      screenMode,
       contentSelection,
       registries,
       substrate,
     }),
-    [client, document, camera, selection, contentSelection, registries, substrate],
+    [client, document, camera, selection, tool, screenMode, contentSelection, registries, substrate],
   );
   editorRef.current = editor;
 

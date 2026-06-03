@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useMemo,
   useState,
@@ -12,7 +13,27 @@ import type {
   ElementId,
 } from "@paged-media/client";
 
+import {
+  useOptionalTool,
+  SELECT_TOOL_ID,
+  TEXT_TOOL_ID,
+} from "./tool-context";
+import type { ToolId } from "../registries/tool";
+
 export type ActiveTool = "select" | "text";
+
+// Concept 1 — `activeTool` is now a facade over the ToolContext stack.
+// The four legacy consumers (canvas-panel, ViewportCanvas, path-edit,
+// tools-panel) still read the scalar union; these helpers translate
+// between it and the richer `ToolId`. Only the two built-in tools map;
+// any other effective tool reports "select" until those consumers
+// migrate to `ToolId`.
+function legacyToolFor(id: ToolId): ActiveTool {
+  return id === TEXT_TOOL_ID ? "text" : "select";
+}
+function toolIdForLegacy(t: ActiveTool): ToolId {
+  return t === "text" ? TEXT_TOOL_ID : SELECT_TOOL_ID;
+}
 
 interface SelectionContextValue {
   /** Currently-selected page items (text frames, rectangles, …). */
@@ -66,7 +87,20 @@ export function SelectionProvider({ children }: PropsWithChildren) {
   const [elementGeometry, setElementGeometry] = useState<ElementGeometryItem[]>(
     [],
   );
-  const [activeTool, setActiveTool] = useState<ActiveTool>("select");
+  // `activeTool` derives from the ToolContext when present. The
+  // fallback `useState` keeps `SelectionProvider` usable standalone
+  // (e.g. focused unit tests that don't mount `ToolProvider`).
+  const tool = useOptionalTool();
+  const [legacyToolFallback, setLegacyToolFallback] =
+    useState<ActiveTool>("select");
+  const activeTool = tool ? legacyToolFor(tool.effectiveTool) : legacyToolFallback;
+  const setActiveTool = useCallback(
+    (t: ActiveTool) => {
+      if (tool) tool.setBaseTool(toolIdForLegacy(t));
+      else setLegacyToolFallback(t);
+    },
+    [tool],
+  );
   const [pathEditMode, setPathEditMode] = useState<boolean>(false);
   const [selectedAnchorIndex, setSelectedAnchorIndex] = useState<number | null>(
     null,

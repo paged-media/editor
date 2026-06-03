@@ -5,14 +5,17 @@ import {
   type FunctionComponent,
 } from "react";
 import {
+  DockviewDefaultTab,
   DockviewReact,
   type DockviewReadyEvent,
+  type IDockviewPanelHeaderProps,
   type IDockviewPanelProps,
 } from "dockview-react";
 import "dockview-react/dist/styles/dockview.css";
 
 import { useRegistries } from "../state/registries-context";
 import { usePaged } from "../state/paged-editor";
+import { Icon, hasIcon } from "../icons";
 import {
   restoreLayoutOrDefault,
   setupLayoutPersistence,
@@ -61,6 +64,32 @@ const PanelRouter: FunctionComponent<IDockviewPanelProps> = (props) => {
 // doesn't refresh later additions, so we register a single router
 // and route by id at render time.
 const DOCKVIEW_COMPONENTS = { [PANEL_COMPONENT_NAME]: PanelRouter };
+
+/**
+ * Panel tab with a leading icon (Concept 1). Wraps dockview's default
+ * tab (which owns the title + close button + pointer behaviour) and
+ * prepends the panel's glyph, resolved from the panel id — the glyph
+ * key `panel-<suffix>` matches the contribution id `paged.<suffix>`.
+ * Module scope = referentially stable, like the panel router.
+ */
+const PanelTab: FunctionComponent<IDockviewPanelHeaderProps> = (props) => {
+  const panelId = (props.params as { panelId?: string } | undefined)?.panelId;
+  const iconName = panelId
+    ? `panel-${panelId.replace(/^paged\./, "")}`
+    : undefined;
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center" }}>
+      {iconName && hasIcon(iconName) && (
+        <Icon
+          name={iconName}
+          size={13}
+          style={{ marginLeft: 8, marginRight: -2, opacity: 0.85 }}
+        />
+      )}
+      <DockviewDefaultTab {...props} />
+    </div>
+  );
+};
 
 /**
  * Mounts dockview, builds the substrate on ready, and instantiates
@@ -121,6 +150,7 @@ export function DockviewRoot({ className }: { className?: string }) {
   return (
     <DockviewReact
       components={DOCKVIEW_COMPONENTS}
+      defaultTabComponent={PanelTab}
       onReady={onReady}
       className={className ?? "dockview-theme-light"}
     />

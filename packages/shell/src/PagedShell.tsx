@@ -37,11 +37,17 @@ import { OverlaySignalsProvider } from "./state/overlay-signals-context";
 import {
   SelectionProvider,
   useSelection,
-  type ActiveTool,
 } from "./state/selection-context";
+import { ToolProvider } from "./state/tool-context";
+import { ScreenModeProvider } from "./state/screen-mode-context";
+import { ToolSettingsProvider } from "./state/tool-settings-context";
+import { FormattingAffectsProvider } from "./state/formatting-affects-context";
 import { PagedEditorProvider } from "./state/paged-editor";
 import { useRegistries } from "./state/registries-context";
 import { CommandPalette } from "./chrome/CommandPalette";
+import { ToolRail } from "./chrome/ToolRail";
+import { ScreenModeSelector } from "./chrome/ScreenModeSelector";
+import { FillStrokeCluster } from "./chrome/FillStrokeCluster";
 import { DockviewRoot } from "./docking/DockviewRoot";
 import { DockingSubstrateProvider } from "./docking/substrate-context";
 import { loadDocumentFile } from "./state/document-loader";
@@ -63,6 +69,7 @@ import {
   buildPanelToggleCommands,
   buildPerspectiveLifecycleCommands,
 } from "./state/commands/built-in-commands";
+import { buildToolbarContributions } from "./state/commands/tool-commands";
 import {
   PERSPECTIVES_CHANGED_EVENT,
   listPerspectives,
@@ -70,7 +77,7 @@ import {
 import { MenuBar } from "./chrome/MenuBar";
 import type { OverlayContribution } from "./registries/overlay";
 import type { PanelContribution } from "./registries/panel";
-import type { Tool } from "./registries/tool";
+import type { ToolContribution } from "./registries/tool";
 import type { Disposable } from "./registries/types";
 import { useFps } from "./hooks/useFps";
 
@@ -82,6 +89,10 @@ export interface PagedShellProps {
    *  pattern as `panels` — apps decide which overlays to mount,
    *  bundles add more via the registry. */
   overlays?: OverlayContribution[];
+  /** Tool contributions to register at shell startup. The left
+   *  ToolRail renders the ToolRegistry; same data-driven pattern as
+   *  `panels` / `overlays`. */
+  tools?: ToolContribution[];
   /** Optional extra chrome inserted into the header between the
    * menu bar and the file picker. Apps use this for shell-host-
    * specific controls (zoom indicator, color profile selector,
@@ -99,6 +110,7 @@ export function PagedShell({
   client,
   panels,
   overlays,
+  tools,
   headerExtras,
   children,
 }: PropsWithChildren<PagedShellProps>) {
@@ -107,8 +119,14 @@ export function PagedShell({
       <CanvasClientProvider client={client}>
         <CameraProvider>
           <DocumentProvider>
-            <SelectionProvider>
-              <ContentSelectionProvider>
+            {/* ToolProvider above SelectionProvider: the selection
+             *  context's `activeTool` facade reads the tool stack. */}
+            <ToolProvider>
+              <ScreenModeProvider>
+                <ToolSettingsProvider>
+                  <FormattingAffectsProvider>
+                    <SelectionProvider>
+                      <ContentSelectionProvider>
                 <OverlaySignalsProvider>
                   <InstrumentationProvider>
                     {/* DockingSubstrateProvider above PagedEditorProvider so
@@ -119,6 +137,7 @@ export function PagedShell({
                         <ShellChrome
                           panels={panels}
                           overlays={overlays}
+                          tools={tools}
                           headerExtras={headerExtras}
                         >
                           {children}
@@ -127,8 +146,12 @@ export function PagedShell({
                     </DockingSubstrateProvider>
                   </InstrumentationProvider>
                 </OverlaySignalsProvider>
-              </ContentSelectionProvider>
-            </SelectionProvider>
+                      </ContentSelectionProvider>
+                    </SelectionProvider>
+                  </FormattingAffectsProvider>
+                </ToolSettingsProvider>
+              </ScreenModeProvider>
+            </ToolProvider>
           </DocumentProvider>
         </CameraProvider>
       </CanvasClientProvider>
@@ -145,11 +168,13 @@ export function PagedShell({
 function ShellChrome({
   panels,
   overlays,
+  tools,
   headerExtras,
   children,
 }: PropsWithChildren<{
   panels: PanelContribution[];
   overlays?: OverlayContribution[];
+  tools?: ToolContribution[];
   headerExtras?: ReactNode;
 }>) {
   const client = useCanvasClient();
@@ -227,6 +252,41 @@ function ShellChrome({
       overlaysRegistered.current = false;
     };
   }, [registries, overlays]);
+
+  // Register the supplied tool contributions (the rail renders the
+  // ToolRegistry). Same ref guard; the ToolRail subscribes to the
+  // registry's onChange so it picks these up. Tool single-key
+  // shortcuts + chrome keys are registered by `useToolKeybindings`,
+  // installed by the canvas-app integration child.
+  const toolsRegistered = useRef(false);
+  useEffect(() => {
+    if (toolsRegistered.current) return;
+    if (!tools || tools.length === 0) return;
+    toolsRegistered.current = true;
+    const disposables = tools.map((t) => registries.tools.register(t));
+    return () => {
+      for (const d of disposables) d.dispose();
+      toolsRegistered.current = false;
+    };
+  }, [registries, tools]);
+
+  // Register tool single-key shortcuts (as a class, with the
+  // contentSelection==null guard) + the W screen-preview toggle.
+  const toolKeysRegistered = useRef(false);
+  useEffect(() => {
+    if (toolKeysRegistered.current) return;
+    if (!tools || tools.length === 0) return;
+    toolKeysRegistered.current = true;
+    const { commands, keybindings } = buildToolbarContributions(tools);
+    const disposables = [
+      ...commands.map((c) => registries.commands.register(c)),
+      ...keybindings.map((k) => registries.keybindings.register(k)),
+    ];
+    return () => {
+      for (const d of disposables) d.dispose();
+      toolKeysRegistered.current = false;
+    };
+  }, [registries, tools]);
 
   // Register the built-in file-open command. Programmatic file
   // dialog so the palette can invoke it without depending on the
@@ -470,11 +530,6 @@ function ShellChrome({
         <h1 style={{ margin: 0, fontSize: 16 }}>IDML canvas</h1>
         <MenuBar />
         <FileDrop onFile={onFile} compact />
-        <ToolToggle
-          tools={registries.tools.list()}
-          active={activeTool}
-          onChange={setActiveTool}
-        />
         {headerExtras}
         <span style={{ marginLeft: "auto", opacity: 0.7, fontSize: 12 }}>
           {status}
@@ -497,8 +552,20 @@ function ShellChrome({
         </ul>
       )}
 
-      <div style={dockviewContainerStyle}>
-        <DockviewRoot />
+      {/* Body row: the left tool rail (shell chrome, OUTSIDE the
+       *   dockview substrate) + the docking area. */}
+      <div style={bodyRowStyle}>
+        <ToolRail
+          foot={
+            <>
+              <FillStrokeCluster />
+              <ScreenModeSelector />
+            </>
+          }
+        />
+        <div style={dockviewContainerStyle}>
+          <DockviewRoot />
+        </div>
       </div>
 
       <CommandPalette />
@@ -542,43 +609,6 @@ class DebugErrorBoundary extends React.Component<
     }
     return this.props.children;
   }
-}
-
-function ToolToggle(props: {
-  tools: readonly Tool[];
-  active: string;
-  onChange: (t: ActiveTool) => void;
-}) {
-  return (
-    <div role="tablist" style={toolToggleStyle}>
-      {props.tools.map((tool) => {
-        const isActive = tool.key === props.active;
-        const title = tool.tooltip ?? `${tool.label} tool (${tool.shortcut})`;
-        return (
-          <button
-            key={tool.key}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            title={title}
-            // Tools that map to a known `ActiveTool` flow into the
-            // selection-context state. Bundle-registered tools with
-            // other keys are accepted by the registry but currently
-            // ignored by selection-context — that's the bundle hook
-            // plan 2 §8.6 reserves for the bundle follow-up.
-            onClick={() => props.onChange(tool.key as ActiveTool)}
-            style={
-              isActive
-                ? { ...toolButtonStyle, ...toolButtonActiveStyle }
-                : toolButtonStyle
-            }
-          >
-            {tool.label}
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 function FileDrop(props: { onFile: (file: File) => void; compact?: boolean }) {
@@ -635,28 +665,10 @@ const dockviewContainerStyle: React.CSSProperties = {
   position: "relative",
 };
 
-const toolToggleStyle: React.CSSProperties = {
-  display: "inline-flex",
-  border: "1px solid #d1d5db",
-  borderRadius: 4,
-  overflow: "hidden",
-};
-
-const toolButtonStyle: React.CSSProperties = {
-  width: 28,
-  height: 24,
-  background: "#fff",
-  border: "none",
-  borderRight: "1px solid #d1d5db",
-  fontSize: 12,
-  fontFamily: "ui-sans-serif, system-ui, sans-serif",
-  cursor: "pointer",
-  color: "#374151",
-};
-
-const toolButtonActiveStyle: React.CSSProperties = {
-  background: "#1f2937",
-  color: "#fff",
+const bodyRowStyle: React.CSSProperties = {
+  display: "flex",
+  flex: 1,
+  minHeight: 0,
 };
 
 const dropStyle: React.CSSProperties = {
