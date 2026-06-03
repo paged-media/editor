@@ -106,10 +106,18 @@ export interface ViewportCanvasProps {
     onDown: (e: CanvasPointerEvent) => void;
     onMove: (e: CanvasPointerEvent) => void;
     onUp: (e: CanvasPointerEvent) => void;
+    /** Per-position cursor refinement from the handler's `cursorAt`. */
+    hoverCursor?: (e: CanvasPointerEvent) => string | undefined;
   } | null;
   /** Phase 3 — CSS cursor for the active tool. Overrides the default
    * pan affordance when set. */
   cursor?: string;
+  /** Concept 1 — the Hand tool (incl. the Space spring-load): every
+   * primary-button drag pans, reusing the proven pan machinery. */
+  forcePan?: boolean;
+  /** Concept 1 — the Zoom tool (incl. Cmd+Space): a click zooms in
+   * around the pointer; Alt-click zooms out. */
+  zoomClick?: boolean;
 }
 
 const CLICK_DRAG_THRESHOLD_PX = 4;
@@ -322,6 +330,11 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         | undefined;
       if (e.button === 1) {
         mode = "pan";
+      } else if (props.forcePan || props.zoomClick) {
+        // Concept 1 — Hand (or a Space spring-load) pans on any drag;
+        // the Zoom tool also pans on drag (its click action is handled
+        // in onPointerUp's click branch).
+        mode = "pan";
       } else if (tool === "select") {
         // Phase C/D/G — if the pointer landed on a handle (resize
         // handle or the rotation handle), begin the matching gesture
@@ -484,7 +497,19 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         return;
       }
       const drag = dragStateRef.current;
-      if (!drag) return;
+      if (!drag) {
+        // Concept 1 (Phase 3) — no drag in flight: let the active
+        // handler refine the cursor per pointer position (Pen near an
+        // anchor ≠ Pen over empty canvas). Imperative style write so a
+        // hover doesn't re-render the canvas.
+        const hover = props.toolGesture?.hoverCursor;
+        if (hover) {
+          const refined = hover(buildToolPointer(e, 0));
+          const el = wrapperRef.current;
+          if (el) el.style.cursor = refined ?? props.cursor ?? "grab";
+        }
+        return;
+      }
       const dx = e.clientX - drag.startPointer[0];
       const dy = e.clientY - drag.startPointer[1];
       const delta = Math.hypot(dx, dy);
@@ -590,6 +615,22 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
           if (stale !== null) {
             void props.client.cancelGesture(stale).catch(() => {});
           }
+        }
+        // Concept 1 — Zoom tool: a click zooms in around the pointer
+        // (Alt-click zooms out) instead of hit-testing.
+        if (props.zoomClick) {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const cx = e.clientX - rect.left;
+          const cy = e.clientY - rect.top;
+          const [docX, docY] = viewportToDoc(props.camera, cx, cy);
+          const factor = e.altKey ? 1 / 1.25 : 1.25;
+          const scale = Math.min(64, Math.max(0.01, props.camera.scale * factor));
+          props.onCameraChange({
+            scale,
+            tx: cx - docX * scale,
+            ty: cy - docY * scale,
+          });
+          return;
         }
         if (!props.onHit) return;
         const rect = e.currentTarget.getBoundingClientRect();

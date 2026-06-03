@@ -40,10 +40,14 @@ export {
   useOptionalTool,
   SELECT_TOOL_ID,
   TEXT_TOOL_ID,
+  HAND_TOOL_ID,
+  DIRECT_SELECT_TOOL_ID,
+  ZOOM_TOOL_ID,
   type ActiveToolState,
   type ToolChangeReason,
   type ToolContextValue,
 } from "./state/tool-context";
+export { useSpringLoadedTools } from "./tools/use-spring-loaded-tools";
 
 export {
   ScreenModeProvider,
@@ -218,6 +222,7 @@ export {
   elementSupportsPathEdit,
   hitMarkerContribution,
   marqueeContribution,
+  toolPreviewContribution,
   pageDecorationsContribution,
   pathEditContribution,
   resizeHandlesContribution,

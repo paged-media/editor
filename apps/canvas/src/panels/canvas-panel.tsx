@@ -29,7 +29,11 @@ export function CanvasPanel(_props: PanelProps) {
   // Phase 2 — the gesture spine. `toolGesture` is non-null only while
   // the effective tool carries a handler (Rectangle, …); select/text
   // keep `null` and run ViewportCanvas's proven legacy pointer path.
-  const { toolGesture, cursor: toolCursor } = useGestureSpine();
+  // Hand/Zoom (incl. Space / Cmd+Space spring-loads) reuse the legacy
+  // pan machinery + a click-zoom rather than gesture handlers.
+  const { toolGesture, cursor: toolCursor, effectiveTool } = useGestureSpine();
+  const forcePan = effectiveTool === "paged.tool.hand";
+  const zoomClick = effectiveTool === "paged.tool.zoom";
   const client = useCanvasClient();
   const { camera, setCamera, setViewportSize } = useCamera();
   const { handle, resolution } = useDocument();
@@ -250,6 +254,8 @@ export function CanvasPanel(_props: PanelProps) {
         activeTool={activeTool}
         toolGesture={toolGesture}
         cursor={toolCursor}
+        forcePan={forcePan}
+        zoomClick={zoomClick}
         elementSelection={elementSelection}
         elementGeometry={elementGeometry}
         onHit={onHit}

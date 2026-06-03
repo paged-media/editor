@@ -77,6 +77,10 @@ export interface DockingSubstrate {
   /** Restore a previously serialized layout. */
   restore(snapshot: LayoutSnapshot): void;
 
+  /** Concept 1 (Tab/Shift+Tab) — close every panel except `keepIds`.
+   * Callers `serialize()` first and `restore()` to bring them back. */
+  closePanelsExcept(keepIds: readonly string[]): void;
+
   /** Pop a group out into a separate browser window. */
   popoutGroup(groupId: string): void;
 

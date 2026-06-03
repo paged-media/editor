@@ -11,12 +11,17 @@
 // InDesign exports often ship a handful per page.
 
 import { useDocument } from "../state/document-context";
+import { useOptionalScreenMode } from "../state/screen-mode-context";
 
 import type { OverlayContribution, OverlayProps } from "../registries/overlay";
 
 function RulerGuidesRender(props: OverlayProps) {
   const { handle } = useDocument();
+  // Concept 1 (T7) — guides are non-printing chrome: Normal mode only;
+  // Preview / Bleed / Slug / Presentation hide them.
+  const screenMode = useOptionalScreenMode();
   const guides = handle?.rulerGuides ?? [];
+  if (screenMode && screenMode.screenMode !== "normal") return null;
   if (guides.length === 0) return null;
   const inv = 1 / props.camera.scale;
   return (

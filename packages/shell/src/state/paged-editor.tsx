@@ -12,6 +12,7 @@ import { useDocument } from "./document-context";
 import { useSelection } from "./selection-context";
 import { useTool } from "./tool-context";
 import { useScreenMode } from "./screen-mode-context";
+import { useOverlaySignals } from "./overlay-signals-context";
 import { useContentSelection } from "./content-selection-context";
 import {
   RegistriesProvider,
@@ -49,6 +50,10 @@ export interface PagedEditor {
 
   /** Screen mode (Normal / Preview / Bleed / Slug / Presentation). */
   screenMode: ReturnType<typeof useScreenMode>;
+
+  /** Transient overlay signals (marquee, snap lines, tool preview).
+   *  Gesture handlers publish their in-progress preview here. */
+  overlaySignals: ReturnType<typeof useOverlaySignals>;
 
   /** Text caret + range. */
   contentSelection: ReturnType<typeof useContentSelection>;
@@ -107,6 +112,7 @@ function PagedEditorBinder({
   const selection = useSelection();
   const tool = useTool();
   const screenMode = useScreenMode();
+  const overlaySignals = useOverlaySignals();
   const contentSelection = useContentSelection();
   const registries = useRegistries();
   const substrate = useDockingSubstrate();
@@ -119,11 +125,12 @@ function PagedEditorBinder({
       selection,
       tool,
       screenMode,
+      overlaySignals,
       contentSelection,
       registries,
       substrate,
     }),
-    [client, document, camera, selection, tool, screenMode, contentSelection, registries, substrate],
+    [client, document, camera, selection, tool, screenMode, overlaySignals, contentSelection, registries, substrate],
   );
   editorRef.current = editor;
 

@@ -19,6 +19,9 @@ importers:
       '@paged-media/shell':
         specifier: workspace:*
         version: link:../../packages/shell
+      '@paged-media/tools':
+        specifier: workspace:*
+        version: link:../../packages/tools
       '@paged-media/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -260,6 +263,28 @@ importers:
       tailwindcss:
         specifier: ^3.4.19
         version: 3.4.19(tsx@4.22.3)
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
+  packages/tools:
+    dependencies:
+      '@paged-media/shell':
+        specifier: workspace:*
+        version: link:../shell
+      react:
+        specifier: ^18.3.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.0
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.29
+      '@types/react-dom':
+        specifier: ^18.3.1
+        version: 18.3.7(@types/react@18.3.29)
       typescript:
         specifier: ^5.6.3
         version: 5.9.3

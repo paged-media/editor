@@ -6,6 +6,7 @@ import {
   contentGrabberContribution,
   hitMarkerContribution,
   marqueeContribution,
+  toolPreviewContribution,
   pageDecorationsContribution,
   pathEditContribution,
   resizeHandlesContribution,
@@ -24,7 +25,7 @@ import {
 import "@paged-media/shell/styles/globals.css";
 
 import { CanvasClient } from "@paged-media/client";
-import { BUILT_IN_TOOLS } from "./tools/built-in-tools";
+import { BUILT_IN_TOOLS } from "@paged-media/tools";
 import { APP_KEYBINDINGS, APP_MENU_ITEMS, buildAppCommands } from "./app-commands";
 import { CanvasPanel } from "./panels/canvas-panel";
 import { CharacterPanel } from "./panels/character-panel";
@@ -59,7 +60,6 @@ import { TableStylesPanel } from "./panels/table-styles-panel";
 import { SwatchesPanel } from "./panels/swatches-panel";
 import { TextFrameOptionsPanel } from "./panels/text-frame-options-panel";
 import { TextWrapPanel } from "./panels/text-wrap-panel";
-import { ToolsPanel } from "./panels/tools-panel";
 import { ParagraphPanel } from "./panels/paragraph-panel";
 import { ParagraphStylesPanel } from "./panels/paragraph-styles-panel";
 import { StrokePanel } from "./panels/stroke-panel";
@@ -91,6 +91,7 @@ const BUILT_IN_OVERLAYS: OverlayContribution[] = [
   contentGrabberContribution,
   pathEditContribution,
   marqueeContribution,
+  toolPreviewContribution,
   snapLinesContribution,
   caretContribution,
 ];
@@ -115,17 +116,8 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultDock: "left",
     defaultGroup: "structure",
   },
-  {
-    // SDK Phase 5 (named sweep) — Tools palette. Expert leaf
-    // wrapping useSelection's activeTool / setActiveTool pair.
-    // Writes application state (`writes: ["selection"]` per the
-    // §10 audit register), not document state.
-    id: "paged.tools",
-    title: "Tools",
-    component: ToolsPanel,
-    defaultDock: "left",
-    defaultGroup: "structure",
-  },
+  // NOTE: the old `paged.tools` dock panel is retired — the left
+  // ToolRail (shell chrome, Concept 1 AC-9) is the only tool surface.
   {
     // SDK Phase 5 (named sweep) — Links list. Read-only expert
     // leaf consuming useCollection<LinkSummary>("links"). Per-row

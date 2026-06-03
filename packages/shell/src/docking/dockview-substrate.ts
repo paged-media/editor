@@ -141,6 +141,14 @@ export class DockviewSubstrate implements DockingSubstrate {
     this.api.fromJSON(snapshot as Parameters<DockviewApi["fromJSON"]>[0]);
   }
 
+  closePanelsExcept(keepIds: readonly string[]): void {
+    const keep = new Set(keepIds);
+    // Copy first — removePanel mutates api.panels while we iterate.
+    for (const panel of [...this.api.panels]) {
+      if (!keep.has(panel.id)) this.api.removePanel(panel);
+    }
+  }
+
   popoutGroup(groupId: string): void {
     const group = this.api.getGroup(groupId);
     if (!group) return;

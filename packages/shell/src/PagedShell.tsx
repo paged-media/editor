@@ -69,7 +69,13 @@ import {
   buildPanelToggleCommands,
   buildPerspectiveLifecycleCommands,
 } from "./state/commands/built-in-commands";
-import { buildToolbarContributions } from "./state/commands/tool-commands";
+import {
+  buildToolbarContributions,
+  contentSelectionInactive,
+} from "./state/commands/tool-commands";
+import { useSpringLoadedTools } from "./tools/use-spring-loaded-tools";
+import type { PagedEditor } from "./state/paged-editor";
+import type { LayoutSnapshot } from "./docking/substrate";
 import {
   PERSPECTIVES_CHANGED_EVENT,
   listPerspectives,
@@ -207,6 +213,10 @@ function ShellChrome({
   const { setFps, setGpuActive, setLayoutCacheStats } = useInstrumentation();
   const registries = useRegistries();
 
+  // Concept 1 (T2) — Space → Hand, Cmd → Direct Selection, Cmd+Space →
+  // Zoom spring-loading onto the active-tool stack.
+  useSpringLoadedTools();
+
   const [status, setStatus] = useState<string>("initialising worker…");
   const [warnings, setWarnings] = useState<string[]>([]);
   const sabSupported = useMemo(() => supportsSharedArrayBuffer(), []);
@@ -269,6 +279,87 @@ function ShellChrome({
       toolsRegistered.current = false;
     };
   }, [registries, tools]);
+
+  // Concept 1 — Tab / Shift+Tab chrome hide. Tab toggles panels + the
+  // tool rail; Shift+Tab toggles panels only. Hiding serializes the
+  // dock layout, closes everything but the canvas, and restores the
+  // snapshot on show. (Reloading while hidden persists the hidden
+  // layout — same trade-off InDesign makes.)
+  const [railHidden, setRailHidden] = useState(false);
+  const panelsSnapshotRef = useRef<LayoutSnapshot | null>(null);
+
+  const hidePanels = (paged: PagedEditor) => {
+    const substrate = paged.substrate;
+    if (!substrate || panelsSnapshotRef.current) return;
+    panelsSnapshotRef.current = substrate.serialize();
+    substrate.closePanelsExcept(["paged.canvas"]);
+  };
+  const showPanels = (paged: PagedEditor) => {
+    const snap = panelsSnapshotRef.current;
+    panelsSnapshotRef.current = null;
+    if (paged.substrate && snap) paged.substrate.restore(snap);
+  };
+  const toggleAll = (paged: PagedEditor) => {
+    if (panelsSnapshotRef.current || railHidden) {
+      showPanels(paged);
+      setRailHidden(false);
+    } else {
+      hidePanels(paged);
+      setRailHidden(true);
+    }
+  };
+  const togglePanels = (paged: PagedEditor) => {
+    if (panelsSnapshotRef.current) showPanels(paged);
+    else hidePanels(paged);
+  };
+  const toggleAllRef = useRef(toggleAll);
+  toggleAllRef.current = toggleAll;
+  const togglePanelsRef = useRef(togglePanels);
+  togglePanelsRef.current = togglePanels;
+
+  useEffect(() => {
+    // Tab must keep its focus-move role inside DOM editables; the
+    // canvas caret is covered by the contentSelection guard.
+    const chromeKeyGuard = (state: unknown) => {
+      const el = document.activeElement as HTMLElement | null;
+      if (
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.isContentEditable)
+      ) {
+        return false;
+      }
+      return (contentSelectionInactive as (s: unknown) => boolean)(state);
+    };
+    const disposables = [
+      registries.commands.register({
+        id: "paged.chrome.toggleAll",
+        title: "Toggle Panels and Tool Rail",
+        category: "View",
+        handler: (paged) => toggleAllRef.current(paged as PagedEditor),
+      }),
+      registries.commands.register({
+        id: "paged.chrome.togglePanels",
+        title: "Toggle Panels (keep Tool Rail)",
+        category: "View",
+        handler: (paged) => togglePanelsRef.current(paged as PagedEditor),
+      }),
+      registries.keybindings.register({
+        key: "tab",
+        command: "paged.chrome.toggleAll",
+        when: chromeKeyGuard,
+      }),
+      registries.keybindings.register({
+        key: "shift+tab",
+        command: "paged.chrome.togglePanels",
+        when: chromeKeyGuard,
+      }),
+    ];
+    return () => {
+      for (const d of disposables) d.dispose();
+    };
+  }, [registries]);
 
   // Register tool single-key shortcuts (as a class, with the
   // contentSelection==null guard) + the W screen-preview toggle.
@@ -555,14 +646,16 @@ function ShellChrome({
       {/* Body row: the left tool rail (shell chrome, OUTSIDE the
        *   dockview substrate) + the docking area. */}
       <div style={bodyRowStyle}>
-        <ToolRail
-          foot={
-            <>
-              <FillStrokeCluster />
-              <ScreenModeSelector />
-            </>
-          }
-        />
+        {!railHidden && (
+          <ToolRail
+            foot={
+              <>
+                <FillStrokeCluster />
+                <ScreenModeSelector />
+              </>
+            }
+          />
+        )}
         <div style={dockviewContainerStyle}>
           <DockviewRoot />
         </div>

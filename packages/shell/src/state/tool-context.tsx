@@ -16,6 +16,12 @@ import type { ToolId } from "../registries/tool";
 export const SELECT_TOOL_ID: ToolId = "paged.tool.select";
 export const TEXT_TOOL_ID: ToolId = "paged.tool.type";
 
+/** Ids of the spring-loaded momentary tools (hold Space → Hand, hold
+ *  Cmd → Direct Selection, Cmd+Space → Zoom). */
+export const HAND_TOOL_ID: ToolId = "paged.tool.hand";
+export const DIRECT_SELECT_TOOL_ID: ToolId = "paged.tool.directSelect";
+export const ZOOM_TOOL_ID: ToolId = "paged.tool.zoom";
+
 /**
  * Concept 1 (T2) — the active tool is a base selection plus a
  * transient-override STACK, not a scalar, because spring-loaded tools
@@ -57,6 +63,9 @@ export interface ToolContextValue {
    *  out-of-order key-ups (release Cmd while Space still held) don't
    *  corrupt the stack. */
   popOverride: (id: ToolId) => void;
+  /** Drop every spring-load override (window blur, Cmd+Tab away —
+   *  the matching key-ups never arrive). */
+  clearOverrides: () => void;
   /** Non-React mirror for synchronous readers (gesture spine,
    *  keybinding predicates) that must see the latest state without a
    *  re-render. */
@@ -110,6 +119,17 @@ export function ToolProvider({ children }: PropsWithChildren) {
     });
   }, []);
 
+  const clearOverrides = useCallback(() => {
+    setInternal((prev) =>
+      prev.active.overrides.length === 0
+        ? prev
+        : {
+            active: { base: prev.active.base, overrides: [] },
+            reason: "suspend",
+          },
+    );
+  }, []);
+
   const effectiveTool = deriveEffective(internal.active);
 
   const value = useMemo<ToolContextValue>(
@@ -120,9 +140,10 @@ export function ToolProvider({ children }: PropsWithChildren) {
       setBaseTool,
       pushOverride,
       popOverride,
+      clearOverrides,
       toolStateRef,
     }),
-    [internal, effectiveTool, setBaseTool, pushOverride, popOverride],
+    [internal, effectiveTool, setBaseTool, pushOverride, popOverride, clearOverrides],
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

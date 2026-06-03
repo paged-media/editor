@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
@@ -35,6 +36,7 @@ const SECTION_ORDER: ToolSectionId[] = [
 ];
 
 const LONG_PRESS_MS = 240;
+const LAST_USED_STORAGE_KEY = "paged.toolRail.lastUsed";
 
 interface SlotModel {
   group: ToolGroupId;
@@ -88,8 +90,53 @@ export function ToolRail({ foot }: { foot?: ReactNode }) {
 
   // Per-group "last used" face tool. Seeded from the group default;
   // updated whenever a member of the group becomes effective (click,
-  // flyout pick, or shortcut). Persisted alongside the layout later.
-  const [lastUsed, setLastUsed] = useState<Record<ToolGroupId, string>>({});
+  // flyout pick, or shortcut). Persisted in localStorage so the rail
+  // faces survive a reload, alongside the dock layout.
+  const [lastUsed, setLastUsed] = useState<Record<ToolGroupId, string>>(() => {
+    try {
+      return JSON.parse(
+        window.localStorage.getItem(LAST_USED_STORAGE_KEY) ?? "{}",
+      ) as Record<ToolGroupId, string>;
+    } catch {
+      return {};
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        LAST_USED_STORAGE_KEY,
+        JSON.stringify(lastUsed),
+      );
+    } catch {
+      // Storage unavailable (private mode) — faces just reset on reload.
+    }
+  }, [lastUsed]);
+
+  // T8 v2 — torn-off flyouts: group → floating-palette position. The
+  // palette is just another projection of the group, so the data model
+  // is untouched; closing it returns the group to the rail slot.
+  const [tornOff, setTornOff] = useState<
+    Record<ToolGroupId, { x: number; y: number }>
+  >({});
+  const tearOff = useCallback(
+    (group: ToolGroupId, pos: { x: number; y: number }) => {
+      setTornOff((prev) => ({ ...prev, [group]: pos }));
+    },
+    [],
+  );
+  const moveTearOff = useCallback(
+    (group: ToolGroupId, pos: { x: number; y: number }) => {
+      setTornOff((prev) => ({ ...prev, [group]: pos }));
+    },
+    [],
+  );
+  const closeTearOff = useCallback((group: ToolGroupId) => {
+    setTornOff((prev) => {
+      const next = { ...prev };
+      delete next[group];
+      return next;
+    });
+  }, []);
 
   // Index tool id → group so an effective-tool change can promote the
   // right slot face.
@@ -138,6 +185,7 @@ export function ToolRail({ foot }: { foot?: ReactNode }) {
                 activeGroup={groupOf.get(effectiveTool)}
                 effectiveTool={effectiveTool}
                 onPick={pick}
+                onTearOff={tearOff}
               />
             ))}
           </div>
@@ -149,7 +197,108 @@ export function ToolRail({ foot }: { foot?: ReactNode }) {
           {foot}
         </div>
       )}
+
+      {/* T8 v2 — floating palettes for torn-off groups. */}
+      {Object.entries(tornOff).map(([group, pos]) => {
+        const slot = sections
+          .flatMap((s) => s.slots)
+          .find((s) => s.group === group);
+        if (!slot) return null;
+        return createPortal(
+          <FloatingToolPalette
+            key={group}
+            slot={slot}
+            pos={pos}
+            effectiveTool={effectiveTool}
+            onPick={pick}
+            onMove={(p) => moveTearOff(group, p)}
+            onClose={() => closeTearOff(group)}
+          />,
+          document.body,
+        );
+      })}
     </nav>
+  );
+}
+
+/**
+ * T8 v2 — a torn-off flyout as a floating mini-toolbar: the same group
+ * projection the rail slot renders, draggable by its grip, closable.
+ */
+function FloatingToolPalette({
+  slot,
+  pos,
+  effectiveTool,
+  onPick,
+  onMove,
+  onClose,
+}: {
+  slot: SlotModel;
+  pos: { x: number; y: number };
+  effectiveTool: string;
+  onPick: (tool: ToolContribution) => void;
+  onMove: (pos: { x: number; y: number }) => void;
+  onClose: () => void;
+}) {
+  const onGripDown = (e: ReactPointerEvent) => {
+    e.preventDefault();
+    const start = { x: e.clientX, y: e.clientY, origX: pos.x, origY: pos.y };
+    const onWinMove = (ev: PointerEvent) => {
+      onMove({
+        x: start.origX + ev.clientX - start.x,
+        y: start.origY + ev.clientY - start.y,
+      });
+    };
+    const onWinUp = () => {
+      window.removeEventListener("pointermove", onWinMove);
+      window.removeEventListener("pointerup", onWinUp);
+    };
+    window.addEventListener("pointermove", onWinMove);
+    window.addEventListener("pointerup", onWinUp);
+  };
+
+  return (
+    <div
+      style={{ ...paletteStyle, left: pos.x, top: pos.y }}
+      role="toolbar"
+      aria-label={`${slot.defaultTool.title} tools`}
+      data-tool-palette={slot.group}
+    >
+      <div style={paletteGripStyle} onPointerDown={onGripDown}>
+        <span style={{ flex: 1, cursor: "grab", userSelect: "none" }} aria-hidden>
+          ⠿
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          style={paletteCloseStyle}
+          title="Close palette"
+          data-tool-palette-close
+        >
+          ×
+        </button>
+      </div>
+      <div style={{ display: "flex", gap: 2, padding: 4 }}>
+        {slot.members.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            title={
+              m.shortcut ? `${m.title} (${formatShortcut(m.shortcut)})` : m.title
+            }
+            data-tool={m.id}
+            onClick={() => onPick(m)}
+            style={
+              m.id === effectiveTool
+                ? { ...slotStyle, ...slotActiveStyle }
+                : slotStyle
+            }
+          >
+            <SlotGlyph tool={m} />
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -159,12 +308,14 @@ function ToolSlot({
   activeGroup,
   effectiveTool,
   onPick,
+  onTearOff,
 }: {
   slot: SlotModel;
   face: ToolContribution;
   activeGroup: ToolGroupId | undefined;
   effectiveTool: string;
   onPick: (tool: ToolContribution) => void;
+  onTearOff?: (group: ToolGroupId, pos: { x: number; y: number }) => void;
 }) {
   const [flyoutOpen, setFlyoutOpen] = useState(false);
   // Flyout is portalled to <body> so it escapes the rail's overflow
@@ -210,15 +361,27 @@ function ToolSlot({
     [hasFlyout, openFlyout],
   );
 
-  const onClick = useCallback(() => {
-    clearTimer();
-    // A hold opened the flyout — don't also activate the face tool.
-    if (openedByHold.current) {
-      openedByHold.current = false;
-      return;
-    }
-    onPick(face);
-  }, [face, onPick]);
+  const onClick = useCallback(
+    (e: ReactMouseEvent<HTMLButtonElement>) => {
+      clearTimer();
+      // A hold opened the flyout — don't also activate the face tool.
+      if (openedByHold.current) {
+        openedByHold.current = false;
+        return;
+      }
+      // Alt+click cycles the slot through its group's hidden tools —
+      // the non-conflicting form of "cycle within a group" (the
+      // Shift+key combos are real tool shortcuts of their own).
+      if (e.altKey && hasFlyout) {
+        const idx = slot.members.findIndex((m) => m.id === face.id);
+        const next = slot.members[(idx + 1) % slot.members.length];
+        onPick(next);
+        return;
+      }
+      onPick(face);
+    },
+    [face, onPick, hasFlyout, slot.members],
+  );
 
   // Close the flyout on a pointer-down OUTSIDE this slot. The
   // containment check keeps the opening gesture's own trailing pointer
@@ -282,6 +445,23 @@ function ToolSlot({
             role="menu"
             data-tool-flyout={slot.group}
           >
+            {onTearOff && (
+              <button
+                type="button"
+                title="Tear off into a floating palette"
+                data-tool-tearoff={slot.group}
+                onClick={() => {
+                  setFlyoutOpen(false);
+                  onTearOff(slot.group, {
+                    x: flyoutPos.left,
+                    y: flyoutPos.top,
+                  });
+                }}
+                style={tearOffStyle}
+              >
+                ⠿ Tear off
+              </button>
+            )}
             {slot.members.map((member) => {
             const memberActive = member.id === effectiveTool;
             return (
@@ -478,4 +658,61 @@ const flyoutLabelStyle: CSSProperties = {
 const flyoutShortcutStyle: CSSProperties = {
   fontSize: 11,
   opacity: 0.6,
+};
+
+const tearOffStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  height: 22,
+  padding: "0 8px",
+  marginBottom: 2,
+  border: "none",
+  borderBottom: "1px solid #e4e4e7",
+  borderRadius: 0,
+  background: "transparent",
+  color: "#71717a",
+  cursor: "pointer",
+  fontSize: 11,
+  textAlign: "left",
+};
+
+const paletteStyle: CSSProperties = {
+  position: "fixed",
+  zIndex: 60,
+  borderRadius: 6,
+  border: "1px solid #d4d4d8",
+  background: "#fff",
+  boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
+};
+
+const paletteGripStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 4,
+  height: 18,
+  padding: "0 6px",
+  borderBottom: "1px solid #e4e4e7",
+  background: "#f4f4f5",
+  borderTopLeftRadius: 6,
+  borderTopRightRadius: 6,
+  color: "#71717a",
+  fontSize: 11,
+  touchAction: "none",
+};
+
+const paletteCloseStyle: CSSProperties = {
+  width: 14,
+  height: 14,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "none",
+  borderRadius: 3,
+  background: "transparent",
+  color: "#71717a",
+  cursor: "pointer",
+  padding: 0,
+  fontSize: 12,
+  lineHeight: 1,
 };

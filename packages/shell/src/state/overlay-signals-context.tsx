@@ -46,6 +46,12 @@ interface OverlaySignalsValue {
   /** Snap guides from the active gesture. Empty when not snapping. */
   snapLines: ReadonlyArray<SnapLine>;
   setSnapLines: (value: ReadonlyArray<SnapLine>) => void;
+  /** Concept 1 — the active tool handler's in-progress preview (the
+   *  Rectangle rubber-band, a future Pen path, …). Writer: the
+   *  gesture handler via `paged.overlaySignals`; reader: the
+   *  tool-preview overlay contribution. */
+  toolPreview: MarqueeRectPageLocal | null;
+  setToolPreview: (value: MarqueeRectPageLocal | null) => void;
 }
 
 const Context = createContext<OverlaySignalsValue | null>(null);
@@ -67,6 +73,9 @@ export function OverlaySignalsProvider({ children }: PropsWithChildren) {
     null,
   );
   const [snapLines, setSnapLines] = useState<ReadonlyArray<SnapLine>>([]);
+  const [toolPreview, setToolPreview] = useState<MarqueeRectPageLocal | null>(
+    null,
+  );
 
   const value = useMemo<OverlaySignalsValue>(
     () => ({
@@ -76,8 +85,10 @@ export function OverlaySignalsProvider({ children }: PropsWithChildren) {
       setMarqueeRect,
       snapLines,
       setSnapLines,
+      toolPreview,
+      setToolPreview,
     }),
-    [hitSelection, marqueeRect, snapLines],
+    [hitSelection, marqueeRect, snapLines, toolPreview],
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

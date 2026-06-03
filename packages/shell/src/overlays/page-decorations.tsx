@@ -5,6 +5,7 @@ import type { PageId } from "@paged-media/client";
 
 import type { OverlayContribution, OverlayProps } from "../registries/overlay";
 import { useDocument } from "../state/document-context";
+import { useOptionalScreenMode } from "../state/screen-mode-context";
 
 /**
  * Per-page labels: "page N" caption under the page, plus heading-
@@ -14,7 +15,11 @@ import { useDocument } from "../state/document-context";
  */
 function PageDecorationsRender(props: OverlayProps) {
   const { resolution } = useDocument();
+  // Concept 1 (T7) — captions/badges are non-printing chrome: Normal
+  // mode only; Preview / Bleed / Slug / Presentation hide them.
+  const screenMode = useOptionalScreenMode();
   const inv = 1 / props.camera.scale;
+  if (screenMode && screenMode.screenMode !== "normal") return null;
   const out: ReactNode[] = [];
 
   let i = 0;

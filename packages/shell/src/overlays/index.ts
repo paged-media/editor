@@ -2,6 +2,7 @@ export { caretContribution } from "./caret";
 export { contentGrabberContribution } from "./content-grabber";
 export { hitMarkerContribution } from "./hit-marker";
 export { marqueeContribution } from "./marquee";
+export { toolPreviewContribution } from "./tool-preview";
 export { pageDecorationsContribution } from "./page-decorations";
 export {
   pathEditContribution,
