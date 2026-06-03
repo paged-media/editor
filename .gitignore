@@ -14,6 +14,11 @@ playwright-report/
 .idea/
 .claude/
 
+# Local side-by-side-dev symlinks (→ ~/paged/corpus, ~/paged/core/target);
+# the corpus assets live in the paged-media/corpus repo, never here.
+/corpus
+/target
+
 # NOTE: wasm-bindgen build output (the gitignored .js / *_bg.wasm; only the
 # .d.ts is tracked) is handled by the per-package .gitignore files under
 # apps/*/ and packages/client/.
