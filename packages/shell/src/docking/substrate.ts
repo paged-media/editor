@@ -81,6 +81,14 @@ export interface DockingSubstrate {
    * Callers `serialize()` first and `restore()` to bring them back. */
   closePanelsExcept(keepIds: readonly string[]): void;
 
+  /** Cockpit — true when a panel with `id` is currently mounted
+   * (the PanelRail's active state + toggle decisions). */
+  hasPanel(id: string): boolean;
+
+  /** Cockpit — close one panel by id (no-op when absent). The
+   * registration stays; re-open via `addPanel`. */
+  closePanel(id: string): void;
+
   /** Pop a group out into a separate browser window. */
   popoutGroup(groupId: string): void;
 

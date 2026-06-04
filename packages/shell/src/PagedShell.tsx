@@ -41,7 +41,16 @@ import {
 import { ToolProvider } from "./state/tool-context";
 import { ScreenModeProvider } from "./state/screen-mode-context";
 import { ThemeProvider, useTheme } from "./state/theme-context";
+import { useOptionalPaged } from "./state/paged-editor";
 import { Header } from "./chrome/Header";
+import { ContextToolbar } from "./chrome/ContextToolbar";
+import { ModeSwitcher } from "./chrome/ModeSwitcher";
+import { PanelRail, type PanelRailItem } from "./chrome/PanelRail";
+import {
+  WorkflowModeProvider,
+  useWorkflowMode,
+} from "./state/workflow-mode-context";
+import type { ModeContribution } from "./registries/mode";
 import { ToolSettingsProvider } from "./state/tool-settings-context";
 import { FormattingAffectsProvider } from "./state/formatting-affects-context";
 import { PagedEditorProvider } from "./state/paged-editor";
@@ -115,6 +124,13 @@ export interface PagedShellProps {
    * specific controls (zoom indicator, color profile selector,
    * fps badge, …) that don't fit the panel-or-menu pattern. */
   headerExtras?: ReactNode;
+  /** Cockpit — workflow-mode contributions (Design / Content /
+   * Prepress / Data layout / Review / Export). Same data-driven
+   * pattern as `panels`; the ModeSwitcher renders the registry. */
+  modes?: ModeContribution[];
+  /** Cockpit — the right-edge panel launcher's entries. Each must
+   * name a REGISTERED panel id. Empty/omitted hides the rail. */
+  panelRail?: PanelRailItem[];
 }
 
 /**
@@ -129,6 +145,8 @@ export function PagedShell({
   overlays,
   tools,
   headerExtras,
+  modes,
+  panelRail,
   children,
 }: PropsWithChildren<PagedShellProps>) {
   return (
@@ -140,6 +158,7 @@ export function PagedShell({
             {/* ToolProvider above SelectionProvider: the selection
              *  context's `activeTool` facade reads the tool stack. */}
             <ToolProvider>
+              <WorkflowModeProvider>
               <ScreenModeProvider>
                 <ToolSettingsProvider>
                   <FormattingAffectsProvider>
@@ -157,6 +176,8 @@ export function PagedShell({
                           overlays={overlays}
                           tools={tools}
                           headerExtras={headerExtras}
+                          modes={modes}
+                          panelRail={panelRail}
                         >
                           {children}
                         </ShellChrome>
@@ -169,6 +190,7 @@ export function PagedShell({
                   </FormattingAffectsProvider>
                 </ToolSettingsProvider>
               </ScreenModeProvider>
+              </WorkflowModeProvider>
             </ToolProvider>
           </DocumentProvider>
         </CameraProvider>
@@ -189,12 +211,16 @@ function ShellChrome({
   overlays,
   tools,
   headerExtras,
+  modes,
+  panelRail,
   children,
 }: PropsWithChildren<{
   panels: PanelContribution[];
   overlays?: OverlayContribution[];
   tools?: ToolContribution[];
   headerExtras?: ReactNode;
+  modes?: ModeContribution[];
+  panelRail?: PanelRailItem[];
 }>) {
   const client = useCanvasClient();
   const {
@@ -217,6 +243,8 @@ function ShellChrome({
     setActiveGroup,
   } = useSelection();
   const { theme, setTheme } = useTheme();
+  const { mode: workflowMode, setMode: setWorkflowMode } = useWorkflowMode();
+  const paged = useOptionalPaged();
   const {
     contentSelection,
     setContentSelection,
@@ -398,6 +426,20 @@ function ShellChrome({
       toolKeysRegistered.current = false;
     };
   }, [registries, tools]);
+
+  // Cockpit — register the app's workflow modes (ref-guarded; the
+  // registry throws on duplicate ids and HMR re-runs effects).
+  const modesRegistered = useRef(false);
+  useEffect(() => {
+    if (!modes || modes.length === 0) return;
+    if (modesRegistered.current) return;
+    modesRegistered.current = true;
+    const disposables = modes.map((m) => registries.modes.register(m));
+    return () => {
+      for (const d of disposables) d.dispose();
+      modesRegistered.current = false;
+    };
+  }, [registries, modes]);
 
   // Register the built-in file-open command. Programmatic file
   // dialog so the palette can invoke it without depending on the
@@ -581,6 +623,9 @@ function ShellChrome({
       // Design system — Playwright drives/asserts the theme.
       theme,
       setTheme,
+      // Cockpit — Playwright drives/asserts the workflow mode.
+      mode: workflowMode,
+      setMode: setWorkflowMode,
     };
   }
 
@@ -690,6 +735,12 @@ function ShellChrome({
     <div style={shellStyle}>
       <Header onFile={onFile} headerExtras={headerExtras} status={status} />
 
+      {/* Cockpit — the mode-aware context toolbar (only when the
+       *  app contributed modes; chrome stays lean otherwise). */}
+      {modes && modes.length > 0 && !railHidden && (
+        <ContextToolbar paged={paged} />
+      )}
+
       {!sabSupported && (
         <div style={warningStyle}>
           SharedArrayBuffer unavailable — cross-origin isolation headers (COOP +
@@ -723,7 +774,13 @@ function ShellChrome({
         <div style={dockviewContainerStyle}>
           <DockviewRoot />
         </div>
+        {!railHidden && panelRail && panelRail.length > 0 && (
+          <PanelRail items={panelRail} />
+        )}
       </div>
+
+      {/* Cockpit — the bottom mode switcher. */}
+      {modes && modes.length > 0 && !railHidden && <ModeSwitcher />}
 
       <CommandPalette />
       <ExportPdfDialog />

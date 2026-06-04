@@ -12,12 +12,14 @@ import {
   createKeybindingRegistry,
   createMenuRegistry,
   createOverlayRegistry,
+  createModeRegistry,
   createPanelRegistry,
   createSemanticGroupRegistry,
   createToolRegistry,
   type CommandRegistry,
   type KeybindingRegistry,
   type MenuRegistry,
+  type ModeRegistry,
   type OverlayRegistry,
   type PanelRegistry,
   type SemanticGroupRegistry,
@@ -31,6 +33,7 @@ import {
  */
 export interface ShellRegistries {
   panels: PanelRegistry;
+  modes: ModeRegistry;
   commands: CommandRegistry;
   semanticGroups: SemanticGroupRegistry;
   keybindings: KeybindingRegistry;
@@ -70,6 +73,7 @@ export function RegistriesProvider({
     const tools = createToolRegistry();
     ref.current = {
       panels: createPanelRegistry(),
+      modes: createModeRegistry(),
       commands,
       semanticGroups: createSemanticGroupRegistry(),
       keybindings,

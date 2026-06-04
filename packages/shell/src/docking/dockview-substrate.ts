@@ -119,6 +119,17 @@ export class DockviewSubstrate implements DockingSubstrate {
     }
   }
 
+  hasPanel(id: string): boolean {
+    return Boolean(this.api.getPanel(id));
+  }
+
+  closePanel(id: string): void {
+    const panel = this.api.getPanel(id);
+    if (panel) {
+      this.api.removePanel(panel);
+    }
+  }
+
   movePanel(handle: PanelHandle, target: SemanticLocation): void {
     const panel = this.api.getPanel(handle.id);
     if (!panel || !target.referenceGroup) return;

@@ -154,6 +154,11 @@ export {
   type ToolRegistryEvent,
   type VisibilityPredicate,
   DEFAULT_TOOLS,
+  type ModeContribution,
+  type ModeRegistry,
+  type ModeRegistryEvent,
+  type ModeToolbarProps,
+  createModeRegistry,
   createPanelRegistry,
   createCommandRegistry,
   createSemanticGroupRegistry,
@@ -175,6 +180,16 @@ export {
   PAGED_LIBRARY_EXPORT_ASE,
   PAGED_LIBRARY_IMPORT_ASE,
 } from "./state/commands/library-commands";
+export {
+  WorkflowModeProvider,
+  useWorkflowMode,
+  useOptionalWorkflowMode,
+  type WorkflowMode,
+} from "./state/workflow-mode-context";
+export { ContextToolbar } from "./chrome/ContextToolbar";
+export { ModeSwitcher } from "./chrome/ModeSwitcher";
+export { PanelRail, type PanelRailItem } from "./chrome/PanelRail";
+export { ThemeToggle } from "./chrome/Header";
 export {
   ThemeProvider,
   useTheme,

@@ -57,19 +57,7 @@ export class PanelBridge {
   }
 
   private mount(contribution: PanelContribution): void {
-    const handle = this.substrate.addPanel({
-      id: contribution.id,
-      title: contribution.title,
-      component: contribution.component,
-      semanticGroup: contribution.defaultGroup ?? contribution.id,
-      defaultDock: contribution.defaultDock ?? "right",
-      closable: contribution.closable ?? true,
-      movable: contribution.movable ?? true,
-      // The canvas is the only built-in panel with chromeless tabs.
-      // Bundle authors who want this opt in via a future flag on
-      // PanelContribution; not exposed today.
-      hideTabHeader: contribution.id === "paged.canvas",
-    });
+    const handle = this.substrate.addPanel(resolvePanelSpec(contribution));
     this.handles.set(contribution.id, handle);
   }
 
@@ -79,4 +67,25 @@ export class PanelBridge {
     this.substrate.removePanel(handle);
     this.handles.delete(id);
   }
+}
+
+/**
+ * Contribution → substrate spec. Shared by the bridge's mount path,
+ * the PanelRail toggle and the per-mode layout hook so a panel
+ * re-opened later lands exactly where a fresh registration would.
+ */
+export function resolvePanelSpec(contribution: PanelContribution) {
+  return {
+    id: contribution.id,
+    title: contribution.title,
+    component: contribution.component,
+    semanticGroup: contribution.defaultGroup ?? contribution.id,
+    defaultDock: contribution.defaultDock ?? ("right" as const),
+    closable: contribution.closable ?? true,
+    movable: contribution.movable ?? true,
+    // The canvas is the only built-in panel with chromeless tabs.
+    // Bundle authors who want this opt in via a future flag on
+    // PanelContribution; not exposed today.
+    hideTabHeader: contribution.id === "paged.canvas",
+  };
 }

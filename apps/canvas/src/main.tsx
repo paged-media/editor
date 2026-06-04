@@ -27,6 +27,7 @@ import "@paged-media/shell/styles/globals.css";
 import { CanvasClient } from "@paged-media/client";
 import { BUILT_IN_TOOLS } from "@paged-media/tools";
 import { APP_KEYBINDINGS, APP_MENU_ITEMS, buildAppCommands } from "./app-commands";
+import { COCKPIT_MODES, PANEL_RAIL } from "./cockpit-modes";
 import { CanvasPanel } from "./panels/canvas-panel";
 import { CharacterPanel } from "./panels/character-panel";
 import { ArticlesPanel } from "./panels/articles-panel";
@@ -643,6 +644,8 @@ function CanvasAppRoot() {
       panels={BUILT_IN_PANELS}
       overlays={BUILT_IN_OVERLAYS}
       tools={BUILT_IN_TOOLS}
+      modes={COCKPIT_MODES}
+      panelRail={PANEL_RAIL}
       headerExtras={
         <>
           <CorpusPicker />

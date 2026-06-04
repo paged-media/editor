@@ -53,3 +53,10 @@ export {
   type ToolRegistry,
   type ToolRegistryEvent,
 } from "./tool";
+export {
+  createModeRegistry,
+  type ModeContribution,
+  type ModeRegistry,
+  type ModeRegistryEvent,
+  type ModeToolbarProps,
+} from "./mode";
