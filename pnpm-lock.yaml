@@ -294,6 +294,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@paged-media/client':
+        specifier: workspace:*
+        version: link:../client
       '@paged-media/shell':
         specifier: workspace:*
         version: link:../shell

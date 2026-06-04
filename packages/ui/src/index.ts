@@ -11,3 +11,16 @@ export { ColorPicker, type ColorPickerProps } from "./inputs/ColorPicker";
 
 export type { LengthUnit } from "./inputs/units";
 export { convertLength, POINTS_PER_UNIT } from "./inputs/units";
+
+// Concept 2 — the colour mixer + its helpers.
+export { ColorMixer, type ColorMixerProps } from "./color/ColorMixer";
+export {
+  defaultValue as defaultMixerValue,
+  hexToRgb,
+  rgbToHex,
+  valueToSwatchSpec,
+  SPACE_CHANNELS,
+  type MixerValue,
+} from "./color/color-space";
+export { rgbToHsb, hsbToRgb } from "./color/hsb";
+export { useColorCompute } from "./color/use-color-compute";

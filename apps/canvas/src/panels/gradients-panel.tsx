@@ -12,12 +12,15 @@ import {
 
 import { appCatalogRegistry } from "./catalog-registry";
 import { gradientsComposition } from "./gradients.composition";
+import { GradientEditor } from "./gradient-editor";
 
 export function GradientsPanel() {
   return (
     <CatalogRegistryProvider registry={appCatalogRegistry()}>
       <div className="p-3" data-gradients-panel="ready">
         <CompositionRenderer composition={gradientsComposition} />
+        {/* Concept 2 — the ramp editor (expert child). */}
+        <GradientEditor />
       </div>
     </CatalogRegistryProvider>
   );

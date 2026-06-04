@@ -1,0 +1,29 @@
+NOTICE — bundled third-party data
+
+This application bundles the following open colour libraries as
+UNMODIFIED original files, parsed at load time:
+
+1. CIELAB HLC Colour Atlas (Standard, 2040 colours)
+   apps/canvas/src/assets/libraries/HLC-Colour-Atlas_EPV_Swatches_v2-3.ase
+   Copyright (c) freieFarbe e.V. / Holger Everding
+   Licence: Creative Commons Attribution-NoDerivatives 4.0
+   (CC BY-ND 4.0) — https://creativecommons.org/licenses/by-nd/4.0/
+   Source: https://www.freiefarbe.de / https://hlc-colouratlas.org
+   The files are redistributed unmodified with attribution, as the
+   licence requires. Parsing the data for display/use is use, not
+   derivative creation; the data is never re-baked or re-published
+   in another form.
+
+2. Open Colour Systems Collection (OCSC) 2.0 — 376 manufacturer
+   colour-system libraries digitised in CIELAB
+   apps/canvas/src/assets/libraries/ocsc/*.ase
+   Copyright (c) freieFarbe e.V.
+   Licence: CC BY-ND 4.0 (as above)
+   Source: https://www.freiefarbe.de (OCSC_20_ASE.zip)
+   Redistributed unmodified with attribution.
+
+ICC profiles: no CMYK working-space profiles are currently bundled
+(pending licence-verified artefacts — ECI's PSO Coated v3 /
+eciCMYK are the intended candidates; they are freely
+redistributable per ECI's terms once obtained from eci.org). Users
+can register their own profiles via Document Colour Settings.

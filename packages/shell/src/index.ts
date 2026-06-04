@@ -95,6 +95,15 @@ export {
   type ToolPreviewShape,
 } from "./state/overlay-signals-context";
 
+// Concept 2 — the gradient ramp (pure; reused by the editor panel
+// and the FillStrokeCluster chips).
+export {
+  GradientRamp,
+  rampCss,
+  type GradientRampProps,
+  type RampStop,
+} from "./color/GradientRamp";
+
 export {
   InstrumentationProvider,
   useInstrumentation,
@@ -159,6 +168,13 @@ export {
   buildOpenIdmlCommand,
   PAGED_FILE_OPEN_IDML,
 } from "./state/commands/file-commands";
+export {
+  buildExportAseCommand,
+  buildImportAseCommand,
+  importAseBytes,
+  PAGED_LIBRARY_EXPORT_ASE,
+  PAGED_LIBRARY_IMPORT_ASE,
+} from "./state/commands/library-commands";
 
 // ── Loaders ────────────────────────────────────────────────────
 export {

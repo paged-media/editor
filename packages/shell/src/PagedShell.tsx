@@ -48,6 +48,7 @@ import { CommandPalette } from "./chrome/CommandPalette";
 import { ToolRail } from "./chrome/ToolRail";
 import { ScreenModeSelector } from "./chrome/ScreenModeSelector";
 import { FillStrokeCluster } from "./chrome/FillStrokeCluster";
+import { SoftProofToggle } from "./chrome/SoftProofToggle";
 import { DockviewRoot } from "./docking/DockviewRoot";
 import { DockingSubstrateProvider } from "./docking/substrate-context";
 import { loadDocumentFile } from "./state/document-loader";
@@ -55,6 +56,10 @@ import {
   PAGED_FILE_OPEN_IDML,
   buildOpenIdmlCommand,
 } from "./state/commands/file-commands";
+import {
+  buildExportAseCommand,
+  buildImportAseCommand,
+} from "./state/commands/library-commands";
 import {
   PALETTE_TOGGLE_COMMAND,
   PALETTE_TOGGLE_KEYBINDING,
@@ -403,7 +408,28 @@ function ShellChrome({
         pushWarning: (w) => setWarnings((prev) => [...prev, w]),
       }),
     );
-    return () => handle.dispose();
+    // Concept 2 — swatch-library import/export commands.
+    const importAse = registries.commands.register(
+      buildImportAseCommand({
+        pickFile: async () =>
+          new Promise<File | null>((resolve) => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".ase";
+            input.onchange = () => resolve(input.files?.[0] ?? null);
+            input.click();
+          }),
+        setStatus,
+      }),
+    );
+    const exportAse = registries.commands.register(
+      buildExportAseCommand({ setStatus }),
+    );
+    return () => {
+      handle.dispose();
+      importAse.dispose();
+      exportAse.dispose();
+    };
   }, [registries]);
 
   // Register the palette-toggle command + Cmd+K keybinding. The
@@ -674,6 +700,7 @@ function ShellChrome({
             foot={
               <>
                 <FillStrokeCluster />
+                <SoftProofToggle />
                 <ScreenModeSelector />
               </>
             }

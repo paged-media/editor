@@ -27,6 +27,7 @@ import {
   type GestureModifiers,
   type ElementProperties,
   type GestureType,
+  type GradientDetail,
   type LayerSummary,
   type LodTier,
   type SceneTreeNode,
@@ -336,6 +337,77 @@ export class CanvasClient {
       payload: { swatchId },
     });
     if (reply.kind === "colorPreviewReply") return reply.payload.result;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
+   * Concept 2 — resolve an ARBITRARY colour value (mixer slider
+   * state, not a swatch ref) through the document's active colour
+   * management. Returns the display hex, the effective CMYK (when
+   * the value routes through CMYK), and the out-of-gamut verdict
+   * against the active CMYK working space.
+   */
+  async colorCompute(args: {
+    space: string;
+    value: number[];
+    tint?: number | null;
+    model?: string | null;
+    alternateSpace?: string | null;
+    alternateValue?: number[] | null;
+  }): Promise<{
+    rgbHex: string;
+    cmyk: [number, number, number, number] | null;
+    outOfGamut: boolean;
+  }> {
+    const reply = await this.send({
+      kind: "requestColorCompute",
+      payload: args,
+    });
+    if (reply.kind === "colorComputeReply") return reply.payload;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
+   * Concept 2 — full stop detail for one gradient (the ramp editor
+   * + faithful gradient chips). `null` when the id doesn't resolve.
+   */
+  async gradientDetail(gradientId: string): Promise<GradientDetail | null> {
+    const reply = await this.send({
+      kind: "requestGradientDetail",
+      payload: { gradientId },
+    });
+    if (reply.kind === "gradientDetailReply") return reply.payload.result;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
+   * Concept 2 — register a named ICC profile with the worker's
+   * registry (the RegisterFont pattern; survives loads). Working-
+   * space / proof names in `setColorSettings`/`setProofSetup`
+   * resolve against it; a document whose designmap names a
+   * registered profile activates it at load.
+   */
+  async registerColorProfile(name: string, bytes: Uint8Array): Promise<void> {
+    const reply = await this.send({
+      kind: "registerColorProfile",
+      payload: { name, bytes: Array.from(bytes) },
+    });
+    if (reply.kind === "colorProfileRegistered") return;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
+   * Concept 2 — serialise swatches back to `.ase` ("Save .ase…").
+   * `groupId` exports one ColorGroup; omitted exports the palette.
+   */
+  async exportSwatchLibrary(groupId?: string | null): Promise<Uint8Array> {
+    const reply = await this.send({
+      kind: "exportSwatchLibrary",
+      payload: { groupId: groupId ?? null },
+    });
+    if (reply.kind === "swatchLibraryExported") {
+      return new Uint8Array(reply.payload.aseBytes);
+    }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 

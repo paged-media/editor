@@ -21,6 +21,12 @@ import { useContentSelection } from "../state/content-selection-context";
 export interface ResolvedBinding {
   value: Value | null;
   onCommit?: (next: Value) => void;
+  /** Concept 2 — disambiguates `value: null`: `true` means a
+   *  heterogeneous MULTI-selection (the values disagree), as
+   *  opposed to "uniformly null" (e.g. every fill is None) or "no
+   *  selection". Colour wells render a split-diagonal mixed face on
+   *  this; a commit still write-replaces across the selection. */
+  mixed?: boolean;
 }
 
 /**
@@ -217,6 +223,7 @@ function buildResolved(
       out[name] = {
         value: collapsed,
         onCommit: makeOnCommitMany(client, addr.ids, sb.path),
+        mixed: valuesAreMixed(values),
       };
     } else {
       // content scope — single StoryRange address
@@ -245,6 +252,17 @@ function collapseValues(values: Array<Value | null>): Value | null {
     if (!sameValue(first, v)) return null;
   }
   return first;
+}
+
+/** Concept 2 — true when the per-element values DISAGREE (≥2
+ *  distinct), as opposed to agreeing on null/a value. */
+function valuesAreMixed(values: Array<Value | null>): boolean {
+  if (values.length < 2) return false;
+  const first = values[0];
+  return values.slice(1).some((v) => {
+    if (first === null || v === null) return first !== v;
+    return !sameValue(first, v);
+  });
 }
 
 function sameValue(a: Value, b: Value): boolean {

@@ -33,6 +33,8 @@ import { ArticlesPanel } from "./panels/articles-panel";
 import { BookmarksPanel } from "./panels/bookmarks-panel";
 import { CharacterStylesPanel } from "./panels/character-styles-panel";
 import { ColorGroupsPanel } from "./panels/color-groups-panel";
+import { ColorSettingsPanel } from "./panels/color-settings-panel";
+import { InkManagerPanel } from "./panels/ink-manager-panel";
 import { ConditionSetsPanel } from "./panels/condition-sets-panel";
 import { ConditionsPanel } from "./panels/conditions-panel";
 import { CrossReferencesPanel } from "./panels/cross-references-panel";
@@ -151,6 +153,20 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     id: "paged.color-groups",
     title: "Color Groups",
     component: ColorGroupsPanel,
+    defaultDock: "right",
+    defaultGroup: "styles",
+  },
+  {
+    id: "paged.ink-manager",
+    title: "Ink Manager",
+    component: InkManagerPanel,
+    defaultDock: "right",
+    defaultGroup: "styles",
+  },
+  {
+    id: "paged.color-settings",
+    title: "Colour Settings",
+    component: ColorSettingsPanel,
     defaultDock: "right",
     defaultGroup: "styles",
   },

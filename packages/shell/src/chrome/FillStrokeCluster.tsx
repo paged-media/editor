@@ -14,6 +14,7 @@ import type {
 } from "@paged-media/client";
 
 import { useCanvasClient } from "../state/canvas-client-context";
+import { rampCss, type RampStop } from "../color/GradientRamp";
 import { useBindings } from "../catalog/binding-hook";
 import { useRegistries } from "../state/registries-context";
 import {
@@ -171,6 +172,36 @@ export function FillStrokeCluster() {
       off();
     };
   }, [client]);
+
+  // Concept 2 — faithful chip: the [gradient] button paints the
+  // ACTUAL stops of its apply target (protocol 25's gradientDetail)
+  // instead of a generic two-tone face.
+  const [chipStops, setChipStops] = useState<RampStop[] | null>(null);
+  const chipTarget = lastGradient.current ?? gradients[0]?.selfId ?? null;
+  useEffect(() => {
+    let cancelled = false;
+    if (!chipTarget) {
+      setChipStops(null);
+      return;
+    }
+    void client
+      .gradientDetail(chipTarget)
+      .then((d) => {
+        if (cancelled) return;
+        setChipStops(
+          d?.stops.map((s) => ({
+            stopColorRef: s.stopColorRef,
+            resolvedRgbHex: s.resolvedRgbHex,
+            locationPct: s.locationPct,
+            midpointPct: s.midpointPct ?? null,
+          })) ?? null,
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [client, chipTarget, gradients]);
 
   const active = activeWell === "fill" ? fill : stroke;
   // A well always has a write path now: the selection when one
@@ -338,7 +369,8 @@ export function FillStrokeCluster() {
         <Well
           kind="stroke"
           hex={strokeHex}
-          isNone={strokeRef === null}
+          isNone={strokeRef === null && !stroke.mixed}
+          mixed={stroke.mixed === true}
           active={activeWell === "stroke"}
           style={{ right: 0, bottom: 0 }}
           onOpen={() => openPicker("stroke")}
@@ -347,7 +379,8 @@ export function FillStrokeCluster() {
         <Well
           kind="fill"
           hex={fillHex}
-          isNone={fillRef === null}
+          isNone={fillRef === null && !fill.mixed}
+          mixed={fill.mixed === true}
           active={activeWell === "fill"}
           style={{ left: 0, top: 0 }}
           onOpen={() => openPicker("fill")}
@@ -402,7 +435,11 @@ export function FillStrokeCluster() {
           style={{
             ...miniBtn,
             ...(gradients.length > 0
-              ? { background: "linear-gradient(135deg, #111827, #e5e7eb)" }
+              ? {
+                  background: chipStops
+                    ? rampCss(chipStops)
+                    : "linear-gradient(135deg, #111827, #e5e7eb)",
+                }
               : { opacity: 0.4, cursor: "not-allowed" }),
           }}
         />
@@ -471,6 +508,7 @@ function Well({
   kind,
   hex,
   isNone,
+  mixed,
   active,
   style,
   onOpen,
@@ -479,6 +517,9 @@ function Well({
   kind: FillStrokeWell;
   hex: string | null;
   isNone: boolean;
+  /** Concept 2 — heterogeneous multi-selection: split-diagonal
+   *  face, distinct from None's red slash. */
+  mixed?: boolean;
   active: boolean;
   style: CSSProperties;
   onOpen: () => void;
@@ -499,13 +540,20 @@ function Well({
         borderRadius: 3,
         padding: 0,
         cursor: "pointer",
-        // Stroke well reads as a hollow square (ring); fill is solid.
-        background: isNone ? "#fff" : hex ?? "#d1d5db",
+        // Stroke well reads as a hollow square (ring); fill is
+        // solid; a heterogeneous multi-selection reads as a
+        // diagonal split (distinct from None's red slash).
+        background: mixed
+          ? "linear-gradient(135deg, #fff 47%, #9ca3af 47%, #9ca3af 53%, #fff 53%)"
+          : isNone
+            ? "#fff"
+            : hex ?? "#d1d5db",
         boxShadow: ring ? "inset 0 0 0 4px #fff" : undefined,
         ...style,
       }}
+      data-mixed={mixed || undefined}
     >
-      {isNone && <NoneOverlay />}
+      {isNone && !mixed && <NoneOverlay />}
     </button>
   );
 }

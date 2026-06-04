@@ -90,7 +90,8 @@ export type CollectionName =
   | "conditions"
   | "conditionSets"
   | "fonts"
-  | "indexTopics";
+  | "indexTopics"
+  | "inks";
 
 /**
  * SDK Phase 5 — finite document-meta keys. Powers the Info panel,
@@ -104,7 +105,15 @@ export type DocumentMetaKey =
   | "units"
   | "colorMode"
   | "documentName"
-  | "dirty";
+  | "dirty"
+  // Concept 2 — colour management + ink state.
+  | "cmykProfileName"
+  | "rgbPolicy"
+  | "renderingIntent"
+  | "blackPointCompensation"
+  | "proofProfileName"
+  | "proofSimulatePaperWhite"
+  | "useStandardLabForSpots";
 
 /**
  * SDK Phase 5 — read declaration in `BindingDeclaration.reads`. The
