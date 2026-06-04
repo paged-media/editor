@@ -27,7 +27,7 @@ function HitMarkerRender(props: OverlayProps) {
         width={pr.w}
         height={pr.h}
         fill="none"
-        stroke="#2563eb"
+        stroke="var(--overlay-selection)"
         strokeOpacity="0.4"
         strokeWidth={1}
         vectorEffect="non-scaling-stroke"
@@ -44,16 +44,16 @@ function HitMarkerRender(props: OverlayProps) {
             selection.hit.frameBounds.bottom - selection.hit.frameBounds.top
           }
           fill="none"
-          stroke="#2563eb"
+          stroke="var(--overlay-selection)"
           strokeWidth={2}
           vectorEffect="non-scaling-stroke"
           pointerEvents="none"
         />
       )}
       <g transform={`translate(${markerX}, ${markerY}) scale(${inv})`}>
-        <line x1={-6} y1={0} x2={6} y2={0} stroke="#dc2626" strokeWidth={1.5} />
-        <line x1={0} y1={-6} x2={0} y2={6} stroke="#dc2626" strokeWidth={1.5} />
-        <circle cx={0} cy={0} r={2} fill="#dc2626" />
+        <line x1={-6} y1={0} x2={6} y2={0} stroke="var(--overlay-target)" strokeWidth={1.5} />
+        <line x1={0} y1={-6} x2={0} y2={6} stroke="var(--overlay-target)" strokeWidth={1.5} />
+        <circle cx={0} cy={0} r={2} fill="var(--overlay-target)" />
       </g>
     </g>
   );

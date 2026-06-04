@@ -26,7 +26,7 @@ function ToolPreviewRender(props: OverlayProps) {
       <Tag
         points={pts}
         fill="none"
-        stroke="#0f766e"
+        stroke="var(--overlay-snap)"
         strokeWidth={1.25}
         vectorEffect="non-scaling-stroke"
         pointerEvents="none"
@@ -41,7 +41,7 @@ function ToolPreviewRender(props: OverlayProps) {
       width={Math.max(0, right - left)}
       height={Math.max(0, bottom - top)}
       fill="none"
-      stroke="#0f766e"
+      stroke="var(--overlay-snap)"
       strokeWidth={1.25}
       vectorEffect="non-scaling-stroke"
       pointerEvents="none"

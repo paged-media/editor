@@ -236,7 +236,7 @@ export function CanvasPanel(_props: PanelProps) {
   if (!handle || handle.pageCount === 0) {
     return (
       <div style={emptyStyle}>
-        <p style={{ fontSize: 14, color: "#555" }}>
+        <p style={{ fontSize: 14, color: "var(--pg-muted-fg)" }}>
           Drop an IDML file in the header to begin.
         </p>
       </div>
@@ -284,5 +284,5 @@ const emptyStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  background: "#f3f4f6",
+  background: "var(--canvas-surround)",
 };

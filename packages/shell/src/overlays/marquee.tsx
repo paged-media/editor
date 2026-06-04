@@ -21,9 +21,9 @@ function MarqueeRender(props: OverlayProps) {
       y={pr.y + top}
       width={Math.max(0, right - left)}
       height={Math.max(0, bottom - top)}
-      fill="#2563eb"
+      fill="var(--overlay-selection)"
       fillOpacity={0.08}
-      stroke="#2563eb"
+      stroke="var(--overlay-selection)"
       strokeWidth={1}
       strokeDasharray="4 2"
       vectorEffect="non-scaling-stroke"

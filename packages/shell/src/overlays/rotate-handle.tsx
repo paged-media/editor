@@ -86,7 +86,7 @@ function renderTether(
         y1={ty}
         x2={hx}
         y2={hy}
-        stroke="#2563eb"
+        stroke="var(--overlay-selection)"
         strokeWidth={1}
         vectorEffect="non-scaling-stroke"
         pointerEvents="none"
@@ -105,7 +105,7 @@ function renderTether(
           cy={0}
           r={ROTATE_R}
           fill="white"
-          stroke="#2563eb"
+          stroke="var(--overlay-selection)"
           strokeWidth={1}
           data-handle="rotate"
           style={{ cursor: "grab", pointerEvents: "all" }}

@@ -23,7 +23,7 @@ function SnapLinesRender(props: OverlayProps) {
               y1={pr.y}
               x2={pr.x + l.position}
               y2={pr.y + pr.h}
-              stroke="#ec4899"
+              stroke="var(--overlay-snap)"
               strokeWidth={1}
               vectorEffect="non-scaling-stroke"
               pointerEvents="none"
@@ -37,7 +37,7 @@ function SnapLinesRender(props: OverlayProps) {
             y1={pr.y + l.position}
             x2={pr.x + pr.w}
             y2={pr.y + l.position}
-            stroke="#ec4899"
+            stroke="var(--overlay-snap)"
             strokeWidth={1}
             vectorEffect="non-scaling-stroke"
             pointerEvents="none"

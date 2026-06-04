@@ -39,10 +39,10 @@ function ContentGrabberRender(props: OverlayProps) {
         r={11}
         fill="white"
         fillOpacity={0.85}
-        stroke="#2563eb"
+        stroke="var(--overlay-selection)"
         strokeWidth={1.5}
       />
-      <circle cx={0} cy={0} r={4} fill="#2563eb" />
+      <circle cx={0} cy={0} r={4} fill="var(--overlay-selection)" />
     </g>
   );
 }

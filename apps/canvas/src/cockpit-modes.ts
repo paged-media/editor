@@ -19,6 +19,7 @@ export const COCKPIT_MODES: ModeContribution[] = [
   {
     id: "design",
     toolbarLeft: DesignToolbar,
+    paletteSuggestions: ["paged.file.openIdml"],
     title: "Design",
     icon: "panel-canvas",
     order: 10,
@@ -92,6 +93,7 @@ export const COCKPIT_MODES: ModeContribution[] = [
   {
     id: "export",
     toolbarLeft: ExportToolbar,
+    paletteSuggestions: ["paged.file.exportPdf", "paged.library.exportAse"],
     title: "Export",
     icon: "ui-export",
     order: 60,

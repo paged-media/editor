@@ -88,3 +88,32 @@
     color: var(--wordmark-dot);
   }
 }
+
+/* SVG presentation attributes cannot resolve var() — the canvas
+ * overlays author `stroke="var(--overlay-*)"` for self-documenting
+ * markup, and these attribute-selector rules re-apply the intended
+ * token via CSS (where var() works). The attribute IS the hook. */
+[stroke="var(--overlay-selection)"] {
+  stroke: var(--overlay-selection);
+}
+[stroke="var(--overlay-guide)"] {
+  stroke: var(--overlay-guide);
+}
+[stroke="var(--overlay-snap)"] {
+  stroke: var(--overlay-snap);
+}
+[stroke="var(--overlay-target)"] {
+  stroke: var(--overlay-target);
+}
+[fill="var(--overlay-selection)"] {
+  fill: var(--overlay-selection);
+}
+[fill="var(--overlay-target)"] {
+  fill: var(--overlay-target);
+}
+[fill="var(--pg-muted-fg)"] {
+  fill: var(--pg-muted-fg);
+}
+[fill="var(--status-approved)"] {
+  fill: var(--status-approved);
+}

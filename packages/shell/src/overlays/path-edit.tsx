@@ -322,7 +322,7 @@ function PathEditRender(props: OverlayProps) {
                 y1={a_y}
                 x2={l_x}
                 y2={l_y}
-                stroke="#2563eb"
+                stroke="var(--overlay-selection)"
                 strokeWidth={1}
                 vectorEffect="non-scaling-stroke"
                 pointerEvents="none"
@@ -334,7 +334,7 @@ function PathEditRender(props: OverlayProps) {
                 y1={a_y}
                 x2={r_x}
                 y2={r_y}
-                stroke="#2563eb"
+                stroke="var(--overlay-selection)"
                 strokeWidth={1}
                 vectorEffect="non-scaling-stroke"
                 pointerEvents="none"
@@ -372,7 +372,7 @@ function renderAnchorDot(
   const hitPx = 11;
   // Track J — selected anchor fills blue + thicker stroke so the
   // Backspace target is unambiguous.
-  const fill = selected ? "#2563eb" : "white";
+  const fill = selected ? "var(--overlay-selection)" : "white";
   const strokeWidth = selected ? 2 : 1;
   return (
     <g transform={`translate(${x}, ${y}) scale(${inv})`}>
@@ -393,7 +393,7 @@ function renderAnchorDot(
         width={visiblePx}
         height={visiblePx}
         fill={fill}
-        stroke="#2563eb"
+        stroke="var(--overlay-selection)"
         strokeWidth={strokeWidth}
         data-path-anchor={address}
         onPointerDown={onPointerDown}
@@ -421,7 +421,7 @@ function renderHandleDot(x: number, y: number, inv: number, address: string) {
         cx={0}
         cy={0}
         r={visiblePx / 2}
-        fill="#2563eb"
+        fill="var(--overlay-selection)"
         stroke="white"
         strokeWidth={1}
         data-path-anchor={address}
@@ -453,7 +453,7 @@ function renderSubpathMarkers(
             cy={pr.y + ay}
             r={10 * inv}
             fill="none"
-            stroke="#2563eb"
+            stroke="var(--overlay-selection)"
             strokeOpacity={0.4}
             strokeWidth={1}
             vectorEffect="non-scaling-stroke"

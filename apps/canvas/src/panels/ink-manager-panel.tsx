@@ -101,7 +101,7 @@ export function InkManagerPanel() {
             <span
               className="w-3 h-3 rounded-full border border-input"
               title="Spot ink"
-              style={{ background: "#888" }}
+              style={{ background: "var(--status-draft)" }}
             />
             <span className="flex-1 truncate" title={ink.name}>
               {ink.name}

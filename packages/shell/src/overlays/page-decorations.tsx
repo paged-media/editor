@@ -34,8 +34,8 @@ function PageDecorationsRender(props: OverlayProps) {
         <text
           textAnchor="middle"
           fontSize={11}
-          fontFamily="system-ui, sans-serif"
-          fill="#6b7280"
+          fontFamily="var(--font-sans)"
+          fill="var(--pg-muted-fg)"
         >
           page {i + 1}
         </text>
@@ -97,14 +97,14 @@ function renderAnchorBadges(
             width={labelWidthPx}
             height={16}
             rx={3}
-            fill="#10b981"
+            fill="var(--status-approved)"
             fillOpacity="0.92"
           />
           <text
             x={4}
             y={3}
             fontSize={10}
-            fontFamily="system-ui, sans-serif"
+            fontFamily="var(--font-sans)"
             fill="white"
           >
             {label}

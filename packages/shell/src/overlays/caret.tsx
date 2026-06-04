@@ -24,7 +24,7 @@ function CaretRender(props: OverlayProps) {
             y={pr.y + r.topPt}
             width={r.widthPt}
             height={r.heightPt}
-            fill="#2563eb"
+            fill="var(--overlay-selection)"
             fillOpacity={0.25}
             pointerEvents="none"
           />
@@ -49,7 +49,7 @@ function renderCaret(
       y={pr.y + caret.topPt}
       width={width}
       height={caret.heightPt}
-      fill="#1d4ed8"
+      fill="var(--overlay-selection)"
       pointerEvents="none"
     >
       <animate

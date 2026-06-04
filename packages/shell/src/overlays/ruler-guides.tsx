@@ -40,7 +40,7 @@ function RulerGuidesRender(props: OverlayProps) {
               y1={pr.y}
               x2={x}
               y2={pr.y + pr.h}
-              stroke="#06b6d4"
+              stroke="var(--overlay-guide)"
               strokeWidth={1 * inv}
               strokeOpacity={0.6}
               vectorEffect="non-scaling-stroke"
@@ -56,7 +56,7 @@ function RulerGuidesRender(props: OverlayProps) {
             y1={y}
             x2={pr.x + pr.w}
             y2={y}
-            stroke="#06b6d4"
+            stroke="var(--overlay-guide)"
             strokeWidth={1 * inv}
             strokeOpacity={0.6}
             vectorEffect="non-scaling-stroke"

@@ -101,6 +101,39 @@ BACKEND=gpu pnpm test:fidelity  # WebGPU/Vello path (headed; CPU fallback)
 The Vite dev server (spawned/reused by Playwright) sets the COOP/COEP
 headers `SharedArrayBuffer` needs.
 
+## Design system (the publishing cockpit)
+
+The visual + UX source of truth is the **`paged-media/brand`** repo
+(`~/paged/brand/editor` locally): tokens (`colors_and_type.css`),
+content rules (sentence case, mono tabular values, **no emoji**),
+the clean-room icon system, and the cockpit UI kit
+(`ui_kits/editor/`). In this repo:
+
+- **Tokens** live in `packages/shell/src/styles/theme.css` — the
+  `--paged-*` shadcn channels plus resolved layers (`--chrome-*`,
+  `--status-*`, `--overlay-*`, `--pg-*`, rhythm/motion). Never
+  hardcode hexes in chrome/panels; swatch/ink CONTENT colours stay
+  literal by design. **Dark is the default theme** (ThemeProvider,
+  `paged.theme`); dockview bridges via `dockview-theme-paged`.
+- **SVG overlays** author `stroke="var(--overlay-*)"` attributes;
+  presentation attributes can't resolve `var()`, so globals.css
+  re-applies each token through attribute-selector rules
+  (`overlay-tokens.spec.ts` guards this). Selection = magenta,
+  guides = violet — the DTP cues.
+- **Fonts**: IBM Plex Sans/Mono self-hosted via fontsource;
+  Cormorant only for the `paged.` wordmark (`.pg-wordmark`).
+- **Icons**: three registries (`tool-`/`panel-`/`ui-*`) in
+  `packages/shell/src/icons/` — 24×24 line SVG, currentColor,
+  1.5–1.9 stroke. Author new glyphs to those rules; never emoji or
+  third-party sets.
+- **Workflow modes**: six cockpit modes registered through
+  `registries/mode.ts` (apps declare `toolbarLeft` + `panelSet`;
+  the shell renders ModeSwitcher/ContextToolbar/PanelRail and
+  parks per-mode layouts under `paged.layout.mode.<id>`). New
+  product surfaces without engine support ship as VISIBLE stubs
+  (`ComingSoon` in `components/cockpit/kit.tsx`), never
+  fake-interactive.
+
 ## Conventions
 
 - **Don't loosen fidelity thresholds to hide a regression.** Thresholds

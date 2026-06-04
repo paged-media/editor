@@ -145,7 +145,7 @@ function renderHandle(
         width={visiblePx}
         height={visiblePx}
         fill="white"
-        stroke="#2563eb"
+        stroke="var(--overlay-selection)"
         strokeWidth={1}
         data-handle={name}
         style={{ cursor, pointerEvents: "all" }}

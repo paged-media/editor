@@ -44,7 +44,7 @@ function SelectionChromeRender(props: OverlayProps) {
         key={key}
         points={points}
         fill="none"
-        stroke="#2563eb"
+        stroke="var(--overlay-selection)"
         strokeWidth={2}
         vectorEffect="non-scaling-stroke"
         pointerEvents="none"
@@ -79,7 +79,7 @@ function renderUnionBoxes(
         width={bb.maxX - bb.minX}
         height={bb.maxY - bb.minY}
         fill="none"
-        stroke="#2563eb"
+        stroke="var(--overlay-selection)"
         strokeWidth={1}
         strokeDasharray="4 3"
         vectorEffect="non-scaling-stroke"

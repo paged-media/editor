@@ -247,10 +247,10 @@ function LibrariesMenu() {
                 width: 280,
                 maxHeight: 360,
                 overflowY: "auto",
-                background: "#fff",
-                border: "1px solid #d4d4d8",
+                background: "var(--elevated)",
+                border: "1px solid var(--chrome-divider)",
                 borderRadius: 6,
-                boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
+                boxShadow: "var(--shadow-pop)",
                 padding: 8,
                 fontSize: 12,
               }}
