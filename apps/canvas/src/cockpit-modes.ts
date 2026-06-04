@@ -6,9 +6,19 @@
 
 import type { ModeContribution, PanelRailItem } from "@paged-media/shell";
 
+import {
+  ContentToolbar,
+  DataToolbar,
+  DesignToolbar,
+  ExportToolbar,
+  PrepressToolbar,
+  ReviewToolbar,
+} from "./cockpit/toolbars";
+
 export const COCKPIT_MODES: ModeContribution[] = [
   {
     id: "design",
+    toolbarLeft: DesignToolbar,
     title: "Design",
     icon: "panel-canvas",
     order: 10,
@@ -28,6 +38,7 @@ export const COCKPIT_MODES: ModeContribution[] = [
   },
   {
     id: "content",
+    toolbarLeft: ContentToolbar,
     title: "Content",
     icon: "panel-character",
     order: 20,
@@ -44,6 +55,7 @@ export const COCKPIT_MODES: ModeContribution[] = [
   },
   {
     id: "prepress",
+    toolbarLeft: PrepressToolbar,
     title: "Prepress",
     icon: "ui-target",
     order: 30,
@@ -55,6 +67,7 @@ export const COCKPIT_MODES: ModeContribution[] = [
   },
   {
     id: "data",
+    toolbarLeft: DataToolbar,
     title: "Data layout",
     icon: "ui-database",
     order: 40,
@@ -66,6 +79,7 @@ export const COCKPIT_MODES: ModeContribution[] = [
   },
   {
     id: "review",
+    toolbarLeft: ReviewToolbar,
     title: "Review",
     icon: "ui-comment",
     order: 50,
@@ -77,6 +91,7 @@ export const COCKPIT_MODES: ModeContribution[] = [
   },
   {
     id: "export",
+    toolbarLeft: ExportToolbar,
     title: "Export",
     icon: "ui-export",
     order: 60,

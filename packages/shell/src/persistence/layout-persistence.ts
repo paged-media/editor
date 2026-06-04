@@ -192,3 +192,32 @@ export function importPerspective(name: string, json: string): void {
   }
   savePerspective(name, parsed.snapshot);
 }
+
+// ── Cockpit: per-mode layout snapshots ────────────────────────
+//
+// The ACTIVE layout keeps auto-persisting to `paged.layout.current`
+// (boot restores it, whatever the mode — the mode id persists
+// separately). These keys hold the parked layouts of the OTHER
+// modes: `useModeLayout` serialises the outgoing mode here and
+// restores (or default-builds) the incoming one.
+
+const MODE_KEY_PREFIX = "paged.layout.mode.";
+
+export function getModeLayout(mode: string): LayoutSnapshot | null {
+  try {
+    const raw = localStorage.getItem(MODE_KEY_PREFIX + mode);
+    if (!raw) return null;
+    return JSON.parse(raw) as LayoutSnapshot;
+  } catch {
+    return null;
+  }
+}
+
+export function saveModeLayout(mode: string, snapshot: LayoutSnapshot): void {
+  try {
+    localStorage.setItem(MODE_KEY_PREFIX + mode, JSON.stringify(snapshot));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("paged: mode layout persist failed", err);
+  }
+}

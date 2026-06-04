@@ -42,6 +42,7 @@ import { ToolProvider } from "./state/tool-context";
 import { ScreenModeProvider } from "./state/screen-mode-context";
 import { ThemeProvider, useTheme } from "./state/theme-context";
 import { useOptionalPaged } from "./state/paged-editor";
+import { useModeLayout } from "./docking/use-mode-layout";
 import { Header } from "./chrome/Header";
 import { ContextToolbar } from "./chrome/ContextToolbar";
 import { ModeSwitcher } from "./chrome/ModeSwitcher";
@@ -364,6 +365,26 @@ function ShellChrome({
   toggleAllRef.current = toggleAll;
   const togglePanelsRef = useRef(togglePanels);
   togglePanelsRef.current = togglePanels;
+
+  // Cockpit (D3) — per-mode panel sets + layout memory. A Tab-hidden
+  // chrome is restored before switching so the outgoing snapshot is
+  // the real layout.
+  const beforeModeSwitch = useCallback(() => {
+    const snap = panelsSnapshotRef.current;
+    if (snap && paged?.substrate) {
+      panelsSnapshotRef.current = null;
+      paged.substrate.restore(snap);
+      setRailHidden(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paged]);
+  useModeLayout({
+    substrate: paged?.substrate ?? null,
+    registries,
+    mode: workflowMode,
+    enabled: Boolean(modes && modes.length > 0),
+    beforeSwitch: beforeModeSwitch,
+  });
 
   useEffect(() => {
     // Tab must keep its focus-move role inside DOM editables; the

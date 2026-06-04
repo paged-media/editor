@@ -91,3 +91,112 @@ test.describe("Cockpit — workflow modes", () => {
     );
   });
 });
+
+test.describe("Cockpit — per-mode panel sets + toolbars (D3-D4)", () => {
+  test("switching modes swaps the panel set and a round-trip restores it", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    // Design default: swatches docked, ink manager not.
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const c = (globalThis as unknown as {
+            __canvas: { registries: unknown };
+          }).__canvas;
+          return Boolean(c);
+        }),
+      )
+      .toBe(true);
+
+    const hasPanel = (id: string) =>
+      page.evaluate(
+        (pid) =>
+          Boolean(
+            document.querySelector(`.dv-tab[data-testid="dv-tab-${pid}"]`) ||
+              Array.from(document.querySelectorAll(".dv-tab")).some((el) =>
+                el.textContent?.length ? false : false,
+              ) ||
+              (
+                globalThis as unknown as {
+                  __canvas: {
+                    registries: unknown;
+                  };
+                }
+              ).__canvas && // fall back to substrate probe below
+              false,
+          ),
+        id,
+      );
+    void hasPanel;
+
+    // Probe through the substrate via a tiny page hook: the panel
+    // rail exposes hasPanel indirectly via data-active, but for
+    // arbitrary ids we go through __canvas → registries? Simpler:
+    // the dockview DOM renders one tab per mounted panel with the
+    // panel title; assert by visible tab text.
+    const tab = (title: string) =>
+      page.locator(".dv-default-tab-content", { hasText: title }).first();
+
+    // Switch to prepress: ink manager appears.
+    await page.evaluate(() => window.__canvas.setMode("prepress"));
+    await expect(tab("Ink Manager")).toBeVisible();
+
+    // Customise prepress: close the Color Settings panel via rail-
+    // less path (drive substrate through __canvas not available) —
+    // instead park a marker: open the Effects panel via the panel
+    // rail, making the prepress layout differ from its default.
+    await page.locator('[data-panel-rail-item="paged.effects"]').click();
+    await expect(
+      page.locator('[data-panel-rail-item="paged.effects"]'),
+    ).toHaveAttribute("data-active", "true");
+
+    // Leave and come back: the customisation survives.
+    await page.evaluate(() => window.__canvas.setMode("design"));
+    await expect(tab("Swatches")).toBeVisible();
+    await page.evaluate(() => window.__canvas.setMode("prepress"));
+    await expect(
+      page.locator('[data-panel-rail-item="paged.effects"]'),
+    ).toHaveAttribute("data-active", "true");
+    await expect(tab("Ink Manager")).toBeVisible();
+
+    // Reset for other tests.
+    await page.evaluate(() => window.__canvas.setMode("design"));
+  });
+
+  test("each mode renders its toolbar segment", async ({ page }) => {
+    await openCanvas(page);
+    // Design: live tool pills — clicking Type activates the tool.
+    await expect(
+      page.locator('[data-cockpit-action="tool:paged.tool.type"]'),
+    ).toBeVisible();
+    await page
+      .locator('[data-cockpit-action="tool:paged.tool.type"]')
+      .click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (globalThis as unknown as { __canvas: { activeTool: string } })
+              .__canvas.activeTool,
+        ),
+      )
+      // __canvas.activeTool surfaces the LEGACY key the canvas spine
+      // routes on ("text" for the type tool), not the registry id.
+      .toBe("text");
+
+    // Export: the real PDF button.
+    await page.evaluate(() => window.__canvas.setMode("export"));
+    await expect(
+      page.locator('[data-cockpit-action="export-pdf"]'),
+    ).toBeVisible();
+
+    // Prepress: the working-profile chip.
+    await page.evaluate(() => window.__canvas.setMode("prepress"));
+    await expect(
+      page.locator('[data-cockpit-action="output-profile"]'),
+    ).toBeVisible();
+
+    await page.evaluate(() => window.__canvas.setMode("design"));
+  });
+});
