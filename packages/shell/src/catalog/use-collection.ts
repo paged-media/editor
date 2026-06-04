@@ -17,7 +17,11 @@
 // Same convention `useBindings` follows.
 
 import { useEffect, useState } from "react";
-import type { CollectionName, DocumentMeta } from "@paged-media/client";
+import type {
+  CollectionName,
+  DocumentMeta,
+  DocumentStats,
+} from "@paged-media/client";
 
 import { useCanvasClient } from "../state/canvas-client-context";
 
@@ -121,4 +125,27 @@ export function useDocumentMeta(): DocumentMeta | null {
   }, [client]);
 
   return meta;
+}
+
+/**
+ * Cockpit — live `DocumentStats` (spreads/pages/frames/stories/
+ * paragraphs/runs/glyphs/lines). Seeds from the worker's `stats`
+ * push (sent after load + rebuilds); `null` before the first one.
+ */
+export function useDocumentStats(): DocumentStats | null {
+  const client = useCanvasClient();
+  const [stats, setStats] = useState<DocumentStats | null>(null);
+
+  useEffect(() => {
+    const off = client.subscribe((msg) => {
+      if (msg.kind === "stats") {
+        setStats(msg.payload);
+      } else if (msg.kind === "documentLoaded") {
+        setStats(msg.payload.stats);
+      }
+    });
+    return off;
+  }, [client]);
+
+  return stats;
 }

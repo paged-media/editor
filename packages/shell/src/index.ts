@@ -309,7 +309,23 @@ export {
   CatalogRegistryProvider,
 } from "./catalog/render";
 export { useBindings, type ResolvedBinding } from "./catalog/binding-hook";
-export { useCollection, useDocumentMeta } from "./catalog/use-collection";
+export {
+  useCollection,
+  useDocumentMeta,
+  useDocumentStats,
+} from "./catalog/use-collection";
+export {
+  PanelHeader as CockpitPanelHeader,
+  Section as CockpitSection,
+  Label as CockpitLabel,
+  Row as CockpitRow,
+  Btn as CockpitBtn,
+  StatusPill,
+  Value as CockpitValue,
+  MetricTile,
+  ComingSoon,
+  type StatusTone,
+} from "./components/cockpit/kit";
 export {
   registerBuiltInCatalogEntries,
   PAGED_INPUT_LENGTH,

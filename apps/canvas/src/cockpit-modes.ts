@@ -24,7 +24,7 @@ export const COCKPIT_MODES: ModeContribution[] = [
     order: 10,
     blurb: "Composition, typography, grids, components",
     panelSet: {
-      left: ["paged.pages", "paged.links"],
+      left: ["paged.pages", "paged.publication-health"],
       right: [
         "paged.swatches",
         "paged.color",
@@ -107,6 +107,7 @@ export const PANEL_RAIL: PanelRailItem[] = [
   { panelId: "paged.character", title: "Text", icon: "panel-character" },
   { panelId: "paged.frame-fitting", title: "Image", icon: "panel-frame-fitting" },
   { panelId: "paged.object-styles", title: "Styles", icon: "panel-object-styles" },
+  { panelId: "paged.component-library", title: "Library", icon: "ui-component" },
   { panelId: "paged.swatches", title: "Swatches", icon: "panel-swatches" },
   { panelId: "paged.pages", title: "Pages", icon: "panel-pages" },
   { panelId: "paged.layers", title: "Layers", icon: "panel-layers" },

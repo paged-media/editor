@@ -73,6 +73,15 @@ import { OutlinePanel } from "./panels/outline-panel";
 import { ReplPanel } from "./panels/repl-panel";
 import { ScriptEditorPanel } from "./panels/script-editor";
 import { TreePanel } from "./panels/tree-panel";
+import { ExportCenterPanel } from "./panels/cockpit/export-center-panel";
+import { PreflightPanel } from "./panels/cockpit/preflight-panel";
+import { PublicationHealthPanel } from "./panels/cockpit/publication-health-panel";
+import {
+  CommentsPanel,
+  ComponentLibraryPanel,
+  DataMappingPanel,
+  StoriesPanel,
+} from "./panels/cockpit/stub-panels";
 import { useAnimatedCamera } from "./ui/useAnimatedCamera";
 import { useKeyboardShortcuts } from "./ui/useKeyboardShortcuts";
 import { documentBounds, fitCamera, layoutPages } from "./ui/layout";
@@ -118,6 +127,63 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     component: NavigatorPanel,
     defaultDock: "left",
     defaultGroup: "structure",
+  },
+  // ── Cockpit panels (styleguide E) — mode-first surfaces. ──
+  {
+    id: "paged.export-center",
+    title: "Export Center",
+    component: ExportCenterPanel,
+    defaultDock: "left",
+    defaultGroup: "cockpit",
+    icon: "ui-export",
+  },
+  {
+    id: "paged.preflight",
+    title: "Preflight",
+    component: PreflightPanel,
+    defaultDock: "left",
+    defaultGroup: "cockpit",
+    icon: "ui-target",
+  },
+  {
+    id: "paged.publication-health",
+    title: "Health",
+    component: PublicationHealthPanel,
+    defaultDock: "left",
+    defaultGroup: "cockpit",
+    icon: "ui-warn",
+  },
+  {
+    id: "paged.stories",
+    title: "Stories",
+    component: StoriesPanel,
+    defaultDock: "left",
+    defaultGroup: "cockpit",
+    icon: "panel-character",
+  },
+  {
+    id: "paged.comments",
+    title: "Comments",
+    component: CommentsPanel,
+    defaultDock: "left",
+    defaultGroup: "cockpit",
+    icon: "ui-comment",
+  },
+  {
+    id: "paged.data-mapping",
+    title: "Data",
+    component: DataMappingPanel,
+    defaultDock: "left",
+    defaultGroup: "cockpit",
+    icon: "ui-database",
+  },
+  {
+    id: "paged.component-library",
+    title: "Library",
+    component: ComponentLibraryPanel,
+    defaultDock: "right",
+    defaultGroup: "cockpit",
+    icon: "ui-component",
   },
   // NOTE: the old `paged.tools` dock panel is retired — the left
   // ToolRail (shell chrome, Concept 1 AC-9) is the only tool surface.
