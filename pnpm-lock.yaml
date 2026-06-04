@@ -187,6 +187,15 @@ importers:
 
   packages/shell:
     dependencies:
+      '@fontsource/cormorant-garamond':
+        specifier: ^5
+        version: 5.2.11
+      '@fontsource/ibm-plex-mono':
+        specifier: ^5
+        version: 5.2.7
+      '@fontsource/ibm-plex-sans':
+        specifier: ^5
+        version: 5.2.8
       '@paged-media/catalog':
         specifier: workspace:*
         version: link:../catalog
@@ -720,6 +729,15 @@ packages:
 
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
+
+  '@fontsource/cormorant-garamond@5.2.11':
+    resolution: {integrity: sha512-5JjpN023lhA5soijgVT0BdRGzmlijm402ppjccMd6h+vRE0mX2lJnE+41UPfnlidrkV9/rCo1mf58WZlHnB0CA==}
+
+  '@fontsource/ibm-plex-mono@5.2.7':
+    resolution: {integrity: sha512-MKAb8qV+CaiMQn2B0dIi1OV3565NYzp3WN5b4oT6LTkk+F0jR6j0ZN+5BKJiIhffDC3rtBULsYZE65+0018z9w==}
+
+  '@fontsource/ibm-plex-sans@5.2.8':
+    resolution: {integrity: sha512-eztSXjDhPhcpxNIiGTgMebdLP9qS4rWkysuE1V7c+DjOR0qiezaiDaTwQE7bTnG5HxAY/8M43XKDvs3cYq6ZYQ==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -2235,6 +2253,12 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
 
   '@floating-ui/utils@0.2.11': {}
+
+  '@fontsource/cormorant-garamond@5.2.11': {}
+
+  '@fontsource/ibm-plex-mono@5.2.7': {}
+
+  '@fontsource/ibm-plex-sans@5.2.8': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:

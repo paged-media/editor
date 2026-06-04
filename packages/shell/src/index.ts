@@ -176,6 +176,12 @@ export {
   PAGED_LIBRARY_IMPORT_ASE,
 } from "./state/commands/library-commands";
 export {
+  ThemeProvider,
+  useTheme,
+  useOptionalTheme,
+  type EditorTheme,
+} from "./state/theme-context";
+export {
   buildExportPdfCommand,
   PAGED_FILE_EXPORT_PDF,
 } from "./state/commands/export-commands";

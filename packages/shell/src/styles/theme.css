@@ -1,13 +1,23 @@
-/* Paged theme bridge. One semantic token set drives shadcn (and,
- * once Step 3e lands, dockview) — the only place a design refresh
- * needs to edit is the `--paged-*` layer.
+/* Paged theme bridge — the editor token set from the design system
+ * (brand/editor/colors_and_type.css is the source of truth; this file
+ * carries its EDITOR sections verbatim). One semantic layer drives
+ * shadcn, dockview (see dockview-theme.css) and the chrome — a design
+ * refresh edits ONLY this file.
  *
- * HSL components (no `hsl()` wrapper) are the shadcn convention so
- * components can compose `hsl(var(--token) / <alpha-value>)`.
+ * Two layers per theme:
+ *   1. `--paged-*` HSL channels (no hsl() wrapper) — the shadcn
+ *      convention so components can compose
+ *      `hsl(var(--token) / <alpha-value>)`.
+ *   2. Resolved tokens (hex / hsl() / rgba) for the chrome, overlays,
+ *      status signals, rhythm and motion — consumed by inline chrome
+ *      styles and plain CSS.
+ *
+ * DARK IS THE DEFAULT (the `.dark` class is applied by ThemeProvider
+ * at boot); `:root` carries the light theme for the toggle.
  */
 
 :root {
-  /* ── Paged semantic tokens ─────────────────────────────────── */
+  /* ── Paged semantic channels (light) ───────────────────────── */
   --paged-bg: 0 0% 100%;
   --paged-fg: 0 0% 9%;
   --paged-border: 0 0% 89%;
@@ -50,26 +60,139 @@
   --input: var(--paged-input);
   --ring: var(--paged-ring);
   --radius: var(--paged-radius);
+
+  /* ── surfaces & interaction (resolved) ─────────────────────── */
+  --pg-bg: #ffffff;
+  --pg-fg: #171717;
+  --pg-border: #e3e3e3;
+  --pg-muted: #f5f5f5;
+  --pg-muted-fg: #737373;
+  --pg-primary: hsl(263 73% 43%); /* #5b1ebe */
+  --pg-primary-fg: #fafafa;
+  --pg-primary-hover: hsl(263 73% 38%);
+  --pg-primary-soft: hsl(263 73% 96%); /* lavender tint — AI surface, selection */
+  --pg-destructive: #ef4444;
+  --elevated: #ffffff; /* popovers, command bar, flyouts */
+  --canvas-surround: #9a9a9e; /* the gray behind the pages */
+  --hover: rgba(0, 0, 0, 0.06); /* chrome hover wash */
+  --selected-bg: var(--pg-primary-soft);
+
+  /* ── chrome neutrals — tool rail / menu bar / panel chrome ──── */
+  --chrome-rail-bg: #f4f4f5; /* zinc-100 — tool rail, popover grips */
+  --chrome-panel-bg: #fafafa; /* header / panel-tab strip            */
+  --chrome-border: #dddddd; /* chrome hairline (header, rail edge) */
+  --chrome-divider: #d4d4d8; /* zinc-300 — rail section dividers    */
+  --chrome-icon: #3f3f46; /* zinc-700 — idle tool / icon colour  */
+  --chrome-icon-active: #ffffff; /* icon on an active (dark) slot       */
+  --chrome-slot-active: #1f2937; /* gray-800 — active tool / menu item  */
+  --chrome-menu-text: #374151; /* gray-700 — menu-bar triggers        */
+  --chrome-label: #71717a; /* zinc-500 — tear-off / hints         */
+
+  /* ── status signals (document map / preflight) ─────────────── */
+  --status-approved: #3c6e4e; /* green  — approved / no preflight errors */
+  --status-review: #9a6a1c; /* amber  — in review / proof note         */
+  --status-progress: hsl(263 73% 43%); /* violet — in progress         */
+  --status-draft: #a1a1aa; /* zinc   — draft / unplaced               */
+  --status-error: #c1121f; /* red    — overset / missing font / lo-res */
+  --status-info: #2c507d; /* blueprint blue — technical metadata     */
+
+  /* ── canvas overlays (DTP cues) ────────────────────────────── */
+  --overlay-selection: #e0408f; /* magenta — selected frame edges + handles */
+  --overlay-guide: #7c5cff; /* violet — margin guides                   */
+  --overlay-snap: #0f766e; /* teal — snap lines                        */
+  --overlay-target: #dc2626; /* red — hit/target markers                 */
+
+  /* ── type ──────────────────────────────────────────────────── */
+  --font-sans: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas,
+    monospace;
+  --font-logo: "Cormorant Garamond", Georgia, serif; /* the "paged." wordmark */
+  --wordmark-dot: #8f1d1f; /* oxblood — the period IS the mark */
+  --tracking-wide: 0.14em; /* uppercase labels / kickers */
+
+  /* ── rhythm, radii, elevation, motion ──────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 999px;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-2: 0 2px 6px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-pop: 0 6px 20px rgba(0, 0, 0, 0.18); /* flyouts / palettes */
+  --ease-out: cubic-bezier(0.2, 0.6, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.5, 0, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
 }
 
+/* ── DARK — the default editor surface (deep zinc, lifted violet,
+ *    near-black canvas surround so the pages pop). ─────────────── */
 .dark {
-  --paged-bg: 0 0% 9%;
-  --paged-fg: 0 0% 98%;
-  --paged-border: 0 0% 15%;
-  --paged-input: 0 0% 15%;
-  --paged-ring: 263 73% 60%;
-  --paged-muted: 0 0% 15%;
-  --paged-muted-fg: 0 0% 64%;
-  --paged-card: 0 0% 9%;
-  --paged-card-fg: 0 0% 98%;
-  --paged-popover: 0 0% 9%;
-  --paged-popover-fg: 0 0% 98%;
-  --paged-primary: 263 73% 60%;
-  --paged-primary-fg: 0 0% 9%;
-  --paged-secondary: 0 0% 15%;
-  --paged-secondary-fg: 0 0% 98%;
-  --paged-accent: 0 0% 15%;
-  --paged-accent-fg: 0 0% 98%;
-  --paged-destructive: 0 63% 31%;
+  --paged-bg: 240 6% 10%;
+  --paged-fg: 0 0% 96%;
+  --paged-border: 240 5% 20%;
+  --paged-input: 240 5% 22%;
+  --paged-ring: 263 90% 72%;
+  --paged-muted: 240 5% 16%;
+  --paged-muted-fg: 240 5% 64%;
+  --paged-card: 240 6% 10%;
+  --paged-card-fg: 0 0% 96%;
+  --paged-popover: 240 7% 15%;
+  --paged-popover-fg: 0 0% 96%;
+  --paged-primary: 263 90% 72%;
+  --paged-primary-fg: 263 40% 12%;
+  --paged-secondary: 240 5% 18%;
+  --paged-secondary-fg: 0 0% 96%;
+  --paged-accent: 240 5% 16%;
+  --paged-accent-fg: 0 0% 96%;
+  --paged-destructive: 0 72% 58%;
   --paged-destructive-fg: 0 0% 98%;
+
+  /* surfaces & interaction */
+  --pg-bg: #18181b;
+  --pg-fg: #ededf0;
+  --pg-border: #2c2c31;
+  --pg-muted: #232327;
+  --pg-muted-fg: #9b9ba4;
+  --pg-primary: hsl(263 90% 72%); /* lifted violet — #a984f5 */
+  --pg-primary-fg: #1a1430;
+  --pg-primary-hover: hsl(263 90% 78%);
+  --pg-primary-soft: hsl(263 45% 22%); /* deep violet tint */
+  --pg-destructive: #f0616d;
+  --elevated: #232328;
+  --canvas-surround: #0e0e10; /* near-black behind pages */
+  --hover: rgba(255, 255, 255, 0.06);
+  --selected-bg: var(--pg-primary-soft);
+
+  /* chrome */
+  --chrome-rail-bg: #1f1f23;
+  --chrome-panel-bg: #1c1c20;
+  --chrome-border: #2c2c31;
+  --chrome-divider: #34343b;
+  --chrome-icon: #b6b6c0;
+  --chrome-icon-active: #ffffff;
+  --chrome-slot-active: hsl(263 90% 72%); /* active tool fills violet on dark */
+  --chrome-menu-text: #c7c7d0;
+  --chrome-label: #7e7e8a;
+
+  /* status (lifted for legibility on dark) */
+  --status-approved: #57b87a;
+  --status-review: #d39a3e;
+  --status-progress: hsl(263 90% 74%);
+  --status-draft: #6c6c76;
+  --status-error: #f0616d;
+  --status-info: #5b8bd0;
+
+  /* overlays keep their print-cue hues; nudge snap for contrast */
+  --overlay-snap: #14b8a6;
+
+  /* floating UI needs a heavier shadow on dark */
+  --shadow-pop: 0 6px 20px rgba(0, 0, 0, 0.5);
 }

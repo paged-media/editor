@@ -152,7 +152,11 @@ export function DockviewRoot({ className }: { className?: string }) {
       components={DOCKVIEW_COMPONENTS}
       defaultTabComponent={PanelTab}
       onReady={onReady}
-      className={className ?? "dockview-theme-light"}
+      // The stock light class supplies dockview's LAYOUT variables;
+      // dockview-theme-paged re-points every colour variable at the
+      // paged tokens, so dark/light flip via `.dark` on the root
+      // (see styles/dockview-theme.css).
+      className={className ?? "dockview-theme-light dockview-theme-paged"}
     />
   );
 }

@@ -40,6 +40,7 @@ import {
 } from "./state/selection-context";
 import { ToolProvider } from "./state/tool-context";
 import { ScreenModeProvider } from "./state/screen-mode-context";
+import { ThemeProvider, useTheme } from "./state/theme-context";
 import { ToolSettingsProvider } from "./state/tool-settings-context";
 import { FormattingAffectsProvider } from "./state/formatting-affects-context";
 import { PagedEditorProvider } from "./state/paged-editor";
@@ -133,6 +134,7 @@ export function PagedShell({
   return (
     <DebugErrorBoundary label="paged-shell">
       <CanvasClientProvider client={client}>
+        <ThemeProvider>
         <CameraProvider>
           <DocumentProvider>
             {/* ToolProvider above SelectionProvider: the selection
@@ -170,6 +172,7 @@ export function PagedShell({
             </ToolProvider>
           </DocumentProvider>
         </CameraProvider>
+        </ThemeProvider>
       </CanvasClientProvider>
     </DebugErrorBoundary>
   );
@@ -213,6 +216,7 @@ function ShellChrome({
     activeGroup,
     setActiveGroup,
   } = useSelection();
+  const { theme, setTheme } = useTheme();
   const {
     contentSelection,
     setContentSelection,
@@ -574,6 +578,9 @@ function ShellChrome({
       activeGroup,
       setActiveGroup,
       registries,
+      // Design system — Playwright drives/asserts the theme.
+      theme,
+      setTheme,
     };
   }
 
@@ -800,8 +807,9 @@ function FileDrop(props: { onFile: (file: File) => void; compact?: boolean }) {
 }
 
 const shellStyle: React.CSSProperties = {
-  fontFamily:
-    'system-ui, -apple-system, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif',
+  fontFamily: "var(--font-sans)",
+  background: "hsl(var(--paged-bg))",
+  color: "hsl(var(--paged-fg))",
   display: "flex",
   flexDirection: "column",
   height: "100vh",

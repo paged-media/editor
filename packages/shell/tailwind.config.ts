@@ -18,6 +18,12 @@ const config: Config = {
       },
     },
     extend: {
+      fontFamily: {
+        // The brand four-role system's two app faces (theme.css owns
+        // the stacks; fontsource loads the files in globals.css).
+        sans: "var(--font-sans)",
+        mono: "var(--font-mono)",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -52,6 +58,36 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Resolved design-system roles (theme.css layer 2) — chrome
+        // neutrals, status signals, overlay cues. Usable as
+        // `bg-chrome-rail`, `text-status-error`, etc.
+        chrome: {
+          rail: "var(--chrome-rail-bg)",
+          panel: "var(--chrome-panel-bg)",
+          border: "var(--chrome-border)",
+          divider: "var(--chrome-divider)",
+          icon: "var(--chrome-icon)",
+          "icon-active": "var(--chrome-icon-active)",
+          "slot-active": "var(--chrome-slot-active)",
+          menu: "var(--chrome-menu-text)",
+          label: "var(--chrome-label)",
+        },
+        status: {
+          approved: "var(--status-approved)",
+          review: "var(--status-review)",
+          progress: "var(--status-progress)",
+          draft: "var(--status-draft)",
+          error: "var(--status-error)",
+          info: "var(--status-info)",
+        },
+        overlay: {
+          selection: "var(--overlay-selection)",
+          guide: "var(--overlay-guide)",
+          snap: "var(--overlay-snap)",
+          target: "var(--overlay-target)",
+        },
+        elevated: "var(--elevated)",
+        surround: "var(--canvas-surround)",
       },
       borderRadius: {
         lg: "var(--radius)",

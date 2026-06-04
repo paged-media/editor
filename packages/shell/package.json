@@ -21,6 +21,9 @@
     "react-dom": "^18.3.0"
   },
   "dependencies": {
+    "@fontsource/cormorant-garamond": "^5",
+    "@fontsource/ibm-plex-mono": "^5",
+    "@fontsource/ibm-plex-sans": "^5",
     "@paged-media/catalog": "workspace:*",
     "@paged-media/client": "workspace:*",
     "@paged-media/ui": "workspace:*",

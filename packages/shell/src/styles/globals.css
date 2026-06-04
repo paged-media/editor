@@ -1,8 +1,22 @@
-/* Shell global stylesheet. Pulls in Tailwind layers + the paged
- * theme bridge so every consuming app only has to import this one
- * file. */
+/* Shell global stylesheet. Pulls in the self-hosted brand fonts,
+ * Tailwind layers + the paged theme bridge so every consuming app
+ * only has to import this one file. */
+
+/* IBM Plex Sans — all UI, labels, captions (brand four-role system). */
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/400-italic.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-sans/700.css";
+/* IBM Plex Mono — values, XML, paths (tabular numerals everywhere). */
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+/* Cormorant Garamond — ONLY the "paged." wordmark. */
+@import "@fontsource/cormorant-garamond/700.css";
 
 @import "./theme.css";
+@import "./dockview-theme.css";
 
 @tailwind base;
 @tailwind components;
@@ -14,5 +28,63 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+}
+
+@layer components {
+  /* ── the editor UI type scale (design system semantic classes) ── */
+  .pg-ui {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .pg-ui-sm {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  .pg-ui-xs {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    line-height: 1.3;
+    color: var(--pg-muted-fg);
+  }
+  /* uppercase tracked kicker labels */
+  .pg-label {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    line-height: 1;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--pg-muted-fg);
+  }
+  /* mono tabular values — `11 pt`, `06 / 07`, `240 dpi` */
+  .pg-value {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+  }
+  .pg-mono-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.01em;
+    font-variant-numeric: tabular-nums;
+    color: var(--pg-muted-fg);
+  }
+  /* the "paged." wordmark — the oxblood period IS the mark */
+  .pg-wordmark {
+    font-family: var(--font-logo);
+    font-weight: 700;
+    letter-spacing: -0.005em;
+    line-height: 1;
+    display: inline-flex;
+    align-items: baseline;
+    white-space: nowrap;
+  }
+  .pg-wordmark .dot {
+    color: var(--wordmark-dot);
   }
 }
