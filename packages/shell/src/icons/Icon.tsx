@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { TOOL_GLYPHS } from "./tool-glyphs";
 import { PANEL_GLYPHS } from "./panel-glyphs";
+import { UI_GLYPHS } from "./ui-glyphs";
 
 // Concept 1 — the shared icon resolver. A registry contribution's
 // `icon` is a NAME resolved here to an original SVG glyph (faithful to
@@ -16,6 +17,7 @@ import { PANEL_GLYPHS } from "./panel-glyphs";
 const GLYPHS: Record<string, ReactNode> = {
   ...TOOL_GLYPHS,
   ...PANEL_GLYPHS,
+  ...UI_GLYPHS,
 };
 
 export interface IconProps {

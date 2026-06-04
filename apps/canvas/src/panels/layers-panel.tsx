@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { useCanvasClient } from "@paged-media/shell";
+import { useCanvasClient , Icon } from "@paged-media/shell";
 
 import type { LayerSummary } from "@paged-media/client";
 
@@ -147,7 +147,7 @@ export function LayersPanel(_: PanelProps) {
               onClick={() => onToggle(layer.selfId, "visible", !layer.visible)}
               className="w-5 h-5"
             >
-              {layer.visible ? "👁" : "⊘"}
+              <Icon name={layer.visible ? "ui-eye" : "ui-eye-off"} size={14} />
             </button>
             <button
               type="button"
@@ -156,7 +156,7 @@ export function LayersPanel(_: PanelProps) {
               onClick={() => onToggle(layer.selfId, "locked", !layer.locked)}
               className="w-5 h-5"
             >
-              {layer.locked ? "🔒" : "🔓"}
+              <Icon name={layer.locked ? "ui-lock" : "ui-unlock"} size={14} />
             </button>
             <button
               type="button"
@@ -167,7 +167,11 @@ export function LayersPanel(_: PanelProps) {
               }
               className="w-5 h-5"
             >
-              {layer.printable ? "🖨" : "⊘🖨"}
+              <Icon
+                name="ui-print"
+                size={14}
+                style={layer.printable ? undefined : { opacity: 0.35 }}
+              />
             </button>
             {editing === layer.selfId ? (
               <input
