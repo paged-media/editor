@@ -114,6 +114,13 @@ test.describe("Inspector P1 — property panel", () => {
         "frameDropShadowYOffset",
         "frameFillColor",
         "frameFillTint",
+        // Concept 2 — gradient-fill introspection surfaced by the
+        // colour engine (core paged-introspect).
+        "frameGradientFeather",
+        "frameGradientFillAngle",
+        "frameGradientFillLength",
+        "frameGradientStrokeAngle",
+        "frameGradientStrokeLength",
         "frameInsetSpacing",
         "frameNonprinting",
         "frameOpacity",

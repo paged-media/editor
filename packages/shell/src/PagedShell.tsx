@@ -45,6 +45,7 @@ import { FormattingAffectsProvider } from "./state/formatting-affects-context";
 import { PagedEditorProvider } from "./state/paged-editor";
 import { useRegistries } from "./state/registries-context";
 import { CommandPalette } from "./chrome/CommandPalette";
+import { ExportPdfDialog } from "./chrome/ExportPdfDialog";
 import { ToolRail } from "./chrome/ToolRail";
 import { ScreenModeSelector } from "./chrome/ScreenModeSelector";
 import { FillStrokeCluster } from "./chrome/FillStrokeCluster";
@@ -60,6 +61,10 @@ import {
   buildExportAseCommand,
   buildImportAseCommand,
 } from "./state/commands/library-commands";
+import {
+  buildExportPdfCommand,
+  PAGED_FILE_EXPORT_PDF,
+} from "./state/commands/export-commands";
 import {
   PALETTE_TOGGLE_COMMAND,
   PALETTE_TOGGLE_KEYBINDING,
@@ -425,10 +430,14 @@ function ShellChrome({
     const exportAse = registries.commands.register(
       buildExportAseCommand({ setStatus }),
     );
+    // Concept 3 — PDF export (opens the dialog; the dialog owns the
+    // export loop).
+    const exportPdf = registries.commands.register(buildExportPdfCommand());
     return () => {
       handle.dispose();
       importAse.dispose();
       exportAse.dispose();
+      exportPdf.dispose();
     };
   }, [registries]);
 
@@ -491,6 +500,12 @@ function ShellChrome({
     const items = registries.menus;
     const handles = [
       items.register({ path: "File/Open IDML…", command: PAGED_FILE_OPEN_IDML, order: 10 }),
+      items.register({
+        path: "File/Export PDF…",
+        command: PAGED_FILE_EXPORT_PDF,
+        order: 20,
+        group: "export",
+      }),
       items.register({
         path: "View/Toggle Command Palette",
         command: PAGED_PALETTE_TOGGLE,
@@ -712,6 +727,7 @@ function ShellChrome({
       </div>
 
       <CommandPalette />
+      <ExportPdfDialog />
 
       {/* Canvas-app-specific integration: legacy hooks (keyboard
        *   shortcuts, camera tweens, text editing) that read from

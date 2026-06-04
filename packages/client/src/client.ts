@@ -20,6 +20,7 @@ import {
   type ContentSelection,
   type DocumentHandle,
   type DocumentMeta,
+  type ExportPdfWireOptions,
   type ElementGeometryItem,
   type ElementId,
   type GestureAnchor,
@@ -409,6 +410,113 @@ export class CanvasClient {
       return new Uint8Array(reply.payload.aseBytes);
     }
     throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
+   * Concept 3 — open a PDF export session. The worker re-builds the
+   * scene one-shot (text-as-text side-channel on) and parks the
+   * writer state; drive it with `exportPdfPage` one page at a time.
+   */
+  async beginPdfExport(
+    options: ExportPdfWireOptions,
+  ): Promise<{ session: number; pageCount: number }> {
+    const reply = await this.send({
+      kind: "exportPdfBegin",
+      payload: { options },
+    });
+    if (reply.kind === "exportPdfBegun") {
+      return {
+        session: reply.payload.session,
+        pageCount: reply.payload.pageCount,
+      };
+    }
+    if (reply.kind === "exportPdfFailed") {
+      throw new Error(reply.payload.error);
+    }
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /** Concept 3 — export ONE page; returns monotone progress. */
+  async exportPdfPage(session: number): Promise<{ done: number; total: number }> {
+    const reply = await this.send({
+      kind: "exportPdfPage",
+      payload: { session },
+    });
+    if (reply.kind === "exportPdfProgress") {
+      return { done: reply.payload.done, total: reply.payload.total };
+    }
+    if (reply.kind === "exportPdfFailed") {
+      throw new Error(reply.payload.error);
+    }
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /** Concept 3 — serialise the finished PDF and drop the session. */
+  async finishPdfExport(
+    session: number,
+  ): Promise<{ bytes: Uint8Array; diagnostics: string[] }> {
+    const reply = await this.send({
+      kind: "exportPdfFinish",
+      payload: { session },
+    });
+    if (reply.kind === "pdfExported") {
+      return {
+        bytes: new Uint8Array(reply.payload.pdfBytes),
+        diagnostics: reply.payload.diagnostics,
+      };
+    }
+    if (reply.kind === "exportPdfFailed") {
+      throw new Error(reply.payload.error);
+    }
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /** Concept 3 — abandon an in-flight session (idempotent). */
+  async cancelPdfExport(session: number): Promise<void> {
+    const reply = await this.send({
+      kind: "exportPdfCancel",
+      payload: { session },
+    });
+    if (reply.kind === "exportPdfCancelled") return;
+    if (reply.kind === "exportPdfFailed") {
+      throw new Error(reply.payload.error);
+    }
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
+   * Concept 3 — the full export loop: begin → one page per call
+   * (progress + abort checked at every page boundary) → finish.
+   * Always cancels the worker-side session on failure or abort so
+   * no writer state leaks.
+   */
+  async exportPdf(
+    options: ExportPdfWireOptions,
+    hooks?: {
+      onProgress?: (done: number, total: number) => void;
+      signal?: AbortSignal;
+    },
+  ): Promise<{ bytes: Uint8Array; diagnostics: string[] }> {
+    const { session, pageCount } = await this.beginPdfExport(options);
+    try {
+      hooks?.onProgress?.(0, pageCount);
+      for (let i = 0; i < pageCount; i++) {
+        if (hooks?.signal?.aborted) {
+          throw new DOMException("export cancelled", "AbortError");
+        }
+        const { done, total } = await this.exportPdfPage(session);
+        hooks?.onProgress?.(done, total);
+      }
+      return await this.finishPdfExport(session);
+    } catch (err) {
+      // Best-effort worker-side cleanup; the original error wins.
+      try {
+        await this.cancelPdfExport(session);
+      } catch {
+        /* session already gone */
+      }
+      throw err;
+    }
   }
 
   /**

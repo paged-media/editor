@@ -175,6 +175,11 @@ export {
   PAGED_LIBRARY_EXPORT_ASE,
   PAGED_LIBRARY_IMPORT_ASE,
 } from "./state/commands/library-commands";
+export {
+  buildExportPdfCommand,
+  PAGED_FILE_EXPORT_PDF,
+} from "./state/commands/export-commands";
+export { notifyExportPdfDialog } from "./chrome/ExportPdfDialog";
 
 // ── Loaders ────────────────────────────────────────────────────
 export {
