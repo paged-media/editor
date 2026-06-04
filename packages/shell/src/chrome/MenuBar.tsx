@@ -133,6 +133,6 @@ const triggerStyle: React.CSSProperties = {
   fontSize: 13,
   fontFamily: "ui-sans-serif, system-ui, sans-serif",
   cursor: "pointer",
-  color: "#374151",
+  color: "var(--chrome-menu-text)",
   borderRadius: 4,
 };

@@ -558,8 +558,8 @@ const railStyle: CSSProperties = {
   alignItems: "center",
   gap: 6,
   padding: "8px 0",
-  borderRight: "1px solid #ddd",
-  background: "#f4f4f5",
+  borderRight: "1px solid var(--chrome-border)",
+  background: "var(--chrome-rail-bg)",
   overflowY: "auto",
   overflowX: "visible",
 };
@@ -584,7 +584,7 @@ const dividerStyle: CSSProperties = {
   width: 22,
   height: 1,
   margin: "6px auto",
-  background: "#d4d4d8",
+  background: "var(--chrome-divider)",
 };
 
 const slotStyle: CSSProperties = {
@@ -601,15 +601,15 @@ const slotStyle: CSSProperties = {
   borderColor: "transparent",
   borderRadius: 5,
   background: "transparent",
-  color: "#3f3f46",
+  color: "var(--chrome-icon)",
   cursor: "pointer",
   padding: 0,
 };
 
 const slotActiveStyle: CSSProperties = {
-  background: "#1f2937",
-  color: "#fff",
-  borderColor: "#1f2937",
+  background: "var(--chrome-slot-active)",
+  color: "var(--elevated)",
+  borderColor: "var(--chrome-slot-active)",
 };
 
 const flyoutMarkerStyle: CSSProperties = {
@@ -630,9 +630,9 @@ const flyoutStyle: CSSProperties = {
   minWidth: 190,
   padding: 4,
   borderRadius: 6,
-  border: "1px solid #d4d4d8",
-  background: "#fff",
-  boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
+  border: "1px solid var(--chrome-divider)",
+  background: "var(--elevated)",
+  boxShadow: "var(--shadow-pop)",
 };
 
 const flyoutItemStyle: CSSProperties = {
@@ -645,7 +645,7 @@ const flyoutItemStyle: CSSProperties = {
   border: "none",
   borderRadius: 4,
   background: "transparent",
-  color: "#27272a",
+  color: "var(--chrome-menu-text)",
   cursor: "pointer",
   textAlign: "left",
 };
@@ -668,10 +668,10 @@ const tearOffStyle: CSSProperties = {
   padding: "0 8px",
   marginBottom: 2,
   border: "none",
-  borderBottom: "1px solid #e4e4e7",
+  borderBottom: "1px solid var(--chrome-border)",
   borderRadius: 0,
   background: "transparent",
-  color: "#71717a",
+  color: "var(--chrome-label)",
   cursor: "pointer",
   fontSize: 11,
   textAlign: "left",
@@ -681,9 +681,9 @@ const paletteStyle: CSSProperties = {
   position: "fixed",
   zIndex: 60,
   borderRadius: 6,
-  border: "1px solid #d4d4d8",
-  background: "#fff",
-  boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
+  border: "1px solid var(--chrome-divider)",
+  background: "var(--elevated)",
+  boxShadow: "var(--shadow-pop)",
 };
 
 const paletteGripStyle: CSSProperties = {
@@ -692,11 +692,11 @@ const paletteGripStyle: CSSProperties = {
   gap: 4,
   height: 18,
   padding: "0 6px",
-  borderBottom: "1px solid #e4e4e7",
-  background: "#f4f4f5",
+  borderBottom: "1px solid var(--chrome-border)",
+  background: "var(--chrome-rail-bg)",
   borderTopLeftRadius: 6,
   borderTopRightRadius: 6,
-  color: "#71717a",
+  color: "var(--chrome-label)",
   fontSize: 11,
   touchAction: "none",
 };
@@ -710,7 +710,7 @@ const paletteCloseStyle: CSSProperties = {
   border: "none",
   borderRadius: 3,
   background: "transparent",
-  color: "#71717a",
+  color: "var(--chrome-label)",
   cursor: "pointer",
   padding: 0,
   fontSize: 12,

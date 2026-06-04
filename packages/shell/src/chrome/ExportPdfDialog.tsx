@@ -313,7 +313,7 @@ export function ExportPdfDialog() {
           {x4ProfileMissing && (
             <div
               data-export-validation
-              style={{ color: "#b91c1c", fontSize: 12, marginLeft: 138 }}
+              style={{ color: "var(--status-error)", fontSize: 12, marginLeft: 138 }}
             >
               PDF/X-4 requires an output-intent profile — register one in
               Color Settings or switch to PDF 1.7.
@@ -369,7 +369,7 @@ export function ExportPdfDialog() {
             )}
           </div>
           {rangeInvalid && (
-            <div style={{ color: "#b91c1c", fontSize: 12, marginLeft: 138 }}>
+            <div style={{ color: "var(--status-error)", fontSize: 12, marginLeft: 138 }}>
               Range must be within 1–{pageCount}.
             </div>
           )}
@@ -461,7 +461,7 @@ export function ExportPdfDialog() {
                   style={{
                     height: "100%",
                     width: `${phase.total > 0 ? (phase.done / phase.total) * 100 : 0}%`,
-                    background: "#2563eb",
+                    background: "var(--pg-primary)",
                     transition: "width 120ms",
                   }}
                 />
@@ -471,7 +471,7 @@ export function ExportPdfDialog() {
           {phase.kind === "error" && (
             <div
               data-export-error
-              style={{ color: "#b91c1c", fontSize: 12 }}
+              style={{ color: "var(--status-error)", fontSize: 12 }}
             >
               Export failed: {phase.message}
             </div>

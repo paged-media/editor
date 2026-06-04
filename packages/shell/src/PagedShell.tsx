@@ -41,6 +41,7 @@ import {
 import { ToolProvider } from "./state/tool-context";
 import { ScreenModeProvider } from "./state/screen-mode-context";
 import { ThemeProvider, useTheme } from "./state/theme-context";
+import { Header } from "./chrome/Header";
 import { ToolSettingsProvider } from "./state/tool-settings-context";
 import { FormattingAffectsProvider } from "./state/formatting-affects-context";
 import { PagedEditorProvider } from "./state/paged-editor";
@@ -91,7 +92,6 @@ import {
   PERSPECTIVES_CHANGED_EVENT,
   listPerspectives,
 } from "./persistence/layout-persistence";
-import { MenuBar } from "./chrome/MenuBar";
 import type { OverlayContribution } from "./registries/overlay";
 import type { PanelContribution } from "./registries/panel";
 import type { ToolContribution } from "./registries/tool";
@@ -688,15 +688,7 @@ function ShellChrome({
 
   return (
     <div style={shellStyle}>
-      <header style={headerStyle}>
-        <h1 style={{ margin: 0, fontSize: 16 }}>IDML canvas</h1>
-        <MenuBar />
-        <FileDrop onFile={onFile} compact />
-        {headerExtras}
-        <span style={{ marginLeft: "auto", opacity: 0.7, fontSize: 12 }}>
-          {status}
-        </span>
-      </header>
+      <Header onFile={onFile} headerExtras={headerExtras} status={status} />
 
       {!sabSupported && (
         <div style={warningStyle}>
@@ -777,35 +769,6 @@ class DebugErrorBoundary extends React.Component<
   }
 }
 
-function FileDrop(props: { onFile: (file: File) => void; compact?: boolean }) {
-  const onDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      const file = e.dataTransfer.files[0];
-      if (file) props.onFile(file);
-    },
-    [props],
-  );
-  return (
-    <div
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={onDrop}
-      style={props.compact ? compactDropStyle : dropStyle}
-    >
-      {props.compact ? "" : "Drop an IDML file here, or "}
-      <input
-        type="file"
-        accept=".idml,application/vnd.adobe.indesign-idml-package"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) props.onFile(file);
-        }}
-        style={{ marginLeft: props.compact ? 0 : 8 }}
-      />
-    </div>
-  );
-}
-
 const shellStyle: React.CSSProperties = {
   fontFamily: "var(--font-sans)",
   background: "hsl(var(--paged-bg))",
@@ -814,16 +777,6 @@ const shellStyle: React.CSSProperties = {
   flexDirection: "column",
   height: "100vh",
   width: "100vw",
-};
-
-const headerStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  borderBottom: "1px solid #ddd",
-  padding: "8px 12px",
-  background: "#fafafa",
-  flexShrink: 0,
 };
 
 const dockviewContainerStyle: React.CSSProperties = {
@@ -838,24 +791,11 @@ const bodyRowStyle: React.CSSProperties = {
   minHeight: 0,
 };
 
-const dropStyle: React.CSSProperties = {
-  border: "2px dashed #bbb",
-  padding: 16,
-  borderRadius: 8,
-  textAlign: "center",
-  color: "#555",
-};
-
-const compactDropStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-};
-
 const warningStyle: React.CSSProperties = {
-  border: "1px solid #d97706",
-  background: "#fff7ed",
-  color: "#7c2d12",
-  borderRadius: 6,
+  border: "1px solid var(--status-review)",
+  background: "color-mix(in srgb, var(--status-review) 12%, transparent)",
+  color: "var(--status-review)",
+  borderRadius: "var(--radius-md)",
   padding: 8,
   fontSize: 12,
   margin: 8,

@@ -100,11 +100,11 @@ const popoverStyle: CSSProperties = {
   minWidth: 220,
   padding: 12,
   borderRadius: 6,
-  border: "1px solid #d4d4d8",
-  background: "#fff",
-  boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
+  border: "1px solid var(--chrome-divider)",
+  background: "var(--elevated)",
+  boxShadow: "var(--shadow-pop)",
   fontSize: 12,
-  color: "#27272a",
+  color: "var(--chrome-menu-text)",
 };
 
 const rowStyle: CSSProperties = {
@@ -119,7 +119,7 @@ const labelStyle: CSSProperties = { flex: 1 };
 const inputStyle: CSSProperties = {
   width: 72,
   padding: "2px 4px",
-  border: "1px solid #d4d4d8",
+  border: "1px solid var(--chrome-divider)",
   borderRadius: 4,
   fontSize: 12,
 };

@@ -418,7 +418,7 @@ export function FillStrokeCluster() {
           data-fs-apply-color
           disabled={!canApply}
           onClick={() => apply(lastSolid.current)}
-          style={{ ...miniBtn, background: "#374151", color: "#fff" }}
+          style={{ ...miniBtn, background: "var(--chrome-menu-text)", color: "var(--elevated)" }}
         >
           ◼
         </button>
@@ -438,7 +438,7 @@ export function FillStrokeCluster() {
               ? {
                   background: chipStops
                     ? rampCss(chipStops)
-                    : "linear-gradient(135deg, #111827, #e5e7eb)",
+                    : "linear-gradient(135deg, var(--chrome-slot-active), var(--chrome-divider))",
                 }
               : { opacity: 0.4, cursor: "not-allowed" }),
           }}
@@ -465,8 +465,8 @@ export function FillStrokeCluster() {
           ...miniBtn,
           width: 30,
           fontSize: 10,
-          background: affects === "text" ? "#1f2937" : "#fff",
-          color: affects === "text" ? "#fff" : "#374151",
+          background: affects === "text" ? "var(--chrome-slot-active)" : "var(--elevated)",
+          color: affects === "text" ? "var(--elevated)" : "var(--chrome-menu-text)",
         }}
       >
         {affects === "text" ? "T" : "□"}
@@ -536,7 +536,9 @@ function Well({
         position: "absolute",
         width: 20,
         height: 20,
-        border: active ? "2px solid #1f2937" : "1px solid #9ca3af",
+        border: active
+          ? "2px solid var(--chrome-slot-active)"
+          : "1px solid var(--chrome-divider)",
         borderRadius: 3,
         padding: 0,
         cursor: "pointer",
@@ -544,11 +546,13 @@ function Well({
         // solid; a heterogeneous multi-selection reads as a
         // diagonal split (distinct from None's red slash).
         background: mixed
-          ? "linear-gradient(135deg, #fff 47%, #9ca3af 47%, #9ca3af 53%, #fff 53%)"
+          ? "linear-gradient(135deg, var(--chrome-rail-bg) 47%, var(--chrome-divider) 47%, var(--chrome-divider) 53%, var(--chrome-rail-bg) 53%)"
           : isNone
-            ? "#fff"
-            : hex ?? "#d1d5db",
-        boxShadow: ring ? "inset 0 0 0 4px #fff" : undefined,
+            ? "var(--elevated)"
+            : hex ?? "var(--chrome-divider)",
+        // The stroke well's "hollow square" — the hole shows the
+        // rail through it, so it must track the chrome surface.
+        boxShadow: ring ? "inset 0 0 0 4px var(--chrome-rail-bg)" : undefined,
         ...style,
       }}
       data-mixed={mixed || undefined}
@@ -649,7 +653,7 @@ function SwatchPicker({
           title={s.name}
           data-swatch-id={s.selfId}
           onClick={() => onPick(s.selfId)}
-          style={{ ...swatchChip, background: hexes[s.selfId] ?? "#d1d5db" }}
+          style={{ ...swatchChip, background: hexes[s.selfId] ?? "var(--chrome-divider)" }}
         />
       ))}
     </div>
@@ -659,15 +663,15 @@ function SwatchPicker({
 function NoneOverlay() {
   return (
     <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden>
-      <line x1={3} y1={17} x2={17} y2={3} stroke="#ef4444" strokeWidth={1.6} />
+      <line x1={3} y1={17} x2={17} y2={3} stroke="var(--pg-destructive)" strokeWidth={1.6} />
     </svg>
   );
 }
 function NoneGlyph() {
   return (
     <svg viewBox="0 0 16 16" width={14} height={14} aria-hidden>
-      <rect x={1.5} y={1.5} width={13} height={13} rx={2} fill="none" stroke="#9ca3af" />
-      <line x1={3} y1={13} x2={13} y2={3} stroke="#ef4444" strokeWidth={1.4} />
+      <rect x={1.5} y={1.5} width={13} height={13} rx={2} fill="none" stroke="var(--chrome-divider)" />
+      <line x1={3} y1={13} x2={13} y2={3} stroke="var(--pg-destructive)" strokeWidth={1.4} />
     </svg>
   );
 }
@@ -687,10 +691,10 @@ const miniBtn: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  border: "1px solid #d4d4d8",
+  border: "1px solid var(--chrome-divider)",
   borderRadius: 3,
-  background: "#fff",
-  color: "#374151",
+  background: "var(--elevated)",
+  color: "var(--chrome-menu-text)",
   cursor: "pointer",
   padding: 0,
   fontSize: 9,
@@ -711,15 +715,15 @@ const pickerStyle: CSSProperties = {
   maxHeight: 220,
   overflowY: "auto",
   borderRadius: 6,
-  border: "1px solid #d4d4d8",
-  background: "#fff",
-  boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
+  border: "1px solid var(--chrome-divider)",
+  background: "var(--elevated)",
+  boxShadow: "var(--shadow-pop)",
 };
 
 const swatchChip: CSSProperties = {
   width: 18,
   height: 18,
-  border: "1px solid #d4d4d8",
+  border: "1px solid var(--chrome-divider)",
   borderRadius: 3,
   padding: 0,
   cursor: "pointer",

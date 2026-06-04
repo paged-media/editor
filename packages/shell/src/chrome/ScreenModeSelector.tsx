@@ -82,10 +82,10 @@ const buttonStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  border: "1px solid #d4d4d8",
+  border: "1px solid var(--chrome-divider)",
   borderRadius: 5,
-  background: "#fff",
-  color: "#3f3f46",
+  background: "var(--elevated)",
+  color: "var(--chrome-icon)",
   cursor: "pointer",
   padding: 0,
 };
@@ -106,9 +106,9 @@ const menuStyle: CSSProperties = {
   minWidth: 150,
   padding: 4,
   borderRadius: 6,
-  border: "1px solid #d4d4d8",
-  background: "#fff",
-  boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
+  border: "1px solid var(--chrome-divider)",
+  background: "var(--elevated)",
+  boxShadow: "var(--shadow-pop)",
 };
 
 const itemStyle: CSSProperties = {
@@ -120,13 +120,13 @@ const itemStyle: CSSProperties = {
   border: "none",
   borderRadius: 4,
   background: "transparent",
-  color: "#27272a",
+  color: "var(--chrome-menu-text)",
   cursor: "pointer",
   fontSize: 12,
   textAlign: "left",
 };
 
 const itemActiveStyle: CSSProperties = {
-  background: "#1f2937",
-  color: "#fff",
+  background: "var(--chrome-slot-active)",
+  color: "var(--elevated)",
 };

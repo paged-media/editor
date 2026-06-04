@@ -68,8 +68,8 @@ export function SoftProofToggle() {
       onClick={toggle}
       style={{
         ...btnStyle,
-        background: proofOn ? "#1f2937" : "#fff",
-        color: proofOn ? "#fff" : "#374151",
+        background: proofOn ? "var(--chrome-slot-active)" : "var(--elevated)",
+        color: proofOn ? "var(--elevated)" : "var(--chrome-menu-text)",
         opacity: disabled ? 0.4 : 1,
       }}
     >
@@ -84,7 +84,7 @@ const btnStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  border: "1px solid #d4d4d8",
+  border: "1px solid var(--chrome-divider)",
   borderRadius: 4,
   cursor: "pointer",
   fontSize: 12,
