@@ -1,11 +1,14 @@
-// SDK Phase 5 / panel-gallery pass — Text Frame Options panel as a
-// declarative composition, shaped to the gallery card.
+// SDK Phase 5 / gallery pixel-parity — Text Frame Options, composed
+// to the deep1 card (gallery-deep1.jsx `TextFrame`):
 //
-// LIVE: inset spacing (`[top, left, bottom, right]` in pt; the
-// `frameInsetSpacing` apply arm) as the row4 grid. HONEST SEAMS:
-// columns + gutter, balance, vertical justification, auto-size,
-// first baseline — each gains its binding as the text-frame
-// geometry Operations ship (columns/auto-size roadmap).
+//   COLUMNS kicker → [⫼ 1 | gutter 4] 2-up      seam
+//   Balance (label-left toggle)                  seam
+//   INSET SPACING kicker → 4-up T/L/B/R          LIVE
+//   Vert. justify (label-left icon segments)     seam
+//   Auto-size (label-left soft select)           seam
+//   First baseline (label-left select)           seam
+//
+// Seams await engine gap 13 (text-frame geometry).
 
 import type { CompositionNode } from "@paged-media/catalog";
 import {
@@ -31,7 +34,7 @@ export const textFrameOptionsComposition: CompositionNode = {
         {
           // Engine gap — no column-structure paths yet.
           catalogId: PAGED_LAYOUT_CLUSTER,
-          props: { label: "Columns + gutter", count: 2 },
+          props: { count: 2 },
           bindings: {},
           children: [
             {
@@ -41,14 +44,14 @@ export const textFrameOptionsComposition: CompositionNode = {
             },
             {
               catalogId: PAGED_INPUT_NUMERIC_SCRUB,
-              props: { seam: true, placeholder: "12" },
+              props: { seam: true, placeholder: "gutter —" },
               bindings: {},
             },
           ],
         },
         {
           catalogId: PAGED_INPUT_TOGGLE_SWITCH,
-          props: { label: "Balance", seam: true, placeholder: "off" },
+          props: { label: "Balance", labelPosition: "left", seam: true },
           bindings: {},
         },
       ],
@@ -60,7 +63,7 @@ export const textFrameOptionsComposition: CompositionNode = {
       children: [
         {
           catalogId: PAGED_INPUT_BOUNDS,
-          props: { label: "Insets", layout: "row4" },
+          props: { layout: "row4" },
           bindings: {
             value: {
               kind: "selectionProperty",
@@ -72,29 +75,27 @@ export const textFrameOptionsComposition: CompositionNode = {
       ],
     },
     {
-      // Engine gap — no vertical-justification path yet.
+      // Engine gap — no vertical-justification path yet. Glyph
+      // stand-ins per the deep1 card.
       catalogId: PAGED_INPUT_TOGGLE_GROUP,
       props: {
         label: "Vert. justify",
         seam: true,
-        placeholder: "Top",
         options: [
-          { value: "Top", label: "Top" },
-          { value: "Center", label: "Center" },
-          { value: "Bottom", label: "Bottom" },
-          { value: "Justify", label: "Justify" },
+          { value: "Top", label: "ui-align-left" },
+          { value: "Center", label: "ui-align-center" },
+          { value: "Bottom", label: "ui-align-right" },
+          { value: "Justify", label: "ui-align-justify" },
         ],
       },
       bindings: {},
     },
     {
-      // Engine gap — no auto-size paths yet.
       catalogId: PAGED_INPUT_SELECT,
       props: { label: "Auto-size", seam: true, placeholder: "Off" },
       bindings: {},
     },
     {
-      // Engine gap — no first-baseline option yet.
       catalogId: PAGED_INPUT_SELECT,
       props: { label: "First baseline", seam: true, placeholder: "Ascent" },
       bindings: {},

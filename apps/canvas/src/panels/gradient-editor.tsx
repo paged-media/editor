@@ -17,6 +17,7 @@ import {
   useCanvasClient,
   type RampStop,
 } from "@paged-media/shell";
+import { KitSelect } from "@paged-media/ui";
 import type {
   GradientDetail,
   GradientSummary,
@@ -197,8 +198,7 @@ export function GradientEditor() {
       className="border-t border-input mt-2 pt-2 flex flex-col gap-2"
       data-gradient-editor="ready"
     >
-      <select
-        className="w-full text-xs h-[30px] px-2 rounded-[6px] border border-input bg-background"
+      <KitSelect
         data-gradient-select
         value={activeId ?? ""}
         onChange={(e) => setActiveId(e.target.value || null)}
@@ -208,7 +208,7 @@ export function GradientEditor() {
             {g.name}
           </option>
         ))}
-      </select>
+      </KitSelect>
       <div className="flex items-center gap-2">
         {/* Gallery type segments + the reverse icon button. */}
         <div

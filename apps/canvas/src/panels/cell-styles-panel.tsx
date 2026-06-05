@@ -1,12 +1,10 @@
-// SDK Phase 5 / panel-gallery pass — Cell Styles panel.
-//
-// Readonly ApplyList variant: lists every cell style; the
-// apply-an-entity path (AppliedCellStyle) is wire-shape only —
-// the apply layer raises UnsupportedProperty until the Table
-// NodeId surface lands (engine gap 8), so the list renders
-// without an apply affordance plus the honest footer note.
+// SDK Phase 5 / gallery pixel-parity — Cell Styles panel (deep1
+// `CellStyles` card): "Applied" kicker + soft select over the REAL
+// cell styles, the bordered swatch-row preview box, and the honest
+// italic note. The apply path (AppliedCellStyle) is wire-shape only
+// until the Table NodeId surface lands (engine gap 8).
 
-import { ApplyList, useCollection } from "@paged-media/shell";
+import { Icon, displayName, useCollection } from "@paged-media/shell";
 import type { CellStyleSummary } from "@paged-media/client";
 
 export function CellStylesPanel() {
@@ -22,28 +20,77 @@ export function CellStylesPanel() {
     );
   }
   return (
-    <div data-cell-styles-panel="ready">
+    <div className="p-3" data-cell-styles-panel="ready">
       {items.length === 0 ? (
-        <div
-          className="p-3 text-xs text-muted-foreground"
-          data-empty-cell-styles
-        >
+        <div className="text-xs text-muted-foreground" data-empty-cell-styles>
           No cell styles.
         </div>
       ) : (
-        <ApplyList
-          appliedId=""
-          groups={[
-            {
-              items: items.map((s) => ({ selfId: s.selfId, name: s.name })),
-            },
-          ]}
-          itemIcon="panel-cell-styles"
-          collection="cellStyles"
-          readonly
-          readonlyNote="Apply available once table selection lands."
-          testId="cell-styles"
-        />
+        <>
+          <div className="pg-label mb-2">Applied</div>
+          <span className="relative mb-[10px] inline-flex w-full">
+            <select
+              disabled
+              data-apply-select
+              data-collection="cellStyles"
+              className="h-[30px] w-full appearance-none rounded-[6px] border border-input bg-background pl-2.5 pr-7 text-[12.5px] opacity-55"
+              style={{ color: "var(--pg-muted-fg)" }}
+            >
+              <option>—</option>
+            </select>
+            <Icon
+              name="ui-chevron-down"
+              size={13}
+              className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2"
+              style={{ color: "var(--pg-muted-fg)" }}
+            />
+          </span>
+          <div
+            className="overflow-hidden rounded-[8px] border border-input"
+            data-cell-style-list
+          >
+            {items.map((s, i) => (
+              <div
+                key={s.selfId}
+                data-style-id={s.selfId}
+                className="flex items-center gap-[9px] px-[10px] py-2"
+                style={{
+                  borderTop: i ? "1px solid var(--pg-border)" : "none",
+                }}
+              >
+                <span
+                  className="h-4 w-5 shrink-0 rounded-[3px] border border-input"
+                  style={{
+                    background: i === 0 ? "var(--pg-muted)" : "transparent",
+                  }}
+                />
+                <span
+                  className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs"
+                  style={{ color: "var(--pg-fg)" }}
+                >
+                  {displayName(s.name)}
+                </span>
+                {s.basedOn ? (
+                  <span
+                    className="shrink-0 text-[9px]"
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      color: "var(--pg-muted-fg)",
+                    }}
+                  >
+                    ← {displayName(s.basedOn)}
+                  </span>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <div
+            className="mt-2 text-[10.5px] italic"
+            style={{ color: "var(--pg-muted-fg)" }}
+          >
+            Apply available once table selection lands.
+          </div>
+        </>
       )}
     </div>
   );

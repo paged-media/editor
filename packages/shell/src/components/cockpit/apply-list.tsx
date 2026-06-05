@@ -1,13 +1,17 @@
-// Panel-gallery pass — the `ApplyPanel` archetype: the style-manager
-// surface shared by Character / Paragraph / Object (and readonly
-// Cell / Table) Styles. Applied select on top, grouped style rows
-// with override "+" markers and shortcuts, New / Redefine / Delete
-// footer. Footer actions without a handler render disabled — the
-// honest-seam rule (redefine/delete await engine ops).
+// Gallery pixel-parity — the style-manager surface (deep1
+// `styleManager`): applied select (kit chrome) + the 28px
+// clear-override icon button, optional "Next: …" line, group
+// kickers, h28 style rows (check / panel glyph at .35, override
+// "+", mono shortcut), and the icon footer — `+` new, `✓`
+// redefine, `✕` delete right-aligned — above a full-bleed
+// hairline. Footer actions without a handler render disabled
+// (honest seam: redefine awaits its engine op). Raw IDML names
+// display through `displayName` ("$ID/…" stripped).
 
 import type { ReactNode } from "react";
 
 import { Icon } from "../../icons";
+import { displayName } from "../../catalog/leaves";
 
 export interface ApplyStyleItem {
   /** IDML `Self` id — the apply payload + react key. */
@@ -60,49 +64,75 @@ export function ApplyList({
   testId?: string;
 }) {
   const flat = groups.flatMap((g) => g.items);
-  const appliedItem = flat.find((i) => i.selfId === appliedId);
   return (
-    <div style={{ padding: "12px 14px" }} data-apply-list={testId}>
-      <div className="pg-label" style={{ margin: "0 0 7px" }}>
-        Applied style
-      </div>
-      <select
-        value={appliedId}
-        disabled={readonly || onApply == null}
-        data-apply-select
-        data-collection={collection}
-        onChange={(e) => onApply?.(e.target.value)}
-        style={{
-          width: "100%",
-          height: 30,
-          padding: "0 8px",
-          borderRadius: 6,
-          border: "1px solid var(--pg-border)",
-          background: "var(--pg-bg)",
-          color: "var(--pg-fg)",
-          fontFamily: "var(--font-sans)",
-          fontSize: 12.5,
-          marginBottom: next ? 4 : 12,
-        }}
-      >
-        <option value="">[None]</option>
-        {flat.map((i) => (
-          <option key={i.selfId} value={i.selfId}>
-            {i.name}
-            {i.override ? " +" : ""}
-          </option>
-        ))}
-      </select>
-      {next && (
-        <div className="pg-ui-xs" style={{ margin: "0 0 12px" }}>
-          Next: {next}
+    <div data-apply-list={testId}>
+      <div className="px-3 pb-2 pt-3">
+        <div className="flex items-center gap-[6px]">
+          <span className="relative inline-flex min-w-0 flex-1">
+            <select
+              value={appliedId}
+              disabled={readonly || onApply == null}
+              data-apply-select
+              data-collection={collection}
+              onChange={(e) => onApply?.(e.target.value)}
+              className="h-[30px] w-full appearance-none overflow-hidden text-ellipsis whitespace-nowrap rounded-[6px] border border-input bg-background pl-2.5 pr-7 text-[12.5px] disabled:opacity-55"
+              style={{
+                fontFamily: "var(--font-sans)",
+                color: "var(--pg-fg)",
+              }}
+            >
+              <option value="">[None]</option>
+              {flat.map((i) => (
+                <option key={i.selfId} value={i.selfId}>
+                  {displayName(i.name)}
+                  {i.override ? " +" : ""}
+                </option>
+              ))}
+            </select>
+            <Icon
+              name="ui-chevron-down"
+              size={13}
+              className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2"
+              style={{ color: "var(--pg-muted-fg)" }}
+            />
+          </span>
+          {/* Clear override — awaiting the override surface
+              (style-infra roadmap). */}
+          <button
+            type="button"
+            title="Clear override — awaiting engine support"
+            disabled
+            data-apply-action="clear-override"
+            className="h-[28px] w-[28px] shrink-0 rounded-[6px] border border-input bg-background opacity-45"
+          >
+            <Icon
+              name="ui-return"
+              size={13}
+              className="mx-auto"
+              style={{ color: "var(--pg-muted-fg)" }}
+            />
+          </button>
         </div>
-      )}
-      <div style={{ borderTop: "1px solid var(--pg-border)", paddingTop: 8 }}>
+        {next && (
+          <div
+            className="mt-2 flex items-center gap-[6px] text-[11px]"
+            style={{ color: "var(--pg-muted-fg)" }}
+          >
+            Next: <span style={{ color: "var(--pg-fg)" }}>{next}</span>
+          </div>
+        )}
+      </div>
+      <div className="px-2 pb-[6px]">
         {groups.map((g, gi) => (
           <div key={g.name ?? gi}>
             {g.name && (
-              <div className="pg-label" style={{ margin: "8px 0 5px" }}>
+              <div
+                className="px-2 pb-[3px] pt-[6px] text-[10px] font-bold uppercase"
+                style={{
+                  letterSpacing: "0.08em",
+                  color: "var(--pg-muted-fg)",
+                }}
+              >
                 {g.name}
               </div>
             )}
@@ -125,16 +155,8 @@ export function ApplyList({
                   onMouseLeave={(e) => {
                     if (!on) e.currentTarget.style.background = "transparent";
                   }}
+                  className="flex h-[28px] w-full items-center gap-2 rounded-[6px] border-0 px-2 text-left"
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    width: "100%",
-                    height: 30,
-                    padding: "0 8px",
-                    border: "none",
-                    borderRadius: 6,
-                    textAlign: "left",
                     cursor: interactive ? "pointer" : "default",
                     background: on ? "var(--selected-bg)" : "transparent",
                     color: on ? "var(--pg-primary)" : "var(--pg-fg)",
@@ -142,41 +164,30 @@ export function ApplyList({
                 >
                   <Icon
                     name={on ? "ui-check" : itemIcon}
-                    size={13}
-                    style={{ opacity: on ? 1 : 0.4, flexShrink: 0 }}
+                    size={12}
+                    style={{ opacity: on ? 1 : 0.35, flexShrink: 0 }}
                   />
                   <span
-                    style={{
-                      flex: 1,
-                      fontSize: 12.5,
-                      fontFamily: "var(--font-sans)",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
+                    className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs"
+                    style={{ fontFamily: "var(--font-sans)" }}
                   >
-                    {it.name}
+                    {displayName(it.name)}
                   </span>
                   {it.override && (
                     <span
-                      title="Local overrides"
-                      style={{
-                        color: "var(--status-review)",
-                        fontSize: 12,
-                        fontWeight: 700,
-                        flexShrink: 0,
-                      }}
+                      title="Overrides"
+                      className="shrink-0 text-[10px] font-bold"
+                      style={{ color: "var(--status-review)" }}
                     >
                       +
                     </span>
                   )}
                   {it.shortcut && (
                     <span
-                      className="pg-value"
+                      className="shrink-0 text-[10px]"
                       style={{
-                        fontSize: 10.5,
+                        fontFamily: "var(--font-mono)",
                         color: "var(--pg-muted-fg)",
-                        flexShrink: 0,
                       }}
                     >
                       {it.shortcut}
@@ -187,35 +198,35 @@ export function ApplyList({
             })}
           </div>
         ))}
-      </div>
-      {readonly ? (
-        readonlyNote != null && (
+        {readonly && readonlyNote != null && (
           <div
-            className="pg-ui-xs"
-            style={{ marginTop: 10, fontStyle: "italic" }}
+            className="px-2 pt-2 text-[10.5px] italic"
+            style={{ color: "var(--pg-muted-fg)" }}
           >
             {readonlyNote}
           </div>
-        )
-      ) : (
-        <div style={{ display: "flex", gap: 5, marginTop: 10 }}>
-          <ApplyFooterBtn
+        )}
+      </div>
+      {!readonly && (
+        <div className="flex gap-[5px] border-t border-input px-3 pb-3 pt-[6px]">
+          <FooterIconBtn
             icon="ui-plus"
-            label={`New style${appliedItem ? ` from ${appliedItem.name}` : ""}`}
-            text="New"
+            label="New style"
+            action="new"
             onClick={onNew}
           />
-          <ApplyFooterBtn
-            icon="ui-return"
-            label="Redefine style from selection"
-            text="Redefine"
+          <FooterIconBtn
+            icon="ui-check"
+            label="Redefine style from selection — awaiting engine support"
+            action="redefine"
             onClick={onRedefine}
           />
-          <ApplyFooterBtn
+          <FooterIconBtn
             icon="ui-x"
             label="Delete style"
-            text="Delete"
+            action="delete"
             onClick={onDelete}
+            className="ml-auto"
           />
         </div>
       )}
@@ -223,51 +234,45 @@ export function ApplyList({
   );
 }
 
-/** Footer action — disabled (honest seam) when no handler is wired. */
-function ApplyFooterBtn({
+/** 28px icon footer button — disabled (honest seam) when no
+ *  handler is wired. */
+function FooterIconBtn({
   icon,
   label,
-  text,
+  action,
   onClick,
+  className = "",
 }: {
   icon: string;
   label: string;
-  text: string;
+  action: string;
   onClick?: () => void;
+  className?: string;
 }) {
   const inert = onClick == null;
   return (
     <button
       type="button"
       title={label}
+      aria-label={label}
       disabled={inert}
-      data-apply-action={text.toLowerCase()}
+      data-apply-action={action}
       onClick={onClick}
       onMouseEnter={(e) => {
         if (!inert) e.currentTarget.style.background = "var(--hover)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.background = "transparent";
+        e.currentTarget.style.background = "var(--pg-bg)";
       }}
+      className={`flex h-[28px] w-[28px] items-center justify-center rounded-[6px] border border-input ${className}`}
       style={{
-        flex: 1,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        height: 28,
-        borderRadius: 6,
-        border: "1px dashed var(--chrome-divider)",
-        background: "transparent",
-        color: "var(--pg-muted-fg)",
+        background: "var(--pg-bg)",
+        color: "var(--chrome-icon)",
         cursor: inert ? "default" : "pointer",
         opacity: inert ? 0.45 : 1,
-        fontFamily: "var(--font-sans)",
-        fontSize: 11.5,
       }}
     >
-      <Icon name={icon} size={12} />
-      {text}
+      <Icon name={icon} size={14} />
     </button>
   );
 }

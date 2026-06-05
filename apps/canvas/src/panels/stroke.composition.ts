@@ -1,11 +1,16 @@
-// SDK Phase 3 / panel-gallery pass — Stroke panel as a declarative
-// composition, shaped to the gallery card.
+// SDK Phase 3 / gallery pixel-parity — Stroke panel, composed to
+// the deep1 card (gallery-deep1.jsx `Stroke`): all label-left rows.
 //
-// Element-scope bindings — they resolve against the single selected
-// page item. LIVE: weight (FrameStrokeWeight), colour
-// (FrameStrokeColor), end cap (FrameStrokeEndCap). HONEST SEAMS:
-// stroke type, join, align, the dashes & arrows disclosure — no
-// engine paths yet (stroke-detail roadmap).
+//   Weight  metric "1 pt"                       LIVE
+//   Color   swatch                              LIVE
+//   Type    select "Solid"                      seam
+//   Cap     segments                            LIVE
+//   Join    icon segments (deep1 stand-ins)     seam
+//   Align   segments Center/Inside/Outside      seam
+//   Dashes & arrows (collapsed): dash/gap 2-up + start/end selects
+//                                                seam
+//
+// Seams await engine gap 17 (stroke detail).
 
 import type { CompositionNode } from "@paged-media/catalog";
 import {
@@ -52,11 +57,8 @@ export const strokeComposition: CompositionNode = {
       bindings: {},
     },
     {
-      // SDK Phase 5 (v1 sweep) — end-cap toggle-group. Three
-      // IDML enum values; Rectangle / Oval / Polygon /
-      // GraphicLine carry the field, TextFrame does not (the
-      // apply arm returns UnsupportedProperty when wired to a
-      // text frame).
+      // LIVE end-cap (TextFrame raises UnsupportedProperty →
+      // em-dash group).
       catalogId: PAGED_INPUT_TOGGLE_GROUP,
       props: {
         label: "Cap",
@@ -75,16 +77,16 @@ export const strokeComposition: CompositionNode = {
       },
     },
     {
-      // Engine gap — no stroke-join path yet.
+      // Engine gap — no stroke-join path yet. Glyph stand-ins per
+      // the deep1 card.
       catalogId: PAGED_INPUT_TOGGLE_GROUP,
       props: {
         label: "Join",
         seam: true,
-        placeholder: "MiterJoin",
         options: [
-          { value: "MiterJoin", label: "Miter" },
-          { value: "RoundJoin", label: "Round" },
-          { value: "BevelJoin", label: "Bevel" },
+          { value: "MiterJoin", label: "tool-polygon" },
+          { value: "RoundJoin", label: "tool-ellipse" },
+          { value: "BevelJoin", label: "tool-rectangle" },
         ],
       },
       bindings: {},
@@ -95,18 +97,16 @@ export const strokeComposition: CompositionNode = {
       props: {
         label: "Align",
         seam: true,
-        placeholder: "Center",
         options: [
-          { value: "Inside", label: "Inside" },
           { value: "Center", label: "Center" },
+          { value: "Inside", label: "Inside" },
           { value: "Outside", label: "Outside" },
         ],
       },
       bindings: {},
     },
     {
-      // Engine gap — dash pattern + arrowheads unwired; ships
-      // collapsed per the gallery card.
+      // Engine gap — dash pattern + arrowheads unwired.
       catalogId: PAGED_LAYOUT_SECTION,
       props: {
         title: "Dashes & arrows",
@@ -117,29 +117,39 @@ export const strokeComposition: CompositionNode = {
       children: [
         {
           catalogId: PAGED_LAYOUT_CLUSTER,
-          props: { label: "Dash + gap", count: 2 },
+          props: { count: 2 },
           bindings: {},
           children: [
             {
               catalogId: PAGED_INPUT_NUMERIC_SCRUB,
-              props: { seam: true, placeholder: "4" },
+              props: { seam: true, placeholder: "dash —" },
               bindings: {},
             },
             {
               catalogId: PAGED_INPUT_NUMERIC_SCRUB,
-              props: { seam: true, placeholder: "2" },
+              props: { seam: true, placeholder: "gap —" },
               bindings: {},
             },
           ],
         },
         {
           catalogId: PAGED_INPUT_SELECT,
-          props: { label: "Start arrow", seam: true, placeholder: "None" },
+          props: {
+            label: "Start",
+            labelPosition: "stack",
+            seam: true,
+            placeholder: "None",
+          },
           bindings: {},
         },
         {
           catalogId: PAGED_INPUT_SELECT,
-          props: { label: "End arrow", seam: true, placeholder: "None" },
+          props: {
+            label: "End",
+            labelPosition: "stack",
+            seam: true,
+            placeholder: "None",
+          },
           bindings: {},
         },
       ],

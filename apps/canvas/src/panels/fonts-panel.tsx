@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 
-import { ListRows, useCollection } from "@paged-media/shell";
+import { Icon, ListRows, useCollection } from "@paged-media/shell";
 import type { FontSummary } from "@paged-media/client";
 
 type FontFilter = "All" | "In use" | "Missing";
@@ -72,6 +72,16 @@ export function FontsPanel() {
               secondary: `${f.referenceCount} ref${
                 f.referenceCount === 1 ? "" : "s"
               }`,
+              // In-document fonts read as present (the deep1 card's
+              // trailing check); missing-state waits on the engine's
+              // font status flag (gap 4).
+              trail: (
+                <Icon
+                  name="ui-check"
+                  size={13}
+                  style={{ color: "var(--status-approved)" }}
+                />
+              ),
             }))}
           />
         </div>

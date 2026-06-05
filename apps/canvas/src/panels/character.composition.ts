@@ -1,21 +1,20 @@
-// SDK Phase 3 / panel-gallery pass — Character panel as a
-// declarative composition, shaped to the gallery card
-// (brand/editor/ui_kits/editor: gallery "Character").
+// SDK Phase 3 / gallery pixel-parity — Character panel, composed
+// to the deep1 card (gallery-deep1.jsx `Character`):
 //
-// All bindings are `selectionProperty` refs with `scope: "content"`
-// — they resolve against the current ContentSelection, mapped to
-// an `ElementId.storyRange` by the binding hook. Reads come from
-// `model.element_properties(StoryRange { ... })`; writes go through
-// the apply arm at `(NodeId::StoryRange, CharacterFontSize | ...)`.
+//   Family            (stacked label + select)            seam
+//   [Style ▾ | 11 pt] (2-up: select + size metric)        seam | LIVE
+//   [16 pt  | 0    ]  (2-up: leading + tracking metrics)  LIVE
+//   [Metrics| 0 pt ]  (2-up: kerning + baseline metrics)  seam
+//   Case              (label-left segments ab/AB/Ab)      seam
+//   Position          (label-left icon segments)          seam
+//   Language          (label-left select)                 seam
+//   Fill              (label-left swatch — live extra;
+//                      the card hosts fill in Properties)  LIVE
+//   OPENTYPE          (bespoke chips in character-panel)  seam
 //
-// LIVE: size, leading, tracking, fill. HONEST SEAMS (`seam: true`,
-// visibly disabled — no engine paths yet): font family/style,
-// kerning, baseline shift, case, position, language. The OpenType
-// chip row is bespoke in character-panel.tsx (chips exceed the
-// composition vocabulary).
-//
-// Per the plan's binding ceiling (§11.5): literals + selectionProperty
-// refs only — no expressions, no conditionals, no formatters.
+// Content-scope bindings; the binding hook maps the selection to a
+// StoryRange. Seams await engine gaps 5/11 (character formatting
+// paths).
 
 import type { CompositionNode } from "@paged-media/catalog";
 import {
@@ -36,12 +35,17 @@ export const characterComposition: CompositionNode = {
     {
       // Engine gap — no characterFontFamily path yet.
       catalogId: PAGED_INPUT_SELECT,
-      props: { label: "Family", seam: true, placeholder: "—" },
+      props: {
+        label: "Family",
+        labelPosition: "stack",
+        seam: true,
+        placeholder: "—",
+      },
       bindings: {},
     },
     {
       catalogId: PAGED_LAYOUT_CLUSTER,
-      props: { label: "Style + size", count: 2 },
+      props: { count: 2 },
       bindings: {},
       children: [
         {
@@ -65,7 +69,7 @@ export const characterComposition: CompositionNode = {
     },
     {
       catalogId: PAGED_LAYOUT_CLUSTER,
-      props: { label: "Leading + tracking", count: 2 },
+      props: { count: 2 },
       bindings: {},
       children: [
         {
@@ -95,31 +99,20 @@ export const characterComposition: CompositionNode = {
     {
       // Engine gap — no characterKerning / baseline-shift paths yet.
       catalogId: PAGED_LAYOUT_CLUSTER,
-      props: { label: "Kerning + baseline", count: 2 },
+      props: { count: 2 },
       bindings: {},
       children: [
         {
           catalogId: PAGED_INPUT_NUMERIC_SCRUB,
-          props: { icon: "ui-kerning", seam: true, placeholder: "0" },
+          props: { icon: "ui-kerning", seam: true, placeholder: "Metrics" },
           bindings: {},
         },
         {
           catalogId: PAGED_INPUT_LENGTH,
-          props: { icon: "ui-size", seam: true, placeholder: "0" },
+          props: { icon: "ui-size", seam: true, placeholder: "0 pt" },
           bindings: {},
         },
       ],
-    },
-    {
-      catalogId: PAGED_INPUT_COLOR_SWATCH,
-      props: { label: "Fill" },
-      bindings: {
-        value: {
-          kind: "selectionProperty",
-          scope: "content",
-          path: "characterFillColor",
-        },
-      },
     },
     {
       // Engine gap — no character-case path yet.
@@ -127,7 +120,6 @@ export const characterComposition: CompositionNode = {
       props: {
         label: "Case",
         seam: true,
-        placeholder: "Normal",
         options: [
           { value: "Normal", label: "ab" },
           { value: "AllCaps", label: "AB" },
@@ -137,16 +129,16 @@ export const characterComposition: CompositionNode = {
       bindings: {},
     },
     {
-      // Engine gap — no character-position path yet.
+      // Engine gap — no character-position path yet. Glyph
+      // stand-ins per the deep1 card.
       catalogId: PAGED_INPUT_TOGGLE_GROUP,
       props: {
         label: "Position",
         seam: true,
-        placeholder: "Normal",
         options: [
-          { value: "Normal", label: "x" },
-          { value: "Superscript", label: "x²" },
-          { value: "Subscript", label: "x₂" },
+          { value: "Normal", label: "ui-minus" },
+          { value: "Superscript", label: "ui-size" },
+          { value: "Subscript", label: "ui-leading" },
         ],
       },
       bindings: {},
@@ -156,6 +148,19 @@ export const characterComposition: CompositionNode = {
       catalogId: PAGED_INPUT_SELECT,
       props: { label: "Language", seam: true, placeholder: "—" },
       bindings: {},
+    },
+    {
+      // LIVE extra beyond the card (the card hosts fill in the
+      // Properties inspector) — kept for capability.
+      catalogId: PAGED_INPUT_COLOR_SWATCH,
+      props: { label: "Fill" },
+      bindings: {
+        value: {
+          kind: "selectionProperty",
+          scope: "content",
+          path: "characterFillColor",
+        },
+      },
     },
   ],
 };

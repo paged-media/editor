@@ -1,40 +1,38 @@
-// SDK Phase 5 (v1 sweep) — Effects per-field editors composition.
+// SDK Phase 5 / gallery pixel-parity — the Drop Shadow expansion
+// fields (rendered inside the Effects panel's violet-railed block,
+// per the deep1 card):
 //
-// Composed under the Effects panel's existing toggle row. Five
-// drop-shadow per-field editors:
-//   - Mode (toggle-group — Drop / Inner / etc per IDML spec)
-//   - X offset, Y offset (length scrubs in pt)
-//   - Size (length scrub in pt)
-//   - Opacity (length scrub 0..100)
-//   - Color (color swatch ref)
+//   Mode        (label-left select)           LIVE (Drop/Inner)
+//   [X … | Y …] (2-up prefixes)               LIVE
+//   [Blur … | Spread …] (2-up)                LIVE | seam
+//   Color       (label-left swatch)           LIVE
+//   Opacity     (label-left metric %)         LIVE
 //
-// Apply arms materialise a default DropShadowSetting on the
-// first per-field write into a prior-None state, so the user can
-// dial in fields without first toggling Drop Shadow on.
+// The apply arms materialise a default DropShadowSetting on the
+// first per-field write into a prior-None state.
 
 import type { CompositionNode } from "@paged-media/catalog";
 import {
   PAGED_INPUT_COLOR_SWATCH,
   PAGED_INPUT_LENGTH,
   PAGED_INPUT_NUMERIC_SCRUB,
-  PAGED_INPUT_TOGGLE_GROUP,
+  PAGED_INPUT_SELECT,
+  PAGED_LAYOUT_CLUSTER,
   PAGED_LAYOUT_SECTION,
 } from "@paged-media/shell";
 
 export const effectsComposition: CompositionNode = {
   catalogId: PAGED_LAYOUT_SECTION,
-  // Headingless — the fields render inside the Drop Shadow effect
-  // row's expansion (effects-panel.tsx); the row itself is the title.
   props: { title: "Drop shadow", heading: false },
   bindings: {},
   children: [
     {
-      catalogId: PAGED_INPUT_TOGGLE_GROUP,
+      catalogId: PAGED_INPUT_SELECT,
       props: {
         label: "Mode",
         options: [
-          { value: "Drop", label: "D" },
-          { value: "Inner", label: "I" },
+          { value: "Drop", label: "Drop" },
+          { value: "Inner", label: "Inner" },
         ],
       },
       bindings: {
@@ -46,57 +44,77 @@ export const effectsComposition: CompositionNode = {
       },
     },
     {
-      catalogId: PAGED_INPUT_LENGTH,
-      props: { label: "X offset" },
-      bindings: {
-        value: {
-          kind: "selectionProperty",
-          scope: "element",
-          path: "frameDropShadowXOffset",
+      catalogId: PAGED_LAYOUT_CLUSTER,
+      props: { count: 2 },
+      bindings: {},
+      children: [
+        {
+          catalogId: PAGED_INPUT_LENGTH,
+          props: { prefix: "X", showUnit: false },
+          bindings: {
+            value: {
+              kind: "selectionProperty",
+              scope: "element",
+              path: "frameDropShadowXOffset",
+            },
+          },
         },
-      },
+        {
+          catalogId: PAGED_INPUT_LENGTH,
+          props: { prefix: "Y", showUnit: false },
+          bindings: {
+            value: {
+              kind: "selectionProperty",
+              scope: "element",
+              path: "frameDropShadowYOffset",
+            },
+          },
+        },
+      ],
     },
     {
-      catalogId: PAGED_INPUT_LENGTH,
-      props: { label: "Y offset" },
-      bindings: {
-        value: {
-          kind: "selectionProperty",
-          scope: "element",
-          path: "frameDropShadowYOffset",
+      catalogId: PAGED_LAYOUT_CLUSTER,
+      props: { count: 2 },
+      bindings: {},
+      children: [
+        {
+          catalogId: PAGED_INPUT_LENGTH,
+          props: { prefix: "Blur", showUnit: false },
+          bindings: {
+            value: {
+              kind: "selectionProperty",
+              scope: "element",
+              path: "frameDropShadowSize",
+            },
+          },
         },
-      },
-    },
-    {
-      catalogId: PAGED_INPUT_LENGTH,
-      props: { label: "Blur size" },
-      bindings: {
-        value: {
-          kind: "selectionProperty",
-          scope: "element",
-          path: "frameDropShadowSize",
+        {
+          // Engine gap — no shadow-spread path yet.
+          catalogId: PAGED_INPUT_NUMERIC_SCRUB,
+          props: { seam: true, placeholder: "Spread —" },
+          bindings: {},
         },
-      },
-    },
-    {
-      catalogId: PAGED_INPUT_NUMERIC_SCRUB,
-      props: { label: "Opacity" },
-      bindings: {
-        value: {
-          kind: "selectionProperty",
-          scope: "element",
-          path: "frameDropShadowOpacity",
-        },
-      },
+      ],
     },
     {
       catalogId: PAGED_INPUT_COLOR_SWATCH,
-      props: { label: "Shadow color" },
+      props: { label: "Color" },
       bindings: {
         value: {
           kind: "selectionProperty",
           scope: "element",
           path: "frameDropShadowColor",
+        },
+      },
+    },
+    {
+      catalogId: PAGED_INPUT_NUMERIC_SCRUB,
+      props: { label: "Opacity", suffix: "%" },
+      bindings: {
+        value: {
+          kind: "selectionProperty",
+          scope: "element",
+          path: "frameDropShadowOpacity",
         },
       },
     },

@@ -1,21 +1,14 @@
-// SDK Phase 5 / panel-gallery pass — Color Groups panel, now LIVE.
-//
-// Gallery shape: collapsible group rows (chevron + name + count)
-// that expand to their member swatches (chips resolved through the
-// active CMM via colorPreview), a per-group delete, and the
-// dashed "+ New group" — all riding the real
-// createColorGroup / editColorGroup / deleteColorGroup ops.
-// Filtering the Swatches panel by group stays a follow-up
-// affordance (the Swatches grid already renders group headers).
+// SDK Phase 5 / gallery pixel-parity — Color Groups panel (deep1
+// `ColorGroups` card), LIVE: group rows (chevron + glyph + semibold
+// name + count) with the member swatch chips inline below (22px,
+// resolved through the active CMM via colorPreview), a per-group
+// delete, and the full-width dashed "+ New group" — riding
+// createColorGroup / deleteColorGroup. Member assignment lives in
+// the Swatches grid (editColorGroup).
 
 import { useEffect, useState } from "react";
 
-import {
-  Icon,
-  ToolbarBtn,
-  useCanvasClient,
-  useCollection,
-} from "@paged-media/shell";
+import { Icon, useCanvasClient, useCollection } from "@paged-media/shell";
 import type { ColorGroupSummary, ColorPreview } from "@paged-media/client";
 
 function MemberChip({ swatchId }: { swatchId: string }) {
@@ -37,14 +30,9 @@ function MemberChip({ swatchId }: { swatchId: string }) {
     <span
       data-group-member={swatchId}
       title={preview?.name ?? swatchId}
-      className="flex items-center gap-2 text-xs py-1"
-    >
-      <span
-        className="w-[18px] h-[18px] rounded-[5px] border border-input shrink-0"
-        style={{ background: preview?.rgbHex ?? "var(--pg-muted)" }}
-      />
-      <span className="truncate">{preview?.name ?? swatchId}</span>
-    </span>
+      className="h-[22px] w-[22px] shrink-0 rounded-[4px] border border-input"
+      style={{ background: preview?.rgbHex ?? "var(--pg-muted)" }}
+    />
   );
 }
 
@@ -55,33 +43,35 @@ function GroupRow({
   group: ColorGroupSummary;
   onDelete: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   return (
-    <div data-group-id={group.selfId} className="px-1">
-      <div className="flex items-center gap-2 py-1.5 rounded-[7px]">
+    <div data-group-id={group.selfId} className="mb-[10px]">
+      <div className="flex items-center gap-[7px]">
         <button
           type="button"
           data-group-toggle
           aria-expanded={open}
           onClick={() => setOpen(!open)}
-          className="flex items-center gap-2 flex-1 min-w-0 bg-transparent border-0 cursor-pointer text-left"
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-[7px] border-0 bg-transparent text-left"
         >
           <Icon
             name={open ? "ui-chevron-down" : "ui-chevron-right"}
-            size={13}
+            size={12}
             style={{ color: "var(--pg-muted-fg)", flexShrink: 0 }}
           />
           <Icon
             name="panel-color-groups"
-            size={15}
+            size={14}
             style={{ color: "var(--pg-muted-fg)", flexShrink: 0 }}
           />
-          <span className="text-xs truncate" style={{ color: "var(--pg-fg)" }}>
+          <span
+            className="flex-1 truncate text-[12.5px] font-semibold"
+            style={{ color: "var(--pg-fg)" }}
+          >
             {group.name}
           </span>
-          <span className="pg-value text-[10.5px] text-muted-foreground shrink-0">
-            {group.members.length} swatch
-            {group.members.length === 1 ? "" : "es"}
+          <span className="text-[10px]" style={{ color: "var(--pg-muted-fg)" }}>
+            {group.members.length}
           </span>
         </button>
         <button
@@ -89,15 +79,22 @@ function GroupRow({
           title="Delete group (swatches stay)"
           data-group-delete
           onClick={onDelete}
-          className="w-[22px] h-[22px] rounded flex items-center justify-center bg-transparent border-0 cursor-pointer text-muted-foreground hover:text-foreground"
+          className="flex h-[20px] w-[20px] cursor-pointer items-center justify-center rounded border-0 bg-transparent"
+          style={{ color: "var(--pg-muted-fg)" }}
         >
-          <Icon name="ui-x" size={12} />
+          <Icon name="ui-x" size={11} />
         </button>
       </div>
       {open && (
-        <div className="pl-7 pb-1" data-group-members>
+        <div
+          className="mt-[6px] flex flex-wrap gap-1 pl-[22px]"
+          data-group-members
+        >
           {group.members.length === 0 ? (
-            <span className="text-xs text-muted-foreground italic">
+            <span
+              className="text-xs italic"
+              style={{ color: "var(--pg-muted-fg)" }}
+            >
               Empty group — assign swatches from the Swatches panel.
             </span>
           ) : (
@@ -140,10 +137,10 @@ export function ColorGroupsPanel() {
   };
 
   return (
-    <div className="p-2" data-color-groups-panel="ready">
+    <div className="px-3 py-[10px]" data-color-groups-panel="ready">
       {items.length === 0 ? (
         <div
-          className="p-2 text-xs text-muted-foreground"
+          className="pb-2 text-xs text-muted-foreground"
           data-empty-color-groups
         >
           No color groups in this document.
@@ -159,14 +156,18 @@ export function ColorGroupsPanel() {
           ))}
         </div>
       )}
-      <div className="px-1 pt-2">
-        <ToolbarBtn
-          icon="ui-plus"
-          label="New group"
-          onClick={onNew}
-          testId="new-color-group"
-        />
-      </div>
+      <button
+        type="button"
+        data-toolbar-btn="new-color-group"
+        onClick={onNew}
+        className="flex h-[30px] w-full cursor-pointer items-center justify-center gap-[6px] rounded-[7px] border border-dashed bg-transparent text-xs"
+        style={{
+          borderColor: "var(--chrome-divider)",
+          color: "var(--pg-muted-fg)",
+        }}
+      >
+        <Icon name="ui-plus" size={13} /> New group
+      </button>
     </div>
   );
 }

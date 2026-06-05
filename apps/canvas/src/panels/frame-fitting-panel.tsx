@@ -1,11 +1,7 @@
-// SDK Phase 5 / panel-gallery pass — Frame Fitting panel.
-//
-// Composition shim (fit type + crops live; auto-fit check rows
-// seamed). Rectangle-only — picking the panel when a TextFrame is
-// selected shows em-dash placeholders because the apply layer
-// raises UnsupportedProperty for non-Rectangle kinds. The gallery's
-// reference-point grid is bespoke and INERT until the engine grows
-// a reference-point convention on the fitting arm (honest seam).
+// SDK Phase 5 / gallery pixel-parity — Frame Fitting panel. The
+// deep1 card order: Fit segments → reference-point grid ("Align
+// content", inert seam) → Crop 4-up → auto-fit check rows.
+// Rectangle-only — other kinds em-dash.
 
 import {
   CatalogRegistryProvider,
@@ -14,17 +10,29 @@ import {
 } from "@paged-media/shell";
 
 import { appCatalogRegistry } from "./catalog-registry";
-import { frameFittingComposition } from "./frame-fitting.composition";
+import {
+  frameFittingCropComposition,
+  frameFittingFitComposition,
+} from "./frame-fitting.composition";
 
 export function FrameFittingPanel() {
   return (
     <CatalogRegistryProvider registry={appCatalogRegistry()}>
-      <div className="p-3" data-frame-fitting-panel="ready">
-        <CompositionRenderer composition={frameFittingComposition} />
-        <div className="grid grid-cols-[92px_1fr] items-center gap-2 pt-2">
-          <span className="text-xs text-muted-foreground">Reference point</span>
+      <div
+        className="p-3 flex flex-col gap-[9px]"
+        data-frame-fitting-panel="ready"
+      >
+        <CompositionRenderer composition={frameFittingFitComposition} />
+        <div className="my-[2px] flex items-center gap-[14px]">
           <ReferencePointGrid value={0} disabled />
+          <span
+            className="text-[10.5px]"
+            style={{ color: "var(--pg-muted-fg)" }}
+          >
+            Align content
+          </span>
         </div>
+        <CompositionRenderer composition={frameFittingCropComposition} />
       </div>
     </CatalogRegistryProvider>
   );

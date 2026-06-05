@@ -140,22 +140,24 @@ export function LengthLeaf({ value, onCommit, props }: LeafProps) {
   const pointValue = unwrapLength(value);
   return (
     <LeafRow {...rowProps(props)}>
-      <LengthInput
-        valuePt={seam ? null : pointValue}
-        icon={icon}
-        prefix={strFromProps(props, "prefix")}
-        showUnit={props.showUnit !== false}
-        displayText={
-          seam ? (strFromProps(props, "placeholder") ?? "—") : undefined
-        }
-        disabled={seam || onCommit == null}
-        onChangePt={() => {
-          /* live updates ignored; commit on blur */
-        }}
-        onCommitPt={(next) => {
-          onCommit?.({ type: "length", value: next } as Value);
-        }}
-      />
+      <span data-seam={seam ? "true" : undefined} className="contents">
+        <LengthInput
+          valuePt={seam ? null : pointValue}
+          icon={icon}
+          prefix={strFromProps(props, "prefix")}
+          showUnit={props.showUnit !== false}
+          displayText={
+            seam ? (strFromProps(props, "placeholder") ?? "—") : undefined
+          }
+          disabled={seam || onCommit == null}
+          onChangePt={() => {
+            /* live updates ignored; commit on blur */
+          }}
+          onCommitPt={(next) => {
+            onCommit?.({ type: "length", value: next } as Value);
+          }}
+        />
+      </span>
     </LeafRow>
   );
 }
@@ -167,22 +169,24 @@ export function NumericScrubLeaf({ value, onCommit, props }: LeafProps) {
   const pointValue = unwrapLength(value);
   return (
     <LeafRow {...rowProps(props)}>
-      <NumberInput
-        value={seam ? null : pointValue}
-        icon={icon}
-        prefix={strFromProps(props, "prefix")}
-        suffix={strFromProps(props, "suffix")}
-        displayText={
-          seam ? (strFromProps(props, "placeholder") ?? "—") : undefined
-        }
-        disabled={seam || onCommit == null}
-        onChange={() => {
-          /* live updates ignored; commit on blur */
-        }}
-        onCommit={(next) => {
-          onCommit?.({ type: "length", value: next } as Value);
-        }}
-      />
+      <span data-seam={seam ? "true" : undefined} className="contents">
+        <NumberInput
+          value={seam ? null : pointValue}
+          icon={icon}
+          prefix={strFromProps(props, "prefix")}
+          suffix={strFromProps(props, "suffix")}
+          displayText={
+            seam ? (strFromProps(props, "placeholder") ?? "—") : undefined
+          }
+          disabled={seam || onCommit == null}
+          onChange={() => {
+            /* live updates ignored; commit on blur */
+          }}
+          onCommit={(next) => {
+            onCommit?.({ type: "length", value: next } as Value);
+          }}
+        />
+      </span>
     </LeafRow>
   );
 }
@@ -654,14 +658,41 @@ export function TogglePill({
 /**
  * On/off check row — the kit `CheckRow`: full-width flex, 12px FG
  * label left, Toggle pill right (space-between), padding 6px 0.
- * Binds `Value::Bool`. Seams render the pill OFF and disabled
- * (neutral — never an invented on-state). Null = mixed: pill off,
- * `data-mixed`; toggling write-replaces when a commit path exists.
+ * `labelPosition: "left"` renders the deep1 `Fld`+Toggle variant
+ * instead (84px muted label, pill in the control column — the
+ * "Balance" row). Binds `Value::Bool`. Seams render the pill OFF
+ * and disabled (neutral — never an invented on-state). Null =
+ * mixed: pill off, `data-mixed`; toggling write-replaces when a
+ * commit path exists.
  */
 export function ToggleSwitchLeaf({ value, onCommit, props }: LeafProps) {
   const label = labelFromProps(props) ?? "";
   const seam = isSeam(props);
   const on = unwrapBoolValue(value);
+  const pill = (
+    <TogglePill
+      checked={seam ? false : (on ?? false)}
+      mixed={!seam && on === null}
+      disabled={seam || onCommit == null}
+      onToggle={(next) => {
+        onCommit?.({ type: "bool", value: next } as Value);
+      }}
+    />
+  );
+  if (props.labelPosition === "left") {
+    return (
+      <div
+        className="grid grid-cols-[84px_1fr] items-center gap-2"
+        data-check-row={label}
+        data-seam={seam ? "true" : undefined}
+      >
+        <span className="text-xs" style={{ color: "var(--pg-muted-fg)" }}>
+          {label}
+        </span>
+        {pill}
+      </div>
+    );
+  }
   return (
     <label
       className="flex items-center justify-between py-[6px]"
@@ -671,14 +702,7 @@ export function ToggleSwitchLeaf({ value, onCommit, props }: LeafProps) {
       <span className="text-xs" style={{ color: "var(--pg-fg)" }}>
         {label}
       </span>
-      <TogglePill
-        checked={seam ? false : (on ?? false)}
-        mixed={!seam && on === null}
-        disabled={seam || onCommit == null}
-        onToggle={(next) => {
-          onCommit?.({ type: "bool", value: next } as Value);
-        }}
-      />
+      {pill}
     </label>
   );
 }

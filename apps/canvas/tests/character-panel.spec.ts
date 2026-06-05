@@ -60,11 +60,12 @@ test.describe("Phase 3 — Character panel (declarative composition)", () => {
     // No content selection by default → every binding resolves to
     // null → every leaf shows the em-dash placeholder.
     const mixed = page.locator('[data-character-panel="ready"] [data-mixed]');
-    // 4 fields × em-dash = 4 placeholders.
+    // 4 live fields carry the mixed state ON the control (gallery
+    // pixel-parity: the chrome always renders; the em-dash sits
+    // INSIDE the field).
     await expect(mixed).toHaveCount(4);
-    // All show the em-dash character.
-    const text = await mixed.first().textContent();
-    expect(text?.trim()).toBe("—");
+    // The metric controls display the em-dash inside their input.
+    await expect(mixed.first().locator("input")).toHaveValue("—");
   });
 
   test("AC-CHAR-3 — content selection over a real story populates Character fields", async ({

@@ -36,11 +36,10 @@ test.describe("Phase 5 — Effects panel", () => {
     await expect(
       page.locator('[data-effects-panel="ready"] [data-mixed]'),
     ).toHaveCount(2);
-    // The honest-seam effect rows are present and inert.
+    // The honest-seam effect rows are present and inert (the seam
+    // hook sits ON the row).
     await expect(
-      page.locator(
-        '[data-effects-panel="ready"] [data-effect-row] [data-seam]',
-      ),
+      page.locator('[data-effects-panel="ready"] [data-effect-row][data-seam]'),
     ).toHaveCount(5);
   });
 

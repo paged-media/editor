@@ -8,6 +8,7 @@
 import type { ReactNode } from "react";
 
 import { Icon, PanelTarget, StatusBadge } from "@paged-media/shell";
+import { KitSelect } from "@paged-media/ui";
 
 export function ConceptShell({
   testId,
@@ -58,14 +59,9 @@ export function Kicker({ children }: { children: ReactNode }) {
 
 export function SeamSelect({ value }: { value: string }) {
   return (
-    <select
-      className="w-full text-xs h-[30px] px-2 rounded-[6px] border border-input bg-background text-muted-foreground"
-      value=""
-      disabled
-      data-seam
-    >
+    <KitSelect value="" soft disabled data-seam>
       <option value="">{value}</option>
-    </select>
+    </KitSelect>
   );
 }
 
@@ -73,18 +69,19 @@ export function SeamNum({ value, icon }: { value: string; icon?: string }) {
   return (
     <span
       data-seam
-      className="inline-flex items-stretch overflow-hidden rounded-[6px] border border-input bg-background h-[30px] opacity-55"
+      className="inline-flex h-[28px] items-stretch overflow-hidden rounded-[6px] border border-input bg-background opacity-55"
     >
       {icon && (
-        <span className="px-2 inline-flex items-center text-muted-foreground bg-muted border-r border-input">
-          <Icon name={icon} size={14} />
+        <span className="inline-flex items-center border-r border-input bg-muted px-[7px] text-muted-foreground">
+          <Icon name={icon} size={13} />
         </span>
       )}
       <input
         disabled
         value={value}
         readOnly
-        className="flex-1 min-w-0 w-full px-2 bg-transparent text-xs text-muted-foreground"
+        className="w-full min-w-0 flex-1 bg-transparent px-2 text-[11.5px] text-muted-foreground"
+        style={{ fontFamily: "var(--font-mono)" }}
       />
     </span>
   );

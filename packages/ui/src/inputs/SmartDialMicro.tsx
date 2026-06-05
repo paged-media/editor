@@ -118,7 +118,9 @@ export function SmartDialMicro({
     <div
       data-smart-dial={label}
       data-seam={inert ? "true" : undefined}
-      data-mixed={value === null ? "" : undefined}
+      // A disabled seam dial isn't "mixed" — only a live dial with
+      // an unresolved value carries the sentinel.
+      data-mixed={!inert && value === null ? "" : undefined}
       className="flex items-center gap-[9px] py-[2px]"
       style={{ opacity: disabled ? 0.45 : 1 }}
     >

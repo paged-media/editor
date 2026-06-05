@@ -1,15 +1,13 @@
-// SDK Phase 5 / panel-gallery pass — Frame Fitting panel as a
-// declarative composition, shaped to the gallery card.
+// SDK Phase 5 / gallery pixel-parity — Frame Fitting fields. Split
+// in two so the panel can interleave the reference-point grid
+// between Fit and Crop per the deep1 card order:
 //
-// Rectangle-only — the apply layer raises UnsupportedProperty for
-// other kinds (TextFrame / Oval / Polygon / GraphicLine don't
-// host placed images in IDML's content-fitting sense).
+//   Fit (stacked text segments)                  LIVE
+//   [ref grid] Align content                     seam (bespoke)
+//   Crop (stacked 4-up T/L/B/R)                  LIVE
+//   Auto-fit / Fill frame proportionally rows    seams
 //
-// LIVE: fitting type (text segments per the gallery) + crops (the
-// row4 bounds grid; IDML's signed-from-frame-edge convention —
-// negative grows the image outward). HONEST SEAMS: auto-fit +
-// fill-frame-proportionally check rows (no paths yet). The
-// reference-point grid is bespoke in frame-fitting-panel.tsx.
+// Rectangle-only — other kinds em-dash.
 
 import type { CompositionNode } from "@paged-media/catalog";
 import {
@@ -19,7 +17,7 @@ import {
   PAGED_LAYOUT_SECTION,
 } from "@paged-media/shell";
 
-export const frameFittingComposition: CompositionNode = {
+export const frameFittingFitComposition: CompositionNode = {
   catalogId: PAGED_LAYOUT_SECTION,
   props: { title: "Frame Fitting", heading: false },
   bindings: {},
@@ -28,6 +26,7 @@ export const frameFittingComposition: CompositionNode = {
       catalogId: PAGED_INPUT_TOGGLE_GROUP,
       props: {
         label: "Fit",
+        labelPosition: "stack",
         options: [
           { value: "None", label: "None" },
           { value: "FillProportionally", label: "Fill" },
@@ -43,9 +42,32 @@ export const frameFittingComposition: CompositionNode = {
         },
       },
     },
+  ],
+};
+
+/** Combined tree (fit + crop/auto-fit) — the Properties panel's
+ *  Image-inspector embed, where the bespoke ref-grid interleave
+ *  isn't needed. */
+export const frameFittingComposition: CompositionNode = {
+  catalogId: PAGED_LAYOUT_SECTION,
+  props: { title: "Frame Fitting", heading: false },
+  bindings: {},
+  get children() {
+    return [
+      ...(frameFittingFitComposition.children ?? []),
+      ...(frameFittingCropComposition.children ?? []),
+    ];
+  },
+};
+
+export const frameFittingCropComposition: CompositionNode = {
+  catalogId: PAGED_LAYOUT_SECTION,
+  props: { title: "Crop & auto-fit", heading: false },
+  bindings: {},
+  children: [
     {
       catalogId: PAGED_INPUT_BOUNDS,
-      props: { label: "Crop", layout: "row4" },
+      props: { label: "Crop", labelPosition: "stack", layout: "row4" },
       bindings: {
         value: {
           kind: "selectionProperty",
@@ -57,17 +79,13 @@ export const frameFittingComposition: CompositionNode = {
     {
       // Engine gap — no auto-fit flag yet.
       catalogId: PAGED_INPUT_TOGGLE_SWITCH,
-      props: { label: "Auto-fit", seam: true, placeholder: "off" },
+      props: { label: "Auto-fit", seam: true },
       bindings: {},
     },
     {
       // Engine gap — no fill-frame-proportionally-on-place flag.
       catalogId: PAGED_INPUT_TOGGLE_SWITCH,
-      props: {
-        label: "Fill frame proportionally",
-        seam: true,
-        placeholder: "off",
-      },
+      props: { label: "Fill frame proportionally", seam: true },
       bindings: {},
     },
   ],

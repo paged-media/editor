@@ -9,24 +9,56 @@
 // plus the CONVERT SHAPE row + corner option (no Operations yet).
 
 import { useCanvasClient, useSelection, Icon } from "@paged-media/shell";
+import { KitSelect } from "@paged-media/ui";
 import type { ElementId, PathfinderKind } from "@paged-media/client";
 
 interface ButtonDef {
   kind: PathfinderKind;
+  icon: string;
   label: string;
   hint: string;
 }
 
+// Icon + 9.5px label tiles in the deep1 3×2 grid (glyph stand-ins
+// from the existing registry).
 const BUTTONS: ButtonDef[] = [
-  { kind: "union", label: "Union", hint: "Combine paths (Union)" },
-  { kind: "intersect", label: "Intersect", hint: "Keep overlap (Intersect)" },
-  { kind: "subtract", label: "Subtract", hint: "Top minus rest (Subtract)" },
-  { kind: "exclude", label: "Exclude", hint: "Symmetric difference (Exclude)" },
+  {
+    kind: "union",
+    icon: "panel-pathfinder",
+    label: "Union",
+    hint: "Combine paths (Union)",
+  },
+  {
+    kind: "intersect",
+    icon: "tool-ellipse",
+    label: "Intersect",
+    hint: "Keep overlap (Intersect)",
+  },
+  {
+    kind: "subtract",
+    icon: "tool-erase",
+    label: "Subtract",
+    hint: "Top minus rest (Subtract)",
+  },
+  {
+    kind: "exclude",
+    icon: "tool-scissors",
+    label: "Exclude",
+    hint: "Symmetric difference (Exclude)",
+  },
 ];
 
 const SEAM_BUTTONS = [
-  { label: "Minus back", hint: "Minus Back — awaiting engine support" },
-  { label: "Divide", hint: "Divide — awaiting engine support" },
+  {
+    icon: "tool-rectangle",
+    label: "Minus back",
+    hint: "Minus Back — awaiting engine support",
+  },
+  {
+    icon: "panel-cell-styles",
+    label: "Divide",
+    hint: "Divide — awaiting engine support",
+  },
 ];
 
 const SHAPES = [
@@ -55,7 +87,7 @@ export function PathfinderPanel() {
     <div className="p-3 flex flex-col gap-2" data-pathfinder-panel="ready">
       <div className="pg-label">Pathfinder</div>
       <div
-        className="grid grid-cols-2 gap-[7px]"
+        className="grid grid-cols-3 gap-[6px]"
         role="group"
         aria-label="Pathfinder"
       >
@@ -66,12 +98,19 @@ export function PathfinderPanel() {
             data-pathfinder-kind={btn.kind}
             disabled={!enabled}
             title={btn.hint}
-            className="text-xs px-2 py-2 border border-input rounded-[8px] bg-background hover:bg-muted/60 disabled:opacity-50"
+            className="flex flex-col items-center gap-[5px] rounded-[7px] border border-input bg-background px-1 py-[9px] hover:bg-muted/60 disabled:opacity-50"
             onClick={() => {
               void run(btn.kind);
             }}
           >
-            {btn.label}
+            <Icon
+              name={btn.icon}
+              size={17}
+              style={{ color: "var(--pg-muted-fg)" }}
+            />
+            <span className="text-[9.5px]" style={{ color: "var(--pg-fg)" }}>
+              {btn.label}
+            </span>
           </button>
         ))}
         {SEAM_BUTTONS.map((btn) => (
@@ -81,9 +120,19 @@ export function PathfinderPanel() {
             disabled
             data-seam
             title={btn.hint}
-            className="text-xs px-2 py-2 border border-input rounded-[8px] bg-background text-muted-foreground opacity-55"
+            className="flex flex-col items-center gap-[5px] rounded-[7px] border border-input bg-background px-1 py-[9px] opacity-55"
           >
-            {btn.label}
+            <Icon
+              name={btn.icon}
+              size={17}
+              style={{ color: "var(--pg-muted-fg)" }}
+            />
+            <span
+              className="text-[9.5px]"
+              style={{ color: "var(--pg-muted-fg)" }}
+            >
+              {btn.label}
+            </span>
           </button>
         ))}
       </div>
@@ -108,16 +157,11 @@ export function PathfinderPanel() {
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-[92px_1fr] items-center gap-2">
+      <div className="grid grid-cols-[84px_1fr] items-center gap-2">
         <span className="text-xs text-muted-foreground">Corner</span>
-        <select
-          className="w-full text-xs h-[30px] px-2 rounded-[6px] border border-input bg-background text-muted-foreground"
-          value=""
-          disabled
-          data-seam
-        >
+        <KitSelect value="" soft disabled data-seam>
           <option value="">Rounded · 4 pt</option>
-        </select>
+        </KitSelect>
       </div>
     </div>
   );

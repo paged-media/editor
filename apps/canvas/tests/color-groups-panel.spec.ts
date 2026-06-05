@@ -45,9 +45,9 @@ test.describe("Phase 5 — Color Groups panel", () => {
     // "+ New group" rides createColorGroup.
     await page.locator('[data-toolbar-btn="new-color-group"]').click();
     await expect.poll(() => rows.count()).toBe(before + 1);
-    // Expanding the empty group shows the honest empty note.
+    // Groups render open by default (deep1: chips inline) — the
+    // empty group shows the honest empty note immediately.
     const newRow = rows.last();
-    await newRow.locator("[data-group-toggle]").click();
     await expect(newRow.locator("[data-group-members]")).toBeVisible();
     // Delete rides deleteColorGroup (swatches stay).
     await newRow.locator("[data-group-delete]").click();

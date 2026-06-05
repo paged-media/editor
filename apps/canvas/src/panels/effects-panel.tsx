@@ -1,25 +1,25 @@
-// SDK Phase 5 / panel-gallery pass — Effects panel, shaped to the
-// gallery card: opacity + blend up top, then the EFFECTS stack as
-// per-effect rows with on/off pills. Bespoke (not a composition):
-// the per-row toggle + conditional expansion exceeds the §11.5
-// renderer ceiling.
+// SDK Phase 5 / gallery pixel-parity — Effects panel, composed to
+// the deep1 card (gallery-deep1.jsx `Effects`):
 //
-// LIVE: opacity (frameOpacity), the Drop Shadow row — its pill
-// binds `frameDropShadow` (Value::Bool) and, when on, expands the
-// per-field editors (effects.composition.ts: mode / offsets /
-// blur / opacity / colour — the apply arms materialise a default
-// DropShadowSetting on the first per-field write). HONEST SEAMS:
-// blend mode select + the Inner Shadow / Glows / Feather / Bevel
-// rows — visible, disabled pills until their effect models land
-// (effects-architecture roadmap: target selector, feather types,
-// global light).
+//   Opacity   (label-left metric "%")          LIVE
+//   Blend     (label-left select)              seam
+//   ── EFFECTS kicker (full-bleed border) ──
+//   [pill] Drop Shadow  ⌄                      LIVE — expansion
+//     │ (2px violet rail, indented fields from effects.composition)
+//   [pill] Inner Shadow / Outer Glow / Inner Glow / Feather /
+//          Bevel & Emboss                      seams (pills off)
+//
+// Pills sit LEFT of the effect name (the kit's row order); names
+// read muted when off.
 
 import {
   CatalogRegistryProvider,
   CompositionRenderer,
+  Icon,
+  TogglePill,
   useBindings,
 } from "@paged-media/shell";
-import { NumberInput } from "@paged-media/ui";
+import { KitSelect, NumberInput } from "@paged-media/ui";
 import type { Value } from "@paged-media/client";
 
 import { appCatalogRegistry } from "./catalog-registry";
@@ -57,69 +57,44 @@ function unwrapLength(v: Value | null): number | null {
   return v.value ?? 0;
 }
 
-function MixedDash() {
-  return (
-    <span className="text-xs text-muted-foreground" data-mixed>
-      —
-    </span>
-  );
-}
-
-/** The kit's on/off pill (30×17, knob 13). `checked === null` is
- *  the caller's responsibility (render MixedDash instead). */
-function TogglePill({
-  checked,
-  disabled,
-  onToggle,
-  testId,
-}: {
-  checked: boolean;
-  disabled?: boolean;
-  onToggle?: (next: boolean) => void;
-  testId?: string;
-}) {
-  const inert = disabled || onToggle == null;
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      disabled={inert}
-      data-effect-toggle={testId}
-      data-on={checked ? "true" : "false"}
-      data-seam={inert ? "true" : undefined}
-      className="relative w-[30px] h-[17px] rounded-full border-0 shrink-0 disabled:cursor-default cursor-pointer"
-      style={{
-        background: checked ? "var(--pg-primary)" : "var(--chrome-divider)",
-        opacity: inert ? 0.55 : 1,
-      }}
-      onClick={() => onToggle?.(!checked)}
-    >
-      <span
-        className="absolute top-[2px] w-[13px] h-[13px] rounded-full bg-white shadow transition-[left]"
-        style={{ left: checked ? 15 : 2 }}
-      />
-    </button>
-  );
-}
-
 function EffectRow({
   name,
-  control,
+  on,
+  mixed,
+  disabled,
+  onToggle,
   children,
 }: {
   name: string;
-  control: React.ReactNode;
+  on: boolean;
+  mixed?: boolean;
+  disabled?: boolean;
+  onToggle?: (next: boolean) => void;
   children?: React.ReactNode;
 }) {
   return (
-    <div
-      className="border-b border-input last:border-b-0"
-      data-effect-row={name}
-    >
-      <div className="flex items-center justify-between py-1.5">
-        <span className="text-xs">{name}</span>
-        {control}
+    <div data-effect-row={name}>
+      <div className="flex items-center gap-[9px] py-[5px]">
+        <TogglePill
+          checked={on}
+          mixed={mixed}
+          disabled={disabled}
+          onToggle={onToggle}
+          testId={name}
+        />
+        <span
+          className="flex-1 text-xs"
+          style={{ color: on ? "var(--pg-fg)" : "var(--pg-muted-fg)" }}
+        >
+          {name}
+        </span>
+        {on && (
+          <Icon
+            name="ui-chevron-down"
+            size={13}
+            style={{ color: "var(--pg-muted-fg)" }}
+          />
+        )}
       </div>
       {children}
     </div>
@@ -133,77 +108,81 @@ export function EffectsPanel() {
 
   return (
     <CatalogRegistryProvider registry={appCatalogRegistry()}>
-      <div className="p-3 flex flex-col gap-2" data-effects-panel="ready">
-        <div className="grid grid-cols-[92px_1fr] items-center gap-2">
-          <span className="text-xs text-muted-foreground">Opacity</span>
-          {opacity === null ? (
-            <MixedDash />
-          ) : (
-            <NumberInput
-              icon="ui-size"
-              value={opacity}
-              min={0}
-              max={100}
-              precision={0}
-              onChange={() => {}}
-              onCommit={(next) => {
-                resolved.opacity.onCommit?.({
-                  type: "length",
+      <div className="p-3 flex flex-col gap-[9px]" data-effects-panel="ready">
+        <div className="grid grid-cols-[84px_1fr] items-center gap-2">
+          <span className="text-xs" style={{ color: "var(--pg-muted-fg)" }}>
+            Opacity
+          </span>
+          <NumberInput
+            icon="ui-size"
+            suffix="%"
+            value={opacity}
+            min={0}
+            max={100}
+            precision={0}
+            disabled={resolved.opacity.onCommit == null}
+            onChange={() => {}}
+            onCommit={(next) => {
+              resolved.opacity.onCommit?.({
+                type: "length",
+                value: next,
+              } as Value);
+            }}
+            aria-label="opacity"
+          />
+        </div>
+        {/* Engine gap — no blend-mode path yet. */}
+        <div className="grid grid-cols-[84px_1fr] items-center gap-2">
+          <span className="text-xs" style={{ color: "var(--pg-muted-fg)" }}>
+            Blend
+          </span>
+          <KitSelect value="" soft disabled data-seam>
+            <option value="">Normal</option>
+          </KitSelect>
+        </div>
+        <div className="-mx-3 border-t border-input px-3 pt-2">
+          <div className="pg-label mb-1">Effects</div>
+          <div className="flex flex-col">
+            <EffectRow
+              name="Drop shadow"
+              on={checked === true}
+              mixed={checked === null}
+              disabled={resolved.dropShadow.onCommit == null}
+              onToggle={(next) => {
+                resolved.dropShadow.onCommit?.({
+                  type: "bool",
                   value: next,
                 } as Value);
               }}
-              aria-label="opacity"
-            />
-          )}
-        </div>
-        {/* Engine gap — no blend-mode path yet. */}
-        <div className="grid grid-cols-[92px_1fr] items-center gap-2">
-          <span className="text-xs text-muted-foreground">Blend</span>
-          <select
-            className="w-full text-xs h-[30px] px-2 rounded-[6px] border border-input bg-background text-muted-foreground"
-            value=""
-            disabled
-            data-seam
-          >
-            <option value="">Normal</option>
-          </select>
-        </div>
-        <div className="border-t border-input pt-2">
-          <div className="pg-label px-1">Effects</div>
-          <div className="flex flex-col pt-1">
-            <EffectRow
-              name="Drop shadow"
-              control={
-                checked === null ? (
-                  <MixedDash />
-                ) : (
-                  <TogglePill
-                    checked={checked}
-                    testId="drop-shadow"
-                    onToggle={(next) => {
-                      resolved.dropShadow.onCommit?.({
-                        type: "bool",
-                        value: next,
-                      } as Value);
-                    }}
-                  />
-                )
-              }
             >
               {checked === true && (
-                <div className="pb-2 pl-2" data-drop-shadow-fields>
+                <div
+                  className="mb-[6px] ml-1 py-2 pl-3"
+                  data-drop-shadow-fields
+                  style={{ borderLeft: "2px solid var(--pg-primary-soft)" }}
+                >
                   <CompositionRenderer composition={effectsComposition} />
                 </div>
               )}
             </EffectRow>
             {/* Engine gaps — effect models beyond drop shadow are
-                unwired; the rows ship as visible disabled pills. */}
+                unwired; the rows ship as neutral disabled pills. */}
             {SEAM_EFFECTS.map((name) => (
-              <EffectRow
-                key={name}
-                name={name}
-                control={<TogglePill checked={false} disabled testId={name} />}
-              />
+              <div key={name} data-seam-effect={name}>
+                <div
+                  className="flex items-center gap-[9px] py-[5px]"
+                  data-effect-row={name}
+                  data-seam
+                >
+                  <TogglePill checked={false} disabled testId={name} />
+                  <span
+                    className="flex-1 text-xs"
+                    style={{ color: "var(--pg-muted-fg)" }}
+                  >
+                    {name}
+                  </span>
+                </div>
+              </div>
             ))}
           </div>
         </div>
