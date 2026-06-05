@@ -1,6 +1,11 @@
 # Panel reference — current state & target end-state
 
-> Compiled from source on 2026-06-05 (cockpit series, post dockview removal).
+> Compiled from source on 2026-06-05 (cockpit series, post dockview removal);
+> revised the same day after the **panel-gallery pass** (gallery series) —
+> every panel now carries the Panel Gallery's field layout
+> (`brand/editor/ui_kits/editor/gallery-*.jsx` + `INDESIGN_PARITY.md`),
+> with explicit honest seams (`seam: true` / disabled controls) for every
+> unbacked field.
 > Scope: every `PanelContribution` registered in `apps/canvas/src/main.tsx`.
 >
 > **Legend** — ✓ live (engine-backed) · ◐ partial (real data + visible seams) ·
@@ -16,9 +21,17 @@
 Most editing panels are **declarative compositions**: a `CompositionNode`
 tree references catalog primitives — `PAGED_INPUT_LENGTH`,
 `PAGED_INPUT_NUMERIC_SCRUB`, `PAGED_INPUT_COLOR_SWATCH`, `PAGED_INPUT_BOUNDS`,
-`PAGED_INPUT_TOGGLE_GROUP`, `PAGED_INPUT_COLLECTION_SELECT` — and binds each
+`PAGED_INPUT_TOGGLE_GROUP`, `PAGED_INPUT_COLLECTION_SELECT`, plus the
+gallery-pass additions `PAGED_INPUT_SELECT` (static enum select),
+`PAGED_INPUT_TOGGLE_SWITCH` (bool pill), `PAGED_READOUT` (mono readout) and
+the layout leaves `PAGED_LAYOUT_CLUSTER` (labelled multi-control rows) and
+collapsible/headingless `PAGED_LAYOUT_SECTION` variants — and binds each
 to a `PropertyPath` (element scope = selected frames; content scope = text
-caret/range). `useBindings` fetches live values via
+caret/range). A node with `seam: true` renders its control **visibly but
+disabled** with a placeholder — the honest-seam convention at field scale.
+Shared archetypes from the shell (`ApplyList`, `ListRows`/`PanelToolbar`,
+`ReferencePointGrid`, `StatusBadge`, `PanelTarget`) carry the gallery's
+list/style-manager/concept shapes. `useBindings` fetches live values via
 `client.elementProperties()`, re-fetches on every mutation/undo/redo,
 collapses multi-selection to a uniform value or an em-dash *mixed* sentinel,
 and commits through `client.mutate({ op: "setElementProperty", … })` — every
@@ -46,8 +59,11 @@ Text / Image / Pages items steer the empty case via `inspectorContext`:
 | Page (rail steer, nothing selected) | Page summary (real page count + size; margins/bleed = seam) |
 | none | guidance hint |
 
-AI Assistant card renders below every populated inspector (visible, inert).
-Hooks: `data-properties-panel`, `data-inspector-kind`, `data-properties-section`.
+The gallery's selection sub-header ("Frame · 1 frame" / "Text selection")
+renders under the title with the overset alert chip as a seam (em-dash until
+gap 1). AI Assistant card renders below every populated inspector (visible,
+inert). Hooks: `data-properties-panel`, `data-inspector-kind`,
+`data-properties-section`, `data-selection-label`, `data-overset-seam`.
 
 **End state** — the kit's full per-type inspectors: **Text** adds font
 family/style selects, kerning, the violet overset banner
@@ -58,52 +74,62 @@ master, production status; a **Table** variant appears when table selection
 lands. AI card becomes functional (diagnose → propose → apply with impact
 note). Gaps: 1, 2, 3, 5, 6, 8, 9.
 
-### Object — `paged.object-transform` ✓
-Bounds 4-cell grid (T/L/B/R pt) → `frameBounds`; Opacity scrub →
-`frameOpacity`.
-**End state** — X/Y/W/H presentation, typed rotation + scale (gap 6),
-reference point, lock-aspect; absorbed into Properties ▸ Transform with
-SmartDials.
+### Object — `paged.object-transform` ✓ (gallery card)
+Bespoke: **X/Y + W/H rows are LIVE derived projections over
+`frameBounds`** (translate preserving size / resize anchored top-left);
+Opacity metric → `frameOpacity`. Seams: reference-point grid, rotation,
+scale X/Y, Flip H/V (await the decompose primitive — gap 6).
+**End state** — typed rotation + scale dials live, reference point wired,
+lock-aspect; absorbed into Properties ▸ Transform.
 
-### Stroke — `paged.stroke` ✓
-Weight (length) → `frameStrokeWeight` · Colour swatch → `frameStrokeColor` ·
-End-cap 3-way toggle → `frameStrokeEndCap` (TextFrame unsupported → em-dash).
+### Stroke — `paged.stroke` ✓ (gallery card)
+Weight metric → `frameStrokeWeight` · Colour swatch → `frameStrokeColor` ·
+Cap 3-way toggle → `frameStrokeEndCap` (TextFrame unsupported → em-dash).
+Seams: Type select, Join/Align segments, the collapsed "Dashes & arrows"
+disclosure (dash/gap + arrowhead selects).
 **End state** — stroke type (dash/dot), join, miter, align-to-path, gap
 colour as engine stroke paths grow.
 
-### Effects — `paged.effects` ✓
-Drop-shadow checkbox → `frameDropShadow`; when on: Mode (Drop/Inner), X/Y
-offset, Blur size, Opacity scrub, Shadow colour → `frameDropShadow*`.
-**End state** — full effects stack (feather, glow, bevel, blend modes) as
-live sections.
+### Effects — `paged.effects` ✓ (gallery effect-row stack)
+Opacity metric (live) + Blend select (seam) up top; the EFFECTS list with
+per-effect pills: **Drop Shadow live** (`frameDropShadow` pill; expanded
+fields Mode/X/Y/Blur/Opacity/Colour → `frameDropShadow*`); Inner Shadow,
+Outer/Inner Glow, Feather, Bevel & Emboss = disabled seam pills.
+**End state** — full effects stack live + the per-target selector
+(Object/Stroke/Fill/Text), three feather types, global light.
 
-### Frame Fitting — `paged.frame-fitting` ✓
-Fit toggle (None/Proportional/Fill/FitContent) → `frameFittingType`; Crops
-bounds → `frameFittingCrops`. Rectangle-only; other kinds em-dash.
+### Frame Fitting — `paged.frame-fitting` ✓ (gallery card)
+Fit text segments (None/Fill/Fit/Content) → `frameFittingType`; Crop row4 →
+`frameFittingCrops`. Rectangle-only; other kinds em-dash. Seams: Auto-fit +
+fill-proportionally pills, the inert reference-point grid.
 **End state** — merged into the Image inspector's Fitting section (kit);
 auto-fit on place; AI crop suggestion becomes real.
 
-### Attributes — `paged.attributes` ✓
-Nonprinting checkbox → `frameNonprinting` (mixed sentinel supported).
-**End state** — visible/locked per frame, story direction; folded into
-Properties ▸ Frame.
+### Attributes — `paged.attributes` ✓ (gallery check rows)
+Nonprinting pill → `frameNonprinting` (mixed sentinel supported). Seams:
+Visible/Locked pills (layer-level today), OVERPRINT pair, gap colour well.
+**End state** — visible/locked per frame, overprint, story direction;
+folded into Properties ▸ Frame.
 
-### Align — `paged.align` ✓
-Six align buttons (L/C/R/T/M/B) + two distribute; computes target bounds and
-writes a `batch` of `setElementProperty(frameBounds)` (one undo entry).
+### Align — `paged.align` ✓ (gallery card)
+Align-to scope select (Selection live; Page/Margins/Spread disabled pending
+gap 7) · six align buttons + two distribute writing a `batch` of
+`setElementProperty(frameBounds)` (one undo entry) · Use-spacing seam.
 Enabled at ≥2 (align) / ≥3 (distribute) frames. Hooks: `data-align-kind`.
-**End state** — align-to scope (selection/page/margins/spread), equal-spacing
-inputs, key object.
+**End state** — page/margins/spread scopes, equal-spacing inputs, key object.
 
-### Pathfinder — `paged.pathfinder` ✓
+### Pathfinder — `paged.pathfinder` ✓ (gallery buttons grid)
 Union / Intersect / Subtract / Exclude → `pathfinderBoolean`
 (curve-preserving CSG; first selected is kept, others deleted). ≥2 frames.
-**End state** — divide/outline/trim, compound path make/release.
+Seams: Minus back / Divide buttons, CONVERT SHAPE row, corner select.
+**End state** — divide/outline/trim, convert shape, compound path
+make/release.
 
-### Inspector — `paged.inspector` ✓
-Raw single-element property snapshot: every wire property rendered by value
-type (bounds grid, colour picker, length scrub, 6-cell transform editor);
-re-fetches after every mutation; mixed → em-dash.
+### Inspector — `paged.inspector` ✓ (gallery filter)
+Raw single-element property snapshot with the gallery filter input + mono
+footer; every wire property rendered by value type (bounds grid, colour
+picker, length scrub, 6-cell transform editor); re-fetches after every
+mutation; mixed → em-dash.
 **End state** — stays the developer/expert raw inspector (Window menu); user
 editing lives in the curated context inspector.
 
@@ -116,56 +142,57 @@ bottom control bar) or kept as an optional InDesign-familiar Window panel.
 
 ## 2 · Text & styles
 
-### Character — `paged.character` ✓ (content scope)
-Font size + Leading (length), Tracking (scrub), Fill (swatch) →
-`characterFontSize/Leading/Tracking/FillColor`.
-**End state** — kit Typography section: font family + style selects, kerning
-(Metrics/Optical/value), baseline shift, case toggles, language. Gap 5.
+### Character — `paged.character` ✓ (content scope, gallery card)
+Live: Size (in the "Style + size" cluster), Leading + Tracking cluster,
+Fill → `characterFontSize/Leading/Tracking/FillColor`. Seams: Family/Style
+selects, Kerning + Baseline cluster, Case (ab/AB/Ab) + Position segments,
+Language select, the bespoke OPENTYPE chip row (Liga/Frac/Ordn/OldS).
+**End state** — all seams live: family/style, kerning
+(Metrics/Optical/value), baseline shift, case, language, OpenType. Gap 5.
 
-### Paragraph — `paged.paragraph` ✓ (content scope, rounds to paragraphs)
-Align 4-way toggle → `paragraphJustification`; Space before/after +
-First-line indent (lengths).
+### Paragraph — `paged.paragraph` ✓ (content scope, gallery card)
+Live: Align glyph segments → `paragraphJustification`; Space before/after
+cluster; first-line indent (in the L·R·1st cluster). Seams: L/R indents,
+Drop cap cluster, Hyphenate + baseline-grid pills, the collapsed
+"Paragraph rules" disclosure.
 **End state** — left/right indents, hyphenation, keep options, drop caps,
-rules, tabs editor.
+rules live; tabs in the Tabs panel.
 
-### Character Styles — `paged.character-styles` ✓
-Apply select (`characterStyles` collection → `appliedCharacterStyle`) +
-manager: "+ New" (`createCharacterStyle`), per-row delete
-(`deleteCharacterStyle`).
+### Character / Paragraph / Object Styles ✓ (shared **ApplyList** archetype)
+`paged.character-styles` / `paged.paragraph-styles` / `paged.object-styles`
+— the gallery style-manager surface (`StyleApplyPanel` → shell `ApplyList`):
+applied select (stable `data-collection` hook) + clickable style rows
+applying through `appliedCharacterStyle` / `appliedParagraphStyle`
+(content scope) / `appliedObjectStyle` (element scope); New/Delete ride
+`create*Style` / `delete*Style` (Delete targets the applied style).
+Seams: Redefine, style groups, override "+" markers, next-style.
 **End state** — full style options editing, based-on chains, override
-indicator + redefine, style groups.
+indicator + redefine, groups, next-style chaining.
 
-### Paragraph Styles — `paged.paragraph-styles` ✓
-Same pattern → `appliedParagraphStyle`; create/delete ops.
-**End state** — as character styles + next-style chaining; powers the kit's
-"Paragraph: Intro — Body" select.
-
-### Object Styles — `paged.object-styles` ✓
-Apply select (`objectStyles` → `appliedObjectStyle`, element scope).
-**End state** — create/edit/delete capturing fill/stroke/effects/text-frame
-options.
-
-### Text Frame — `paged.text-frame-options` ✓
-Inset spacing bounds → `frameInsetSpacing`.
+### Text Frame — `paged.text-frame-options` ✓ (gallery card)
+Live: inset row4 grid → `frameInsetSpacing`. Seams: COLUMNS section
+(count + gutter cluster, Balance pill), Vert. justify segments, Auto-size +
+First baseline selects.
 **End state** — vertical justification, column count/width/gutter, auto-size
-rules (the kit Frame section).
+rules live.
 
-### Text Wrap — `paged.text-wrap` ✓
-Mode 4-way toggle (none/bounding box/contour/jump) → `frameTextWrapMode`;
-Offsets bounds → `frameTextWrapOffsets` (both share one `Option<TextWrap>`;
-apply layer preserves the unset half).
+### Text Wrap — `paged.text-wrap` ✓ (gallery card)
+Live: Wrap glyph segments → `frameTextWrapMode`; Offset row4 →
+`frameTextWrapOffsets` (one `Option<TextWrap>`; apply layer preserves the
+unset half). Seams: Wrap-to + Contour selects, Invert pill.
 **End state** — contour options, invert, master-only flag.
 
-### Fonts — `paged.fonts` ✓ read-only
-Families in use + reference counts (`fonts` collection).
+### Fonts — `paged.fonts` ✓ (gallery card)
+All / In use / Missing filter tabs over the families-in-use rows
+(`fonts` collection; All ≡ In use today). Missing tab = honest seam note.
 **End state** — missing/embedded status (gap 4), replace-font action; feeds
 the prepress "missing font" finding.
 
 ### Cell Styles / Table Styles — `paged.cell-styles` / `paged.table-styles` ✓ read-only
-Style lists (`cellStyles` / `tableStyles`); apply paths are wire-shape-only
-until the table NodeId surface exists.
+Readonly **ApplyList** variant ("Apply available once table selection
+lands."); apply paths are wire-shape-only until the table NodeId surface.
 **End state** — apply/edit once table selection + ops land (gap 8); backs
-the Table Composer's part presets and the kit's table Preset chips.
+the Table panel + Composer presets.
 
 ---
 
@@ -184,20 +211,32 @@ merge-on-delete, library save/export round-trip. Close to done.
 ### Color — `paged.color` ✓
 Fill select + Tint scrub (`frameFillTint`); standalone **ColorMixer** with
 Apply (ephemeral swatch) and "+ Add to swatches"; live colour readout (chip,
-name/model, hex, CMYK %).
-**End state** — eyedropper pipeline, recents row, HSB parity; the mixer
-behind every colour well.
+name/model, hex, CMYK %); "Open color wheel" hand-off to `paged.color-wheel`.
+**End state** — eyedropper pipeline, recents row; the mixer behind every
+colour well.
 
-### Gradients — `paged.gradients` ✓
-Apply select (gradient ref as fill); **GradientRamp editor**: type
-(linear/radial), reverse, drag stops + midpoints, click-track to add stop,
-per-stop swatch select, remove stop — all `editGradient`.
+### Gradients — `paged.gradients` ✓ (gallery card)
+Apply select (gradient ref as fill); editor: Linear|Radial segments,
+reverse icon button, the **GradientRamp** (drag stops + midpoints,
+click-track to add), and the gallery **STOPS rows** — colour chip · swatch
+select · position % per stop — all committing one `editGradient`.
 **End state** — on-canvas gradient tool sync (angle/length), per-stop opacity
 when the engine carries it, create-from-mixer.
 
-### Color Groups — `paged.color-groups` ✓ read-only
-Groups + member counts.
-**End state** — group CRUD + filtering the Swatches list by group.
+### Color Wheel — `paged.color-wheel` ✓ *(new, fully live)*
+The brand kit's colour wheel as a panel: conic HSV disc + value track,
+HEX·RGB·CMYK·HSL synced fields (naive client-side conversions; the
+CMM-accurate path stays `colorCompute`), six colour-theory harmonies drawn
+on the wheel; "Add to Swatches" lands the harmony palette as real swatches
+through ONE batched `createSwatch` (single undo). Linked from the Color
+panel ("Open color wheel").
+**End state** — done; gains eyedropper + document-palette seeding later.
+
+### Color Groups — `paged.color-groups` ✓ *(now live CRUD)*
+Collapsible group rows expanding to CMM-resolved member chips; per-group
+delete + "+ New group" via `createColorGroup` / `deleteColorGroup`
+(member assignment lives in the Swatches grid via `editColorGroup`).
+**End state** — + filtering the Swatches list by group.
 
 ### Ink Manager — `paged.ink-manager` ✓
 Standard-Lab toggle (`setUseStandardLabForSpots`); per-spot: convert-to-process
@@ -232,25 +271,29 @@ Map; survives in the Window menu; gains 2-up spread thumbs + page
 insert/delete/duplicate actions (ops exist).
 
 ### Pages (list) — `paged.pages-list` ✓ · Spreads — `paged.spreads` ✓ · Master Pages — `paged.master-pages` ✓
-Read-only collection lists (index + size pt / label + page count / master +
-page count).
+Gallery ListRows. Pages list gains the **live toolbar**: New rides
+`insertPage` (after the selected page or document end), Delete rides
+`deletePage` against the selected row; Duplicate = seam. Spreads/Masters
+rows (label + page count); per-master Apply = seam.
 **End state** — pages-list absorbed by Document Map; spreads gain page
 membership (gap 7) and become the true grouping source; masters gain
 "apply to page" (`ApplyMasterToPage`) + master editing entry.
 
-### Links — `paged.links` ✓ read-only
-Placed-image rows: filename (full URI tooltip), host kind/id.
-**End state** — present/missing status, effective PPI, colourspace
+### Links — `paged.links` ✓ (gallery ListRows)
+Glyph rows (filename + mono host line, filter at >8 rows) + a seam toolbar
+(update/relink/go-to).
+**End state** — present/missing status badges, effective PPI, colourspace
 (gaps 2–3), relocate/update/break actions; feeds Health "Missing Links".
 
 ### Conditions — `paged.conditions` ✓ · Condition Sets — `paged.condition-sets` ✓
-Read-only: condition rows (visibility dot, indicator method) / set rows
-(counts).
+Gallery ListRows: condition rows (visibility-toned dot, indicator method,
+seam eye toggle) / set rows (counts, seam Apply).
 **End state** — visibility toggles (`SetConditionVisible`,
 `ActivateConditionSet`); conditional text for Data mode.
 
-### Articles / Hyperlinks / Bookmarks / Cross References / Index ✓ read-only
-Collection lists (name + members / destination / format / sort order).
+### Articles / Hyperlinks / Bookmarks / Cross References / Index ✓ (gallery ListRows)
+Glyph rows (order + members / destination / format / sort order); Articles
+carries the reading-order footer; Index gains the seam "+ Generate index".
 **End state** — CRUD + jump-to; article order feeds accessible-PDF reading
 order; index gains generate-index.
 
@@ -270,8 +313,9 @@ add, delete (`layerInsert/SetVisible/SetLocked/SetPrintable/SetName/Move/Remove`
 **End state** — per-object rows under layers, move-to-layer, layer colour
 chips driving selection outline colours.
 
-### Info — `paged.info` ✓ read-only
-Meta rows: pages, active page, units, colour mode, name, dirty.
+### Info — `paged.info` ✓ (gallery readout rows)
+Label · mono tabular value rows with hairline separators: document, pages,
+active page, units, colour mode, dirty.
 **End state** — stays diagnostics; user-facing equivalents live in
 DocTitleBar/Health.
 
@@ -281,13 +325,15 @@ DocTitleBar/Health.
 
 ### Publication Health — `paged.publication-health` ◐
 Real metric tiles (pages/stories/frames/glyphs/links/colour mode) + X-4
-readiness pill; Risks section = seam.
+readiness pill; the Risks section renders the kit's risk ROWS (em-dash
+counts + inert chevrons — never invented numbers).
 **End state** — all kit counts real: overset frames, missing links, low-res
 images, font warnings (gaps 1–4) + accessible-PDF issues; each row jumps to
 its findings.
 
 ### Preflight — `paged.preflight` ◐
-"Validate output" runs a **real dry PDF export** → findings list; real links
+"Validate output" runs a **real dry PDF export** → findings as gallery
+issue cards under the dotted "Warnings · N" group kicker; real links
 inventory; PPI/bleed checks = seam.
 **End state** — kit prepress panel: Critical/Warnings groups with per-finding
 page jump + fix actions, output profile selector, live re-validation, canvas
@@ -353,6 +399,51 @@ through it); gains API autocomplete/docs.
 
 ---
 
+## 7 · Concept panels (panel-gallery pass — INDESIGN_PARITY.md)
+
+Registered, Window-menu-reachable surfaces in the gallery's exact field
+layouts, shipped as honest seams at panel scale: **Concept badge** up top,
+the kit's **"Target ·" footnote** pinned below, every unbacked control
+visibly disabled (shared `concept-kit.tsx`). Interactive/rich-media panels
+(Buttons, Object States, Animation, Media) are **out of scope** per the
+parity doc — not built, by decision.
+
+### Table — `paged.table` ○
+Rows/cols, row height (at-least), col width, alternating fills/strokes,
+header/footer pills, cell inset, vert. justify — all seams.
+**Target** — live with the Table NodeId surface (gap 8).
+
+### Tabs — `paged.tabs` ○
+Alignment segments (L/C/R/Decimal), position, the static stop ruler,
+leader + align-on, repeat — all seams.
+**Target** — the InDesign Tabs ruler, live with tab-stop reads/writes.
+
+### Glyphs — `paged.glyphs` ◐ *(partially live)*
+With an active text caret the glyph grid **inserts via the real
+`insertText` mutation** (undoable); recently-used grid is panel-local.
+Seams: Show scope + font selects (await the font registry).
+**Target** — full character map, OpenType-feature filter, alternates
+flyout, glyph sets.
+
+### Bullets & Numbering — `paged.bullets-numbering` ○
+List type segments, list/level, numbering style (format `^#.^t`, char
+style, restart), position + the static preview — all seams.
+**Target** — live with list definitions on the paragraph model.
+
+### Object Export Options — `paged.object-export` ○
+Alt Text | Tagged PDF | EPUB & HTML tabs (live local switcher) over seam
+fields (alt-text source + textarea, tag role, conversion, CSS class).
+**Target** — per-object alt text, tagged-PDF role, EPUB/HTML conversion —
+feeds accessible PDF + EPUB output.
+
+### Export Tagging — `paged.export-tagging` ○
+Paragraph|Character scope toggle (live local state) over seam mapping
+fields (HTML tag, class, epub:type, PDF tag) + the code preview.
+**Target** — style → HTML tag/CSS class/PDF tag mapping for clean
+EPUB/HTML + tagged PDF.
+
+---
+
 ## Engine roadmap gaps (what flips ◐/○ → ✓)
 
 1. **Overset signal** on the wire (stats + per-frame/story) — health count,
@@ -369,6 +460,38 @@ through it); gains API autocomplete/docs.
 9. **`stories` / `sections` collections** — story list, Document Map
    sections.
 10. **Page margin/bleed/column reads** — page inspector geometry.
+
+Panel-gallery pass additions (consolidated from `INDESIGN_PARITY.md` + the
+gallery seams; several extend gaps above):
+
+11. **Character formatting paths** — font family/style (extends 5), kerning
+    value, baseline shift, case, super/subscript, language, OpenType
+    feature toggles, H/V scale, skew.
+12. **Paragraph layout** — left/right indents, drop cap, hyphenation,
+    keep options, span/split columns, baseline-grid align, paragraph rules.
+13. **Text-frame geometry** — column count/gutter/balance, auto-size rules,
+    vertical justification, first-baseline option.
+14. **Text-wrap refinement** — wrap-to side, contour source, invert.
+15. **Style infrastructure** — next-style, override indicators,
+    redefine-from-selection, style groups.
+16. **Object geometry** — per-corner corner options, Flip H/V, shear
+    (extends 6).
+17. **Stroke detail** — stroke type (dash/dot/stripe), join, miter limit,
+    align-to-path, gap colour, arrowheads.
+18. **Effects architecture** — per-target selector (Object/Stroke/Fill/
+    Text), blend modes, three feather types, glow/bevel/satin models,
+    isolate blending, knockout, global light.
+19. **Page sections & numbering** — section marker/prefix/style, start
+    number, shuffle toggles (extends 9's sections).
+20. **Structured preflight findings** — severity + page refs on export
+    diagnostics (drives the Critical/Warnings groups + jump-to).
+21. **Tab stops** — per-paragraph stop table (the Tabs panel).
+22. **List definitions** — bullets & numbering model (the B&N panel).
+23. **Export metadata** — per-object alt text/role/conversion + per-style
+    HTML/CSS/PDF tagging (Object Export Options, Export Tagging).
+24. **Tint swatch children** + mixed-ink swatches (Swatches parity).
+25. **Condition ops** — `SetConditionVisible`, `ActivateConditionSet`;
+    **master apply** — `ApplyMasterToPage`; **page duplicate**.
 
 Also (non-engine): collaboration backend (comments/approvals/presence/share),
 data-publishing engine (Data mode), LLM backend (AI assistant), IDML
