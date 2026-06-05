@@ -13,6 +13,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   GradientRamp,
+  Icon,
   useCanvasClient,
   type RampStop,
 } from "@paged-media/shell";
@@ -141,21 +142,6 @@ export function GradientEditor() {
     setStops(nextStops);
     commit(nextStops, kind);
   };
-  const removeSelected = () => {
-    if (selected === null || stops.length <= 2) return;
-    const nextStops = stops.filter((_, i) => i !== selected);
-    setSelected(null);
-    setStops(nextStops);
-    commit(nextStops, kind);
-  };
-  const setStopSwatch = (ref: string) => {
-    if (selected === null) return;
-    const nextStops = stops.map((s, i) =>
-      i === selected ? { ...s, stopColorRef: ref } : s,
-    );
-    setStops(nextStops);
-    commit(nextStops, kind);
-  };
   const reverse = () => {
     const nextStops = stops.map((s) => ({
       ...s,
@@ -181,41 +167,88 @@ export function GradientEditor() {
     );
   }
 
+  // Per-row edits (the gallery stop rows): swatch + position per
+  // stop, committed as one editGradient like every other edit.
+  const setStopSwatchAt = (i: number, ref: string) => {
+    const nextStops = stops.map((s, j) =>
+      j === i ? { ...s, stopColorRef: ref } : s,
+    );
+    setStops(nextStops);
+    commit(nextStops, kind);
+  };
+  const setStopLocationAt = (i: number, pct: number) => {
+    const clamped = Math.max(0, Math.min(100, pct));
+    const nextStops = stops.map((s, j) =>
+      j === i ? { ...s, locationPct: clamped } : s,
+    );
+    setStops(nextStops);
+    commit(nextStops, kind);
+  };
+  const removeStopAt = (i: number) => {
+    if (stops.length <= 2) return;
+    const nextStops = stops.filter((_, j) => j !== i);
+    setSelected(null);
+    setStops(nextStops);
+    commit(nextStops, kind);
+  };
+
   return (
     <div
       className="border-t border-input mt-2 pt-2 flex flex-col gap-2"
       data-gradient-editor="ready"
     >
+      <select
+        className="w-full text-xs h-[30px] px-2 rounded-[6px] border border-input bg-background"
+        data-gradient-select
+        value={activeId ?? ""}
+        onChange={(e) => setActiveId(e.target.value || null)}
+      >
+        {gradients.map((g) => (
+          <option key={g.selfId} value={g.selfId}>
+            {g.name}
+          </option>
+        ))}
+      </select>
       <div className="flex items-center gap-2">
-        <select
-          className="flex-1 text-xs border border-input rounded"
-          data-gradient-select
-          value={activeId ?? ""}
-          onChange={(e) => setActiveId(e.target.value || null)}
-        >
-          {gradients.map((g) => (
-            <option key={g.selfId} value={g.selfId}>
-              {g.name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="text-xs border border-input rounded"
+        {/* Gallery type segments + the reverse icon button. */}
+        <div
+          className="inline-flex flex-1 overflow-hidden rounded-[6px] border border-input"
+          role="group"
           data-gradient-type
-          value={kind}
-          onChange={(e) => setType(e.target.value)}
         >
-          <option value="linear">Linear</option>
-          <option value="radial">Radial</option>
-        </select>
+          {(["linear", "radial"] as const).map((t, i) => {
+            const active = kind === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                data-gradient-kind={t}
+                data-active={active ? "true" : "false"}
+                onClick={() => setType(t)}
+                className="flex-1 text-xs h-[27px] border-0 cursor-pointer"
+                style={{
+                  borderRight: i === 0 ? "1px solid var(--pg-border)" : "none",
+                  background: active
+                    ? "var(--chrome-slot-active)"
+                    : "var(--pg-bg)",
+                  color: active
+                    ? "var(--chrome-icon-active)"
+                    : "var(--pg-muted-fg)",
+                }}
+              >
+                {t === "linear" ? "Linear" : "Radial"}
+              </button>
+            );
+          })}
+        </div>
         <button
           type="button"
-          className="text-xs border border-input rounded px-1.5"
+          className="w-[30px] h-[29px] rounded-[6px] border border-input bg-background text-muted-foreground hover:text-foreground flex items-center justify-center"
           data-action="reverse-gradient"
           title="Reverse"
           onClick={reverse}
         >
-          ⇄
+          <Icon name="ui-return" size={14} />
         </button>
       </div>
 
@@ -230,35 +263,72 @@ export function GradientEditor() {
         onCommit={() => commit(stops, kind)}
       />
 
-      {selected !== null && stops[selected] && (
-        <div
-          className="flex items-center gap-2 text-xs"
-          data-gradient-stop-editor
-        >
-          <span className="text-muted-foreground">Stop colour</span>
-          <select
-            className="flex-1 border border-input rounded"
-            data-action="stop-swatch"
-            value={stops[selected].stopColorRef}
-            onChange={(e) => setStopSwatch(e.target.value)}
+      {/* The gallery STOPS rows — chip · swatch select · position %. */}
+      <div className="pg-label">Stops</div>
+      <div className="flex flex-col gap-1" data-gradient-stop-rows>
+        {stops.map((s, i) => (
+          <div
+            key={`${s.stopColorRef}-${i}`}
+            className="flex items-center gap-2"
+            data-gradient-stop-row={i}
+            data-selected={selected === i ? "true" : undefined}
           >
-            {swatches.map((s) => (
-              <option key={s.selfId} value={s.selfId}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="border border-input rounded px-1.5 hover:text-status-error"
-            data-action="remove-stop"
-            disabled={stops.length <= 2}
-            onClick={removeSelected}
-          >
-            ✕
-          </button>
-        </div>
-      )}
+            <span
+              className="w-[18px] h-[18px] rounded-[5px] border border-input shrink-0"
+              style={{ background: s.resolvedRgbHex }}
+              title={s.resolvedRgbHex}
+            />
+            <select
+              className="flex-1 min-w-0 text-xs h-[26px] px-1 rounded-[6px] border border-input bg-background"
+              data-action="stop-swatch"
+              value={s.stopColorRef}
+              onChange={(e) => setStopSwatchAt(i, e.target.value)}
+            >
+              {swatches.map((sw) => (
+                <option key={sw.selfId} value={sw.selfId}>
+                  {sw.name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              defaultValue={Math.round(s.locationPct)}
+              key={`loc-${i}-${Math.round(s.locationPct)}`}
+              data-stop-location
+              className="w-[52px] text-xs h-[26px] px-1 text-center rounded-[6px] border border-input bg-background pg-value"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  setStopLocationAt(
+                    i,
+                    Number.parseFloat((e.target as HTMLInputElement).value) ||
+                      0,
+                  );
+                }
+              }}
+              onBlur={(e) => {
+                const v = Number.parseFloat(e.target.value);
+                if (Number.isFinite(v) && Math.round(s.locationPct) !== v) {
+                  setStopLocationAt(i, v);
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="w-[22px] h-[22px] rounded border-0 bg-transparent text-muted-foreground hover:text-foreground disabled:opacity-40"
+              data-action="remove-stop"
+              title={
+                stops.length <= 2 ? "A gradient keeps ≥2 stops" : "Remove stop"
+              }
+              disabled={stops.length <= 2}
+              onClick={() => removeStopAt(i)}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

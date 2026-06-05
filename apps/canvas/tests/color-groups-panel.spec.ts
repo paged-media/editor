@@ -31,4 +31,26 @@ test.describe("Phase 5 — Color Groups panel", () => {
     const emptyVisible = await empty.isVisible();
     expect(listVisible || emptyVisible).toBe(true);
   });
+
+  test("AC-CGROUPS-2 — New group creates; delete removes (live ops)", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    await loadIdml(page, FIXTURE);
+    await openPanel(page, "paged.color-groups");
+    const rows = page.locator(
+      '[data-color-groups-panel="ready"] [data-group-id]',
+    );
+    const before = await rows.count();
+    // "+ New group" rides createColorGroup.
+    await page.locator('[data-toolbar-btn="new-color-group"]').click();
+    await expect.poll(() => rows.count()).toBe(before + 1);
+    // Expanding the empty group shows the honest empty note.
+    const newRow = rows.last();
+    await newRow.locator("[data-group-toggle]").click();
+    await expect(newRow.locator("[data-group-members]")).toBeVisible();
+    // Delete rides deleteColorGroup (swatches stay).
+    await newRow.locator("[data-group-delete]").click();
+    await expect.poll(() => rows.count()).toBe(before);
+  });
 });
