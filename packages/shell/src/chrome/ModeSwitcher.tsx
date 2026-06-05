@@ -8,6 +8,7 @@ import { useState, type ReactNode } from "react";
 
 import { Icon } from "../icons";
 import { useDocumentMeta } from "../catalog/use-collection";
+import { useCamera } from "../state/camera-context";
 import { useRegistries } from "../state/registries-context";
 import {
   useWorkflowMode,
@@ -63,7 +64,59 @@ export function ModeSwitcher({ right }: ModeSwitcherProps) {
         ))}
       </div>
 
-      <div style={{ ...sideStyle, justifyContent: "flex-end" }}>{right}</div>
+      <div style={{ ...sideStyle, justifyContent: "flex-end" }}>
+        {right ?? <ZoomCluster />}
+      </div>
+    </div>
+  );
+}
+
+/** Kit chrome.jsx — the bottom-right zoom cluster: live mono percent
+ *  + a log-scale slider that zooms around the viewport centre. */
+function ZoomCluster() {
+  const { camera, setCamera, viewportSize } = useCamera();
+  const pct = Math.round(camera.scale * 100);
+  // Log mapping 1%…800% so page-fit zooms (~5–60%) get usable travel.
+  const MIN = Math.log(0.01);
+  const MAX = Math.log(8);
+  const pos = Math.min(
+    1,
+    Math.max(0, (Math.log(Math.max(camera.scale, 0.01)) - MIN) / (MAX - MIN)),
+  );
+  const onInput = (v: number) => {
+    const scale = Math.exp(MIN + v * (MAX - MIN));
+    const [vw, vh] = viewportSize;
+    const cx = vw / 2;
+    const cy = vh / 2;
+    const k = scale / Math.max(camera.scale, 1e-6);
+    setCamera({
+      scale,
+      tx: cx - (cx - camera.tx) * k,
+      ty: cy - (cy - camera.ty) * k,
+    });
+  };
+  return (
+    <div
+      data-zoom-cluster
+      style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}
+    >
+      <span className="pg-value" style={{ fontSize: 11.5 }}>
+        {pct}%
+      </span>
+      <input
+        type="range"
+        aria-label="Zoom"
+        min={0}
+        max={1000}
+        value={Math.round(pos * 1000)}
+        onChange={(e) => onInput(Number(e.target.value) / 1000)}
+        style={{ width: 84, accentColor: "var(--pg-primary)" }}
+      />
+      <Icon
+        name="ui-displays"
+        size={15}
+        style={{ color: "var(--pg-muted-fg)" }}
+      />
     </div>
   );
 }
@@ -103,7 +156,9 @@ function ModeButton(props: {
           : hover
             ? "var(--hover)"
             : "transparent",
-        color: props.active ? "var(--pg-primary-fg)" : "var(--chrome-menu-text)",
+        color: props.active
+          ? "var(--pg-primary-fg)"
+          : "var(--chrome-menu-text)",
       }}
     >
       <Icon name={props.icon} size={15} />
