@@ -12,7 +12,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { BoundsInput, ColorPicker, LengthInput, NumberInput } from "@paged-media/ui";
+import {
+  BoundsInput,
+  ColorPicker,
+  LengthInput,
+  NumberInput,
+} from "@paged-media/ui";
 import { useCanvasClient, useSelection } from "@paged-media/shell";
 
 import type {
@@ -31,6 +36,8 @@ export function InspectorPanel(_: PanelProps) {
   const { elementSelection } = useSelection();
   const target = elementSelection.length === 1 ? elementSelection[0] : null;
   const [props, setProps] = useState<ElementProperties | null>(null);
+  // Panel-gallery pass — the raw inspector's filter input.
+  const [filter, setFilter] = useState("");
 
   // Re-fetch on selection change OR when the document mutates so the
   // values stay live (A1). The worker pushes mutationApplied /
@@ -77,33 +84,59 @@ export function InspectorPanel(_: PanelProps) {
   }
   if (!props) {
     return (
-      <div className="p-3 text-sm text-muted-foreground" data-inspector="loading">
+      <div
+        className="p-3 text-sm text-muted-foreground"
+        data-inspector="loading"
+      >
         Loading…
       </div>
     );
   }
 
+  const q = filter.trim().toLowerCase();
+  const entries = q
+    ? props.entries.filter(
+        (e) =>
+          e.path.toLowerCase().includes(q) ||
+          labelForPath(e.path).toLowerCase().includes(q),
+      )
+    : props.entries;
+
+  const idText =
+    // After SDK Phase 3, ElementId.id can be a struct
+    // (StoryRange) instead of a string. Render the address
+    // textually so the header keeps showing *something*.
+    typeof target.id === "string"
+      ? target.id
+      : `${target.id.story_id}@${target.id.start}..${target.id.end}`;
+
   return (
     <div className="p-3 space-y-3 text-sm" data-inspector="ready">
-      <Header
-        kind={props.kind}
-        id={
-          // After SDK Phase 3, ElementId.id can be a struct
-          // (StoryRange) instead of a string. Render the address
-          // textually so the header keeps showing *something*.
-          typeof target.id === "string"
-            ? target.id
-            : `${target.id.story_id}@${target.id.start}..${target.id.end}`
-        }
-      />
+      <Header kind={props.kind} id={idText} />
+      {/* Gallery filter — narrows the raw property rows. */}
+      <label
+        className="flex items-center gap-2 h-[30px] px-2.5 rounded-[7px] text-muted-foreground"
+        style={{ background: "var(--pg-muted)" }}
+      >
+        <input
+          placeholder="Filter properties"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          data-inspector-filter
+          className="flex-1 bg-transparent outline-none text-xs text-foreground"
+        />
+      </label>
       <div className="space-y-2">
-        {props.entries.map((entry) => (
+        {entries.map((entry) => (
           <PropertyRow
             key={entry.path}
             entry={entry}
             onCommit={(next) => commit(client, target, entry.path, next)}
           />
         ))}
+      </div>
+      <div className="pg-value text-[10px] text-muted-foreground pt-2 border-t border-input">
+        element {idText} · re-fetched on mutation
       </div>
     </div>
   );
@@ -212,7 +245,14 @@ function TransformEditor(props: {
             /* live updates ignored; commit on Enter/blur */
           }}
           onCommit={(next) => {
-            const out = [...m] as [number, number, number, number, number, number];
+            const out = [...m] as [
+              number,
+              number,
+              number,
+              number,
+              number,
+              number,
+            ];
             out[idx] = next;
             props.onCommit({ type: "transform", value: out } as Value);
           }}

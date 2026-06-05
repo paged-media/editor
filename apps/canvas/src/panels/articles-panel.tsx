@@ -1,9 +1,11 @@
-// SDK Phase 5 (v1 sweep) — Articles panel.
+// SDK Phase 5 / panel-gallery pass — Articles panel.
 //
-// Read-only list of every `<Article>` defined in the document.
-// Per `panel-catalog-and-sdk-extension.md` §5.1 + Tier 1.
+// Gallery list shape over every `<Article>`: order number + name +
+// member count. Reorder/visibility stay honest seams until their
+// Operations land; the footer states the panel's role as the
+// accessible-PDF reading-order source.
 
-import { useCollection } from "@paged-media/shell";
+import { ListRows, useCollection } from "@paged-media/shell";
 import type { ArticleSummary } from "@paged-media/client";
 
 export function ArticlesPanel() {
@@ -19,33 +21,28 @@ export function ArticlesPanel() {
     );
   }
   return (
-    <div className="p-3" data-articles-panel="ready">
-      <div className="text-xs text-muted-foreground uppercase pb-2 border-b border-input">
-        Articles
-      </div>
+    <div data-articles-panel="ready">
       {items.length === 0 ? (
-        <div
-          className="pt-2 text-xs text-muted-foreground"
-          data-empty-articles
-        >
+        <div className="p-3 text-xs text-muted-foreground" data-empty-articles>
           No articles in this document.
         </div>
       ) : (
-        <ul className="flex flex-col gap-0.5 pt-1" data-article-list>
-          {items.map((a) => (
-            <li
-              key={a.selfId}
-              className="text-xs px-2 py-1"
-              data-article-id={a.selfId}
-            >
-              <span>{a.name}</span>
-              <span className="ml-2 text-muted-foreground">
-                {a.members.length} member{a.members.length === 1 ? "" : "s"}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div data-article-list>
+          <ListRows
+            rows={items.map((a, i) => ({
+              key: a.selfId,
+              icon: "ui-dots",
+              primary: a.name,
+              secondary: `${i + 1} · ${a.members.length} member${
+                a.members.length === 1 ? "" : "s"
+              }`,
+            }))}
+          />
+        </div>
       )}
+      <div className="px-3 pb-3 text-[10.5px] italic text-muted-foreground">
+        Order drives accessible-PDF reading order.
+      </div>
     </div>
   );
 }

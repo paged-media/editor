@@ -1,10 +1,10 @@
-// SDK Phase 5 (v1 sweep) — Spreads panel.
+// SDK Phase 5 / panel-gallery pass — Spreads panel.
 //
-// Read-only list of every spread in the document. Per
-// `panel-catalog-and-sdk-extension.md` §5.1 + §6 Tier 1.
-// `documentCollection:spreads` accessor walks `scene.spreads`.
+// Gallery list shape over `documentCollection:spreads`. The page-
+// membership secondary ("4 pages · 4–7") waits on SpreadSummary
+// carrying members (engine gap 7) — today it shows the count.
 
-import { useCollection } from "@paged-media/shell";
+import { ListRows, useCollection } from "@paged-media/shell";
 import type { SpreadSummary } from "@paged-media/client";
 
 export function SpreadsPanel() {
@@ -20,32 +20,22 @@ export function SpreadsPanel() {
     );
   }
   return (
-    <div className="p-3" data-spreads-panel="ready">
-      <div className="text-xs text-muted-foreground uppercase pb-2 border-b border-input">
-        Spreads
-      </div>
+    <div data-spreads-panel="ready">
       {items.length === 0 ? (
-        <div
-          className="pt-2 text-xs text-muted-foreground"
-          data-empty-spreads
-        >
+        <div className="p-3 text-xs text-muted-foreground" data-empty-spreads>
           No spreads.
         </div>
       ) : (
-        <ul className="flex flex-col gap-0.5 pt-1" data-spread-list>
-          {items.map((s) => (
-            <li
-              key={s.selfId}
-              className="text-xs px-2 py-1"
-              data-spread-id={s.selfId}
-            >
-              <span>{s.label}</span>
-              <span className="ml-2 text-muted-foreground">
-                {s.pageCount} page{s.pageCount === 1 ? "" : "s"}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div data-spread-list>
+          <ListRows
+            rows={items.map((s) => ({
+              key: s.selfId,
+              icon: "panel-spreads",
+              primary: s.label,
+              secondary: `${s.pageCount} page${s.pageCount === 1 ? "" : "s"}`,
+            }))}
+          />
+        </div>
       )}
     </div>
   );

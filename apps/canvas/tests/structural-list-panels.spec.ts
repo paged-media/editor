@@ -51,6 +51,27 @@ test.describe("Phase 5 — Wave 1 structural panels", () => {
     );
   });
 
+  test("AC-WAVE1-1b — Pages list toolbar: New inserts, Delete removes the selected page", async ({
+    page,
+  }) => {
+    await openPanel(page, "paged.pages-list");
+    const rows = page.locator("[data-page-list] [data-list-row]");
+    await expect.poll(() => rows.count()).toBeGreaterThanOrEqual(1);
+    const before = await rows.count();
+    // New rides insertPage (after the document end with nothing
+    // selected).
+    await page.locator('[data-toolbar-btn="ui-plus"]').click();
+    await expect.poll(() => rows.count()).toBe(before + 1);
+    // Select the new last page, then Delete rides deletePage.
+    await rows.last().click();
+    await page.locator('[data-toolbar-btn="ui-x"]').click();
+    await expect.poll(() => rows.count()).toBe(before);
+    // Duplicate is an honest seam until its Operation ships.
+    await expect(
+      page.locator('[data-toolbar-btn="ui-component"]'),
+    ).toBeDisabled();
+  });
+
   test("AC-WAVE1-2 — Spreads panel mounts", async ({ page }) => {
     await mountAndAssert(
       page,

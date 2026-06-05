@@ -15,10 +15,7 @@
 // "Align Left" on 4 frames takes 4 Cmd-Z presses to revert. A
 // follow-up wire-level Mutation::Batch coalesces this.
 
-import {
-  useCanvasClient,
-  useSelection,
-} from "@paged-media/shell";
+import { useCanvasClient, useSelection } from "@paged-media/shell";
 import type { ElementId } from "@paged-media/client";
 
 type AlignKind =
@@ -40,7 +37,11 @@ const ALIGN_BUTTONS: Array<{ kind: AlignKind; label: string; hint: string }> = [
   { kind: "bottom", label: "B", hint: "Align Bottom" },
 ];
 
-const DISTRIBUTE_BUTTONS: Array<{ kind: AlignKind; label: string; hint: string }> = [
+const DISTRIBUTE_BUTTONS: Array<{
+  kind: AlignKind;
+  label: string;
+  hint: string;
+}> = [
   { kind: "distributeH", label: "↔", hint: "Distribute Horizontally" },
   { kind: "distributeV", label: "↕", hint: "Distribute Vertically" },
 ];
@@ -53,11 +54,15 @@ export function AlignPanel() {
   async function align(kind: AlignKind) {
     if (elementSelection.length < 2) return;
     // 1. Snapshot each selected frame's bounds.
-    const entries: Array<{ id: ElementId; bounds: [number, number, number, number] }> = [];
+    const entries: Array<{
+      id: ElementId;
+      bounds: [number, number, number, number];
+    }> = [];
     for (const id of elementSelection) {
       const props = await client.elementProperties(id);
-      const bounds = props?.entries.find((e) => e.path === "frameBounds")
-        ?.value;
+      const bounds = props?.entries.find(
+        (e) => e.path === "frameBounds",
+      )?.value;
       if (
         bounds &&
         bounds.type === "bounds" &&
@@ -105,7 +110,9 @@ export function AlignPanel() {
       const axis = kind === "distributeH" ? "h" : "v";
       const center = (b: [number, number, number, number]) =>
         axis === "h" ? (b[1] + b[3]) / 2 : (b[0] + b[2]) / 2;
-      const sorted = entries.slice().sort((a, b) => center(a.bounds) - center(b.bounds));
+      const sorted = entries
+        .slice()
+        .sort((a, b) => center(a.bounds) - center(b.bounds));
       const firstC = center(sorted[0].bounds);
       const lastC = center(sorted[sorted.length - 1].bounds);
       const step = (lastC - firstC) / (sorted.length - 1);
@@ -122,10 +129,7 @@ export function AlignPanel() {
         } else {
           nTop = targetCenter - h / 2;
         }
-        if (
-          Math.abs(nTop - top) < 1e-3 &&
-          Math.abs(nLeft - left) < 1e-3
-        ) {
+        if (Math.abs(nTop - top) < 1e-3 && Math.abs(nLeft - left) < 1e-3) {
           continue;
         }
         children.push({
@@ -169,10 +173,7 @@ export function AlignPanel() {
         }
         const nBottom = nTop + h;
         const nRight = nLeft + w;
-        if (
-          Math.abs(nTop - top) < 1e-3 &&
-          Math.abs(nLeft - left) < 1e-3
-        ) {
+        if (Math.abs(nTop - top) < 1e-3 && Math.abs(nLeft - left) < 1e-3) {
           continue;
         }
         children.push({
@@ -200,9 +201,29 @@ export function AlignPanel() {
   const distributeEnabled = elementSelection.length >= 3;
   return (
     <div className="p-3 flex flex-col gap-2" data-align-panel="ready">
-      <div className="text-xs text-muted-foreground uppercase">
-        Align
+      {/* Align-to scope — Selection is the live behaviour; Page /
+          Margins / Spread wait on page-membership reads (gap 7). */}
+      <div className="grid grid-cols-[92px_1fr] items-center gap-2">
+        <span className="text-xs text-muted-foreground">Align to</span>
+        <select
+          className="w-full text-xs h-[30px] px-2 rounded-[6px] border border-input bg-background text-foreground"
+          value="selection"
+          onChange={() => {}}
+          data-align-scope
+        >
+          <option value="selection">Selection</option>
+          <option value="page" disabled>
+            Page — awaiting engine support
+          </option>
+          <option value="margins" disabled>
+            Margins — awaiting engine support
+          </option>
+          <option value="spread" disabled>
+            Spread — awaiting engine support
+          </option>
+        </select>
       </div>
+      <div className="pg-label pt-1">Align objects</div>
       <div className="grid grid-cols-3 gap-1" role="group" aria-label="Align">
         {ALIGN_BUTTONS.map((btn) => (
           <button
@@ -211,7 +232,7 @@ export function AlignPanel() {
             data-align-kind={btn.kind}
             disabled={!enabled}
             title={btn.hint}
-            className="text-xs px-2 py-1 border border-input rounded bg-background hover:bg-muted/60 disabled:opacity-50"
+            className="text-xs h-[30px] px-2 border border-input rounded-[6px] bg-background hover:bg-muted/60 disabled:opacity-50"
             onClick={() => {
               void align(btn.kind);
             }}
@@ -220,10 +241,12 @@ export function AlignPanel() {
           </button>
         ))}
       </div>
-      <div className="text-xs text-muted-foreground uppercase pt-2 border-t border-input">
-        Distribute
-      </div>
-      <div className="grid grid-cols-2 gap-1" role="group" aria-label="Distribute">
+      <div className="pg-label pt-2 border-t border-input">Distribute</div>
+      <div
+        className="grid grid-cols-2 gap-1"
+        role="group"
+        aria-label="Distribute"
+      >
         {DISTRIBUTE_BUTTONS.map((btn) => (
           <button
             type="button"
@@ -231,7 +254,7 @@ export function AlignPanel() {
             data-align-kind={btn.kind}
             disabled={!distributeEnabled}
             title={btn.hint}
-            className="text-xs px-2 py-1 border border-input rounded bg-background hover:bg-muted/60 disabled:opacity-50"
+            className="text-xs h-[30px] px-2 border border-input rounded-[6px] bg-background hover:bg-muted/60 disabled:opacity-50"
             onClick={() => {
               void align(btn.kind);
             }}
@@ -240,19 +263,32 @@ export function AlignPanel() {
           </button>
         ))}
       </div>
+      {/* Equal-spacing distribute — honest seam until the panel
+          grows the spacing input's commit path. */}
+      <div className="grid grid-cols-[92px_1fr] items-center gap-2 pt-1">
+        <span className="text-xs text-muted-foreground">Use spacing</span>
+        <span data-seam className="inline-flex items-center gap-2">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={false}
+            disabled
+            data-use-spacing
+            className="relative w-[30px] h-[17px] rounded-full border-0 opacity-55"
+            style={{ background: "var(--chrome-divider)" }}
+          >
+            <span className="absolute top-[2px] left-[2px] w-[13px] h-[13px] rounded-full bg-white shadow" />
+          </button>
+          <span className="pg-value text-xs text-muted-foreground">4 mm</span>
+        </span>
+      </div>
       {enabled ? null : (
-        <div
-          className="text-xs text-muted-foreground"
-          data-align-hint
-        >
+        <div className="text-xs text-muted-foreground" data-align-hint>
           Select 2 or more frames to align.
         </div>
       )}
       {!distributeEnabled && enabled ? (
-        <div
-          className="text-xs text-muted-foreground"
-          data-distribute-hint
-        >
+        <div className="text-xs text-muted-foreground" data-distribute-hint>
           Select 3 or more frames to distribute.
         </div>
       ) : null}

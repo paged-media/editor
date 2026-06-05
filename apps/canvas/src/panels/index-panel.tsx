@@ -1,12 +1,11 @@
-// SDK Phase 5 (v1 sweep) — Index panel.
+// SDK Phase 5 / panel-gallery pass — Index panel.
 //
-// Read-only list of every `<Topic>` defined for the document's
-// index. Per `panel-catalog-and-sdk-extension.md` §5.1 + Tier 1.
-// Hierarchical nesting is flattened to one entry per Self — the
-// IDML schema allows nested `<Topic>` but for v1 we surface the
-// flat list.
+// Gallery list shape over every `<Topic>` (flattened — nested
+// `<Topic>` surfaces as one entry per Self for v1) plus the
+// "Generate index" affordance as an honest seam (no generate
+// Operation yet).
 
-import { useCollection } from "@paged-media/shell";
+import { ListRows, useCollection } from "@paged-media/shell";
 import type { IndexTopicSummary } from "@paged-media/client";
 
 export function IndexPanel() {
@@ -22,35 +21,37 @@ export function IndexPanel() {
     );
   }
   return (
-    <div className="p-3" data-index-panel="ready">
-      <div className="text-xs text-muted-foreground uppercase pb-2 border-b border-input">
-        Index
-      </div>
+    <div data-index-panel="ready">
       {items.length === 0 ? (
-        <div
-          className="pt-2 text-xs text-muted-foreground"
-          data-empty-index
-        >
+        <div className="p-3 text-xs text-muted-foreground" data-empty-index>
           No index topics in this document.
         </div>
       ) : (
-        <ul className="flex flex-col gap-0.5 pt-1" data-index-topic-list>
-          {items.map((t) => (
-            <li
-              key={t.selfId}
-              className="text-xs px-2 py-1"
-              data-topic-id={t.selfId}
-            >
-              <span>{t.name}</span>
-              {t.sortOrder ? (
-                <span className="ml-2 text-muted-foreground">
-                  ({t.sortOrder})
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        <div data-index-topic-list>
+          <ListRows
+            search={items.length > 8}
+            searchPlaceholder="Filter topics"
+            rows={items.map((t) => ({
+              key: t.selfId,
+              icon: "panel-index",
+              primary: t.name,
+              secondary: t.sortOrder ?? undefined,
+            }))}
+          />
+        </div>
       )}
+      <div className="px-3 pb-3">
+        <button
+          type="button"
+          disabled
+          data-generate-index
+          title="Generate index — awaiting engine support"
+          className="w-full text-xs h-[30px] rounded-[7px] border border-dashed text-muted-foreground opacity-55"
+          style={{ borderColor: "var(--chrome-divider)" }}
+        >
+          + Generate index
+        </button>
+      </div>
     </div>
   );
 }

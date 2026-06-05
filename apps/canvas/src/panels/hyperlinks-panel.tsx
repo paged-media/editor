@@ -1,6 +1,9 @@
-// SDK Phase 5 (v1 sweep) — Hyperlinks panel.
+// SDK Phase 5 / panel-gallery pass — Hyperlinks panel.
+//
+// Gallery list shape: glyph rows with the destination as the mono
+// secondary. CRUD + jump-to land with their Operations.
 
-import { useCollection } from "@paged-media/shell";
+import { ListRows, useCollection } from "@paged-media/shell";
 import type { HyperlinkSummary } from "@paged-media/client";
 
 export function HyperlinksPanel() {
@@ -16,35 +19,32 @@ export function HyperlinksPanel() {
     );
   }
   return (
-    <div className="p-3" data-hyperlinks-panel="ready">
-      <div className="text-xs text-muted-foreground uppercase pb-2 border-b border-input">
-        Hyperlinks
-      </div>
+    <div data-hyperlinks-panel="ready">
       {items.length === 0 ? (
         <div
-          className="pt-2 text-xs text-muted-foreground"
+          className="p-3 text-xs text-muted-foreground"
           data-empty-hyperlinks
         >
           No hyperlinks in this document.
         </div>
       ) : (
-        <ul className="flex flex-col gap-0.5 pt-1" data-hyperlink-list>
-          {items.map((h) => (
-            <li
-              key={h.selfId}
-              className="text-xs px-2 py-1"
-              data-hyperlink-id={h.selfId}
-              title={h.destination}
-            >
-              <span>{h.name}</span>
-              {h.destination ? (
-                <span className="ml-2 text-muted-foreground">
-                  → {h.destination.length > 40 ? `${h.destination.slice(0, 40)}…` : h.destination}
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        <div data-hyperlink-list>
+          <ListRows
+            rows={items.map((h) => ({
+              key: h.selfId,
+              icon: "panel-hyperlinks",
+              primary: h.name,
+              secondary: h.destination
+                ? `→ ${
+                    h.destination.length > 40
+                      ? `${h.destination.slice(0, 40)}…`
+                      : h.destination
+                  }`
+                : undefined,
+              searchText: `${h.name} ${h.destination ?? ""}`,
+            }))}
+          />
+        </div>
       )}
     </div>
   );

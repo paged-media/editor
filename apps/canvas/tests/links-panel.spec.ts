@@ -31,7 +31,7 @@ test.describe("Phase 5 — Links panel", () => {
     await loadIdml(page, `${REPO_ROOT}/corpus/generated/images.idml`);
     await openPanel(page, "paged.links");
     await expect(page.locator('[data-links-panel="ready"]')).toBeVisible();
-    const rows = page.locator("[data-link-list] [data-link-host]");
+    const rows = page.locator("[data-link-list] [data-list-row]");
     await expect(rows).not.toHaveCount(0);
   });
 });

@@ -1,17 +1,27 @@
-// SDK Phase 5 (v1 sweep) — Pages list panel.
+// SDK Phase 5 / panel-gallery pass — Pages list panel.
 //
-// Read-only expert leaf rendering every built page in the
-// document. Companion to the existing Navigator (which paints
-// thumbnails); this surface exists so the
-// `documentCollection:pages` wire is exercised end-to-end and a
-// catalog-bindable list of pages is available to compositions
-// that want a textual outline.
+// Gallery list shape over `documentCollection:pages`, now with the
+// LIVE toolbar: New rides `insertPage` (after the selected page or
+// the document end) and Delete rides `deletePage` against the
+// selected row. Duplicate stays an honest seam (no duplicatePage
+// Operation yet); the master column waits on per-page master reads.
 
-import { useCollection } from "@paged-media/shell";
+import { useState } from "react";
+
+import {
+  ListRows,
+  PanelToolbar,
+  ToolbarBtn,
+  useCanvasClient,
+  useCollection,
+} from "@paged-media/shell";
 import type { PageSummary } from "@paged-media/client";
 
 export function PagesListPanel() {
+  const client = useCanvasClient();
   const items = useCollection<PageSummary>("pages");
+  const [selected, setSelected] = useState<string | null>(null);
+
   if (items === null) {
     return (
       <div
@@ -22,34 +32,62 @@ export function PagesListPanel() {
       </div>
     );
   }
+
+  const selectedPage = items.find((p) => p.selfId === selected) ?? null;
+
+  const onNew = () => {
+    const after = selectedPage ?? items[items.length - 1] ?? null;
+    void client
+      .mutate({
+        op: "insertPage",
+        args: { afterPageId: after?.selfId ?? null, masterId: null },
+      })
+      .catch(() => {});
+  };
+
+  const onDelete = selectedPage
+    ? () => {
+        void client
+          .mutate({ op: "deletePage", args: { pageId: selectedPage.selfId } })
+          .catch(() => {});
+        setSelected(null);
+      }
+    : undefined;
+
   return (
-    <div className="p-3" data-pages-list-panel="ready">
-      <div className="text-xs text-muted-foreground uppercase pb-2 border-b border-input">
-        Pages
-      </div>
+    <div data-pages-list-panel="ready">
+      <PanelToolbar>
+        <ToolbarBtn icon="ui-plus" label="New page" onClick={onNew} />
+        <ToolbarBtn
+          icon="ui-x"
+          label={
+            selectedPage ? "Delete page" : "Delete page (select one first)"
+          }
+          onClick={onDelete}
+        />
+        <ToolbarBtn
+          icon="ui-component"
+          label="Duplicate page — awaiting engine support"
+        />
+      </PanelToolbar>
       {items.length === 0 ? (
-        <div
-          className="pt-2 text-xs text-muted-foreground"
-          data-empty-pages
-        >
+        <div className="p-3 text-xs text-muted-foreground" data-empty-pages>
           No pages.
         </div>
       ) : (
-        <ul className="flex flex-col gap-0.5 pt-1" data-page-list>
-          {items.map((p) => (
-            <li
-              key={p.selfId}
-              className="text-xs px-2 py-1"
-              data-page-id={p.selfId}
-              data-page-index={p.index}
-            >
-              <span>Page {p.index}</span>
-              <span className="ml-2 text-muted-foreground">
-                {p.sizePt[0].toFixed(0)} × {p.sizePt[1].toFixed(0)} pt
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div data-page-list>
+          <ListRows
+            rows={items.map((p) => ({
+              key: p.selfId,
+              icon: "panel-pages-list",
+              primary: `Page ${p.index}`,
+              secondary: `${p.sizePt[0].toFixed(0)} × ${p.sizePt[1].toFixed(0)} pt`,
+              selected: p.selfId === selected,
+              onClick: () =>
+                setSelected((cur) => (cur === p.selfId ? null : p.selfId)),
+            }))}
+          />
+        </div>
       )}
     </div>
   );

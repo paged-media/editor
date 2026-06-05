@@ -1,6 +1,9 @@
-// SDK Phase 5 (v1 sweep) — Cross References panel.
+// SDK Phase 5 / panel-gallery pass — Cross References panel.
+//
+// Gallery list shape: source name + mono format secondary. CRUD +
+// live update on reflow land with their Operations.
 
-import { useCollection } from "@paged-media/shell";
+import { ListRows, useCollection } from "@paged-media/shell";
 import type { CrossReferenceSummary } from "@paged-media/client";
 
 export function CrossReferencesPanel() {
@@ -16,34 +19,25 @@ export function CrossReferencesPanel() {
     );
   }
   return (
-    <div className="p-3" data-cross-references-panel="ready">
-      <div className="text-xs text-muted-foreground uppercase pb-2 border-b border-input">
-        Cross References
-      </div>
+    <div data-cross-references-panel="ready">
       {items.length === 0 ? (
         <div
-          className="pt-2 text-xs text-muted-foreground"
+          className="p-3 text-xs text-muted-foreground"
           data-empty-cross-references
         >
           No cross-references in this document.
         </div>
       ) : (
-        <ul className="flex flex-col gap-0.5 pt-1" data-cross-reference-list>
-          {items.map((x) => (
-            <li
-              key={x.selfId}
-              className="text-xs px-2 py-1"
-              data-xref-id={x.selfId}
-            >
-              <span>{x.name}</span>
-              {x.format ? (
-                <span className="ml-2 text-muted-foreground">
-                  ({x.format})
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        <div data-cross-reference-list>
+          <ListRows
+            rows={items.map((x) => ({
+              key: x.selfId,
+              icon: "panel-cross-references",
+              primary: x.name,
+              secondary: x.format ?? undefined,
+            }))}
+          />
+        </div>
       )}
     </div>
   );

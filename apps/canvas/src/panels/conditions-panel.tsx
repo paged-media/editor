@@ -1,11 +1,18 @@
-// SDK Phase 5 (v1 sweep) — Conditions panel.
+// SDK Phase 5 / panel-gallery pass — Conditions panel.
 //
-// Read-only expert leaf listing every `<Condition>` defined in
-// the document. Per `panel-catalog-and-sdk-extension.md` §5.1 +
-// §6 Tier 1. Per-condition visibility toggle lands when
-// `Operation::SetConditionVisible` ships.
+// Gallery list shape over every `<Condition>` in the document:
+// visibility-toned dot + name + mono indicator method. The per-row
+// eye toggle stays an honest seam until
+// `Operation::SetConditionVisible` ships; the New/filter toolbar
+// likewise.
 
-import { useCollection } from "@paged-media/shell";
+import {
+  Icon,
+  ListRows,
+  PanelToolbar,
+  ToolbarBtn,
+  useCollection,
+} from "@paged-media/shell";
 import type { ConditionSummary } from "@paged-media/client";
 
 export function ConditionsPanel() {
@@ -21,41 +28,46 @@ export function ConditionsPanel() {
     );
   }
   return (
-    <div className="p-3" data-conditions-panel="ready">
-      <div className="text-xs text-muted-foreground uppercase pb-2 border-b border-input">
-        Conditions
-      </div>
+    <div data-conditions-panel="ready">
+      <PanelToolbar>
+        <ToolbarBtn
+          icon="ui-plus"
+          label="New condition — awaiting engine support"
+        />
+        <ToolbarBtn icon="ui-filter" label="Filter — awaiting engine support" />
+      </PanelToolbar>
       {conditions.length === 0 ? (
         <div
-          className="pt-2 text-xs text-muted-foreground"
+          className="p-3 text-xs text-muted-foreground"
           data-empty-conditions
         >
           No conditions in this document.
         </div>
       ) : (
-        <ul className="flex flex-col gap-0.5 pt-1" data-condition-list>
-          {conditions.map((cond) => (
-            <li
-              key={cond.selfId}
-              className="text-xs px-2 py-1 flex items-center gap-2"
-              data-condition-id={cond.selfId}
-              data-condition-visible={cond.visible ? "true" : "false"}
-            >
-              <span
-                className={`inline-block w-2 h-2 rounded-full ${
-                  cond.visible ? "bg-foreground/80" : "bg-foreground/20"
-                }`}
-                aria-hidden
-              />
-              <span>{cond.name}</span>
-              {cond.indicatorMethod ? (
-                <span className="ml-2 text-muted-foreground">
-                  {cond.indicatorMethod}
+        <div data-condition-list>
+          <ListRows
+            rows={conditions.map((cond) => ({
+              key: cond.selfId,
+              dot: cond.visible ? ("ok" as const) : ("draft" as const),
+              primary: cond.name,
+              secondary: cond.indicatorMethod ?? undefined,
+              // Visibility toggle — awaiting SetConditionVisible.
+              trail: (
+                <span
+                  data-condition-visible={cond.visible ? "true" : "false"}
+                  data-seam
+                  title="Toggle visibility — awaiting engine support"
+                  style={{ opacity: 0.45, display: "inline-flex" }}
+                >
+                  <Icon
+                    name={cond.visible ? "ui-eye" : "ui-eye-off"}
+                    size={14}
+                  />
                 </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+              ),
+            }))}
+          />
+        </div>
       )}
     </div>
   );

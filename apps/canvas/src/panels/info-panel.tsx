@@ -1,24 +1,23 @@
-// SDK Phase 5 (v1 sweep) — Info panel.
+// SDK Phase 5 / panel-gallery pass — Info panel.
 //
-// Read-only expert leaf rendering the singleton `DocumentMeta`
-// fields per `panel-catalog-and-sdk-extension.md` §5.6 + §6
-// Tier 5. Uses `useDocumentMeta()` directly rather than a
-// catalog-driven composition because v1 has no `label`/`row`
-// primitive carrying a `documentMeta:<key>` binding — that lands
-// when the §9 `paged.layout.popover-section` + a Value::String
-// display leaf show up. The Info panel is one of the simpler
-// expert leaves: tiny surface, no commits, no Operations.
+// The gallery's readout shape over the singleton `DocumentMeta`:
+// label · mono tabular value rows with hairline separators. Same
+// six fields (the spec hooks key off the row labels); richer
+// Document / Active page / Output sections arrive as the meta
+// surface grows (per-page size, colour profile reads).
 
 import { useDocumentMeta } from "@paged-media/shell";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div
-      className="grid grid-cols-[6rem_1fr] items-center gap-2 text-xs"
+      className="flex items-center justify-between gap-3 py-1.5 border-b border-input last:border-b-0"
       data-info-row={label}
     >
-      <span className="text-muted-foreground">{label}</span>
-      <span data-info-value>{value}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="pg-value text-xs" data-info-value>
+        {value}
+      </span>
     </div>
   );
 }
@@ -36,7 +35,8 @@ export function InfoPanel() {
     );
   }
   return (
-    <div className="p-3 flex flex-col gap-1.5" data-info-panel="ready">
+    <div className="p-3 flex flex-col" data-info-panel="ready">
+      <Row label="Document" value={meta.documentName || "—"} />
       <Row label="Pages" value={String(meta.pageCount)} />
       <Row
         label="Active page"
@@ -44,7 +44,6 @@ export function InfoPanel() {
       />
       <Row label="Units" value={meta.units || "—"} />
       <Row label="Color mode" value={meta.colorMode || "—"} />
-      <Row label="Document" value={meta.documentName || "—"} />
       <Row label="Dirty" value={meta.dirty ? "yes" : "no"} />
     </div>
   );

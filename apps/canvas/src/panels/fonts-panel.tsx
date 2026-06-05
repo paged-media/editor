@@ -1,16 +1,22 @@
-// SDK Phase 5 (v1 sweep) — Fonts panel.
+// SDK Phase 5 / panel-gallery pass — Fonts panel.
 //
-// Read-only list of every font family used in the document.
-// The parse layer doesn't carry a font registry — fonts are
-// referenced from runs + paragraph-style defaults + character-
-// style defaults; the accessor walks them and dedups. Surface
-// is "fonts in use", not "fonts installed".
+// Gallery shape: All / In use / Missing filter tabs over the
+// fonts-in-use registry. The parse layer doesn't carry a font
+// registry — fonts are referenced from runs + style defaults and
+// the accessor dedups — so "All" ≡ "In use" today and "Missing"
+// is an honest seam: FontSummary has no missing/embedded flag yet
+// (engine gap 4), and the Replace action waits on the same.
 
-import { useCollection } from "@paged-media/shell";
+import { useState } from "react";
+
+import { ListRows, useCollection } from "@paged-media/shell";
 import type { FontSummary } from "@paged-media/client";
+
+type FontFilter = "All" | "In use" | "Missing";
 
 export function FontsPanel() {
   const items = useCollection<FontSummary>("fonts");
+  const [filter, setFilter] = useState<FontFilter>("All");
   if (items === null) {
     return (
       <div
@@ -22,32 +28,53 @@ export function FontsPanel() {
     );
   }
   return (
-    <div className="p-3" data-fonts-panel="ready">
-      <div className="text-xs text-muted-foreground uppercase pb-2 border-b border-input">
-        Fonts
+    <div data-fonts-panel="ready">
+      <div className="flex gap-1 px-3 pt-3">
+        {(["All", "In use", "Missing"] as FontFilter[]).map((f) => (
+          <button
+            key={f}
+            type="button"
+            data-font-filter={f}
+            data-active={filter === f ? "true" : "false"}
+            onClick={() => setFilter(f)}
+            className="text-xs px-2 h-[24px] rounded-[6px] border"
+            style={{
+              borderColor:
+                filter === f ? "var(--pg-primary)" : "var(--pg-border)",
+              background:
+                filter === f ? "var(--pg-primary-soft)" : "var(--pg-bg)",
+              color: filter === f ? "var(--pg-primary)" : "var(--pg-muted-fg)",
+            }}
+          >
+            {f}
+          </button>
+        ))}
       </div>
-      {items.length === 0 ? (
+      {filter === "Missing" ? (
         <div
-          className="pt-2 text-xs text-muted-foreground"
-          data-empty-fonts
+          className="p-3 text-xs text-muted-foreground italic"
+          data-fonts-missing-seam
         >
+          Missing-font detection awaits the engine&rsquo;s font status flag;
+          every listed font is referenced by the document.
+        </div>
+      ) : items.length === 0 ? (
+        <div className="p-3 text-xs text-muted-foreground" data-empty-fonts>
           No fonts in use.
         </div>
       ) : (
-        <ul className="flex flex-col gap-0.5 pt-1" data-font-list>
-          {items.map((f) => (
-            <li
-              key={f.family}
-              className="text-xs px-2 py-1"
-              data-font-family={f.family}
-            >
-              <span>{f.family}</span>
-              <span className="ml-2 text-muted-foreground">
-                {f.referenceCount} use{f.referenceCount === 1 ? "" : "s"}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div data-font-list>
+          <ListRows
+            rows={items.map((f) => ({
+              key: f.family,
+              icon: "panel-fonts",
+              primary: f.family,
+              secondary: `${f.referenceCount} ref${
+                f.referenceCount === 1 ? "" : "s"
+              }`,
+            }))}
+          />
+        </div>
       )}
     </div>
   );
