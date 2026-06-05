@@ -62,6 +62,7 @@ interface GroupedItem {
   command: string;
   order: number;
   group?: string;
+  disabled?: boolean;
 }
 
 function groupByTopLevel(
@@ -77,6 +78,7 @@ function groupByTopLevel(
       command: item.command,
       order: item.order ?? 100,
       group: item.group,
+      disabled: item.disabled,
     };
     const bucket = groups.get(top);
     if (bucket) bucket.push(grouped);
@@ -123,9 +125,17 @@ function renderItems(
     out.push(
       <DropdownMenuItem
         key={item.command}
-        onSelect={() => invoke(item.command)}
+        disabled={item.disabled}
+        onSelect={() => {
+          if (!item.disabled) invoke(item.command);
+        }}
       >
         {item.label}
+        {item.disabled && (
+          <span className="pg-mono-meta" style={{ marginLeft: "auto" }}>
+            soon
+          </span>
+        )}
       </DropdownMenuItem>,
     );
   });

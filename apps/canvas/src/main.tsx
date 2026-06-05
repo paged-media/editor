@@ -39,6 +39,7 @@ import {
   buildAppCommands,
 } from "./app-commands";
 import { COCKPIT_MODES, PANEL_RAIL } from "./cockpit-modes";
+import { COCKPIT_MENU_SEAMS } from "./cockpit-menus";
 import { CanvasPanel } from "./panels/canvas-panel";
 import { CharacterPanel } from "./panels/character-panel";
 import { ArticlesPanel } from "./panels/articles-panel";
@@ -109,7 +110,6 @@ import { useKeyboardShortcuts } from "./ui/useKeyboardShortcuts";
 import { documentBounds, fitCamera, layoutPages } from "./ui/layout";
 import { usePathEditMode } from "./ui/usePathEditMode";
 import { useTextEditing } from "./ui/useTextEditing";
-import { ZoomField } from "./ui/ZoomField";
 import { CorpusPicker } from "./ui/CorpusPicker";
 
 // Default overlay contributions for the canvas app. Order is
@@ -766,8 +766,8 @@ function CanvasAppIntegration() {
       },
     });
     const cmdDisposables = commands.map((c) => registries.commands.register(c));
-    const menuDisposables = APP_MENU_ITEMS.map((m) =>
-      registries.menus.register(m),
+    const menuDisposables = [...APP_MENU_ITEMS, ...COCKPIT_MENU_SEAMS].map(
+      (m) => registries.menus.register(m),
     );
     const keyDisposables = APP_KEYBINDINGS.map((k) =>
       registries.keybindings.register(k),
@@ -827,12 +827,7 @@ function CanvasAppRoot() {
       panelRail={PANEL_RAIL}
       canvasComponent={CanvasPanel}
       cockpit={COCKPIT_LAYOUT}
-      headerExtras={
-        <>
-          <CorpusPicker />
-          <ZoomField />
-        </>
-      }
+      headerExtras={<CorpusPicker />}
     >
       <CanvasAppIntegration />
     </PagedShell>

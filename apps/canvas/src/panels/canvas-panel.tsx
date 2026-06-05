@@ -253,7 +253,7 @@ export function CanvasPanel(_props: PanelProps) {
     return (
       <div style={emptyStyle}>
         <p style={{ fontSize: 14, color: "var(--pg-muted-fg)" }}>
-          Drop an IDML file in the header to begin.
+          Drop an IDML file here, or use File ▸ Open IDML…
         </p>
       </div>
     );

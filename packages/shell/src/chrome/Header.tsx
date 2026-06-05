@@ -1,19 +1,20 @@
 // Design system — the 46px cockpit header (kit chrome.jsx is the
-// reference): wordmark · menu bar · centred ⌘K command trigger ·
-// right-side utility cluster (app extras, status, theme toggle).
+// reference): wordmark · menu bar · centred "Ask or search
+// anything…" pill · collaboration cluster (visible, inert — no
+// backend yet) · theme toggle · zoom dropdown.
 //
-// Deliberately OMITTED from the kit composition: collaborator
-// avatars, Share, Comments and Notifications — they presume a
-// multiplayer/notification backend the product doesn't ship yet.
-// When that lands, they mount in the right cluster before the
-// theme toggle.
+// File intake has no header widget (kit): File ▸ Open IDML…, canvas
+// drag-drop, and a hidden `<input type="file">` for the Playwright
+// suite cover it.
 
 import { type ReactNode, useState } from "react";
 
 import { Icon } from "../icons";
 import { useTheme } from "../state/theme-context";
+import { CollabCluster } from "./CollabCluster";
 import { FileDrop } from "./FileDrop";
 import { MenuBar } from "./MenuBar";
+import { ZoomControl } from "./ZoomControl";
 import { notifyPalette } from "./CommandPalette";
 
 export interface HeaderProps {
@@ -36,14 +37,20 @@ export function Header({ onFile, headerExtras, status }: HeaderProps) {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <FileDrop onFile={onFile} compact />
+        <FileDrop onFile={onFile} hidden />
         {headerExtras}
         {status ? (
-          <span className="pg-ui-xs" data-shell-status>
+          <span
+            className="pg-mono-meta"
+            data-shell-status
+            title="Worker status"
+          >
             {status}
           </span>
         ) : null}
+        <CollabCluster />
         <ThemeToggle />
+        <ZoomControl />
       </div>
     </header>
   );
@@ -76,7 +83,7 @@ function CommandTrigger() {
         alignItems: "center",
         gap: 9,
         width: "min(460px, 100%)",
-        height: 32,
+        height: 36,
         padding: "0 14px",
         borderRadius: "var(--radius-full)",
         background: "var(--pg-muted)",
@@ -85,9 +92,9 @@ function CommandTrigger() {
         cursor: "text",
       }}
     >
-      <Icon name="ui-search" size={15} />
-      <span style={{ flex: 1, textAlign: "left", fontSize: 13 }}>
-        Search commands…
+      <Icon name="ui-search" size={16} />
+      <span style={{ flex: 1, textAlign: "left", fontSize: 13.5 }}>
+        Ask or search anything…
       </span>
       <kbd
         style={{

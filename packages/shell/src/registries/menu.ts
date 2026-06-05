@@ -25,6 +25,11 @@ export interface MenuItemContribution {
    * different groups render with a visual separator between them. */
   group?: string;
 
+  /** Visible-but-disabled seam — a kit menu item whose backing
+   * doesn't exist yet. Renders greyed with a "soon" marker and
+   * never invokes (the honest-stub convention). */
+  disabled?: boolean;
+
   /** Optional visibility predicate. Same shape + Step-3 semantics
    * (function evaluated against application state; DSL string is
    * inert until the evaluator lands in a later step). */

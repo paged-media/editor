@@ -29,11 +29,14 @@ export interface CockpitLayoutProps {
   /** Tab / Shift+Tab chrome hiding — when true the side panels
    *  disappear and the canvas column fills the row. */
   panelsHidden?: boolean;
+  /** IDML intake — the canvas column is the drag-drop target. */
+  onFile?: (file: File) => void;
 }
 
 export function CockpitLayout({
   canvasComponent: CanvasComponent,
   panelsHidden,
+  onFile,
 }: CockpitLayoutProps) {
   const paged = usePaged();
   const registries = useRegistries();
@@ -91,6 +94,15 @@ export function CockpitLayout({
         {!isOverride && <HRuler />}
         <div
           data-cockpit-canvas
+          onDragOver={(e) => {
+            if (onFile) e.preventDefault();
+          }}
+          onDrop={(e) => {
+            if (!onFile) return;
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (file) onFile(file);
+          }}
           style={{
             flex: 1,
             minHeight: 0,

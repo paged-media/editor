@@ -7,6 +7,11 @@ import { useCallback } from "react";
 export interface FileDropProps {
   onFile: (file: File) => void;
   compact?: boolean;
+  /** Cockpit — render only the invisible `<input type="file">`.
+   *  File intake then runs through File ▸ Open IDML…, canvas
+   *  drag-drop, and the Playwright `setInputFiles` hook; the kit
+   *  header carries no file widget. */
+  hidden?: boolean;
 }
 
 export function FileDrop(props: FileDropProps) {
@@ -18,6 +23,22 @@ export function FileDrop(props: FileDropProps) {
     },
     [props],
   );
+  const input = (
+    <input
+      type="file"
+      accept=".idml,application/vnd.adobe.indesign-idml-package"
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file) props.onFile(file);
+      }}
+      style={
+        props.hidden
+          ? { display: "none" }
+          : { marginLeft: props.compact ? 0 : 8, fontSize: 12 }
+      }
+    />
+  );
+  if (props.hidden) return input;
   return (
     <div
       onDragOver={(e) => e.preventDefault()}
@@ -25,15 +46,7 @@ export function FileDrop(props: FileDropProps) {
       style={props.compact ? compactDropStyle : dropStyle}
     >
       {props.compact ? "" : "Drop an IDML file here, or "}
-      <input
-        type="file"
-        accept=".idml,application/vnd.adobe.indesign-idml-package"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) props.onFile(file);
-        }}
-        style={{ marginLeft: props.compact ? 0 : 8, fontSize: 12 }}
-      />
+      {input}
     </div>
   );
 }

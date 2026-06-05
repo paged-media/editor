@@ -658,12 +658,13 @@ function ShellChrome({
         path: "File/Open IDML…",
         command: PAGED_FILE_OPEN_IDML,
         order: 10,
+        group: "open",
       }),
       items.register({
         path: "File/Export PDF…",
         command: PAGED_FILE_EXPORT_PDF,
-        order: 20,
-        group: "export",
+        order: 41,
+        group: "place",
       }),
       items.register({
         path: "View/Toggle command palette",
@@ -892,6 +893,7 @@ function ShellChrome({
           <CockpitLayout
             canvasComponent={canvasComponent}
             panelsHidden={panelsHidden}
+            onFile={onFile}
           />
         ) : (
           <div style={dockviewContainerStyle}>
