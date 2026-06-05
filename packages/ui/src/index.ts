@@ -18,9 +18,17 @@ export {
   defaultValue as defaultMixerValue,
   hexToRgb,
   rgbToHex,
+  rgbToCmyk,
+  cmykToRgb,
+  rgbToHsl,
+  luminance,
   valueToSwatchSpec,
   SPACE_CHANNELS,
   type MixerValue,
 } from "./color/color-space";
 export { rgbToHsb, hsbToRgb } from "./color/hsb";
 export { useColorCompute } from "./color/use-color-compute";
+
+// Panel-gallery pass — the colour wheel + harmonies.
+export { ColorWheel, type ColorWheelProps } from "./color/ColorWheel";
+export { HARMONY_NAMES, harmonySet, type HarmonyName } from "./color/harmonies";

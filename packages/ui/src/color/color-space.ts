@@ -59,10 +59,7 @@ export function defaultValue(space: MixerValue["space"]): number[] {
 }
 
 /** Build the `createSwatch`/`editSwatch` spec from mixer state. */
-export function valueToSwatchSpec(
-  v: MixerValue,
-  name?: string,
-): SwatchSpec {
+export function valueToSwatchSpec(v: MixerValue, name?: string): SwatchSpec {
   return {
     selfId: null,
     name: name ?? null,
@@ -91,4 +88,73 @@ export function rgbToHex(rgb: number[]): string {
       .toString(16)
       .padStart(2, "0");
   return `#${b(rgb[0] ?? 0)}${b(rgb[1] ?? 0)}${b(rgb[2] ?? 0)}`;
+}
+
+// Panel-gallery pass — naive client-side conversions for the colour
+// wheel's HEX · RGB · CMYK · HSL field round-trip. These are UI
+// approximations (device CMYK, no profile); the CMM-accurate path
+// stays `useColorCompute` / the engine's colorCompute and these
+// never cross the wire as authoritative values.
+
+/** RGB (0..255) → naive CMYK (0..100 each). */
+export function rgbToCmyk(rgb: number[]): [number, number, number, number] {
+  const r = (rgb[0] ?? 0) / 255;
+  const g = (rgb[1] ?? 0) / 255;
+  const b = (rgb[2] ?? 0) / 255;
+  const k = 1 - Math.max(r, g, b);
+  if (k >= 1) return [0, 0, 0, 100];
+  const d = 1 - k;
+  return [
+    Math.round(((1 - r - k) / d) * 100),
+    Math.round(((1 - g - k) / d) * 100),
+    Math.round(((1 - b - k) / d) * 100),
+    Math.round(k * 100),
+  ];
+}
+
+/** Naive CMYK (0..100 each) → RGB (0..255). */
+export function cmykToRgb(cmyk: number[]): [number, number, number] {
+  const c = Math.min(100, Math.max(0, cmyk[0] ?? 0)) / 100;
+  const m = Math.min(100, Math.max(0, cmyk[1] ?? 0)) / 100;
+  const y = Math.min(100, Math.max(0, cmyk[2] ?? 0)) / 100;
+  const k = Math.min(100, Math.max(0, cmyk[3] ?? 0)) / 100;
+  return [
+    Math.round(255 * (1 - c) * (1 - k)),
+    Math.round(255 * (1 - m) * (1 - k)),
+    Math.round(255 * (1 - y) * (1 - k)),
+  ];
+}
+
+/** RGB (0..255) → HSL (H 0..360, S/L 0..100). */
+export function rgbToHsl(rgb: number[]): [number, number, number] {
+  const r = (rgb[0] ?? 0) / 255;
+  const g = (rgb[1] ?? 0) / 255;
+  const b = (rgb[2] ?? 0) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  let h = 0;
+  let s = 0;
+  if (d !== 0) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return [Math.round(h), Math.round(s * 100), Math.round(l * 100)];
+}
+
+/** WCAG relative luminance (0..1) — light-vs-dark label contrast
+ *  on colour chips. */
+export function luminance(rgb: number[]): number {
+  const f = (v: number) => {
+    const n = Math.min(255, Math.max(0, v)) / 255;
+    return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4);
+  };
+  return (
+    0.2126 * f(rgb[0] ?? 0) + 0.7152 * f(rgb[1] ?? 0) + 0.0722 * f(rgb[2] ?? 0)
+  );
 }

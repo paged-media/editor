@@ -61,6 +61,7 @@ import { PropertiesPanel } from "./panels/properties-panel";
 import { PathfinderPanel } from "./panels/pathfinder-panel";
 import { CellStylesPanel } from "./panels/cell-styles-panel";
 import { ColorPanel } from "./panels/color-panel";
+import { ColorWheelPanel } from "./panels/color-wheel-panel";
 import { FontsPanel } from "./panels/fonts-panel";
 import { MasterPagesPanel } from "./panels/master-pages-panel";
 import { PagesListPanel } from "./panels/pages-list-panel";
@@ -513,6 +514,20 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     component: ColorPanel,
     defaultDock: "right",
     defaultGroup: "styles",
+  },
+  {
+    // Panel-gallery pass — the colour wheel (brand kit
+    // color-wheel.jsx, fully live). HSV wheel + value track,
+    // HEX/RGB/CMYK/HSL synced fields, colour-theory harmonies;
+    // "Add to Swatches" lands the palette as real swatches via
+    // one batched createSwatch (single undo). Also reachable
+    // from the Color panel.
+    id: "paged.color-wheel",
+    title: "Color Wheel",
+    component: ColorWheelPanel,
+    defaultDock: "right",
+    defaultGroup: "styles",
+    icon: "panel-color",
   },
   {
     // SDK Phase 5 (v1 sweep) — Gradients. Direct twin of Swatches

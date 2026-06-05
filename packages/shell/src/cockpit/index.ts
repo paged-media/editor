@@ -4,6 +4,7 @@
 export { CockpitLayout, type CockpitLayoutProps } from "./CockpitLayout";
 export {
   CockpitStateProvider,
+  cockpitActions,
   useCockpitState,
   useOptionalCockpitState,
   type CockpitState,

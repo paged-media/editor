@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import {
   CatalogRegistryProvider,
   CompositionRenderer,
+  cockpitActions,
   useBindings,
   useCanvasClient,
 } from "@paged-media/shell";
@@ -135,6 +136,16 @@ export function ColorPanel() {
             onAddSwatch={addSwatch}
           />
         </div>
+        {/* Panel-gallery pass — hand off to the colour wheel (the
+            harmony-palette author; same swatch pipeline). */}
+        <button
+          type="button"
+          data-open-color-wheel
+          onClick={() => cockpitActions.openPanel?.("paged.color-wheel")}
+          className="text-xs text-left text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+        >
+          Open color wheel
+        </button>
         {preview ? (
           <div
             className="border-t border-input pt-3 flex flex-col gap-1 text-xs"

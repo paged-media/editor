@@ -218,6 +218,7 @@ export {
   CockpitStateProvider,
   PanelHost,
   RightDock,
+  cockpitActions,
   groupSpreads,
   navigateToPages,
   setCockpitPageNavigator,
