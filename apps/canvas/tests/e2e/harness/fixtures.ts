@@ -64,6 +64,8 @@ export interface LoadedFixture {
   firstPolygon: ElementRef | null;
   firstLine: ElementRef | null;
   firstGroup: ElementRef | null;
+  /** Page index hosting `firstGroup` (-1 when none). */
+  firstGroupPage: number;
   /** First frame (any kind) per page index. */
   framesByPage: (ElementRef | null)[];
   /** All frames in document order with their page index. */
@@ -127,6 +129,7 @@ export async function loadFixture(
   // frames (possibly nested in Groups, which DO carry element ids).
   const frames: Array<{ ref: ElementRef; pageIndex: number }> = [];
   let firstGroup: ElementRef | null = null;
+  let firstGroupPage = -1;
   let pageIndex = -1;
   const visit = (node: TreeNode, inPage: boolean) => {
     if (node.kind === "Page") {
@@ -137,7 +140,10 @@ export async function loadFixture(
     const id = node.id ?? null;
     if (inPage && id) {
       if (id.kind === "group") {
-        if (!firstGroup) firstGroup = id;
+        if (!firstGroup) {
+          firstGroup = id;
+          firstGroupPage = Math.max(0, pageIndex);
+        }
       } else {
         frames.push({ ref: id, pageIndex: Math.max(0, pageIndex) });
       }
@@ -161,6 +167,7 @@ export async function loadFixture(
     firstPolygon: firstOf("polygon"),
     firstLine: firstOf("graphicLine"),
     firstGroup,
+    firstGroupPage,
     framesByPage,
     frames,
     firstStory: stories[0] ?? null,

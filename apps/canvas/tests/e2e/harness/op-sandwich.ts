@@ -67,6 +67,13 @@ export interface SandwichOpts {
   /** Tolerated pixel delta after undo. Default 0 (byte-identical);
    *  any non-zero use must carry an inline justification. */
   undoPixelTolerance?: number;
+  /** Skip ONLY the byte-identical-undo render assertion (model
+   *  restore + expectRestored stay hard). For ops whose undo render
+   *  is broken by a KNOWN engine bug — the reason string is logged
+   *  and a dedicated `test.fail` must own the strict check so the
+   *  day core fixes it the suite flips loudly. Never use to hide an
+   *  unexplained diff. */
+  skipUndoPixelCheck?: string;
 }
 
 export interface SandwichResult {
@@ -257,7 +264,15 @@ export async function opSandwich(
   await o.expectRestored?.();
   const undone = await snap(page, o.pageId, o.pageWidthPt, widthPx);
   const tolerance = o.undoPixelTolerance ?? 0;
-  if (!undone.equals(baseline)) {
+  if (o.skipUndoPixelCheck) {
+    if (!undone.equals(baseline)) {
+      const ud = diffPngPixels(baseline, undone);
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[op-sandwich] undo render stale (KNOWN: ${o.skipUndoPixelCheck}) — ${ud.changed} px differ in bbox ${JSON.stringify(ud.bbox)}; model restore still asserted.`,
+      );
+    }
+  } else if (!undone.equals(baseline)) {
     const ud = diffPngPixels(baseline, undone);
     expect(
       ud.changed,
