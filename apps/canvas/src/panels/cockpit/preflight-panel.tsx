@@ -73,33 +73,61 @@ export function PreflightPanel() {
             testId="run-validation"
             onClick={() => void validate()}
           >
-            {validation.state === "running"
-              ? "Validating…"
-              : "Validate output"}
+            {validation.state === "running" ? "Validating…" : "Validate output"}
           </CockpitBtn>
           <span className="pg-ui-xs">
-            Runs the real PDF pipeline and reports its findings — the
-            same checks the export performs.
+            Runs the real PDF pipeline and reports its findings — the same
+            checks the export performs.
           </span>
           {validation.state === "error" && (
             <StatusPill tone="error">{validation.message}</StatusPill>
           )}
-          {validation.state === "done" &&
-            validation.diagnostics.map((d, i) => (
+          {validation.state === "done" && validation.diagnostics.length > 0 && (
+            <>
+              {/* The gallery's grouped findings header. The
+                  exporter's diagnostics are flat strings today —
+                  the CRITICAL/WARNINGS split lands when the engine
+                  ships structured preflight findings (severity +
+                  page refs); until then one honest WARNINGS group. */}
               <div
-                key={i}
-                data-preflight-finding
-                className="pg-ui-xs"
+                className="pg-label"
+                data-preflight-group="warnings"
                 style={{
-                  border: "1px solid var(--pg-border)",
-                  borderLeft: "3px solid var(--status-review)",
-                  borderRadius: "var(--radius-sm)",
-                  padding: "6px 8px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  color: "var(--status-review)",
+                  marginTop: 2,
                 }}
               >
-                {d}
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "var(--status-review)",
+                  }}
+                />
+                Warnings · {validation.diagnostics.length}
               </div>
-            ))}
+              {validation.diagnostics.map((d, i) => (
+                <div
+                  key={i}
+                  data-preflight-finding
+                  className="pg-ui-xs"
+                  style={{
+                    border: "1px solid var(--pg-border)",
+                    borderLeft: "3px solid var(--status-review)",
+                    borderRadius: "var(--radius-sm)",
+                    padding: "6px 8px",
+                    lineHeight: 1.35,
+                  }}
+                >
+                  {d}
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </CockpitSection>
 

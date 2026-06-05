@@ -69,6 +69,16 @@ export function PropertiesPanel() {
             ? "Page"
             : "Properties";
 
+  // The gallery's selection sub-header — "Text · 1 frame".
+  const selectionLabel =
+    kind === "text"
+      ? "Text selection"
+      : hasElement
+        ? `${kind === "image" ? "Image" : "Frame"} · ${
+            elementSelection.length
+          } frame${elementSelection.length === 1 ? "" : "s"}`
+        : null;
+
   return (
     <CatalogRegistryProvider registry={appCatalogRegistry()}>
       <div
@@ -79,6 +89,33 @@ export function PropertiesPanel() {
         style={{ display: "flex", flexDirection: "column", minHeight: 0 }}
       >
         <CockpitPanelHeader title={title} />
+        {selectionLabel && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              padding: "0 14px 8px",
+            }}
+          >
+            <span className="pg-label" data-selection-label>
+              {selectionLabel}
+            </span>
+            {/* The kit's overset alert chip — an honest seam until
+                the engine's overset signal lands (gap 1). */}
+            {kind === "text" && (
+              <span
+                data-overset-seam
+                title="Overset detection — awaiting the engine's overset signal"
+                className="pg-ui-xs"
+                style={{ opacity: 0.55, whiteSpace: "nowrap" }}
+              >
+                overset · —
+              </span>
+            )}
+          </div>
+        )}
 
         {kind === "none" && (
           <div

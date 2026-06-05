@@ -6,6 +6,7 @@
 import {
   CockpitPanelHeader,
   CockpitSection,
+  Icon,
   MetricTile,
   StatusPill,
   useCollection,
@@ -13,6 +14,17 @@ import {
   useDocumentStats,
 } from "@paged-media/shell";
 import type { LinkSummary } from "@paged-media/client";
+
+/** The kit's risk rows. Every count is an engine gap today
+ *  (overset / link status / PPI / font flags) — the rows ship in
+ *  the gallery shape with em-dash counts and inert chevrons, never
+ *  invented numbers. */
+const RISK_ROWS = [
+  { key: "overset", label: "Overset frames" },
+  { key: "missing-links", label: "Missing links" },
+  { key: "low-res", label: "Low-res images" },
+  { key: "fonts", label: "Font warnings" },
+];
 
 export function PublicationHealthPanel() {
   const meta = useDocumentMeta();
@@ -69,12 +81,45 @@ export function PublicationHealthPanel() {
           />
         </div>
       </CockpitSection>
-      <CockpitSection title="Risks" defaultOpen={false}>
-        <span className="pg-ui-xs">
-          Overset, missing-font and low-resolution tiles land with the
-          engine's preflight accessors — run Prepress ▸ Validate output
-          for the exporter's findings today.
-        </span>
+      <CockpitSection title="Risks">
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {RISK_ROWS.map((r) => (
+            <div
+              key={r.key}
+              data-risk-row={r.key}
+              data-seam
+              title="Risk counts land with the engine's preflight accessors"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 0",
+                borderBottom: "1px solid var(--pg-border)",
+                opacity: 0.55,
+              }}
+            >
+              <span
+                className="pg-value"
+                style={{ width: 18, textAlign: "right", flexShrink: 0 }}
+              >
+                —
+              </span>
+              <span style={{ flex: 1, fontSize: 12.5 }}>{r.label}</span>
+              <Icon
+                name="ui-chevron-right"
+                size={13}
+                style={{ color: "var(--pg-muted-fg)", flexShrink: 0 }}
+              />
+            </div>
+          ))}
+          <span
+            className="pg-ui-xs"
+            style={{ paddingTop: 8, lineHeight: 1.45 }}
+          >
+            Counts land with the engine's preflight accessors — run Prepress ▸
+            Validate output for the exporter's findings today.
+          </span>
+        </div>
       </CockpitSection>
     </div>
   );
