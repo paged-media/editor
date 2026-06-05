@@ -12,6 +12,8 @@
 // the control visibly but disabled, showing `props.placeholder`.
 // A seam is never fake-interactive.
 
+import { useState } from "react";
+
 import type { LeafProps } from "@paged-media/catalog";
 import type { CollectionName, Value } from "@paged-media/client";
 import {
@@ -85,10 +87,12 @@ function MixedDash() {
 
 /** Numeric input with a unit picker. Binds to a `Value::Length`.
  *  Optional `icon` prop renders the kit's `Metric` look (glyph chip
- *  + value field; the chip is the scrub handle). */
+ *  + value field; the chip is the scrub handle); `unitPicker: false`
+ *  drops the unit select (compact cluster cells). */
 export function LengthLeaf({ value, onCommit, props }: LeafProps) {
   const label = labelFromProps(props);
   const icon = iconFromProps(props);
+  const unitPicker = props.unitPicker !== false;
   if (isSeam(props)) {
     const ph = Number.parseFloat(placeholderFromProps(props));
     return (
@@ -97,6 +101,7 @@ export function LengthLeaf({ value, onCommit, props }: LeafProps) {
           <LengthInput
             valuePt={Number.isFinite(ph) ? ph : 0}
             icon={icon}
+            unitPicker={unitPicker}
             disabled
             onChangePt={() => {}}
           />
@@ -117,6 +122,7 @@ export function LengthLeaf({ value, onCommit, props }: LeafProps) {
       <LengthInput
         valuePt={pointValue}
         icon={icon}
+        unitPicker={unitPicker}
         onChangePt={(next) => {
           // Live updates are emitted; we only commit on blur via
           // onCommitPt below to avoid spamming the mutation channel.
@@ -198,9 +204,49 @@ export function NumericScrubLeaf({ value, onCommit, props }: LeafProps) {
 }
 
 /** Titled section. Layout-only — renders the catalog children
- *  under the kit's uppercase kicker label. */
+ *  under the kit's uppercase kicker label. Props:
+ *   - `heading: false` — keep the `data-section` hook but render
+ *     no border/legend (panel roots: the dock tab already titles
+ *     the surface; the gallery body starts directly with fields).
+ *   - `collapsible` + `defaultOpen` — disclosure sections
+ *     ("Paragraph rules", "Dashes & arrows"). */
 export function LayoutSectionLeaf({ props }: LeafProps) {
   const title = typeof props.title === "string" ? props.title : undefined;
+  const heading = props.heading !== false;
+  const collapsible = props.collapsible === true;
+  const [open, setOpen] = useState(props.defaultOpen !== false);
+  if (!heading) {
+    return (
+      <div className="flex flex-col gap-1.5" data-section={title}>
+        {(props.children as React.ReactNode) ?? null}
+      </div>
+    );
+  }
+  if (collapsible) {
+    return (
+      <div className="border-t border-input pt-2" data-section={title}>
+        <button
+          type="button"
+          className="pg-label flex w-full items-center justify-between bg-transparent border-0 px-1 cursor-pointer"
+          data-section-toggle
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          {title}
+          <Icon
+            name={open ? "ui-chevron-down" : "ui-chevron-right"}
+            size={13}
+            style={{ color: "var(--pg-muted-fg)" }}
+          />
+        </button>
+        {open && (
+          <div className="flex flex-col gap-1.5 pt-1">
+            {(props.children as React.ReactNode) ?? null}
+          </div>
+        )}
+      </div>
+    );
+  }
   return (
     <fieldset className="border-t border-input pt-2" data-section={title}>
       {title ? <legend className="pg-label px-1">{title}</legend> : null}
@@ -208,6 +254,30 @@ export function LayoutSectionLeaf({ props }: LeafProps) {
         {(props.children as React.ReactNode) ?? null}
       </div>
     </fieldset>
+  );
+}
+
+/** Labelled multi-control row — the gallery's paired/tripled field
+ *  rows ("Style + Size", "L / R / 1st indent"). Layout-only: one
+ *  row label on the left, the pre-rendered children in an even
+ *  grid. Child leaves omit their `label` (they render bare) and
+ *  carry an `icon` chip instead. */
+export function LayoutClusterLeaf({ props }: LeafProps) {
+  const label = labelFromProps(props);
+  const count =
+    typeof props.count === "number" && props.count > 0
+      ? (props.count as number)
+      : 2;
+  return (
+    <LeafRow label={label}>
+      <div
+        className="grid gap-1"
+        style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}
+        data-cluster={label}
+      >
+        {(props.children as React.ReactNode) ?? null}
+      </div>
+    </LeafRow>
   );
 }
 
@@ -722,13 +792,14 @@ function LeafRow({
       </div>
     );
   }
+  // No label → bare control (cluster children: the cluster row
+  // carries the shared label; the child shows only its icon chip).
+  if (!label) {
+    return <>{children}</>;
+  }
   return (
     <div className="grid grid-cols-[92px_1fr] items-center gap-2">
-      {label ? (
-        <label className="text-xs text-muted-foreground">{label}</label>
-      ) : (
-        <span />
-      )}
+      <label className="text-xs text-muted-foreground">{label}</label>
       {children}
     </div>
   );

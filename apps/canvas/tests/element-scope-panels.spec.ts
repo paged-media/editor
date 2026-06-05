@@ -114,11 +114,13 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
         '[data-object-transform-panel="ready"] [data-section="Object"]',
       ),
     ).toBeVisible();
-    // 2 fields: Bounds + Opacity. Both em-dash with no selection.
+    // 3 live fields: X+Y, W+H (both derived from frameBounds) and
+    // Opacity — all em-dash with no selection. The rotate/scale
+    // seams render disabled controls, not mixed sentinels.
     const mixed = page.locator(
       '[data-object-transform-panel="ready"] [data-mixed]',
     );
-    await expect(mixed).toHaveCount(2);
+    await expect(mixed).toHaveCount(3);
   });
 
   test("AC-OBJECT-2 — selecting a frame populates Bounds + Opacity", async ({
@@ -129,11 +131,16 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
     await expect(
       page.locator('[data-object-transform-panel="ready"] [data-mixed]'),
     ).toHaveCount(0);
-    // BoundsInput renders 4 LengthInput cells; Opacity renders 1.
-    // 5 inputs total in the Object panel.
+    // 5 LIVE inputs: X, Y, W, H (the frameBounds projection) +
+    // Opacity. The rotation/scale seams are disabled inputs.
     await expect(
-      page.locator('[data-object-transform-panel="ready"] input'),
+      page.locator(
+        '[data-object-transform-panel="ready"] input:not([disabled])',
+      ),
     ).toHaveCount(5);
+    await expect(
+      page.locator('[data-object-transform-panel="ready"] input[disabled]'),
+    ).toHaveCount(3);
   });
 
   test("AC-OBJECT-3 — multi-selection with differing bounds shows mixed", async ({

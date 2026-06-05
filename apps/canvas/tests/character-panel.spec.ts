@@ -34,11 +34,24 @@ test.describe("Phase 3 — Character panel (declarative composition)", () => {
     // Dockview renders it as a tab; it should be visible by default in
     // the right-side group alongside Inspector / Layers.
     await expect(page.locator('[data-character-panel="ready"]')).toBeVisible();
-    // The section title comes from the composition's
+    // The section hook comes from the composition's
     // `paged.layout.section` leaf with props.title = "Character".
     await expect(
       page.locator('[data-character-panel="ready"] [data-section="Character"]'),
     ).toBeVisible();
+    // Panel-gallery honest seams: family/style/kerning/baseline/
+    // case/position/language render visibly but DISABLED (no
+    // engine paths yet) — plus the bespoke OpenType chip row.
+    const seams = page.locator('[data-character-panel="ready"] [data-seam]');
+    await expect(seams).toHaveCount(7);
+    await expect(
+      page.locator('[data-character-panel="ready"] [data-opentype-chip]'),
+    ).toHaveCount(4);
+    await expect(
+      page
+        .locator('[data-character-panel="ready"] [data-opentype-chip]')
+        .first(),
+    ).toBeDisabled();
   });
 
   test("AC-CHAR-2 — fields render em-dash placeholder when no content selection", async ({

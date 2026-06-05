@@ -1,14 +1,10 @@
-// SDK Phase 5 (v1 sweep) — Text Wrap panel as a declarative
-// composition.
+// SDK Phase 5 / panel-gallery pass — Text Wrap panel as a
+// declarative composition, shaped to the gallery card.
 //
-// Two rows: a Mode toggle-group and a Bounds row for the wrap
-// offsets. Both bind element-scope properties; the apply layer
-// preserves the unset half when only one is committed. Frame
-// kinds that carry `text_wrap` (TextFrame / Rectangle / Oval /
-// Polygon / GraphicLine) accept both; TextFrame returns
-// UnsupportedProperty on FrameStrokeEndCap so the Stroke panel's
-// end-cap row reflects that gap — Text Wrap has no equivalent
-// gap.
+// LIVE: mode (glyph segments) + offsets (row4 bounds grid); both
+// element-scope, and the apply layer preserves the unset half when
+// only one is committed. HONEST SEAMS: wrap-to side, contour
+// source, invert — no engine paths yet (wrap-refinement roadmap).
 //
 // Reads:  `selectionProperty:frameTextWrapMode` +
 //         `selectionProperty:frameTextWrapOffsets`
@@ -17,24 +13,26 @@
 import type { CompositionNode } from "@paged-media/catalog";
 import {
   PAGED_INPUT_BOUNDS,
+  PAGED_INPUT_SELECT,
   PAGED_INPUT_TOGGLE_GROUP,
+  PAGED_INPUT_TOGGLE_SWITCH,
   PAGED_LAYOUT_SECTION,
 } from "@paged-media/shell";
 
 export const textWrapComposition: CompositionNode = {
   catalogId: PAGED_LAYOUT_SECTION,
-  props: { title: "Text Wrap" },
+  props: { title: "Text Wrap", heading: false },
   bindings: {},
   children: [
     {
       catalogId: PAGED_INPUT_TOGGLE_GROUP,
       props: {
-        label: "Mode",
+        label: "Wrap",
         options: [
-          { value: "None", label: "—" },
-          { value: "BoundingBoxTextWrap", label: "▦" },
-          { value: "ContourTextWrap", label: "◯" },
-          { value: "JumpObjectTextWrap", label: "↪" },
+          { value: "None", label: "ui-x" },
+          { value: "BoundingBoxTextWrap", label: "panel-text-wrap" },
+          { value: "ContourTextWrap", label: "panel-conditions" },
+          { value: "JumpObjectTextWrap", label: "ui-rows" },
         ],
       },
       bindings: {
@@ -47,7 +45,7 @@ export const textWrapComposition: CompositionNode = {
     },
     {
       catalogId: PAGED_INPUT_BOUNDS,
-      props: { label: "Offsets (pt)" },
+      props: { label: "Offset", layout: "row4" },
       bindings: {
         value: {
           kind: "selectionProperty",
@@ -55,6 +53,24 @@ export const textWrapComposition: CompositionNode = {
           path: "frameTextWrapOffsets",
         },
       },
+    },
+    {
+      // Engine gap — no wrap-to-side option yet.
+      catalogId: PAGED_INPUT_SELECT,
+      props: { label: "Wrap to", seam: true, placeholder: "Both edges" },
+      bindings: {},
+    },
+    {
+      // Engine gap — no contour-source option yet.
+      catalogId: PAGED_INPUT_SELECT,
+      props: { label: "Contour", seam: true, placeholder: "Same as clip" },
+      bindings: {},
+    },
+    {
+      // Engine gap — no invert flag yet.
+      catalogId: PAGED_INPUT_TOGGLE_SWITCH,
+      props: { label: "Invert", seam: true, placeholder: "off" },
+      bindings: {},
     },
   ],
 };

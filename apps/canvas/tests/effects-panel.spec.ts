@@ -26,16 +26,22 @@ test.describe("Phase 5 — Effects panel", () => {
     page,
   }) => {
     await expect(page.locator('[data-effects-panel="ready"]')).toBeVisible();
-    // Multiple em-dash placeholders now (toggle + 6 per-field
-    // editors all render em-dash without a selection). Strict-
-    // mode requires `.first()` here; the count check below pins
-    // that all 7 are present (1 toggle + 6 fields).
+    // Gallery shape: two LIVE fields em-dash without a selection
+    // (opacity + the Drop Shadow pill); the per-field editors only
+    // render inside the expanded Drop Shadow row, and the five
+    // seam effects are disabled pills, not mixed sentinels.
     await expect(
       page.locator('[data-effects-panel="ready"] [data-mixed]').first(),
     ).toBeVisible();
     await expect(
       page.locator('[data-effects-panel="ready"] [data-mixed]'),
-    ).toHaveCount(7);
+    ).toHaveCount(2);
+    // The honest-seam effect rows are present and inert.
+    await expect(
+      page.locator(
+        '[data-effects-panel="ready"] [data-effect-row] [data-seam]',
+      ),
+    ).toHaveCount(5);
   });
 
   test("AC-EFFECTS-2 — drop-shadow toggle round-trips via the apply layer", async ({

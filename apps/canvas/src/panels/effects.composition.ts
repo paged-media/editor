@@ -23,7 +23,9 @@ import {
 
 export const effectsComposition: CompositionNode = {
   catalogId: PAGED_LAYOUT_SECTION,
-  props: { title: "Drop shadow" },
+  // Headingless — the fields render inside the Drop Shadow effect
+  // row's expansion (effects-panel.tsx); the row itself is the title.
+  props: { title: "Drop shadow", heading: false },
   bindings: {},
   children: [
     {

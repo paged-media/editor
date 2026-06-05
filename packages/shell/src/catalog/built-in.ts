@@ -10,6 +10,7 @@ import {
   CollectionSelectLeaf,
   ColorSwatchLeaf,
   LabelLeaf,
+  LayoutClusterLeaf,
   LayoutSectionLeaf,
   LengthLeaf,
   NumericScrubLeaf,
@@ -30,6 +31,7 @@ export const PAGED_INPUT_SELECT = "paged.input.select";
 export const PAGED_INPUT_TOGGLE_SWITCH = "paged.input.toggle-switch";
 export const PAGED_READOUT = "paged.readout";
 export const PAGED_LAYOUT_SECTION = "paged.layout.section";
+export const PAGED_LAYOUT_CLUSTER = "paged.layout.cluster";
 export const PAGED_LABEL = "paged.label";
 
 // Leaf binding declarations describe the leaf's *write surface* —
@@ -49,6 +51,7 @@ const ENTRIES: CatalogEntry[] = [
     props: {
       label: "string",
       icon: "string",
+      unitPicker: "boolean",
       seam: "boolean",
       placeholder: "string",
     },
@@ -185,9 +188,24 @@ const ENTRIES: CatalogEntry[] = [
   {
     id: PAGED_LAYOUT_SECTION,
     kind: "leaf", // layout-only leaf; children come from the composition node
-    props: { title: "string" },
+    props: {
+      title: "string",
+      heading: "boolean",
+      collapsible: "boolean",
+      defaultOpen: "boolean",
+    },
     bindings: { reads: [], writes: [] },
     leaf: LayoutSectionLeaf,
+  },
+  {
+    // Panel-gallery pass — labelled multi-control row (the
+    // gallery's paired/tripled fields). Layout-only; children
+    // omit labels and carry icon chips.
+    id: PAGED_LAYOUT_CLUSTER,
+    kind: "leaf",
+    props: { label: "string", count: "number" },
+    bindings: { reads: [], writes: [] },
+    leaf: LayoutClusterLeaf,
   },
   {
     id: PAGED_LABEL,

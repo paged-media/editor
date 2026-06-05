@@ -1,27 +1,27 @@
-// SDK Phase 5 (v1 sweep) — Frame Fitting panel as a declarative
-// composition.
+// SDK Phase 5 / panel-gallery pass — Frame Fitting panel as a
+// declarative composition, shaped to the gallery card.
 //
 // Rectangle-only — the apply layer raises UnsupportedProperty for
 // other kinds (TextFrame / Oval / Polygon / GraphicLine don't
-// host placed images in IDML's content-fitting sense). Two rows:
-// a fitting-type toggle-group and a crops Bounds row carrying
-// the [top, left, bottom, right] crop in pt (IDML's signed-from-
-// frame-edge convention; negative grows the image outward).
+// host placed images in IDML's content-fitting sense).
 //
-// Reads:  `selectionProperty:frameFittingCrops` +
-//         `selectionProperty:frameFittingType`
-// Writes: same.
+// LIVE: fitting type (text segments per the gallery) + crops (the
+// row4 bounds grid; IDML's signed-from-frame-edge convention —
+// negative grows the image outward). HONEST SEAMS: auto-fit +
+// fill-frame-proportionally check rows (no paths yet). The
+// reference-point grid is bespoke in frame-fitting-panel.tsx.
 
 import type { CompositionNode } from "@paged-media/catalog";
 import {
   PAGED_INPUT_BOUNDS,
   PAGED_INPUT_TOGGLE_GROUP,
+  PAGED_INPUT_TOGGLE_SWITCH,
   PAGED_LAYOUT_SECTION,
 } from "@paged-media/shell";
 
 export const frameFittingComposition: CompositionNode = {
   catalogId: PAGED_LAYOUT_SECTION,
-  props: { title: "Frame Fitting" },
+  props: { title: "Frame Fitting", heading: false },
   bindings: {},
   children: [
     {
@@ -29,10 +29,10 @@ export const frameFittingComposition: CompositionNode = {
       props: {
         label: "Fit",
         options: [
-          { value: "None", label: "—" },
-          { value: "Proportionally", label: "▭" },
-          { value: "FillProportionally", label: "▣" },
-          { value: "FitContent", label: "↥" },
+          { value: "None", label: "None" },
+          { value: "FillProportionally", label: "Fill" },
+          { value: "Proportionally", label: "Fit" },
+          { value: "FitContent", label: "Content" },
         ],
       },
       bindings: {
@@ -45,7 +45,7 @@ export const frameFittingComposition: CompositionNode = {
     },
     {
       catalogId: PAGED_INPUT_BOUNDS,
-      props: { label: "Crops (pt)" },
+      props: { label: "Crop", layout: "row4" },
       bindings: {
         value: {
           kind: "selectionProperty",
@@ -53,6 +53,22 @@ export const frameFittingComposition: CompositionNode = {
           path: "frameFittingCrops",
         },
       },
+    },
+    {
+      // Engine gap — no auto-fit flag yet.
+      catalogId: PAGED_INPUT_TOGGLE_SWITCH,
+      props: { label: "Auto-fit", seam: true, placeholder: "off" },
+      bindings: {},
+    },
+    {
+      // Engine gap — no fill-frame-proportionally-on-place flag.
+      catalogId: PAGED_INPUT_TOGGLE_SWITCH,
+      props: {
+        label: "Fill frame proportionally",
+        seam: true,
+        placeholder: "off",
+      },
+      bindings: {},
     },
   ],
 };

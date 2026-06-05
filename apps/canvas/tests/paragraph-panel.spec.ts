@@ -29,6 +29,18 @@ test.describe("Phase 3 — Paragraph panel (declarative composition)", () => {
     await expect(
       page.locator('[data-paragraph-panel="ready"] [data-section="Paragraph"]'),
     ).toBeVisible();
+    // Panel-gallery honest seams: L/R indents, drop cap ×2,
+    // hyphenate, baseline grid — visible but disabled. The
+    // paragraph-rules disclosure ships collapsed; expanding it
+    // reveals two more seam switches.
+    const seams = page.locator('[data-paragraph-panel="ready"] [data-seam]');
+    await expect(seams).toHaveCount(6);
+    await page
+      .locator(
+        '[data-paragraph-panel="ready"] [data-section="Paragraph rules"] [data-section-toggle]',
+      )
+      .click();
+    await expect(seams).toHaveCount(8);
   });
 
   test("AC-PARA-2 — fields render em-dash placeholder when no content selection", async ({
