@@ -6,6 +6,12 @@ export interface BoundsInputProps {
   valuePt: [number, number, number, number];
   /** Initial display unit for all four cells. */
   defaultUnit?: LengthUnit;
+  /** Cell labels in wire order `[top, left, bottom, right]`. */
+  labels?: [string, string, string, string];
+  /** Grid shape: the classic 2×2 ("grid2") or the design system's
+   * 4-across row ("row4" — gallery `bounds` control: compact cell,
+   * tiny label below, no unit picker). */
+  layout?: "grid2" | "row4";
   /** Fires on every change. */
   onChangePt: (value: [number, number, number, number]) => void;
   /** Fires on Enter / blur / scrub commit. */
@@ -16,15 +22,17 @@ export interface BoundsInputProps {
 /**
  * Inspector P1 — 4-cell length composite for a frame's
  * `[top, left, bottom, right]` bounds. Each cell is a
- * `LengthInput` (unit-aware + scrub-aware). The two rows lay out
- * left-to-right matching the geometric layout (top spans the top
- * row; left/right flank the bottom row; bottom occupies the bottom
- * row — same convention InDesign's transform panel uses).
+ * `LengthInput` (unit-aware + scrub-aware). The classic "grid2"
+ * lays the cells out 2×2 with scrub-chip labels (the transform-
+ * panel convention); "row4" is the kit's compact 4-across row
+ * with the label under each cell (insets, offsets, crops).
  */
 export function BoundsInput(props: BoundsInputProps) {
   const {
     valuePt,
     defaultUnit = "pt",
+    labels = ["T", "L", "B", "R"],
+    layout = "grid2",
     onChangePt,
     onCommitPt,
     disabled = false,
@@ -38,12 +46,36 @@ export function BoundsInput(props: BoundsInputProps) {
     if (commit) onCommitPt?.(out);
   };
 
+  if (layout === "row4") {
+    return (
+      <div className="grid grid-cols-4 gap-[5px]" data-bounds-input>
+        {([0, 1, 2, 3] as const).map((idx) => (
+          <div key={idx} className="flex flex-col gap-0.5">
+            <LengthInput
+              valuePt={valuePt[idx]}
+              defaultUnit={defaultUnit}
+              unitPicker={false}
+              disabled={disabled}
+              className="w-full text-center [&>input]:text-center [&>input]:px-1"
+              onChangePt={(v) => set(idx, v, false)}
+              onCommitPt={(v) => set(idx, v, true)}
+              aria-label={labels[idx]}
+            />
+            <span className="text-[8.5px] text-center text-muted-foreground select-none">
+              {labels[idx]}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-2 gap-1" data-bounds-input>
       <LengthInput
         valuePt={top}
         defaultUnit={defaultUnit}
-        label="T"
+        label={labels[0]}
         disabled={disabled}
         onChangePt={(v) => set(0, v, false)}
         onCommitPt={(v) => set(0, v, true)}
@@ -52,7 +84,7 @@ export function BoundsInput(props: BoundsInputProps) {
       <LengthInput
         valuePt={left}
         defaultUnit={defaultUnit}
-        label="L"
+        label={labels[1]}
         disabled={disabled}
         onChangePt={(v) => set(1, v, false)}
         onCommitPt={(v) => set(1, v, true)}
@@ -61,7 +93,7 @@ export function BoundsInput(props: BoundsInputProps) {
       <LengthInput
         valuePt={bottom}
         defaultUnit={defaultUnit}
-        label="B"
+        label={labels[2]}
         disabled={disabled}
         onChangePt={(v) => set(2, v, false)}
         onCommitPt={(v) => set(2, v, true)}
@@ -70,7 +102,7 @@ export function BoundsInput(props: BoundsInputProps) {
       <LengthInput
         valuePt={right}
         defaultUnit={defaultUnit}
-        label="R"
+        label={labels[3]}
         disabled={disabled}
         onChangePt={(v) => set(3, v, false)}
         onCommitPt={(v) => set(3, v, true)}

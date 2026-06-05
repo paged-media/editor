@@ -92,7 +92,11 @@ export function Section({
 }
 
 export function Label({ children }: { children: ReactNode }) {
-  return <div className="pg-label" style={{ margin: "0 0 7px" }}>{children}</div>;
+  return (
+    <div className="pg-label" style={{ margin: "0 0 7px" }}>
+      {children}
+    </div>
+  );
 }
 
 export function Row({
@@ -182,13 +186,7 @@ export function Btn({
   );
 }
 
-export type StatusTone =
-  | "ready"
-  | "ok"
-  | "warn"
-  | "error"
-  | "info"
-  | "draft";
+export type StatusTone = "ready" | "ok" | "warn" | "error" | "info" | "draft";
 
 const STATUS_COLOR: Record<StatusTone, string> = {
   ready: "var(--status-approved)",
@@ -198,6 +196,12 @@ const STATUS_COLOR: Record<StatusTone, string> = {
   info: "var(--status-info)",
   draft: "var(--status-draft)",
 };
+
+/** Resolves a status tone to its CSS color token — for archetype
+ *  components (list dots, badges) outside this module. */
+export function statusColor(tone: StatusTone): string {
+  return STATUS_COLOR[tone];
+}
 
 /** Coloured dot + words — the brand's no-traffic-lights status
  *  language (never emoji). */
@@ -271,6 +275,105 @@ export function MetricTile({
       </span>
       <span className="pg-ui-xs" style={{ whiteSpace: "nowrap" }}>
         {label}
+      </span>
+    </div>
+  );
+}
+
+/** Panel maturity badge — the gallery's Live / Partial / Concept
+ *  status language. In product it marks CONCEPT surfaces (and the
+ *  odd Partial) so the roadmap reads honestly; fully-live panels
+ *  carry no badge. */
+export type PanelStatus = "live" | "partial" | "concept";
+
+const PANEL_STATUS: Record<
+  PanelStatus,
+  { label: string; color: string; glyph: "check" | "half" | "ring" }
+> = {
+  live: { label: "Live", color: "var(--status-approved)", glyph: "check" },
+  partial: { label: "Partial", color: "var(--status-review)", glyph: "half" },
+  concept: { label: "Concept", color: "var(--pg-muted-fg)", glyph: "ring" },
+};
+
+export function StatusBadge({ status }: { status: PanelStatus }) {
+  const s = PANEL_STATUS[status];
+  return (
+    <span
+      title={s.label}
+      data-panel-status={status}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        height: 19,
+        padding: "0 7px 0 6px",
+        borderRadius: 999,
+        background: `color-mix(in srgb, ${s.color} 15%, transparent)`,
+        color: s.color,
+        fontFamily: "var(--font-sans)",
+        fontSize: 10,
+        fontWeight: 600,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {s.glyph === "check" ? (
+        <Icon name="ui-check" size={11} />
+      ) : s.glyph === "half" ? (
+        <span
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            boxShadow: `inset 0 0 0 1.5px ${s.color}`,
+            backgroundImage: `linear-gradient(90deg, ${s.color} 50%, transparent 50%)`,
+          }}
+        />
+      ) : (
+        <span
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            border: `1.5px solid ${s.color}`,
+          }}
+        />
+      )}
+      {s.label}
+    </span>
+  );
+}
+
+/** The gallery's "Target ·" end-state footnote — pinned under a
+ *  concept/partial panel so the intended final behaviour ships
+ *  with the seam. */
+export function PanelTarget({ children }: { children: ReactNode }) {
+  return (
+    <div
+      data-panel-target
+      style={{
+        display: "flex",
+        gap: 7,
+        padding: "9px 12px",
+        borderTop: "1px solid var(--pg-border)",
+        background: "color-mix(in srgb, var(--pg-primary) 5%, transparent)",
+        flexShrink: 0,
+      }}
+    >
+      <Icon
+        name="ui-target"
+        size={12}
+        style={{ color: "var(--pg-primary)", flexShrink: 0, marginTop: 1 }}
+      />
+      <span
+        style={{
+          fontSize: 10.5,
+          lineHeight: 1.4,
+          color: "var(--pg-muted-fg)",
+          fontFamily: "var(--font-sans)",
+        }}
+      >
+        <b style={{ color: "var(--pg-primary)", fontWeight: 600 }}>Target · </b>
+        {children}
       </span>
     </div>
   );

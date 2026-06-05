@@ -3,13 +3,18 @@ import { useMemo, useState } from "react";
 import { NumberInput, type NumberInputProps } from "./NumberInput";
 import { convertLength, type LengthUnit } from "./units";
 
-export interface LengthInputProps
-  extends Omit<NumberInputProps, "value" | "onChange" | "onCommit"> {
+export interface LengthInputProps extends Omit<
+  NumberInputProps,
+  "value" | "onChange" | "onCommit"
+> {
   /** Value in points (the IDML-native unit). */
   valuePt: number;
   /** Initial display unit. The user can change it via the picker;
    * the underlying canonical value stays in points. */
   defaultUnit?: LengthUnit;
+  /** Hide the unit picker (compact composites like the 4-up bounds
+   * grid). The display unit stays `defaultUnit`. Default true. */
+  unitPicker?: boolean;
   /** Fires whenever the canonical (pt) value changes. */
   onChangePt: (valuePt: number) => void;
   onCommitPt?: (valuePt: number) => void;
@@ -26,7 +31,14 @@ const UNITS: LengthUnit[] = ["pt", "px", "mm", "cm", "in"];
  * caring.
  */
 export function LengthInput(props: LengthInputProps) {
-  const { valuePt, defaultUnit = "pt", onChangePt, onCommitPt, ...rest } = props;
+  const {
+    valuePt,
+    defaultUnit = "pt",
+    unitPicker = true,
+    onChangePt,
+    onCommitPt,
+    ...rest
+  } = props;
   const [unit, setUnit] = useState<LengthUnit>(defaultUnit);
 
   const displayValue = useMemo(
@@ -46,18 +58,20 @@ export function LengthInput(props: LengthInputProps) {
             : undefined
         }
       />
-      <select
-        value={unit}
-        onChange={(e) => setUnit(e.target.value as LengthUnit)}
-        className="text-xs h-7 px-1 rounded border border-input bg-background text-foreground"
-        aria-label="unit"
-      >
-        {UNITS.map((u) => (
-          <option key={u} value={u}>
-            {u}
-          </option>
-        ))}
-      </select>
+      {unitPicker && (
+        <select
+          value={unit}
+          onChange={(e) => setUnit(e.target.value as LengthUnit)}
+          className="text-xs h-[30px] px-1 rounded-[6px] border border-input bg-background text-foreground"
+          aria-label="unit"
+        >
+          {UNITS.map((u) => (
+            <option key={u} value={u}>
+              {u}
+            </option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }

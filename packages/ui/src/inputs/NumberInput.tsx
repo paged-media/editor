@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useScrubGesture } from "@paged-media/shell";
+import { Icon, useScrubGesture } from "@paged-media/shell";
 
 export interface NumberInputProps {
   /** Current value. Treated as controlled — caller drives. */
@@ -20,6 +20,10 @@ export interface NumberInputProps {
   /** Optional label shown on the drag handle (the small chip on the
    * left of the input). Typical values: "X", "Y", "W", "Pt". */
   label?: string;
+  /** Optional glyph name rendered on the drag handle instead of a
+   * text label — the design system's `Metric` look (icon chip +
+   * value field). Takes precedence over `label`. */
+  icon?: string;
   /** Disabled flag — disables both the input and the scrub handle. */
   disabled?: boolean;
   /** Extra className applied to the wrapper. */
@@ -46,6 +50,7 @@ export function NumberInput(props: NumberInputProps) {
     max,
     precision = 2,
     label = "",
+    icon,
     disabled = false,
     className = "",
   } = props;
@@ -108,17 +113,17 @@ export function NumberInput(props: NumberInputProps) {
 
   return (
     <div
-      className={`inline-flex items-stretch overflow-hidden rounded border border-input bg-background text-sm h-7 ${className}`}
+      className={`inline-flex items-stretch overflow-hidden rounded-[6px] border border-input bg-background text-xs h-[30px] ${className}`}
       data-disabled={disabled || undefined}
     >
-      {label && (
+      {(icon || label) && (
         <span
           ref={scrub.bind}
-          className="px-2 inline-flex items-center select-none cursor-ew-resize text-muted-foreground bg-muted/40 border-r border-input font-medium"
+          className="px-2 inline-flex items-center select-none cursor-ew-resize text-muted-foreground bg-muted border-r border-input font-medium"
           aria-hidden="true"
           style={{ touchAction: "none" }}
         >
-          {label}
+          {icon ? <Icon name={icon} size={14} /> : label}
         </span>
       )}
       <input

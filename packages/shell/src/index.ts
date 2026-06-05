@@ -306,12 +306,29 @@ export {
   Row as CockpitRow,
   Btn as CockpitBtn,
   StatusPill,
+  StatusBadge,
+  PanelTarget,
   Value as CockpitValue,
   MetricTile,
   ComingSoon,
+  statusColor,
   type StatusTone,
+  type PanelStatus,
 } from "./components/cockpit/kit";
 export { AIAssistantSeam } from "./components/cockpit/ai-assistant-seam";
+export {
+  ListRows,
+  PanelToolbar,
+  ToolbarBtn,
+  type ListRowSpec,
+  type ListRowBadge,
+} from "./components/cockpit/list-rows";
+export {
+  ApplyList,
+  type ApplyStyleItem,
+  type ApplyStyleGroup,
+} from "./components/cockpit/apply-list";
+export { ReferencePointGrid } from "./components/cockpit/reference-point-grid";
 export {
   registerBuiltInCatalogEntries,
   PAGED_INPUT_LENGTH,
@@ -320,6 +337,9 @@ export {
   PAGED_INPUT_BOUNDS,
   PAGED_INPUT_COLLECTION_SELECT,
   PAGED_INPUT_TOGGLE_GROUP,
+  PAGED_INPUT_SELECT,
+  PAGED_INPUT_TOGGLE_SWITCH,
+  PAGED_READOUT,
   PAGED_LAYOUT_SECTION,
   PAGED_LABEL,
 } from "./catalog/built-in";

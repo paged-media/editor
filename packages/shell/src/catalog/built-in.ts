@@ -13,7 +13,10 @@ import {
   LayoutSectionLeaf,
   LengthLeaf,
   NumericScrubLeaf,
+  ReadoutLeaf,
+  SelectLeaf,
   ToggleGroupLeaf,
+  ToggleSwitchLeaf,
 } from "./leaves";
 
 /** Stable catalog ids the rest of the codebase references. */
@@ -23,6 +26,9 @@ export const PAGED_INPUT_NUMERIC_SCRUB = "paged.input.numeric-scrub";
 export const PAGED_INPUT_BOUNDS = "paged.input.bounds";
 export const PAGED_INPUT_COLLECTION_SELECT = "paged.input.collection-select";
 export const PAGED_INPUT_TOGGLE_GROUP = "paged.input.toggle-group";
+export const PAGED_INPUT_SELECT = "paged.input.select";
+export const PAGED_INPUT_TOGGLE_SWITCH = "paged.input.toggle-switch";
+export const PAGED_READOUT = "paged.readout";
 export const PAGED_LAYOUT_SECTION = "paged.layout.section";
 export const PAGED_LABEL = "paged.label";
 
@@ -40,7 +46,12 @@ const ENTRIES: CatalogEntry[] = [
   {
     id: PAGED_INPUT_LENGTH,
     kind: "leaf",
-    props: { label: "string" },
+    props: {
+      label: "string",
+      icon: "string",
+      seam: "boolean",
+      placeholder: "string",
+    },
     bindings: {
       reads: ["selectionProperty:*"],
       writes: ["selectionProperty:*"],
@@ -60,7 +71,12 @@ const ENTRIES: CatalogEntry[] = [
   {
     id: PAGED_INPUT_NUMERIC_SCRUB,
     kind: "leaf",
-    props: { label: "string" },
+    props: {
+      label: "string",
+      icon: "string",
+      seam: "boolean",
+      placeholder: "string",
+    },
     bindings: {
       reads: ["selectionProperty:*"],
       writes: ["selectionProperty:*"],
@@ -70,7 +86,12 @@ const ENTRIES: CatalogEntry[] = [
   {
     id: PAGED_INPUT_BOUNDS,
     kind: "leaf",
-    props: { label: "string" },
+    props: {
+      label: "string",
+      labels: "JsonValue",
+      layout: "string",
+      seam: "boolean",
+    },
     bindings: {
       reads: ["selectionProperty:*"],
       writes: ["selectionProperty:*"],
@@ -107,12 +128,59 @@ const ENTRIES: CatalogEntry[] = [
     // (≥2 panels rule).
     id: PAGED_INPUT_TOGGLE_GROUP,
     kind: "leaf",
-    props: { label: "string", options: "JsonValue" },
+    props: {
+      label: "string",
+      options: "JsonValue",
+      seam: "boolean",
+      placeholder: "string",
+    },
     bindings: {
       reads: ["selectionProperty:*"],
       writes: ["selectionProperty:*"],
     },
     leaf: ToggleGroupLeaf,
+  },
+  {
+    // Panel-gallery pass — generic enum select. Static option
+    // list (composition data, not a document collection); binds a
+    // `Value::Text` enum string. Seam-capable: `seam: true` +
+    // `placeholder` renders the disabled select (honest seam).
+    id: PAGED_INPUT_SELECT,
+    kind: "leaf",
+    props: {
+      label: "string",
+      options: "JsonValue",
+      seam: "boolean",
+      placeholder: "string",
+    },
+    bindings: {
+      reads: ["selectionProperty:*"],
+      writes: ["selectionProperty:*"],
+    },
+    leaf: SelectLeaf,
+  },
+  {
+    // Panel-gallery pass — on/off switch pill (kit `Toggle`).
+    // Binds a `Value::Bool`. Seam-capable (`placeholder: "on"`
+    // pins the disabled pill's position).
+    id: PAGED_INPUT_TOGGLE_SWITCH,
+    kind: "leaf",
+    props: { label: "string", seam: "boolean", placeholder: "string" },
+    bindings: {
+      reads: ["selectionProperty:*"],
+      writes: ["selectionProperty:*"],
+    },
+    leaf: ToggleSwitchLeaf,
+  },
+  {
+    // Panel-gallery pass — read-only mono readout row. Renders
+    // any resolved Value variant tabular-mono; `text` renders a
+    // literal when no binding is wired. No write surface.
+    id: PAGED_READOUT,
+    kind: "leaf",
+    props: { label: "string", text: "string" },
+    bindings: { reads: ["selectionProperty:*"], writes: [] },
+    leaf: ReadoutLeaf,
   },
   {
     id: PAGED_LAYOUT_SECTION,

@@ -5,11 +5,23 @@
 // `value` prop (already resolved by the binding hook) and writes
 // back via `onCommit`. The leaves are intentionally tiny — the
 // design-system widgets in @paged-media/ui do the heavy lifting.
+//
+// Panel-gallery pass: leaves carry the cockpit kit's field language
+// (30px controls, 6px radius, 92px label column, kicker sections)
+// and an explicit HONEST-SEAM state — `props.seam: true` renders
+// the control visibly but disabled, showing `props.placeholder`.
+// A seam is never fake-interactive.
 
 import type { LeafProps } from "@paged-media/catalog";
 import type { CollectionName, Value } from "@paged-media/client";
-import { BoundsInput, LengthInput, ColorPicker, NumberInput } from "@paged-media/ui";
+import {
+  BoundsInput,
+  LengthInput,
+  ColorPicker,
+  NumberInput,
+} from "@paged-media/ui";
 
+import { Icon } from "../icons";
 import { useCollection } from "./use-collection";
 
 // ---------------------------------------------------------------- helpers
@@ -20,17 +32,19 @@ import { useCollection } from "./use-collection";
  *  `resolved` is true, `pointValue` is the displayable number — 0
  *  if the underlying `Value::Length(None)` is "inherit default"
  *  (matches the inspector's `value ?? 0` convention). */
-function unwrapLengthValue(
-  v: Value | null,
-): { resolved: boolean; pointValue: number } {
+function unwrapLengthValue(v: Value | null): {
+  resolved: boolean;
+  pointValue: number;
+} {
   if (v == null) return { resolved: false, pointValue: 0 };
   if (v.type !== "length") return { resolved: false, pointValue: 0 };
   return { resolved: true, pointValue: v.value ?? 0 };
 }
 
-function unwrapColorRefValue(
-  v: Value | null,
-): { resolved: boolean; ref: string | null } {
+function unwrapColorRefValue(v: Value | null): {
+  resolved: boolean;
+  ref: string | null;
+} {
   if (v == null) return { resolved: false, ref: null };
   if (v.type !== "colorRef") return { resolved: false, ref: null };
   return { resolved: true, ref: v.value ?? null };
@@ -40,18 +54,61 @@ function labelFromProps(props: Record<string, unknown>): string | undefined {
   return typeof props.label === "string" ? props.label : undefined;
 }
 
+function iconFromProps(props: Record<string, unknown>): string | undefined {
+  return typeof props.icon === "string" ? props.icon : undefined;
+}
+
+/** The honest-seam test — the explicit `seam: true` prop ONLY.
+ *  (A missing `onCommit` can NOT signal a seam: the binding hook
+ *  returns no commit closure when the selection is empty, and a
+ *  live field with nothing selected must show the em-dash, not a
+ *  disabled control.) Seam nodes declare no bindings and the flag,
+ *  so the composition source reads honestly. */
+function isSeam(props: Record<string, unknown>): boolean {
+  return props.seam === true;
+}
+
+function placeholderFromProps(props: Record<string, unknown>): string {
+  return typeof props.placeholder === "string" ? props.placeholder : "";
+}
+
+/** Em-dash placeholder — the mixed / no-selection convention. */
+function MixedDash() {
+  return (
+    <span className="text-xs text-muted-foreground" data-mixed>
+      —
+    </span>
+  );
+}
+
 // ---------------------------------------------------------------- leaves
 
-/** Numeric input with a unit picker. Binds to a `Value::Length`. */
+/** Numeric input with a unit picker. Binds to a `Value::Length`.
+ *  Optional `icon` prop renders the kit's `Metric` look (glyph chip
+ *  + value field; the chip is the scrub handle). */
 export function LengthLeaf({ value, onCommit, props }: LeafProps) {
   const label = labelFromProps(props);
+  const icon = iconFromProps(props);
+  if (isSeam(props)) {
+    const ph = Number.parseFloat(placeholderFromProps(props));
+    return (
+      <LeafRow label={label}>
+        <span data-seam>
+          <LengthInput
+            valuePt={Number.isFinite(ph) ? ph : 0}
+            icon={icon}
+            disabled
+            onChangePt={() => {}}
+          />
+        </span>
+      </LeafRow>
+    );
+  }
   const { resolved, pointValue } = unwrapLengthValue(value);
   if (!resolved) {
     return (
       <LeafRow label={label}>
-        <span className="text-xs text-muted-foreground" data-mixed>
-          —
-        </span>
+        <MixedDash />
       </LeafRow>
     );
   }
@@ -59,6 +116,7 @@ export function LengthLeaf({ value, onCommit, props }: LeafProps) {
     <LeafRow label={label}>
       <LengthInput
         valuePt={pointValue}
+        icon={icon}
         onChangePt={(next) => {
           // Live updates are emitted; we only commit on blur via
           // onCommitPt below to avoid spamming the mutation channel.
@@ -80,9 +138,7 @@ export function ColorSwatchLeaf({ value, onCommit, props }: LeafProps) {
   if (!resolved) {
     return (
       <LeafRow label={label}>
-        <span className="text-xs text-muted-foreground" data-mixed>
-          —
-        </span>
+        <MixedDash />
       </LeafRow>
     );
   }
@@ -101,13 +157,27 @@ export function ColorSwatchLeaf({ value, onCommit, props }: LeafProps) {
 /** Raw scrubbable numeric (no unit). Binds to a `Value::Length`. */
 export function NumericScrubLeaf({ value, onCommit, props }: LeafProps) {
   const label = labelFromProps(props);
+  const icon = iconFromProps(props);
+  if (isSeam(props)) {
+    const ph = Number.parseFloat(placeholderFromProps(props));
+    return (
+      <LeafRow label={label}>
+        <span data-seam>
+          <NumberInput
+            value={Number.isFinite(ph) ? ph : 0}
+            icon={icon}
+            disabled
+            onChange={() => {}}
+          />
+        </span>
+      </LeafRow>
+    );
+  }
   const { resolved, pointValue } = unwrapLengthValue(value);
   if (!resolved) {
     return (
       <LeafRow label={label}>
-        <span className="text-xs text-muted-foreground" data-mixed>
-          —
-        </span>
+        <MixedDash />
       </LeafRow>
     );
   }
@@ -115,6 +185,7 @@ export function NumericScrubLeaf({ value, onCommit, props }: LeafProps) {
     <LeafRow label={label}>
       <NumberInput
         value={pointValue}
+        icon={icon}
         onChange={() => {
           /* live updates ignored; commit on blur */
         }}
@@ -126,16 +197,13 @@ export function NumericScrubLeaf({ value, onCommit, props }: LeafProps) {
   );
 }
 
-/** Titled section. Layout-only — renders the catalog children. */
+/** Titled section. Layout-only — renders the catalog children
+ *  under the kit's uppercase kicker label. */
 export function LayoutSectionLeaf({ props }: LeafProps) {
   const title = typeof props.title === "string" ? props.title : undefined;
   return (
     <fieldset className="border-t border-input pt-2" data-section={title}>
-      {title ? (
-        <legend className="text-xs font-medium uppercase text-muted-foreground px-1">
-          {title}
-        </legend>
-      ) : null}
+      {title ? <legend className="pg-label px-1">{title}</legend> : null}
       <div className="flex flex-col gap-1.5 pt-1">
         {(props.children as React.ReactNode) ?? null}
       </div>
@@ -151,23 +219,45 @@ function unwrapBoundsValue(
   return v.value as [number, number, number, number];
 }
 
-/** 4-cell bounds editor `[top, left, bottom, right]` in points. */
+/** 4-cell bounds editor `[top, left, bottom, right]` in points.
+ *  Props: `labels` (cell labels, wire order), `layout` —
+ *  `"grid2"` (default, 2×2 scrub chips) or `"row4"` (the gallery's
+ *  compact 4-across row with labels below). */
 export function BoundsLeaf({ value, onCommit, props }: LeafProps) {
   const label = labelFromProps(props);
+  const labels = Array.isArray(props.labels)
+    ? (props.labels as [string, string, string, string])
+    : undefined;
+  const layout = props.layout === "row4" ? "row4" : "grid2";
   const bounds = unwrapBoundsValue(value);
-  if (bounds === null) {
+  if (isSeam(props)) {
     return (
-      <LeafRow label={label}>
-        <span className="text-xs text-muted-foreground" data-mixed>
-          —
+      <LeafRow label={label} stacked={layout === "row4"}>
+        <span data-seam>
+          <BoundsInput
+            valuePt={bounds ?? [0, 0, 0, 0]}
+            labels={labels}
+            layout={layout}
+            disabled
+            onChangePt={() => {}}
+          />
         </span>
       </LeafRow>
     );
   }
+  if (bounds === null) {
+    return (
+      <LeafRow label={label}>
+        <MixedDash />
+      </LeafRow>
+    );
+  }
   return (
-    <LeafRow label={label}>
+    <LeafRow label={label} stacked={layout === "row4"}>
       <BoundsInput
         valuePt={bounds}
+        labels={labels}
+        layout={layout}
         onChangePt={() => {
           /* live updates ignored; commit on Enter / blur */
         }}
@@ -215,6 +305,10 @@ function unwrapIdValue(v: Value | null): {
   return { resolved: false, id: "", source: "text" };
 }
 
+/** Shared kit styling for the native `<select>` controls. */
+const SELECT_CLASS =
+  "w-full text-xs h-[30px] px-2 rounded-[6px] border border-input bg-background text-foreground disabled:text-muted-foreground disabled:opacity-100";
+
 /**
  * SDK Phase 5 (D7) — apply-an-entity selector. Reads
  * `props.collectionName` (a `CollectionName`) + `props.label`
@@ -234,11 +328,7 @@ function unwrapIdValue(v: Value | null): {
  * Mixed / no-selection / non-text-or-colorRef binding → em-dash
  * placeholder (existing leaf convention).
  */
-export function CollectionSelectLeaf({
-  value,
-  onCommit,
-  props,
-}: LeafProps) {
+export function CollectionSelectLeaf({ value, onCommit, props }: LeafProps) {
   const label = labelFromProps(props);
   const collectionName =
     typeof props.collectionName === "string"
@@ -273,7 +363,7 @@ export function CollectionSelectLeaf({
   return (
     <LeafRow label={label}>
       <select
-        className="w-full text-xs px-1 py-0.5 border border-input rounded bg-background"
+        className={SELECT_CLASS}
         value={resolved ? id : ""}
         data-mixed={showMixed ? "true" : "false"}
         data-collection={collectionName}
@@ -310,13 +400,197 @@ export function CollectionSelectLeaf({
   );
 }
 
+/** Option row for `SelectLeaf`. `value` is the wire payload;
+ *  `label` is the user-facing option text. */
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+function parseSelectOptions(props: Record<string, unknown>): SelectOption[] {
+  const raw = Array.isArray(props.options) ? props.options : null;
+  if (!raw) return [];
+  return (raw as SelectOption[]).filter(
+    (o): o is SelectOption =>
+      !!o &&
+      typeof o === "object" &&
+      typeof (o as SelectOption).value === "string" &&
+      typeof (o as SelectOption).label === "string",
+  );
+}
+
+/**
+ * Panel-gallery pass — generic enum select. Binds to a
+ * `Value::Text` carrying a fixed enum string (unlike
+ * `CollectionSelectLeaf`, the option list is static composition
+ * data, not a document collection). Props:
+ *   - `label` — row label.
+ *   - `options: {value, label}[]` — the choices.
+ *   - `seam` / `placeholder` — honest-seam rendering: a disabled
+ *     select showing the placeholder text.
+ */
+export function SelectLeaf({ value, onCommit, props }: LeafProps) {
+  const label = labelFromProps(props);
+  const options = parseSelectOptions(props);
+  if (isSeam(props)) {
+    const ph = placeholderFromProps(props);
+    return (
+      <LeafRow label={label}>
+        <select className={SELECT_CLASS} value="" disabled data-seam>
+          <option value="">{ph || "—"}</option>
+        </select>
+      </LeafRow>
+    );
+  }
+  const { resolved, id } = unwrapIdValue(value);
+  if (!resolved) {
+    return (
+      <LeafRow label={label}>
+        <MixedDash />
+      </LeafRow>
+    );
+  }
+  return (
+    <LeafRow label={label}>
+      <select
+        className={SELECT_CLASS}
+        value={id}
+        data-select-leaf
+        onChange={(e) => {
+          onCommit?.({ type: "text", value: e.target.value } as Value);
+        }}
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+        {/* Keep an out-of-catalog current value visible rather than
+            snapping the select to the first option. */}
+        {options.every((o) => o.value !== id) ? (
+          <option value={id}>{id}</option>
+        ) : null}
+      </select>
+    </LeafRow>
+  );
+}
+
+function unwrapBoolValue(v: Value | null): {
+  resolved: boolean;
+  on: boolean;
+} {
+  if (v == null) return { resolved: false, on: false };
+  if (v.type !== "bool") return { resolved: false, on: false };
+  return { resolved: true, on: v.value === true };
+}
+
+/**
+ * Panel-gallery pass — on/off switch pill (the kit `Toggle`).
+ * Binds to a `Value::Bool`. Props:
+ *   - `label` — row label.
+ *   - `seam` / `placeholder` — honest seam; `placeholder: "on"`
+ *     renders the disabled pill in the on position.
+ */
+export function ToggleSwitchLeaf({ value, onCommit, props }: LeafProps) {
+  const label = labelFromProps(props);
+  const seam = isSeam(props);
+  const { resolved, on } = unwrapBoolValue(value);
+  if (!seam && !resolved) {
+    return (
+      <LeafRow label={label}>
+        <MixedDash />
+      </LeafRow>
+    );
+  }
+  const checked = seam ? placeholderFromProps(props) === "on" : on;
+  return (
+    <LeafRow label={label}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={seam}
+        data-toggle-switch
+        data-on={checked ? "true" : "false"}
+        data-seam={seam ? "true" : undefined}
+        className="relative w-[30px] h-[17px] rounded-full border-0 shrink-0 disabled:cursor-default cursor-pointer"
+        style={{
+          background: checked ? "var(--pg-primary)" : "var(--chrome-divider)",
+          opacity: seam ? 0.55 : 1,
+        }}
+        onClick={() => {
+          if (seam) return;
+          onCommit?.({ type: "bool", value: !checked } as Value);
+        }}
+      >
+        <span
+          className="absolute top-[2px] w-[13px] h-[13px] rounded-full bg-white shadow transition-[left]"
+          style={{ left: checked ? 15 : 2 }}
+        />
+      </button>
+    </LeafRow>
+  );
+}
+
+/** Formats any resolved `Value` as the readout's mono text. */
+function formatReadoutValue(v: Value): string {
+  switch (v.type) {
+    case "length": {
+      if (v.value == null) return "—";
+      const n = Math.round(v.value * 100) / 100;
+      return `${n} pt`;
+    }
+    case "text":
+      return v.value === "" ? "—" : v.value;
+    case "bool":
+      return v.value ? "true" : "false";
+    case "colorRef":
+      return v.value ?? "—";
+    case "bounds":
+      return `[${(v.value as number[]).map((n) => Math.round(n * 100) / 100).join(" ")}]`;
+    case "transform":
+      return v.value == null
+        ? "—"
+        : `[${v.value.map((n) => Math.round(n * 1000) / 1000).join(" ")}]`;
+    default:
+      return "—";
+  }
+}
+
+/**
+ * Panel-gallery pass — read-only mono value row (the raw
+ * inspector / Info readouts). Renders whatever `Value` variant
+ * the binding resolves, formatted tabular-mono. No write path by
+ * design. A `text` prop renders a literal when no binding is
+ * wired (static readouts).
+ */
+export function ReadoutLeaf({ value, props }: LeafProps) {
+  const label = labelFromProps(props);
+  const literal = typeof props.text === "string" ? props.text : null;
+  const display = value != null ? formatReadoutValue(value) : (literal ?? "—");
+  return (
+    <LeafRow label={label}>
+      <span
+        className="pg-value text-xs"
+        data-readout
+        data-mixed={value == null && literal == null ? "" : undefined}
+      >
+        {display}
+      </span>
+    </LeafRow>
+  );
+}
+
 /** Option row for `ToggleGroupLeaf`. `value` is the wire payload
- *  (e.g. `"LeftAlign"`); `label` is the user-facing button label
- *  (often a single letter or icon stand-in for v1). */
+ *  (e.g. `"LeftAlign"`); `label` is the user-facing button label —
+ *  either text or a glyph name (`ui-*` / `tool-*` / `panel-*`
+ *  prefixes render as icons, the gallery's own heuristic). */
 interface ToggleGroupOption {
   value: string;
   label: string;
 }
+
+const ICON_OPTION = /^(ui|tool|panel)-/;
 
 /**
  * SDK Phase 5 (v1 sweep) — segmented multi-state toggle. Binds
@@ -324,16 +598,13 @@ interface ToggleGroupOption {
  *   - `label` — row label.
  *   - `options: ToggleGroupOption[]` — the segment definitions;
  *     `value` is the wire payload, `label` is the displayed
- *     text. Required.
+ *     text or a glyph name. Required.
+ *   - `seam` / `placeholder` — honest seam; the placeholder names
+ *     the option `value` rendered as selected.
  *
  * On change → `onCommit({ type: "text", value: option.value })`.
- * The active segment renders with a stronger background; the
- * em-dash (mixed) state shows when the bound value is `null`.
- *
- * Per `panel-catalog-and-sdk-extension.md` §9, this primitive
- * shows up across multiple panels (Paragraph alignment, Stroke
- * cap/join, Object flip). The first two land in the same commit
- * to satisfy the ≥2-panels rule before the primitive lands.
+ * Kit visual: joined segments inside one hairline border, active
+ * segment inverts to the dark chrome slot.
  */
 export function ToggleGroupLeaf({ value, onCommit, props }: LeafProps) {
   const label = labelFromProps(props);
@@ -347,40 +618,67 @@ export function ToggleGroupLeaf({ value, onCommit, props }: LeafProps) {
           typeof (o as ToggleGroupOption).label === "string",
       )
     : [];
+  const seam = isSeam(props);
   const { resolved, text } = unwrapTextValueForToggle(value);
   // Follow the LengthLeaf / ColorSwatchLeaf convention: when the
   // binding doesn't resolve (no selection / mixed / wrong variant),
   // render the em-dash placeholder span with `data-mixed`. The
   // toggle buttons only show when there's a resolved value to
-  // reflect; the user must establish a selection first.
-  if (!resolved) {
+  // reflect; the user must establish a selection first. Seams
+  // render regardless — visibly disabled.
+  if (!seam && !resolved) {
     return (
       <LeafRow label={label}>
-        <span className="text-xs text-muted-foreground" data-mixed>
-          —
-        </span>
+        <MixedDash />
       </LeafRow>
     );
   }
+  const current = seam ? placeholderFromProps(props) : text;
+  const icons = options.length > 0 && ICON_OPTION.test(options[0].label);
   return (
     <LeafRow label={label}>
-      <div className="flex gap-0.5" role="group" data-toggle-group>
-        {options.map((opt) => {
-          const active = text === opt.value;
+      <div
+        className="inline-flex overflow-hidden rounded-[6px] border border-input"
+        role="group"
+        data-toggle-group
+        data-seam={seam ? "true" : undefined}
+        style={{
+          width: icons ? "fit-content" : "100%",
+          opacity: seam ? 0.55 : 1,
+        }}
+      >
+        {options.map((opt, i) => {
+          const active = current === opt.value;
           return (
             <button
               type="button"
               key={opt.value}
+              disabled={seam}
               data-option-value={opt.value}
               data-active={active ? "true" : "false"}
-              className={`text-xs px-2 py-0.5 border border-input rounded ${
-                active ? "bg-muted/80" : "bg-background"
-              }`}
+              title={opt.value}
+              className="flex items-center justify-center text-xs h-[27px] border-0 disabled:cursor-default cursor-pointer"
+              style={{
+                flex: icons ? "none" : 1,
+                width: icons ? 30 : "auto",
+                padding: icons ? 0 : "0 8px",
+                borderRight:
+                  i < options.length - 1
+                    ? "1px solid var(--pg-border)"
+                    : "none",
+                background: active
+                  ? "var(--chrome-slot-active)"
+                  : "var(--pg-bg)",
+                color: active
+                  ? "var(--chrome-icon-active)"
+                  : "var(--pg-muted-fg)",
+              }}
               onClick={() => {
+                if (seam) return;
                 onCommit?.({ type: "text", value: opt.value } as Value);
               }}
             >
-              {opt.label}
+              {icons ? <Icon name={opt.label} size={15} /> : opt.label}
             </button>
           );
         })}
@@ -406,13 +704,26 @@ export function LabelLeaf({ props }: LeafProps) {
 
 function LeafRow({
   label,
+  stacked,
   children,
 }: {
   label?: string;
+  /** Full-width control under the label (the 4-up bounds rows). */
+  stacked?: boolean;
   children: React.ReactNode;
 }) {
+  if (stacked) {
+    return (
+      <div className="flex flex-col gap-1">
+        {label ? (
+          <label className="text-xs text-muted-foreground">{label}</label>
+        ) : null}
+        {children}
+      </div>
+    );
+  }
   return (
-    <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+    <div className="grid grid-cols-[92px_1fr] items-center gap-2">
       {label ? (
         <label className="text-xs text-muted-foreground">{label}</label>
       ) : (
