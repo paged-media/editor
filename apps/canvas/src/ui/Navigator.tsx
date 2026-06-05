@@ -60,12 +60,12 @@ export function Navigator(props: NavigatorProps) {
                 style={{
                   width: THUMB_WIDTH_PX,
                   aspectRatio: `${rect.w} / ${rect.h}`,
-                  border: "1px solid #ccc",
-                  background: "#f6f6f6",
+                  border: "1px solid var(--chrome-border)",
+                  background: "var(--muted)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: "#999",
+                  color: "var(--muted-fg)",
                   fontSize: 10,
                 }}
               >
@@ -93,8 +93,8 @@ const panelStyle: React.CSSProperties = {
   width: 160,
   display: "flex",
   flexDirection: "column",
-  borderRight: "1px solid #ddd",
-  background: "#fafafa",
+  borderRight: "1px solid var(--chrome-border)",
+  background: "var(--chrome-panel-bg)",
   flexShrink: 0,
 };
 
@@ -103,7 +103,7 @@ const headerStyle: React.CSSProperties = {
   justifyContent: "space-between",
   alignItems: "center",
   padding: "8px 12px",
-  borderBottom: "1px solid #ddd",
+  borderBottom: "1px solid var(--chrome-border)",
   fontSize: 12,
 };
 
@@ -130,5 +130,5 @@ const tileStyle: React.CSSProperties = {
 
 const captionStyle: React.CSSProperties = {
   fontSize: 11,
-  color: "#555",
+  color: "var(--muted-fg)",
 };

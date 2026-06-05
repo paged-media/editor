@@ -144,17 +144,20 @@ export function ExportPdfDialog() {
     };
   }, [open, handle, client]);
 
-  const set = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
-    setForm((f) => {
-      const next = { ...f, [key]: value };
-      try {
-        localStorage.setItem(OPTIONS_KEY, JSON.stringify(next));
-      } catch {
-        /* quota — last-used options are a convenience only */
-      }
-      return next;
-    });
-  }, []);
+  const set = useCallback(
+    <K extends keyof FormState>(key: K, value: FormState[K]) => {
+      setForm((f) => {
+        const next = { ...f, [key]: value };
+        try {
+          localStorage.setItem(OPTIONS_KEY, JSON.stringify(next));
+        } catch {
+          /* quota — last-used options are a convenience only */
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   // X-4 needs an output intent with REAL bytes behind it: an
   // explicitly selected registered profile, or a working space the
@@ -179,7 +182,8 @@ export function ExportPdfDialog() {
   }, [form.allPages, form.pageFrom, form.pageTo, pageCount]);
 
   const exporting = phase.kind === "exporting";
-  const canExport = handle != null && !exporting && !x4ProfileMissing && !rangeInvalid;
+  const canExport =
+    handle != null && !exporting && !x4ProfileMissing && !rangeInvalid;
 
   const onExport = useCallback(async () => {
     const options: ExportPdfWireOptions = {
@@ -188,7 +192,7 @@ export function ExportPdfDialog() {
         form.outputIntentProfile === "" ? null : form.outputIntentProfile,
       outputCondition:
         form.standard === "pdfx4"
-          ? (form.outputIntentProfile || activeProfile) ?? null
+          ? ((form.outputIntentProfile || activeProfile) ?? null)
           : null,
       colorPolicy: form.colorPolicy,
       pageFrom: form.allPages ? null : Number(form.pageFrom) - 1,
@@ -269,8 +273,8 @@ export function ExportPdfDialog() {
         <DialogHeader>
           <DialogTitle>Export PDF</DialogTitle>
           <DialogDescription>
-            Print-grade PDF from the live document — text stays text,
-            CMYK and spot inks keep their numbers.
+            Print-grade PDF from the live document — text stays text, CMYK and
+            spot inks keep their numbers.
           </DialogDescription>
         </DialogHeader>
 
@@ -313,10 +317,14 @@ export function ExportPdfDialog() {
           {x4ProfileMissing && (
             <div
               data-export-validation
-              style={{ color: "var(--status-error)", fontSize: 12, marginLeft: 138 }}
+              style={{
+                color: "var(--status-error)",
+                fontSize: 12,
+                marginLeft: 138,
+              }}
             >
-              PDF/X-4 requires an output-intent profile — register one in
-              Color Settings or switch to PDF 1.7.
+              PDF/X-4 requires an output-intent profile — register one in Color
+              Settings or switch to PDF 1.7.
             </div>
           )}
 
@@ -369,7 +377,13 @@ export function ExportPdfDialog() {
             )}
           </div>
           {rangeInvalid && (
-            <div style={{ color: "var(--status-error)", fontSize: 12, marginLeft: 138 }}>
+            <div
+              style={{
+                color: "var(--status-error)",
+                fontSize: 12,
+                marginLeft: 138,
+              }}
+            >
               Range must be within 1–{pageCount}.
             </div>
           )}
@@ -453,7 +467,7 @@ export function ExportPdfDialog() {
                 style={{
                   height: 6,
                   borderRadius: 3,
-                  background: "rgba(127,127,127,0.25)",
+                  background: "var(--muted)",
                   overflow: "hidden",
                 }}
               >
@@ -462,7 +476,7 @@ export function ExportPdfDialog() {
                     height: "100%",
                     width: `${phase.total > 0 ? (phase.done / phase.total) * 100 : 0}%`,
                     background: "var(--pg-primary)",
-                    transition: "width 120ms",
+                    transition: "width var(--dur-fast)",
                   }}
                 />
               </div>
@@ -485,11 +499,7 @@ export function ExportPdfDialog() {
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            data-export-cancel
-            onClick={onCancel}
-          >
+          <Button variant="outline" data-export-cancel onClick={onCancel}>
             Cancel
           </Button>
           <Button

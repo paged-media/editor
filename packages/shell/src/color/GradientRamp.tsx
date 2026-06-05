@@ -36,7 +36,7 @@ export interface GradientRampProps {
 
 /** CSS background for a stop list (shared with the chips). */
 export function rampCss(stops: RampStop[], kind?: string): string {
-  if (stops.length === 0) return "#d1d5db";
+  if (stops.length === 0) return "var(--chrome-divider)";
   const ordered = [...stops].sort((a, b) => a.locationPct - b.locationPct);
   const parts = ordered
     .map((s) => `${s.resolvedRgbHex} ${s.locationPct}%`)
@@ -64,7 +64,10 @@ export function GradientRamp(props: GradientRampProps) {
   const pctAt = (clientX: number): number => {
     const rect = trackRef.current?.getBoundingClientRect();
     if (!rect || rect.width === 0) return 0;
-    return Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
+    return Math.min(
+      100,
+      Math.max(0, ((clientX - rect.left) / rect.width) * 100),
+    );
   };
 
   const onTrackPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -75,13 +78,14 @@ export function GradientRamp(props: GradientRampProps) {
     }
   };
 
-  const beginDrag = (type: "stop" | "mid", index: number) => (e: PointerEvent) => {
-    if (readOnly) return;
-    e.stopPropagation();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    dragRef.current = { type, index };
-    if (type === "stop") onSelectStop?.(index);
-  };
+  const beginDrag =
+    (type: "stop" | "mid", index: number) => (e: PointerEvent) => {
+      if (readOnly) return;
+      e.stopPropagation();
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      dragRef.current = { type, index };
+      if (type === "stop") onSelectStop?.(index);
+    };
 
   const onPointerMove = (e: PointerEvent) => {
     const drag = dragRef.current;
@@ -123,7 +127,7 @@ export function GradientRamp(props: GradientRampProps) {
         style={{
           height,
           borderRadius: 3,
-          border: "1px solid #d4d4d8",
+          border: "1px solid var(--chrome-divider)",
           background: rampCss(stops, kind),
           cursor: readOnly ? "default" : "copy",
         }}
@@ -142,7 +146,10 @@ export function GradientRamp(props: GradientRampProps) {
               left: `calc(${s.locationPct}% - 5px)`,
               top: height + 1,
               background: s.resolvedRgbHex,
-              outline: selectedIndex === i ? "2px solid #1f2937" : undefined,
+              outline:
+                selectedIndex === i
+                  ? "2px solid var(--chrome-slot-active)"
+                  : undefined,
             }}
           />
         ))}
@@ -150,7 +157,8 @@ export function GradientRamp(props: GradientRampProps) {
         ordered.slice(0, -1).map((s, i) => {
           const next = ordered[i + 1];
           const mid = s.midpointPct ?? 50;
-          const abs = s.locationPct + ((next.locationPct - s.locationPct) * mid) / 100;
+          const abs =
+            s.locationPct + ((next.locationPct - s.locationPct) * mid) / 100;
           return (
             <button
               key={`mid-${i}`}
@@ -175,7 +183,7 @@ const thumbStyle: CSSProperties = {
   width: 10,
   height: 10,
   borderRadius: 2,
-  border: "1px solid #1f2937",
+  border: "1px solid var(--chrome-slot-active)",
   padding: 0,
   cursor: "ew-resize",
 };
@@ -185,8 +193,8 @@ const midStyle: CSSProperties = {
   width: 8,
   height: 8,
   transform: "rotate(45deg)",
-  background: "#fff",
-  border: "1px solid #6b7280",
+  background: "var(--elevated)",
+  border: "1px solid var(--muted-fg)",
   padding: 0,
   cursor: "ew-resize",
 };

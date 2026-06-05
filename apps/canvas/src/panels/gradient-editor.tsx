@@ -11,7 +11,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { GradientRamp, useCanvasClient, type RampStop } from "@paged-media/shell";
+import {
+  GradientRamp,
+  useCanvasClient,
+  type RampStop,
+} from "@paged-media/shell";
 import type {
   GradientDetail,
   GradientSummary,
@@ -76,7 +80,11 @@ export function GradientEditor() {
         setActiveId(null);
         refreshLists();
       }
-      if (msg.kind === "mutationApplied" || msg.kind === "undoApplied" || msg.kind === "redoApplied") {
+      if (
+        msg.kind === "mutationApplied" ||
+        msg.kind === "undoApplied" ||
+        msg.kind === "redoApplied"
+      ) {
         refreshLists();
       }
     });
@@ -114,12 +122,17 @@ export function GradientEditor() {
   );
 
   const moveStop = (i: number, pct: number) =>
-    setStops((prev) => prev.map((s, j) => (j === i ? { ...s, locationPct: pct } : s)));
+    setStops((prev) =>
+      prev.map((s, j) => (j === i ? { ...s, locationPct: pct } : s)),
+    );
   const moveMidpoint = (i: number, pct: number) =>
-    setStops((prev) => prev.map((s, j) => (j === i ? { ...s, midpointPct: pct } : s)));
+    setStops((prev) =>
+      prev.map((s, j) => (j === i ? { ...s, midpointPct: pct } : s)),
+    );
   const addStop = (pct: number) => {
     const next: RampStop = {
-      stopColorRef: stops[0]?.stopColorRef ?? swatches[0]?.selfId ?? "Color/Black",
+      stopColorRef:
+        stops[0]?.stopColorRef ?? swatches[0]?.selfId ?? "Color/Black",
       resolvedRgbHex: "#808080",
       locationPct: pct,
       midpointPct: null,
@@ -159,14 +172,20 @@ export function GradientEditor() {
 
   if (gradients.length === 0) {
     return (
-      <div className="text-xs text-muted-foreground px-1 pt-2" data-gradient-editor="empty">
+      <div
+        className="text-xs text-muted-foreground px-1 pt-2"
+        data-gradient-editor="empty"
+      >
         No gradients in this document.
       </div>
     );
   }
 
   return (
-    <div className="border-t border-input mt-2 pt-2 flex flex-col gap-2" data-gradient-editor="ready">
+    <div
+      className="border-t border-input mt-2 pt-2 flex flex-col gap-2"
+      data-gradient-editor="ready"
+    >
       <div className="flex items-center gap-2">
         <select
           className="flex-1 text-xs border border-input rounded"
@@ -212,7 +231,10 @@ export function GradientEditor() {
       />
 
       {selected !== null && stops[selected] && (
-        <div className="flex items-center gap-2 text-xs" data-gradient-stop-editor>
+        <div
+          className="flex items-center gap-2 text-xs"
+          data-gradient-stop-editor
+        >
           <span className="text-muted-foreground">Stop colour</span>
           <select
             className="flex-1 border border-input rounded"
@@ -228,7 +250,7 @@ export function GradientEditor() {
           </select>
           <button
             type="button"
-            className="border border-input rounded px-1.5 hover:text-red-600"
+            className="border border-input rounded px-1.5 hover:text-status-error"
             data-action="remove-stop"
             disabled={stops.length <= 2}
             onClick={removeSelected}

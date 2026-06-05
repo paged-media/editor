@@ -39,7 +39,10 @@ export function SwatchRow({
   const client = useCanvasClient();
   const [preview, setPreview] = useState<ColorPreview | null>(null);
   const [renaming, setRenaming] = useState(false);
-  const [editorAt, setEditorAt] = useState<{ left: number; top: number } | null>(null);
+  const [editorAt, setEditorAt] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
   const [mix, setMix] = useState<MixerValue | null>(null);
   const rowRef = useRef<HTMLLIElement | null>(null);
   const reserved = isReservedKind(swatch.kind);
@@ -62,7 +65,9 @@ export function SwatchRow({
     const seed: MixerValue = rawSeed(preview);
     setMix(seed);
     const rect = rowRef.current?.getBoundingClientRect();
-    setEditorAt(rect ? { left: rect.right + 8, top: rect.top } : { left: 200, top: 200 });
+    setEditorAt(
+      rect ? { left: rect.right + 8, top: rect.top } : { left: 200, top: 200 },
+    );
   };
 
   const commitEdit = (v: MixerValue) => {
@@ -145,7 +150,11 @@ export function SwatchRow({
       )}
       {/* Gamut badge for ICC-managed documents. */}
       {preview?.outOfGamut && (
-        <span data-swatch-gamut="out" title="Out of gamut" className="text-amber-600 text-[10px]">
+        <span
+          data-swatch-gamut="out"
+          title="Out of gamut"
+          className="text-status-review text-[10px]"
+        >
           ▲!
         </span>
       )}
@@ -188,7 +197,7 @@ export function SwatchRow({
               .mutate({ op: "deleteSwatch", args: { swatchId: swatch.selfId } })
               .catch(() => {})
           }
-          className="px-1 hover:text-red-600"
+          className="px-1 hover:text-status-error"
         >
           ✕
         </button>
@@ -250,7 +259,8 @@ function rawSeed(preview: ColorPreview | null): MixerValue {
   ) {
     return { space, value: [...value], tint: 100 };
   }
-  if (preview?.cmyk) return { space: "CMYK", value: [...preview.cmyk], tint: 100 };
+  if (preview?.cmyk)
+    return { space: "CMYK", value: [...preview.cmyk], tint: 100 };
   return {
     space: "RGB",
     value: hexChannels(preview?.rgbHex ?? "#808080"),

@@ -111,7 +111,7 @@ export function ScriptEditorPanel(_: PanelProps) {
                 <div key={j}>{line}</div>
               ))}
               {entry.error && (
-                <div className="text-red-600" data-script-error>
+                <div className="text-status-error" data-script-error>
                   ✗ {entry.error}
                 </div>
               )}

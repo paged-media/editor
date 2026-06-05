@@ -73,7 +73,9 @@ export function ColorPanel() {
         // The created swatch is the newest entry; resolve its id
         // from the collection (createSwatch doesn't echo createdId
         // — swatches aren't elements).
-        const swatches = await client.collection<{ selfId: string }>("swatches");
+        const swatches = await client.collection<{ selfId: string }>(
+          "swatches",
+        );
         const last = swatches[swatches.length - 1];
         if (last && resolved.value.onCommit) {
           resolved.value.onCommit({ type: "colorRef", value: last.selfId });
@@ -86,7 +88,7 @@ export function ColorPanel() {
     void client
       .mutate({
         op: "createSwatch",
-        args: { spec: { ...spec, name: spec.name ?? "New Swatch" } },
+        args: { spec: { ...spec, name: spec.name ?? "New swatch" } },
       })
       .catch(() => {});
   };
@@ -145,9 +147,7 @@ export function ColorPanel() {
                 data-color-swatch
               />
               <span className="font-medium">{preview.name}</span>
-              <span className="text-muted-foreground">
-                {preview.model}
-              </span>
+              <span className="text-muted-foreground">{preview.model}</span>
             </div>
             <div className="grid grid-cols-[5rem_1fr] gap-x-2">
               <span className="text-muted-foreground">RGB</span>
@@ -156,9 +156,7 @@ export function ColorPanel() {
                 <>
                   <span className="text-muted-foreground">CMYK</span>
                   <span data-color-cmyk>
-                    {preview.cmyk
-                      .map((v) => `${v.toFixed(0)}%`)
-                      .join(" / ")}
+                    {preview.cmyk.map((v) => `${v.toFixed(0)}%`).join(" / ")}
                   </span>
                 </>
               ) : (

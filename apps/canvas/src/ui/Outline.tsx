@@ -93,7 +93,9 @@ export function Outline(props: OutlineProps) {
           <strong>Outline</strong>
           <span style={{ opacity: 0.6 }}>0</span>
         </header>
-        <div style={emptyStyle}>No heading anchors or TOC entries detected.</div>
+        <div style={emptyStyle}>
+          No heading anchors or TOC entries detected.
+        </div>
       </aside>
     );
   }
@@ -126,7 +128,12 @@ export function Outline(props: OutlineProps) {
       )}
       {toc.length > 0 && (
         <>
-          <header style={{ ...headerStyle, borderTop: "1px solid #ddd" }}>
+          <header
+            style={{
+              ...headerStyle,
+              borderTop: "1px solid var(--chrome-border)",
+            }}
+          >
             <strong>TOC</strong>
             <span style={{ opacity: 0.6 }}>{toc.length}</span>
           </header>
@@ -157,8 +164,8 @@ const panelStyle: React.CSSProperties = {
   width: 220,
   display: "flex",
   flexDirection: "column",
-  borderRight: "1px solid #ddd",
-  background: "#fafafa",
+  borderRight: "1px solid var(--chrome-border)",
+  background: "var(--chrome-panel-bg)",
   flexShrink: 0,
 };
 
@@ -167,7 +174,7 @@ const headerStyle: React.CSSProperties = {
   justifyContent: "space-between",
   alignItems: "center",
   padding: "8px 12px",
-  borderBottom: "1px solid #ddd",
+  borderBottom: "1px solid var(--chrome-border)",
   fontSize: 12,
 };
 
@@ -187,7 +194,7 @@ const rowStyle: React.CSSProperties = {
   background: "none",
   cursor: "pointer",
   fontSize: 12,
-  color: "#1f2937",
+  color: "var(--fg)",
   textAlign: "left",
 };
 
@@ -199,7 +206,7 @@ const titleStyle: React.CSSProperties = {
 };
 
 const pageStyle: React.CSSProperties = {
-  color: "#6b7280",
+  color: "var(--muted-fg)",
   fontVariantNumeric: "tabular-nums",
   fontSize: 11,
 };
@@ -207,6 +214,6 @@ const pageStyle: React.CSSProperties = {
 const emptyStyle: React.CSSProperties = {
   padding: 12,
   fontSize: 12,
-  color: "#9ca3af",
+  color: "var(--muted-fg)",
   fontStyle: "italic",
 };

@@ -66,12 +66,30 @@ export function FillStrokeCluster() {
   const fillBinding = useMemo(
     () =>
       affects === "text"
-        ? { value: { kind: "selectionProperty" as const, scope: "content" as const, path: "characterFillColor" as const } }
-        : { value: { kind: "selectionProperty" as const, scope: "element" as const, path: "frameFillColor" as const } },
+        ? {
+            value: {
+              kind: "selectionProperty" as const,
+              scope: "content" as const,
+              path: "characterFillColor" as const,
+            },
+          }
+        : {
+            value: {
+              kind: "selectionProperty" as const,
+              scope: "element" as const,
+              path: "frameFillColor" as const,
+            },
+          },
     [affects],
   );
   const strokeBinding = useMemo(
-    () => ({ value: { kind: "selectionProperty" as const, scope: "element" as const, path: "frameStrokeColor" as const } }),
+    () => ({
+      value: {
+        kind: "selectionProperty" as const,
+        scope: "element" as const,
+        path: "frameStrokeColor" as const,
+      },
+    }),
     [],
   );
 
@@ -134,10 +152,10 @@ export function FillStrokeCluster() {
   // default otherwise (the wells are never inert).
   const fillRef = fill.onCommit
     ? unwrapColorRef(fill.value)
-    : docDefaults?.fill ?? null;
+    : (docDefaults?.fill ?? null);
   const strokeRef = stroke.onCommit
     ? unwrapColorRef(stroke.value)
-    : docDefaults?.stroke ?? null;
+    : (docDefaults?.stroke ?? null);
   const fillHex = useColorHex(fillRef);
   const strokeHex = useColorHex(strokeRef);
 
@@ -257,8 +275,7 @@ export function FillStrokeCluster() {
     if (blackId.current) return blackId.current;
     try {
       const list = await client.collection<SwatchSummary>("swatches");
-      blackId.current =
-        list.find((s) => /black/i.test(s.name))?.selfId ?? null;
+      blackId.current = list.find((s) => /black/i.test(s.name))?.selfId ?? null;
     } catch {
       /* keep null — stroke stays untouched */
     }
@@ -314,19 +331,19 @@ export function FillStrokeCluster() {
     const disposables = [
       registries.commands.register({
         id: "paged.fillStroke.swap",
-        title: "Swap Fill and Stroke",
+        title: "Swap fill and stroke",
         category: "Colour",
         handler: () => swapRef.current(),
       }),
       registries.commands.register({
         id: "paged.fillStroke.default",
-        title: "Default Fill and Stroke",
+        title: "Default fill and stroke",
         category: "Colour",
         handler: () => defaultRef.current(),
       }),
       registries.commands.register({
         id: "paged.fillStroke.toggleAffects",
-        title: "Toggle Formatting Affects Container/Text",
+        title: "Toggle formatting affects container/text",
         category: "Colour",
         handler: () => toggleAffectsRef.current(),
       }),
@@ -365,7 +382,10 @@ export function FillStrokeCluster() {
   return (
     <div style={clusterStyle} data-fill-stroke-cluster="ready">
       {/* Overlapping fill (front) + stroke (back) wells. */}
-      <div ref={wellsRef} style={{ position: "relative", width: 30, height: 30 }}>
+      <div
+        ref={wellsRef}
+        style={{ position: "relative", width: 30, height: 30 }}
+      >
         <Well
           kind="stroke"
           hex={strokeHex}
@@ -418,7 +438,11 @@ export function FillStrokeCluster() {
           data-fs-apply-color
           disabled={!canApply}
           onClick={() => apply(lastSolid.current)}
-          style={{ ...miniBtn, background: "var(--chrome-menu-text)", color: "var(--elevated)" }}
+          style={{
+            ...miniBtn,
+            background: "var(--chrome-menu-text)",
+            color: "var(--elevated)",
+          }}
         >
           ◼
         </button>
@@ -465,8 +489,12 @@ export function FillStrokeCluster() {
           ...miniBtn,
           width: 30,
           fontSize: 10,
-          background: affects === "text" ? "var(--chrome-slot-active)" : "var(--elevated)",
-          color: affects === "text" ? "var(--elevated)" : "var(--chrome-menu-text)",
+          background:
+            affects === "text"
+              ? "var(--chrome-slot-active)"
+              : "var(--elevated)",
+          color:
+            affects === "text" ? "var(--elevated)" : "var(--chrome-menu-text)",
         }}
       >
         {affects === "text" ? "T" : "□"}
@@ -487,7 +515,12 @@ export function FillStrokeCluster() {
               aria-hidden
             />
             <SwatchPicker
-              style={{ position: "fixed", left: picker.left, top: picker.top, zIndex: 51 }}
+              style={{
+                position: "fixed",
+                left: picker.left,
+                top: picker.top,
+                zIndex: 51,
+              }}
               onPick={(id) => {
                 apply(id);
                 setPicker(null);
@@ -549,7 +582,7 @@ function Well({
           ? "linear-gradient(135deg, var(--chrome-rail-bg) 47%, var(--chrome-divider) 47%, var(--chrome-divider) 53%, var(--chrome-rail-bg) 53%)"
           : isNone
             ? "var(--elevated)"
-            : hex ?? "var(--chrome-divider)",
+            : (hex ?? "var(--chrome-divider)"),
         // The stroke well's "hollow square" — the hole shows the
         // rail through it, so it must track the chrome surface.
         boxShadow: ring ? "inset 0 0 0 4px var(--chrome-rail-bg)" : undefined,
@@ -636,7 +669,11 @@ function SwatchPicker({
   }, [client]);
 
   return (
-    <div style={{ ...pickerStyle, ...style }} role="menu" data-swatch-picker="ready">
+    <div
+      style={{ ...pickerStyle, ...style }}
+      role="menu"
+      data-swatch-picker="ready"
+    >
       <button
         type="button"
         title="None"
@@ -653,7 +690,10 @@ function SwatchPicker({
           title={s.name}
           data-swatch-id={s.selfId}
           onClick={() => onPick(s.selfId)}
-          style={{ ...swatchChip, background: hexes[s.selfId] ?? "var(--chrome-divider)" }}
+          style={{
+            ...swatchChip,
+            background: hexes[s.selfId] ?? "var(--chrome-divider)",
+          }}
         />
       ))}
     </div>
@@ -663,15 +703,37 @@ function SwatchPicker({
 function NoneOverlay() {
   return (
     <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden>
-      <line x1={3} y1={17} x2={17} y2={3} stroke="var(--pg-destructive)" strokeWidth={1.6} />
+      <line
+        x1={3}
+        y1={17}
+        x2={17}
+        y2={3}
+        stroke="var(--pg-destructive)"
+        strokeWidth={1.6}
+      />
     </svg>
   );
 }
 function NoneGlyph() {
   return (
     <svg viewBox="0 0 16 16" width={14} height={14} aria-hidden>
-      <rect x={1.5} y={1.5} width={13} height={13} rx={2} fill="none" stroke="var(--chrome-divider)" />
-      <line x1={3} y1={13} x2={13} y2={3} stroke="var(--pg-destructive)" strokeWidth={1.4} />
+      <rect
+        x={1.5}
+        y={1.5}
+        width={13}
+        height={13}
+        rx={2}
+        fill="none"
+        stroke="var(--chrome-divider)"
+      />
+      <line
+        x1={3}
+        y1={13}
+        x2={13}
+        y2={3}
+        stroke="var(--pg-destructive)"
+        strokeWidth={1.4}
+      />
     </svg>
   );
 }

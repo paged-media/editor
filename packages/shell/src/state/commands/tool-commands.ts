@@ -66,7 +66,7 @@ export function buildToolbarContributions(
   // `W` — toggle Normal ⇄ Preview, text-suppressed like tool shortcuts.
   commands.push({
     id: SCREEN_PREVIEW_TOGGLE_COMMAND,
-    title: "Toggle Preview Screen Mode",
+    title: "Toggle preview screen mode",
     category: "View",
     handler: (paged) => {
       (paged as PagedEditor).screenMode.togglePreview();

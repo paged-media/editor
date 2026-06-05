@@ -21,7 +21,7 @@ export const PAGED_PALETTE_TOGGLE = "paged.palette.toggle";
  */
 export const PALETTE_TOGGLE_COMMAND: CommandContribution = {
   id: PAGED_PALETTE_TOGGLE,
-  title: "Toggle Command Palette",
+  title: "Toggle command palette",
   category: "View",
   handler: () => {
     notifyPalette("toggle");

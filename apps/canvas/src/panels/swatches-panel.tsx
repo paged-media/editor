@@ -64,7 +64,7 @@ function SwatchCollection() {
         op: "createSwatch",
         args: {
           spec: {
-            name: "New Swatch",
+            name: "New swatch",
             space: "CMYK",
             value: [0, 0, 0, 100],
             model: "Process",
@@ -138,7 +138,10 @@ function SwatchCollection() {
   );
 
   return (
-    <div className="text-sm border-t border-input mt-2 pt-2" data-swatch-collection="ready">
+    <div
+      className="text-sm border-t border-input mt-2 pt-2"
+      data-swatch-collection="ready"
+    >
       <div className="flex items-center justify-between px-1 pb-1">
         <span className="text-xs uppercase tracking-wide text-muted-foreground">
           Swatches
@@ -156,13 +159,18 @@ function SwatchCollection() {
         </div>
       </div>
       {swatches.length === 0 ? (
-        <div className="px-1 text-xs text-muted-foreground" data-swatches="empty">
+        <div
+          className="px-1 text-xs text-muted-foreground"
+          data-swatches="empty"
+        >
           No swatches.
         </div>
       ) : (
         <>
           {groups.map((g) => {
-            const members = swatches.filter((s) => g.members.includes(s.selfId));
+            const members = swatches.filter((s) =>
+              g.members.includes(s.selfId),
+            );
             if (members.length === 0) return null;
             return (
               <div key={g.selfId} data-swatch-group={g.selfId}>
@@ -195,7 +203,11 @@ function LibrariesMenu() {
 
   const open = () => {
     const rect = btnRef.current?.getBoundingClientRect();
-    setAt(rect ? { left: rect.left, top: rect.bottom + 4 } : { left: 100, top: 100 });
+    setAt(
+      rect
+        ? { left: rect.left, top: rect.bottom + 4 }
+        : { left: 100, top: 100 },
+    );
   };
 
   const load = (id: string) => {

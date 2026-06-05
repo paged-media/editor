@@ -48,7 +48,10 @@ function ParagraphStyleCollection() {
 
   const onAdd = () => {
     void client
-      .mutate({ op: "createParagraphStyle", args: { name: "New Paragraph Style" } })
+      .mutate({
+        op: "createParagraphStyle",
+        args: { name: "New paragraph style" },
+      })
       .catch(() => {});
   };
   const onRemove = (styleId: string) => {
@@ -58,7 +61,10 @@ function ParagraphStyleCollection() {
   };
 
   return (
-    <div className="text-sm border-t border-input mt-2 pt-2" data-style-collection="ready">
+    <div
+      className="text-sm border-t border-input mt-2 pt-2"
+      data-style-collection="ready"
+    >
       <div className="flex items-center justify-between px-1 pb-1">
         <span className="text-xs uppercase tracking-wide text-muted-foreground">
           Paragraph styles
@@ -90,7 +96,7 @@ function ParagraphStyleCollection() {
                 title="delete style"
                 data-action="remove-style"
                 onClick={() => onRemove(s.selfId)}
-                className="px-1 hover:text-red-600"
+                className="px-1 hover:text-status-error"
               >
                 ✕
               </button>

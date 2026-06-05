@@ -28,16 +28,22 @@ import { supportsSharedArrayBuffer } from "@paged-media/client";
 // eslint-disable-next-line import/no-relative-parent-imports
 import type { WorkerToMain } from "@paged-media/client";
 
-import { CanvasClientProvider, useCanvasClient } from "./state/canvas-client-context";
-import { CameraProvider } from "./state/camera-context";
-import { ContentSelectionProvider, useContentSelection } from "./state/content-selection-context";
-import { DocumentProvider, useDocument } from "./state/document-context";
-import { InstrumentationProvider, useInstrumentation } from "./state/instrumentation-context";
-import { OverlaySignalsProvider } from "./state/overlay-signals-context";
 import {
-  SelectionProvider,
-  useSelection,
-} from "./state/selection-context";
+  CanvasClientProvider,
+  useCanvasClient,
+} from "./state/canvas-client-context";
+import { CameraProvider } from "./state/camera-context";
+import {
+  ContentSelectionProvider,
+  useContentSelection,
+} from "./state/content-selection-context";
+import { DocumentProvider, useDocument } from "./state/document-context";
+import {
+  InstrumentationProvider,
+  useInstrumentation,
+} from "./state/instrumentation-context";
+import { OverlaySignalsProvider } from "./state/overlay-signals-context";
+import { SelectionProvider, useSelection } from "./state/selection-context";
 import { ToolProvider } from "./state/tool-context";
 import { ScreenModeProvider } from "./state/screen-mode-context";
 import { ThemeProvider, useTheme } from "./state/theme-context";
@@ -154,47 +160,47 @@ export function PagedShell({
     <DebugErrorBoundary label="paged-shell">
       <CanvasClientProvider client={client}>
         <ThemeProvider>
-        <CameraProvider>
-          <DocumentProvider>
-            {/* ToolProvider above SelectionProvider: the selection
-             *  context's `activeTool` facade reads the tool stack. */}
-            <ToolProvider>
-              <WorkflowModeProvider>
-              <ScreenModeProvider>
-                <ToolSettingsProvider>
-                  <FormattingAffectsProvider>
-                    <SelectionProvider>
-                      <ContentSelectionProvider>
-                <OverlaySignalsProvider>
-                  <InstrumentationProvider>
-                    {/* DockingSubstrateProvider above PagedEditorProvider so
-                     *  the editor handle (`paged.substrate`) sees the live
-                     *  substrate once DockviewRoot's onReady publishes it. */}
-                    <DockingSubstrateProvider>
-                      <PagedEditorProvider>
-                        <ShellChrome
-                          panels={panels}
-                          overlays={overlays}
-                          tools={tools}
-                          headerExtras={headerExtras}
-                          modes={modes}
-                          panelRail={panelRail}
-                        >
-                          {children}
-                        </ShellChrome>
-                      </PagedEditorProvider>
-                    </DockingSubstrateProvider>
-                  </InstrumentationProvider>
-                </OverlaySignalsProvider>
-                      </ContentSelectionProvider>
-                    </SelectionProvider>
-                  </FormattingAffectsProvider>
-                </ToolSettingsProvider>
-              </ScreenModeProvider>
-              </WorkflowModeProvider>
-            </ToolProvider>
-          </DocumentProvider>
-        </CameraProvider>
+          <CameraProvider>
+            <DocumentProvider>
+              {/* ToolProvider above SelectionProvider: the selection
+               *  context's `activeTool` facade reads the tool stack. */}
+              <ToolProvider>
+                <WorkflowModeProvider>
+                  <ScreenModeProvider>
+                    <ToolSettingsProvider>
+                      <FormattingAffectsProvider>
+                        <SelectionProvider>
+                          <ContentSelectionProvider>
+                            <OverlaySignalsProvider>
+                              <InstrumentationProvider>
+                                {/* DockingSubstrateProvider above PagedEditorProvider so
+                                 *  the editor handle (`paged.substrate`) sees the live
+                                 *  substrate once DockviewRoot's onReady publishes it. */}
+                                <DockingSubstrateProvider>
+                                  <PagedEditorProvider>
+                                    <ShellChrome
+                                      panels={panels}
+                                      overlays={overlays}
+                                      tools={tools}
+                                      headerExtras={headerExtras}
+                                      modes={modes}
+                                      panelRail={panelRail}
+                                    >
+                                      {children}
+                                    </ShellChrome>
+                                  </PagedEditorProvider>
+                                </DockingSubstrateProvider>
+                              </InstrumentationProvider>
+                            </OverlaySignalsProvider>
+                          </ContentSelectionProvider>
+                        </SelectionProvider>
+                      </FormattingAffectsProvider>
+                    </ToolSettingsProvider>
+                  </ScreenModeProvider>
+                </WorkflowModeProvider>
+              </ToolProvider>
+            </DocumentProvider>
+          </CameraProvider>
         </ThemeProvider>
       </CanvasClientProvider>
     </DebugErrorBoundary>
@@ -404,13 +410,13 @@ function ShellChrome({
     const disposables = [
       registries.commands.register({
         id: "paged.chrome.toggleAll",
-        title: "Toggle Panels and Tool Rail",
+        title: "Toggle panels and tool rail",
         category: "View",
         handler: (paged) => toggleAllRef.current(paged as PagedEditor),
       }),
       registries.commands.register({
         id: "paged.chrome.togglePanels",
-        title: "Toggle Panels (keep Tool Rail)",
+        title: "Toggle panels (keep tool rail)",
         category: "View",
         handler: (paged) => togglePanelsRef.current(paged as PagedEditor),
       }),
@@ -566,7 +572,11 @@ function ShellChrome({
   useEffect(() => {
     const items = registries.menus;
     const handles = [
-      items.register({ path: "File/Open IDML…", command: PAGED_FILE_OPEN_IDML, order: 10 }),
+      items.register({
+        path: "File/Open IDML…",
+        command: PAGED_FILE_OPEN_IDML,
+        order: 10,
+      }),
       items.register({
         path: "File/Export PDF…",
         command: PAGED_FILE_EXPORT_PDF,
@@ -574,24 +584,24 @@ function ShellChrome({
         group: "export",
       }),
       items.register({
-        path: "View/Toggle Command Palette",
+        path: "View/Toggle command palette",
         command: PAGED_PALETTE_TOGGLE,
         order: 10,
       }),
       items.register({
-        path: "View/Save Perspective…",
+        path: "View/Save perspective…",
         command: PAGED_PERSPECTIVE_SAVE_AS,
         order: 90,
         group: "perspective",
       }),
       items.register({
-        path: "View/Export Perspective…",
+        path: "View/Export perspective…",
         command: PAGED_PERSPECTIVE_EXPORT,
         order: 91,
         group: "perspective",
       }),
       items.register({
-        path: "View/Import Perspective…",
+        path: "View/Import perspective…",
         command: PAGED_PERSPECTIVE_IMPORT,
         order: 92,
         group: "perspective",
@@ -608,8 +618,8 @@ function ShellChrome({
   // Vite's `import.meta.env.PROD` constant — typed loosely here so
   // shell's tsconfig (which doesn't include Vite's ambient types)
   // still passes.
-  const isProd = ((import.meta as unknown as { env?: { PROD?: boolean } }).env
-    ?.PROD) === true;
+  const isProd =
+    (import.meta as unknown as { env?: { PROD?: boolean } }).env?.PROD === true;
   if (!isProd) {
     (globalThis as unknown as { __canvas?: unknown }).__canvas = {
       client,
@@ -836,7 +846,13 @@ class DebugErrorBoundary extends React.Component<
   render() {
     if (this.state.error) {
       return (
-        <pre style={{ padding: 16, color: "#b91c1c", fontFamily: "monospace" }}>
+        <pre
+          style={{
+            padding: 16,
+            color: "var(--status-error)",
+            fontFamily: "var(--font-mono)",
+          }}
+        >
           [{this.props.label}] {this.state.error.message}
           {"\n"}
           {this.state.error.stack}

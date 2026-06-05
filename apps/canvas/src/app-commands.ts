@@ -58,13 +58,13 @@ export function buildAppCommands(
     },
     {
       id: PAGED_VIEW_ZOOM_IN,
-      title: "Zoom In",
+      title: "Zoom in",
       category: "View",
       handler: () => handlers.zoomIn(),
     },
     {
       id: PAGED_VIEW_ZOOM_OUT,
-      title: "Zoom Out",
+      title: "Zoom out",
       category: "View",
       handler: () => handlers.zoomOut(),
     },
@@ -76,7 +76,7 @@ export function buildAppCommands(
     },
     {
       id: PAGED_VIEW_ZOOM_FIT,
-      title: "Fit Document",
+      title: "Fit document",
       category: "View",
       handler: () => handlers.zoomFit(),
     },
@@ -87,7 +87,7 @@ export function buildAppCommands(
  *  these grouped by the leading path segment.
  *
  *  The shell already registers `File/Open IDML…` (pointing at
- *  `paged.file.openIdml`) and `View/Toggle Command Palette`, so
+ *  `paged.file.openIdml`) and `View/Toggle command palette`, so
  *  this projection covers only the items unique to the canvas app:
  *  Edit > Undo/Redo and View > Zoom*. */
 export const APP_MENU_ITEMS: Array<{
@@ -100,10 +100,30 @@ export const APP_MENU_ITEMS: Array<{
   { path: "Edit/Undo", command: PAGED_EDITOR_UNDO, order: 10, group: "undo" },
   { path: "Edit/Redo", command: PAGED_EDITOR_REDO, order: 20, group: "undo" },
   // View menu
-  { path: "View/Zoom In", command: PAGED_VIEW_ZOOM_IN, order: 20, group: "zoom" },
-  { path: "View/Zoom Out", command: PAGED_VIEW_ZOOM_OUT, order: 30, group: "zoom" },
-  { path: "View/Zoom to 100%", command: PAGED_VIEW_ZOOM_100, order: 40, group: "zoom" },
-  { path: "View/Fit Document", command: PAGED_VIEW_ZOOM_FIT, order: 50, group: "zoom" },
+  {
+    path: "View/Zoom in",
+    command: PAGED_VIEW_ZOOM_IN,
+    order: 20,
+    group: "zoom",
+  },
+  {
+    path: "View/Zoom out",
+    command: PAGED_VIEW_ZOOM_OUT,
+    order: 30,
+    group: "zoom",
+  },
+  {
+    path: "View/Zoom to 100%",
+    command: PAGED_VIEW_ZOOM_100,
+    order: 40,
+    group: "zoom",
+  },
+  {
+    path: "View/Fit document",
+    command: PAGED_VIEW_ZOOM_FIT,
+    order: 50,
+    group: "zoom",
+  },
 ];
 
 /** Keybindings that route through the command registry. Cmd-Z /

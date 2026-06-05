@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { useCanvasClient , Icon } from "@paged-media/shell";
+import { useCanvasClient, Icon } from "@paged-media/shell";
 
 import type { LayerSummary } from "@paged-media/client";
 
@@ -206,7 +206,7 @@ export function LayersPanel(_: PanelProps) {
               title="delete layer"
               data-action="remove"
               onClick={() => onRemove(layer.selfId)}
-              className="px-1 hover:text-red-600"
+              className="px-1 hover:text-status-error"
             >
               ✕
             </button>

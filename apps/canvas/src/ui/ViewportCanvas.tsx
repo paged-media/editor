@@ -38,7 +38,13 @@ import type {
   ResolutionResult,
   RunningHeader,
 } from "@paged-media/client";
-import { documentBounds, fitCamera, layoutPages, zoomAt, type PageRect } from "./layout";
+import {
+  documentBounds,
+  fitCamera,
+  layoutPages,
+  zoomAt,
+  type PageRect,
+} from "./layout";
 
 // Re-export the (now shell-owned) overlay state types so existing
 // imports from this module continue to work.
@@ -58,7 +64,10 @@ export interface ViewportCanvasProps {
   camera: Camera;
   onCameraChange: (cam: Camera) => void;
   /** Called when the user clicks (not drags) on a page. */
-  onHit?: (selection: SelectionState | null, modifiers?: PointerModifiers) => void;
+  onHit?: (
+    selection: SelectionState | null,
+    modifiers?: PointerModifiers,
+  ) => void;
   /** Phase A — called when the user finishes a marquee drag with the
    * select tool. Payload is page-local `[top, left, bottom, right]`. */
   onMarquee?: (
@@ -93,10 +102,7 @@ export interface ViewportCanvasProps {
    * user actually clicked on. Phase H used this to expand the group
    * to its leaves; Track L uses it to ENTER the group (set
    * `activeGroup = groupId`) and select the hit leaf scoped within. */
-  onDoubleClickGroup?: (
-    groupId: string,
-    hitElement: ElementId | null,
-  ) => void;
+  onDoubleClickGroup?: (groupId: string, hitElement: ElementId | null) => void;
   /** Phase 2 (Concept 1) — when set, the effective tool carries a
    * gesture handler; ViewportCanvas resolves each pointer event to
    * document coordinates and routes it here, bypassing the
@@ -347,14 +353,15 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         const geometry = props.elementGeometry ?? [];
         const selectedGeom = geometry.length === 1 ? geometry[0] : null;
         const isMultiSelect = geometry.length > 1;
-        const bodyHitElement = !handleAttr && containing
-          ? findSelectedElementUnderPointer(
-              selection,
-              geometry,
-              containing[0],
-              [docX - containing[1].x, docY - containing[1].y],
-            )
-          : null;
+        const bodyHitElement =
+          !handleAttr && containing
+            ? findSelectedElementUnderPointer(
+                selection,
+                geometry,
+                containing[0],
+                [docX - containing[1].x, docY - containing[1].y],
+              )
+            : null;
         // Phase F — Cmd-drag on the body of a single-selected
         // image-bearing frame triggers `TranslateContent` (content
         // grabber). Plain body-drag stays Translate; Cmd-drag on a
@@ -396,7 +403,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
             targets = [bodyHitElement];
           }
         }
-        const hit = gestureSpec ? targets[0] ?? null : null;
+        const hit = gestureSpec ? (targets[0] ?? null) : null;
         if (hit && gestureSpec && targets.length > 0) {
           mode = "gesture";
           gestureState = {
@@ -438,7 +445,12 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
                 // next tick and posts a `gestureSnapLines` notify; the
                 // subscription above routes it into `setSnapLines`.
                 void props.client
-                  .updateGesture(handle, pending, { shift: false, alt: false }, "sab")
+                  .updateGesture(
+                    handle,
+                    pending,
+                    { shift: false, alt: false },
+                    "sab",
+                  )
                   .catch(() => {});
               }
             })
@@ -624,7 +636,10 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
           const cy = e.clientY - rect.top;
           const [docX, docY] = viewportToDoc(props.camera, cx, cy);
           const factor = e.altKey ? 1 / 1.25 : 1.25;
-          const scale = Math.min(64, Math.max(0.01, props.camera.scale * factor));
+          const scale = Math.min(
+            64,
+            Math.max(0.01, props.camera.scale * factor),
+          );
           props.onCameraChange({
             scale,
             tx: cx - docX * scale,
@@ -640,8 +655,12 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         const containing = findContainingPage(rects, props.pageIds, docX, docY);
         if (containing) {
           const [pageId, pageRect] = containing;
-          const docPoint: [number, number] = [docX - pageRect.x, docY - pageRect.y];
-          const filter = (props.activeTool ?? "select") === "text" ? "text" : "any";
+          const docPoint: [number, number] = [
+            docX - pageRect.x,
+            docY - pageRect.y,
+          ];
+          const filter =
+            (props.activeTool ?? "select") === "text" ? "text" : "any";
           void (async () => {
             try {
               const reply = await props.client.send({
@@ -649,7 +668,10 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
                 payload: { pageId, docPoint, filter },
               });
               if (reply.kind === "hitResult") {
-                props.onHit?.({ pageId, docPoint, hit: reply.payload }, modifiers);
+                props.onHit?.(
+                  { pageId, docPoint, hit: reply.payload },
+                  modifiers,
+                );
               }
             } catch (err) {
               console.warn("hitTest failed:", err);
@@ -776,7 +798,9 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
    * both the visible handle and a larger hit-area rect with the same
    * attribute, so a pointerdown anywhere in the grab zone fires
    * this branch. */
-  function readHandleAttr(target: EventTarget | null): ResizeHandle | "rotate" | null {
+  function readHandleAttr(
+    target: EventTarget | null,
+  ): ResizeHandle | "rotate" | null {
     if (!(target instanceof Element)) return null;
     const v = target.getAttribute("data-handle");
     if (!v) return null;
@@ -804,7 +828,12 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
   ): [PageId, PageRect] | null {
     for (let i = 0; i < rects.length; i++) {
       const r = rects[i];
-      if (docX >= r.x && docX <= r.x + r.w && docY >= r.y && docY <= r.y + r.h) {
+      if (
+        docX >= r.x &&
+        docX <= r.x + r.w &&
+        docY >= r.y &&
+        docY <= r.y + r.h
+      ) {
         return [ids[i], r];
       }
     }
@@ -871,7 +900,9 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       ref={wrapperRef}
       // Phase 3 — the active tool's base cursor overrides the default
       // pan affordance; the gesture handler may refine it per position.
-      style={props.cursor ? { ...wrapperStyle, cursor: props.cursor } : wrapperStyle}
+      style={
+        props.cursor ? { ...wrapperStyle, cursor: props.cursor } : wrapperStyle
+      }
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -920,19 +951,20 @@ function ViewportHud(props: {
   layoutCacheStats: LayoutCacheStats | null;
 }) {
   const sel = props.selection;
-  const gpuBadge = props.gpuActive === null
-    ? { label: "…", color: "#9ca3af" }
-    : props.gpuActive
-      ? { label: "GPU", color: "#10b981" }
-      : { label: "CPU", color: "#f59e0b" };
+  const gpuBadge =
+    props.gpuActive === null
+      ? { label: "…", color: "var(--status-draft)" }
+      : props.gpuActive
+        ? { label: "GPU", color: "var(--status-approved)" }
+        : { label: "CPU", color: "var(--status-review)" };
   const fpsColor =
     props.fps === 0
-      ? "#9ca3af"
+      ? "var(--status-draft)"
       : props.fps >= 55
-        ? "#10b981"
+        ? "var(--status-approved)"
         : props.fps >= 30
-          ? "#f59e0b"
-          : "#ef4444";
+          ? "var(--status-review)"
+          : "var(--status-error)";
   return (
     <div style={hudStyle}>
       <span style={{ color: gpuBadge.color, fontWeight: 600 }}>
@@ -942,27 +974,33 @@ function ViewportHud(props: {
         <span style={{ color: fpsColor }}>{props.fps} fps</span>
       )}
       <span>{props.pageCount} pages</span>
-      {props.layoutCacheStats && props.layoutCacheStats.hits + props.layoutCacheStats.misses > 0 && (
-        <CacheBadge stats={props.layoutCacheStats} />
-      )}
+      {props.layoutCacheStats &&
+        props.layoutCacheStats.hits + props.layoutCacheStats.misses > 0 && (
+          <CacheBadge stats={props.layoutCacheStats} />
+        )}
       {props.anchorCount > 0 && (
-        <span style={{ color: "#34d399" }}>{props.anchorCount} ⚓</span>
+        <span style={{ color: "var(--status-approved)" }}>
+          {props.anchorCount} anchors
+        </span>
       )}
       {props.footnoteCount > 0 && (
-        <span style={{ color: "#a78bfa" }}>{props.footnoteCount} fn</span>
+        <span style={{ color: "var(--status-progress)" }}>
+          {props.footnoteCount} fn
+        </span>
       )}
       {(() => {
         // Show the running header for the page closest to viewport
         // centre — gives a "where am I" anchor for long documents.
         const [vw, vh] = [
           // approximate viewport size from camera scale + canvas dims
-          800,
-          600,
+          800, 600,
         ];
         const cx = vw / 2;
         const cy = vh / 2;
-        const docX = (cx - props.camera.tx) / Math.max(1e-6, props.camera.scale);
-        const docY = (cy - props.camera.ty) / Math.max(1e-6, props.camera.scale);
+        const docX =
+          (cx - props.camera.tx) / Math.max(1e-6, props.camera.scale);
+        const docY =
+          (cy - props.camera.ty) / Math.max(1e-6, props.camera.scale);
         let currentIdx = 0;
         let bestDistSq = Infinity;
         for (let i = 0; i < props.pageRects.length; i++) {
@@ -978,8 +1016,12 @@ function ViewportHud(props: {
         const header = props.runningHeaders[currentIdx];
         if (header?.text) {
           const truncated =
-            header.text.length > 24 ? `${header.text.slice(0, 23)}…` : header.text;
-          return <span style={{ color: "#fde047" }}>§ {truncated}</span>;
+            header.text.length > 24
+              ? `${header.text.slice(0, 23)}…`
+              : header.text;
+          return (
+            <span style={{ color: "var(--status-review)" }}>§ {truncated}</span>
+          );
         }
         return null;
       })()}
@@ -1010,18 +1052,34 @@ function CacheBadge(props: { stats: LayoutCacheStats }) {
   const total = props.stats.hits + props.stats.misses;
   if (total === 0) return null;
   const ratio = props.stats.hits / total;
-  const color = ratio >= 0.9 ? "#10b981" : ratio >= 0.5 ? "#f59e0b" : "#ef4444";
+  const color =
+    ratio >= 0.9
+      ? "var(--status-approved)"
+      : ratio >= 0.5
+        ? "var(--status-review)"
+        : "var(--status-error)";
   const pct = Math.round(ratio * 100);
   const ms = props.stats.rebuildMs;
   // AC-E-1 budget — 32 ms per typed character. Green under, amber close,
   // red over.
-  const msColor = ms <= 16 ? "#10b981" : ms <= 32 ? "#f59e0b" : "#ef4444";
+  const msColor =
+    ms <= 16
+      ? "var(--status-approved)"
+      : ms <= 32
+        ? "var(--status-review)"
+        : "var(--status-error)";
   return (
     <>
-      <span style={{ color }} title={`layout cache: ${props.stats.hits} hits / ${props.stats.misses} misses (${props.stats.len} entries)`}>
+      <span
+        style={{ color }}
+        title={`layout cache: ${props.stats.hits} hits / ${props.stats.misses} misses (${props.stats.len} entries)`}
+      >
         cache {pct}% ({props.stats.hits}/{total})
       </span>
-      <span style={{ color: msColor }} title="last rebuild wall-clock; AC-E-1 budget = 32 ms">
+      <span
+        style={{ color: msColor }}
+        title="last rebuild wall-clock; AC-E-1 budget = 32 ms"
+      >
         {ms.toFixed(1)} ms
       </span>
     </>
@@ -1033,7 +1091,7 @@ const wrapperStyle: React.CSSProperties = {
   width: "100%",
   height: "100%",
   overflow: "hidden",
-  background: "#e5e7eb",
+  background: "var(--canvas-surround)",
   cursor: "grab",
   touchAction: "none",
   userSelect: "none",
@@ -1047,21 +1105,25 @@ const canvasStyle: React.CSSProperties = {
   display: "block",
 };
 
+// Floating UI per the design system: an elevated surface with a
+// hairline border (theme-aware, so the status tokens keep contrast
+// in BOTH themes — the old dark glass washed them out on light).
 const hudStyle: React.CSSProperties = {
   position: "absolute",
   bottom: 8,
   right: 8,
   display: "flex",
   gap: 12,
-  background: "rgba(17, 24, 39, 0.85)",
-  color: "white",
+  background: "var(--elevated)",
+  color: "var(--fg)",
+  border: "1px solid var(--border)",
   padding: "4px 10px",
   borderRadius: 4,
-  fontFamily: "monospace",
+  fontFamily: "var(--font-mono)",
   fontSize: 11,
   pointerEvents: "none",
 };
 
 const hudSelStyle: React.CSSProperties = {
-  color: "#fbbf24", // amber — highlights the click result
+  color: "var(--status-review)", // amber — highlights the click result
 };

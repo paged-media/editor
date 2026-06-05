@@ -74,7 +74,9 @@ export function ColorMixer(props: ColorMixerProps) {
     if (!value) return channels.map(() => 0);
     if (tab === "HSB") {
       const rgb =
-        value.space === "RGB" ? value.value : hexToRgb(compute.rgbHex) ?? [128, 128, 128];
+        value.space === "RGB"
+          ? value.value
+          : (hexToRgb(compute.rgbHex) ?? [128, 128, 128]);
       return rgbToHsb(rgb);
     }
     if (tab === value.space) return value.value;
@@ -84,10 +86,7 @@ export function ColorMixer(props: ColorMixerProps) {
     return defaultValue(tab);
   }, [value, tab, channels, compute.rgbHex]);
 
-  const emit = (
-    next: MixerValue,
-    phase: "change" | "commit",
-  ) => {
+  const emit = (next: MixerValue, phase: "change" | "commit") => {
     if (phase === "change") onChange?.(next);
     else {
       onChange?.(next);
@@ -98,7 +97,11 @@ export function ColorMixer(props: ColorMixerProps) {
   const setChannel = (idx: number, raw: number, phase: "change" | "commit") => {
     const base: MixerValue =
       value ??
-      ({ space: tab === "HSB" ? "RGB" : tab, value: defaultValue(tab === "HSB" ? "RGB" : tab), tint: 100 } as MixerValue);
+      ({
+        space: tab === "HSB" ? "RGB" : tab,
+        value: defaultValue(tab === "HSB" ? "RGB" : tab),
+        tint: 100,
+      } as MixerValue);
     if (tab === "HSB") {
       const hsb = [...displayed];
       hsb[idx] = raw;
@@ -121,18 +124,29 @@ export function ColorMixer(props: ColorMixerProps) {
   const setHex = (hex: string) => {
     const rgb = hexToRgb(hex);
     if (!rgb) return;
-    const base = value ?? { space: "RGB" as const, value: defaultValue("RGB"), tint: 100 };
+    const base = value ?? {
+      space: "RGB" as const,
+      value: defaultValue("RGB"),
+      tint: 100,
+    };
     emit({ space: "RGB", value: rgb, tint: base.tint }, "commit");
   };
 
   const setTint = (tint: number, phase: "change" | "commit") => {
-    const base: MixerValue =
-      value ?? { space: "CMYK", value: defaultValue("CMYK"), tint: 100 };
+    const base: MixerValue = value ?? {
+      space: "CMYK",
+      value: defaultValue("CMYK"),
+      tint: 100,
+    };
     emit({ ...base, tint }, phase);
   };
 
   return (
-    <div style={rootStyle} data-color-mixer="ready" data-mixer-mixed={mixed || undefined}>
+    <div
+      style={rootStyle}
+      data-color-mixer="ready"
+      data-mixer-mixed={mixed || undefined}
+    >
       {/* Space tabs */}
       <div style={tabRow}>
         {(["CMYK", "RGB", "LAB", "HSB", "Gray"] as MixerTab[]).map((t) => (
@@ -144,20 +158,35 @@ export function ColorMixer(props: ColorMixerProps) {
             onClick={() => setTab(t)}
             style={{
               ...tabBtn,
-              background: tab === t ? "#1f2937" : "#fff",
-              color: tab === t ? "#fff" : "#374151",
+              background:
+                tab === t ? "var(--chrome-slot-active)" : "var(--elevated)",
+              color:
+                tab === t
+                  ? "var(--chrome-icon-active)"
+                  : "var(--chrome-menu-text)",
             }}
           >
             {t === "Gray" ? "K" : t}
           </button>
         ))}
         {/* Preview chip + gamut warning */}
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
+        <div
+          style={{
+            marginLeft: "auto",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
           {compute.outOfGamut && !mixed && (
             <span
               data-gamut="out"
               title="Out of gamut for the document's CMYK working space"
-              style={{ color: "#d97706", fontSize: 12, lineHeight: 1 }}
+              style={{
+                color: "var(--status-review)",
+                fontSize: 12,
+                lineHeight: 1,
+              }}
             >
               ▲!
             </span>
@@ -169,10 +198,10 @@ export function ColorMixer(props: ColorMixerProps) {
               width: 26,
               height: 18,
               borderRadius: 3,
-              border: "1px solid #d4d4d8",
+              border: "1px solid var(--chrome-divider)",
               opacity: compute.pending ? 0.6 : 1,
               background: mixed
-                ? "linear-gradient(135deg, #fff 48%, #9ca3af 48%, #9ca3af 52%, #fff 52%)"
+                ? "linear-gradient(135deg, var(--elevated) 48%, var(--muted-fg) 48%, var(--muted-fg) 52%, var(--elevated) 52%)"
                 : compute.rgbHex,
             }}
           />
@@ -185,7 +214,12 @@ export function ColorMixer(props: ColorMixerProps) {
           <span style={channelLabel}>{ch.label}</span>
           {mixed ? (
             <span
-              style={{ fontSize: 11, opacity: 0.6, flex: 1, textAlign: "center" }}
+              style={{
+                fontSize: 11,
+                opacity: 0.6,
+                flex: 1,
+                textAlign: "center",
+              }}
               data-mixer-channel-mixed
             >
               —
@@ -289,7 +323,7 @@ const tabBtn: CSSProperties = {
   fontSize: 10,
   padding: "2px 6px",
   borderRadius: 3,
-  border: "1px solid #d4d4d8",
+  border: "1px solid var(--chrome-divider)",
   cursor: "pointer",
   lineHeight: 1.2,
 };
@@ -311,16 +345,18 @@ const hexInput: CSSProperties = {
   flex: 1,
   fontSize: 11,
   padding: "2px 6px",
-  border: "1px solid #d4d4d8",
+  border: "1px solid var(--chrome-divider)",
   borderRadius: 3,
-  fontFamily: "ui-monospace, monospace",
+  fontFamily: "var(--font-mono)",
+  background: "var(--elevated)",
+  color: "var(--fg)",
 };
 
 const footBtn: CSSProperties = {
   fontSize: 11,
   padding: "3px 8px",
   borderRadius: 4,
-  border: "1px solid #d4d4d8",
-  background: "#fff",
+  border: "1px solid var(--chrome-divider)",
+  background: "var(--elevated)",
   cursor: "pointer",
 };

@@ -16,7 +16,7 @@ export function buildImportAseCommand(options: {
 }): CommandContribution {
   return {
     id: PAGED_LIBRARY_IMPORT_ASE,
-    title: "Import Swatches (.ase)…",
+    title: "Import swatches (.ase)…",
     category: "File",
     handler: async (paged) => {
       const editor = paged as PagedEditor;
@@ -42,12 +42,14 @@ export function buildExportAseCommand(options: {
 }): CommandContribution {
   return {
     id: PAGED_LIBRARY_EXPORT_ASE,
-    title: "Save Swatches (.ase)…",
+    title: "Save swatches (.ase)…",
     category: "File",
     handler: async (paged) => {
       const editor = paged as PagedEditor;
       const bytes = await editor.client.exportSwatchLibrary();
-      const blob = new Blob([bytes.slice()], { type: "application/octet-stream" });
+      const blob = new Blob([bytes.slice()], {
+        type: "application/octet-stream",
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

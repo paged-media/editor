@@ -70,7 +70,9 @@
   --pg-primary: hsl(263 73% 43%); /* #5b1ebe */
   --pg-primary-fg: #fafafa;
   --pg-primary-hover: hsl(263 73% 38%);
-  --pg-primary-soft: hsl(263 73% 96%); /* lavender tint — AI surface, selection */
+  --pg-primary-soft: hsl(
+    263 73% 96%
+  ); /* lavender tint — AI surface, selection */
   --pg-destructive: #ef4444;
   --elevated: #ffffff; /* popovers, command bar, flyouts */
   --canvas-surround: #9a9a9e; /* the gray behind the pages */
@@ -104,8 +106,8 @@
 
   /* ── type ──────────────────────────────────────────────────── */
   --font-sans: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas,
-    monospace;
+  --font-mono:
+    "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
   --font-logo: "Cormorant Garamond", Georgia, serif; /* the "paged." wordmark */
   --wordmark-dot: #8f1d1f; /* oxblood — the period IS the mark */
   --tracking-wide: 0.14em; /* uppercase labels / kickers */
@@ -117,6 +119,8 @@
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
   --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 6px;

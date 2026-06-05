@@ -11,16 +11,16 @@
 //   3. On `activate`, register contributions, then signal `ready`.
 //   4. On `deactivate`, drop the handlers.
 
-import type {
-  BundleToShell,
-  ShellToBundle,
-} from "./protocol";
+import type { BundleToShell, ShellToBundle } from "./protocol";
 
 // Worker globals — `self` is the DedicatedWorkerGlobalScope.
 // Cast once at the boundary so the rest of the file is typed.
 const worker = self as unknown as DedicatedWorkerGlobalScope;
 
-const handlers = new Map<string, (payload?: unknown) => unknown | Promise<unknown>>();
+const handlers = new Map<
+  string,
+  (payload?: unknown) => unknown | Promise<unknown>
+>();
 
 function post(msg: BundleToShell) {
   worker.postMessage(msg);
@@ -84,7 +84,7 @@ function activate(): void {
     command: "paged.sample.hello",
   });
   paged.menus.register({
-    path: "Tools/Sample Bundle Hello",
+    path: "Tools/Sample bundle hello",
     command: "paged.sample.hello",
     order: 10,
   });

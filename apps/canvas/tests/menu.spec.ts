@@ -28,41 +28,70 @@ test.describe("Phase 4 — menu via commands", () => {
     // The MenuBar renders one top-level button per registered
     // top-level menu path. With File/Open, Edit/Undo+Redo, and
     // View/Zoom* registered, all three menu buttons must appear.
-    await expect(page.locator('nav[aria-label="Main menu"]').getByRole("button", { name: "File" })).toBeVisible();
-    await expect(page.locator('nav[aria-label="Main menu"]').getByRole("button", { name: "Edit" })).toBeVisible();
-    await expect(page.locator('nav[aria-label="Main menu"]').getByRole("button", { name: "View" })).toBeVisible();
+    await expect(
+      page
+        .locator('nav[aria-label="Main menu"]')
+        .getByRole("button", { name: "File" }),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('nav[aria-label="Main menu"]')
+        .getByRole("button", { name: "Edit" }),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('nav[aria-label="Main menu"]')
+        .getByRole("button", { name: "View" }),
+    ).toBeVisible();
   });
 
   test("AC-MENU-2 — clicking View opens a menu listing the zoom commands", async ({
     page,
   }) => {
-    await page.locator('nav[aria-label="Main menu"]').getByRole("button", { name: "View" }).click();
+    await page
+      .locator('nav[aria-label="Main menu"]')
+      .getByRole("button", { name: "View" })
+      .click();
     // Radix DropdownMenuContent renders into a portal; the visible
     // items should include the four zoom entries.
-    await expect(page.getByRole("menuitem", { name: "Zoom In" })).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: "Zoom Out" })).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: "Zoom to 100%" })).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: "Fit Document" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Zoom in" })).toBeVisible();
+    await expect(
+      page.getByRole("menuitem", { name: "Zoom out" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("menuitem", { name: "Zoom to 100%" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("menuitem", { name: "Fit document" }),
+    ).toBeVisible();
   });
 
-  test("AC-MENU-3 — 'Fit Document' menu item is clickable without error", async ({
+  test("AC-MENU-3 — 'Fit document' menu item is clickable without error", async ({
     page,
   }) => {
-    // Open View menu, click Fit Document. The handler invokes
+    // Open View menu, click Fit document. The handler invokes
     // `commands.invoke("paged.view.zoomFit")` which queues a camera
     // animation; we don't observe the camera state here (it's not
     // exposed through __canvas) — the assertion is just that the
     // click doesn't throw and the menu closes.
-    await page.locator('nav[aria-label="Main menu"]').getByRole("button", { name: "View" }).click();
-    await page.getByRole("menuitem", { name: "Fit Document" }).click();
+    await page
+      .locator('nav[aria-label="Main menu"]')
+      .getByRole("button", { name: "View" })
+      .click();
+    await page.getByRole("menuitem", { name: "Fit document" }).click();
     // Menu closes after invocation.
-    await expect(page.getByRole("menuitem", { name: "Fit Document" })).not.toBeVisible();
+    await expect(
+      page.getByRole("menuitem", { name: "Fit document" }),
+    ).not.toBeVisible();
   });
 
   test("AC-MENU-4 — Edit menu lists Undo and Redo as registered commands", async ({
     page,
   }) => {
-    await page.locator('nav[aria-label="Main menu"]').getByRole("button", { name: "Edit" }).click();
+    await page
+      .locator('nav[aria-label="Main menu"]')
+      .getByRole("button", { name: "Edit" })
+      .click();
     await expect(page.getByRole("menuitem", { name: "Undo" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Redo" })).toBeVisible();
   });
@@ -73,7 +102,12 @@ test.describe("Phase 4 — menu via commands", () => {
     // The shell registers `paged.file.openIdml`; the app's menu
     // projection maps it onto File/Open IDML…. This confirms the
     // convergence — same command id, different consumer surface.
-    await page.locator('nav[aria-label="Main menu"]').getByRole("button", { name: "File" }).click();
-    await expect(page.getByRole("menuitem", { name: "Open IDML…" })).toBeVisible();
+    await page
+      .locator('nav[aria-label="Main menu"]')
+      .getByRole("button", { name: "File" })
+      .click();
+    await expect(
+      page.getByRole("menuitem", { name: "Open IDML…" }),
+    ).toBeVisible();
   });
 });
