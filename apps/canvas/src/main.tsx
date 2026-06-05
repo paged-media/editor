@@ -63,6 +63,12 @@ import { CellStylesPanel } from "./panels/cell-styles-panel";
 import { ColorPanel } from "./panels/color-panel";
 import { ColorWheelPanel } from "./panels/color-wheel-panel";
 import { FontsPanel } from "./panels/fonts-panel";
+import { TablePanel } from "./panels/concept/table-panel";
+import { TabsPanel } from "./panels/concept/tabs-panel";
+import { GlyphsPanel } from "./panels/concept/glyphs-panel";
+import { BulletsPanel } from "./panels/concept/bullets-panel";
+import { ObjectExportPanel } from "./panels/concept/object-export-panel";
+import { ExportTaggingPanel } from "./panels/concept/export-tagging-panel";
 import { MasterPagesPanel } from "./panels/master-pages-panel";
 import { PagesListPanel } from "./panels/pages-list-panel";
 import { SpreadsPanel } from "./panels/spreads-panel";
@@ -667,6 +673,68 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     component: ScriptEditorPanel,
     defaultDock: "bottom",
     defaultGroup: "console",
+  },
+  // ── Panel-gallery pass — CONCEPT panels (INDESIGN_PARITY.md).
+  //    The four ●●● parity surfaces + the two in-scope output/a11y
+  //    surfaces, shipped as kit-shaped honest seams with Concept
+  //    badges + Target footnotes so the roadmap reads honestly.
+  //    Window-menu reachable like every registered panel. ────────
+  {
+    // Live Table panel awaits the Table NodeId surface (gap 8).
+    id: "paged.table",
+    title: "Table",
+    component: TablePanel,
+    defaultDock: "right",
+    defaultGroup: "text",
+    icon: "panel-table-styles",
+  },
+  {
+    // The Tabs ruler awaits tab-stop reads/writes.
+    id: "paged.tabs",
+    title: "Tabs",
+    component: TabsPanel,
+    defaultDock: "right",
+    defaultGroup: "text",
+    icon: "ui-flow",
+  },
+  {
+    // PARTIALLY LIVE — the glyph grid inserts via insertText at
+    // the caret; font scope awaits the font registry.
+    id: "paged.glyphs",
+    title: "Glyphs",
+    component: GlyphsPanel,
+    defaultDock: "right",
+    defaultGroup: "text",
+    icon: "panel-character",
+  },
+  {
+    // List definitions await the paragraph-model surface.
+    id: "paged.bullets-numbering",
+    title: "Bullets & Numbering",
+    component: BulletsPanel,
+    defaultDock: "right",
+    defaultGroup: "text",
+    icon: "ui-rows",
+  },
+  {
+    // Per-object alt text / tagged-PDF role / EPUB conversion —
+    // the accessible-output surface (in scope per the parity doc).
+    id: "paged.object-export",
+    title: "Object Export Options",
+    component: ObjectExportPanel,
+    defaultDock: "right",
+    defaultGroup: "output",
+    icon: "ui-accessibility",
+  },
+  {
+    // Style → HTML tag/CSS class/PDF tag mapping for EPUB + tagged
+    // PDF.
+    id: "paged.export-tagging",
+    title: "Export Tagging",
+    component: ExportTaggingPanel,
+    defaultDock: "right",
+    defaultGroup: "output",
+    icon: "ui-export",
   },
 ];
 
