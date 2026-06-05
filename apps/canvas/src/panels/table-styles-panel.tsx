@@ -1,10 +1,11 @@
-// SDK Phase 5 (v1 sweep) — Table Styles panel.
+// SDK Phase 5 / panel-gallery pass — Table Styles panel.
 //
-// Read-only list of every table style. Companion to Cell Styles
-// with the same wire-shape-only caveat for the apply path
-// (AppliedTableStyle is reserved for Tier 2d / v2).
+// Readonly ApplyList companion to Cell Styles with the same
+// wire-shape-only caveat for the apply path (AppliedTableStyle
+// is reserved until the Table NodeId surface lands — gap 8).
+// Backs the Table Composer presets when tables go live.
 
-import { useCollection } from "@paged-media/shell";
+import { ApplyList, useCollection } from "@paged-media/shell";
 import type { TableStyleSummary } from "@paged-media/client";
 
 export function TableStylesPanel() {
@@ -20,34 +21,28 @@ export function TableStylesPanel() {
     );
   }
   return (
-    <div className="p-3" data-table-styles-panel="ready">
-      <div className="text-xs text-muted-foreground uppercase pb-2 border-b border-input">
-        Table Styles
-      </div>
+    <div data-table-styles-panel="ready">
       {items.length === 0 ? (
         <div
-          className="pt-2 text-xs text-muted-foreground"
+          className="p-3 text-xs text-muted-foreground"
           data-empty-table-styles
         >
           No table styles.
         </div>
       ) : (
-        <ul className="flex flex-col gap-0.5 pt-1" data-table-style-list>
-          {items.map((s) => (
-            <li
-              key={s.selfId}
-              className="text-xs px-2 py-1"
-              data-style-id={s.selfId}
-            >
-              <span>{s.name}</span>
-              {s.basedOn ? (
-                <span className="ml-2 text-muted-foreground">
-                  ← {s.basedOn}
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        <ApplyList
+          appliedId=""
+          groups={[
+            {
+              items: items.map((s) => ({ selfId: s.selfId, name: s.name })),
+            },
+          ]}
+          itemIcon="panel-table-styles"
+          collection="tableStyles"
+          readonly
+          readonlyNote="Apply available once table selection lands."
+          testId="table-styles"
+        />
       )}
     </div>
   );

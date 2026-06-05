@@ -30,6 +30,7 @@ export function ApplyList({
   groups,
   itemIcon,
   next,
+  collection,
   onApply,
   onNew,
   onRedefine,
@@ -45,6 +46,9 @@ export function ApplyList({
   itemIcon: string;
   /** Next-style display line ("Next: Body") — paragraph styles. */
   next?: string;
+  /** Source collection name — stamped as `data-collection` on the
+   *  applied select (the stable spec hook). */
+  collection?: string;
   onApply?: (selfId: string) => void;
   onNew?: () => void;
   onRedefine?: () => void;
@@ -66,6 +70,7 @@ export function ApplyList({
         value={appliedId}
         disabled={readonly || onApply == null}
         data-apply-select
+        data-collection={collection}
         onChange={(e) => onApply?.(e.target.value)}
         style={{
           width: "100%",

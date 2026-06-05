@@ -33,13 +33,10 @@ test.describe("Phase 5 — Paragraph Styles panel", () => {
   test("AC-PSTYLE-1 — panel mounts as a composition with a select", async ({
     page,
   }) => {
-    // The migrated panel renders a single `collection-select`
-    // primitive bound to `paragraphStyles`. The composition
-    // renderer keeps the `data-paragraph-styles-panel="ready"`
-    // wrapper; inside it the select element identifies as
-    // `[data-collection="paragraphStyles"]`. Either outcome —
-    // a populated list or an empty `[None]`-only list — proves
-    // the channel + dispatcher + hook chain completes.
+    // Panel-gallery pass: the panel is the shared ApplyList
+    // archetype. The applied select keeps the stable
+    // `[data-collection="paragraphStyles"]` hook; the style list
+    // renders as `[data-apply-item]` rows.
     await expect(
       page.locator('[data-paragraph-styles-panel="ready"]'),
     ).toBeVisible();
@@ -182,5 +179,23 @@ test.describe("Phase 5 — Paragraph Styles panel", () => {
     });
 
     expect(selectedSelfId).toBeTruthy();
+  });
+
+  test("AC-PSTYLE-4 — ApplyList rows + New creates + Redefine is a seam", async ({
+    page,
+  }) => {
+    const root = page.locator('[data-paragraph-styles-panel="ready"]');
+    // The fixture ships at least the default paragraph style →
+    // at least one ApplyList row.
+    const rows = root.locator("[data-apply-item]");
+    await expect.poll(() => rows.count()).toBeGreaterThanOrEqual(1);
+    const before = await rows.count();
+    // New rides createParagraphStyle.
+    await root.locator('[data-apply-action="new"]').click();
+    await expect.poll(() => rows.count()).toBe(before + 1);
+    // Redefine has no engine op — honest seam, disabled.
+    await expect(root.locator('[data-apply-action="redefine"]')).toBeDisabled();
+    // Delete targets the applied style; nothing applied → disabled.
+    await expect(root.locator('[data-apply-action="delete"]')).toBeDisabled();
   });
 });
