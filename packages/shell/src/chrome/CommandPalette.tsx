@@ -114,7 +114,10 @@ export function CommandPalette() {
   }, [open]);
 
   const all = useMemo(() => commands.list(), [commands, open]);
-  const byId = useMemo(() => new Map(all.map((c) => [c.id, c] as const)), [all]);
+  const byId = useMemo(
+    () => new Map(all.map((c) => [c.id, c] as const)),
+    [all],
+  );
   const grouped = useMemo(() => groupByCategory(all), [all]);
 
   const run = (cmd: CommandContribution) => {
@@ -136,10 +139,38 @@ export function CommandPalette() {
 
   const showAiSeam = query.length > 0 && looksLikePrompt(query);
 
+  // Zero state stays curated (kit): the per-panel Show/Hide pairs
+  // (~100 ids) only surface once the user types.
+  const visibleGroups = useMemo(
+    () =>
+      query.length > 0
+        ? grouped
+        : grouped
+            .map(
+              ([category, items]) =>
+                [
+                  category,
+                  items.filter(
+                    (c) =>
+                      !c.id.startsWith("paged.panel.show.") &&
+                      !c.id.startsWith("paged.panel.hide."),
+                  ),
+                ] as [string, CommandContribution[]],
+            )
+            .filter(([, items]) => items.length > 0),
+    [grouped, query],
+  );
+
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog
+      open={open}
+      onOpenChange={setOpen}
+      // Kit command-bar.jsx: 660px, parked high (11vh) like a
+      // launcher, not centred like a modal form.
+      contentClassName="max-w-[660px] top-[11vh] translate-y-0"
+    >
       <CommandInput
-        placeholder="Search commands — or describe what you need…"
+        placeholder="Ask or search anything…"
         value={query}
         onValueChange={setQuery}
       />
@@ -211,7 +242,7 @@ export function CommandPalette() {
           </>
         )}
 
-        {grouped.map(([category, items], idx) => (
+        {visibleGroups.map(([category, items], idx) => (
           <div key={category}>
             {idx > 0 && <CommandSeparator />}
             <CommandGroup heading={category}>
@@ -229,9 +260,57 @@ export function CommandPalette() {
           </div>
         ))}
       </CommandList>
+      {/* Kit footer: run / navigate / the AI affordance. */}
+      <div
+        data-palette-footer
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          height: 34,
+          padding: "0 14px",
+          borderTop: "1px solid var(--pg-border)",
+          background: "var(--chrome-panel-bg)",
+          color: "var(--pg-muted-fg)",
+          fontFamily: "var(--font-sans)",
+          fontSize: 11,
+        }}
+      >
+        <span>
+          <kbd style={kbdStyle}>↵</kbd> run
+        </span>
+        <span>
+          <kbd style={kbdStyle}>↑↓</kbd> navigate
+        </span>
+        <span
+          style={{
+            marginLeft: "auto",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          <Icon
+            name="ui-sparkle"
+            size={12}
+            style={{ color: "var(--pg-primary)" }}
+          />
+          AI-assisted
+        </span>
+      </div>
     </CommandDialog>
   );
 }
+
+const kbdStyle: React.CSSProperties = {
+  fontFamily: "var(--font-mono)",
+  fontSize: 10,
+  border: "1px solid var(--pg-border)",
+  borderRadius: "var(--radius-sm)",
+  padding: "1px 5px",
+  marginRight: 4,
+  background: "var(--pg-bg)",
+};
 
 function groupByCategory(
   items: CommandContribution[],

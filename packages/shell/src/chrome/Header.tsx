@@ -40,13 +40,21 @@ export function Header({ onFile, headerExtras, status }: HeaderProps) {
         <FileDrop onFile={onFile} hidden />
         {headerExtras}
         {status ? (
+          // Kit header carries no status line — the worker state
+          // compacts to an honest dot, full text in the tooltip.
           <span
-            className="pg-mono-meta"
             data-shell-status
-            title="Worker status"
-          >
-            {status}
-          </span>
+            title={status}
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: "50%",
+              flexShrink: 0,
+              background: /ready/i.test(status)
+                ? "var(--status-approved)"
+                : "var(--status-review)",
+            }}
+          />
         ) : null}
         <CollabCluster />
         <ThemeToggle />
@@ -92,8 +100,17 @@ function CommandTrigger() {
         cursor: "text",
       }}
     >
-      <Icon name="ui-search" size={16} />
-      <span style={{ flex: 1, textAlign: "left", fontSize: 13.5 }}>
+      <Icon name="ui-search" size={16} style={{ flexShrink: 0 }} />
+      <span
+        style={{
+          flex: 1,
+          textAlign: "left",
+          fontSize: 13.5,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
         Ask or search anything…
       </span>
       <kbd
