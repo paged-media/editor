@@ -8,6 +8,11 @@ export { LengthInput, type LengthInputProps } from "./inputs/LengthInput";
 export { ScrubField, type ScrubFieldProps } from "./inputs/ScrubField";
 export { BoundsInput, type BoundsInputProps } from "./inputs/BoundsInput";
 export { ColorPicker, type ColorPickerProps } from "./inputs/ColorPicker";
+export { KitSelect, type KitSelectProps } from "./inputs/KitSelect";
+export {
+  SmartDialMicro,
+  type SmartDialMicroProps,
+} from "./inputs/SmartDialMicro";
 
 export type { LengthUnit } from "./inputs/units";
 export { convertLength, POINTS_PER_UNIT } from "./inputs/units";

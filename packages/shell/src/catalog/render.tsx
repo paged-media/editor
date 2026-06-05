@@ -8,7 +8,11 @@
 // docs/paged/sdk-implementation-plan.md §3a.
 
 import { createContext, useContext, type ReactElement } from "react";
-import type { CatalogRegistry, CompositionNode, LeafProps } from "@paged-media/catalog";
+import type {
+  CatalogRegistry,
+  CompositionNode,
+  LeafProps,
+} from "@paged-media/catalog";
 
 import { useBindings, type ResolvedBinding } from "./binding-hook";
 
@@ -90,6 +94,10 @@ function Node({ node }: { node: CompositionNode }): ReactElement {
       props: {
         ...node.props,
         ...(childElements ? { children: <>{childElements}</> } : {}),
+        // Layout leaves that wrap EACH child (the cluster's
+        // sub-labelled cells) need the array, not the opaque
+        // fragment — forward it alongside.
+        ...(childElements ? { childNodes: childElements } : {}),
         // Forward all non-primary resolved bindings under the same
         // name so leaves can read them by name (e.g.
         // `props.fillColor` for a multi-bind leaf).

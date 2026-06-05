@@ -50,7 +50,10 @@ const ENTRIES: CatalogEntry[] = [
     kind: "leaf",
     props: {
       label: "string",
+      labelPosition: "string",
       icon: "string",
+      prefix: "string",
+      showUnit: "boolean",
       unitPicker: "boolean",
       seam: "boolean",
       placeholder: "string",
@@ -76,7 +79,10 @@ const ENTRIES: CatalogEntry[] = [
     kind: "leaf",
     props: {
       label: "string",
+      labelPosition: "string",
       icon: "string",
+      prefix: "string",
+      suffix: "string",
       seam: "boolean",
       placeholder: "string",
     },
@@ -198,12 +204,20 @@ const ENTRIES: CatalogEntry[] = [
     leaf: LayoutSectionLeaf,
   },
   {
-    // Panel-gallery pass — labelled multi-control row (the
-    // gallery's paired/tripled fields). Layout-only; children
-    // omit labels and carry icon chips.
+    // Panel-gallery pass — bare multi-control metric row (the
+    // kit's 2-up/3-up grids). Layout-only; children omit labels
+    // and carry icon chips / in-field prefixes; `sublabels`
+    // renders 8.5px cell labels below, `caption` a trailing
+    // 10.5px note ("Drop cap").
     id: PAGED_LAYOUT_CLUSTER,
     kind: "leaf",
-    props: { label: "string", count: "number" },
+    props: {
+      label: "string",
+      labelPosition: "string",
+      count: "number",
+      sublabels: "JsonValue",
+      caption: "string",
+    },
     bindings: { reads: [], writes: [] },
     leaf: LayoutClusterLeaf,
   },

@@ -7,14 +7,16 @@ export interface LengthInputProps extends Omit<
   NumberInputProps,
   "value" | "onChange" | "onCommit"
 > {
-  /** Value in points (the IDML-native unit). */
-  valuePt: number;
+  /** Value in points (the IDML-native unit). `null` = mixed. */
+  valuePt: number | null;
   /** Initial display unit. The user can change it via the picker;
    * the underlying canonical value stays in points. */
   defaultUnit?: LengthUnit;
-  /** Hide the unit picker (compact composites like the 4-up bounds
-   * grid). The display unit stays `defaultUnit`. Default true. */
+  /** Show the legacy unit-picker select. Default FALSE — the kit's
+   * metric fields carry the unit INSIDE the value ("16 pt"). */
   unitPicker?: boolean;
+  /** Hide the in-field unit suffix (compact composite cells). */
+  showUnit?: boolean;
   /** Fires whenever the canonical (pt) value changes. */
   onChangePt: (valuePt: number) => void;
   onCommitPt?: (valuePt: number) => void;
@@ -23,33 +25,35 @@ export interface LengthInputProps extends Omit<
 const UNITS: LengthUnit[] = ["pt", "px", "mm", "cm", "in"];
 
 /**
- * Numeric input with a unit picker. Internally stores everything
- * in points (IDML's canonical unit) and converts at display time;
- * the caller only ever sees pt values via `onChangePt` /
- * `onCommitPt`. Useful for frame bounds, margins, stroke weight —
- * anywhere the user wants to enter "in mm" without the renderer
- * caring.
+ * Numeric input displaying in a length unit while the canonical
+ * value stays in points (IDML's native unit); the caller only ever
+ * sees pt via `onChangePt` / `onCommitPt`. Gallery pixel-parity:
+ * the unit renders inside the field as the kit's value suffix
+ * ("16 pt"); the explicit unit-picker select is opt-in legacy.
  */
 export function LengthInput(props: LengthInputProps) {
   const {
     valuePt,
     defaultUnit = "pt",
-    unitPicker = true,
+    unitPicker = false,
+    showUnit = true,
     onChangePt,
     onCommitPt,
+    suffix,
     ...rest
   } = props;
   const [unit, setUnit] = useState<LengthUnit>(defaultUnit);
 
   const displayValue = useMemo(
-    () => convertLength(valuePt, "pt", unit),
+    () => (valuePt === null ? null : convertLength(valuePt, "pt", unit)),
     [valuePt, unit],
   );
 
   return (
-    <div className="inline-flex items-stretch gap-1">
+    <div className="inline-flex items-stretch gap-1 min-w-0">
       <NumberInput
         {...rest}
+        suffix={suffix ?? (showUnit && !unitPicker ? unit : undefined)}
         value={displayValue}
         onChange={(next) => onChangePt(convertLength(next, unit, "pt"))}
         onCommit={
@@ -62,7 +66,7 @@ export function LengthInput(props: LengthInputProps) {
         <select
           value={unit}
           onChange={(e) => setUnit(e.target.value as LengthUnit)}
-          className="text-xs h-[30px] px-1 rounded-[6px] border border-input bg-background text-foreground"
+          className="text-xs h-[28px] px-1 rounded-[6px] border border-input bg-background text-foreground"
           aria-label="unit"
         >
           {UNITS.map((u) => (

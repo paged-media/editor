@@ -54,7 +54,7 @@ export function BoundsInput(props: BoundsInputProps) {
             <LengthInput
               valuePt={valuePt[idx]}
               defaultUnit={defaultUnit}
-              unitPicker={false}
+              showUnit={false}
               disabled={disabled}
               className="w-full text-center [&>input]:text-center [&>input]:px-1"
               onChangePt={(v) => set(idx, v, false)}

@@ -294,6 +294,7 @@ export {
 
 // ── SDK Phase 3 — declarative catalog renderer + primitive leaves
 export { CompositionRenderer, CatalogRegistryProvider } from "./catalog/render";
+export { TogglePill, displayName } from "./catalog/leaves";
 export { useBindings, type ResolvedBinding } from "./catalog/binding-hook";
 export {
   useCollection,
