@@ -131,26 +131,41 @@ export const COCKPIT_MODES: ModeContribution[] = [
   },
 ];
 
+// The kit's panel-selector rail (ui_kits/editor data.jsx PANEL_RAIL):
+// Text / Image / Pages steer the Properties inspector; the rest open
+// their panel as a right-dock tab. Everything else (Layers, Effects,
+// Align, …) stays reachable through the Window menu.
 export const PANEL_RAIL: PanelRailItem[] = [
-  { panelId: "paged.character", title: "Text", icon: "panel-character" },
   {
-    panelId: "paged.frame-fitting",
-    title: "Image",
-    icon: "panel-frame-fitting",
+    panelId: "paged.properties",
+    title: "Text",
+    icon: "panel-character",
+    inspectorContext: "text",
   },
   {
-    panelId: "paged.object-styles",
-    title: "Styles",
-    icon: "panel-object-styles",
+    panelId: "paged.properties",
+    title: "Image",
+    icon: "panel-frame-fitting",
+    inspectorContext: "image",
   },
   {
     panelId: "paged.component-library",
     title: "Library",
     icon: "ui-component",
   },
+  {
+    panelId: "paged.object-styles",
+    title: "Styles",
+    icon: "panel-object-styles",
+  },
   { panelId: "paged.swatches", title: "Swatches", icon: "panel-swatches" },
-  { panelId: "paged.pages", title: "Pages", icon: "panel-pages" },
-  { panelId: "paged.layers", title: "Layers", icon: "panel-layers" },
-  { panelId: "paged.effects", title: "Effects", icon: "panel-effects" },
-  { panelId: "paged.inspector", title: "Inspect", icon: "panel-inspector" },
+  { panelId: "paged.data-mapping", title: "Data", icon: "ui-database" },
+  {
+    panelId: "paged.properties",
+    title: "Pages",
+    icon: "panel-pages",
+    inspectorContext: "page",
+  },
+  { panelId: "paged.comments", title: "Comments", icon: "ui-comment" },
+  { panelId: "paged.preflight", title: "Preflight", icon: "ui-target" },
 ];

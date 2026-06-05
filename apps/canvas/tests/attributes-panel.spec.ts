@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -15,15 +15,13 @@ test.describe("Phase 5 — Attributes panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page.getByText("Attributes", { exact: true }).first().click();
+    await openPanel(page, "paged.attributes");
   });
 
   test("AC-ATTR-1 — panel mounts; em-dash without selection", async ({
     page,
   }) => {
-    await expect(
-      page.locator('[data-attributes-panel="ready"]'),
-    ).toBeVisible();
+    await expect(page.locator('[data-attributes-panel="ready"]')).toBeVisible();
     await expect(
       page.locator('[data-attributes-panel="ready"] [data-mixed]'),
     ).toBeVisible();

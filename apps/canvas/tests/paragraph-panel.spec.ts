@@ -8,7 +8,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,7 +19,7 @@ test.describe("Phase 3 — Paragraph panel (declarative composition)", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page.getByText("Paragraph", { exact: true }).first().click();
+    await openPanel(page, "paged.paragraph");
   });
 
   test("AC-PARA-1 — Paragraph panel mounts and shows section title", async ({
@@ -27,9 +27,7 @@ test.describe("Phase 3 — Paragraph panel (declarative composition)", () => {
   }) => {
     await expect(page.locator('[data-paragraph-panel="ready"]')).toBeVisible();
     await expect(
-      page.locator(
-        '[data-paragraph-panel="ready"] [data-section="Paragraph"]',
-      ),
+      page.locator('[data-paragraph-panel="ready"] [data-section="Paragraph"]'),
     ).toBeVisible();
   });
 

@@ -6,7 +6,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,14 +17,16 @@ test.describe("Phase 5 — Align panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page.getByText("Align", { exact: true }).first().click();
+    await openPanel(page, "paged.align");
   });
 
   test("AC-ALIGN-1 — panel mounts; 6 align + 2 distribute buttons; hints when no selection", async ({
     page,
   }) => {
     await expect(page.locator('[data-align-panel="ready"]')).toBeVisible();
-    const buttons = page.locator('[data-align-panel="ready"] button[data-align-kind]');
+    const buttons = page.locator(
+      '[data-align-panel="ready"] button[data-align-kind]',
+    );
     // 6 align + 2 distribute = 8.
     await expect(buttons).toHaveCount(8);
     // Hint visible with empty selection.
@@ -230,8 +232,8 @@ test.describe("Phase 5 — Align panel", () => {
       const centers: number[] = [];
       for (const id of trio) {
         const props = await dbg.client.elementProperties(id);
-        const v = props?.entries.find((e) => e.path === "frameBounds")
-          ?.value?.value;
+        const v = props?.entries.find((e) => e.path === "frameBounds")?.value
+          ?.value;
         if (v) centers.push((v[1] + v[3]) / 2);
       }
       return centers;
@@ -290,8 +292,8 @@ test.describe("Phase 5 — Align panel", () => {
       const beforeLefts: number[] = [];
       for (const id of pair) {
         const props = await dbg.client.elementProperties(id);
-        const v = props?.entries.find((e) => e.path === "frameBounds")
-          ?.value?.value;
+        const v = props?.entries.find((e) => e.path === "frameBounds")?.value
+          ?.value;
         if (v) beforeLefts.push(v[1]);
       }
       dbg.setElementSelection?.(pair, "replace");
@@ -337,8 +339,8 @@ test.describe("Phase 5 — Align panel", () => {
       const lefts: number[] = [];
       for (const id of pair) {
         const props = await dbg.client.elementProperties(id);
-        const v = props?.entries.find((e) => e.path === "frameBounds")
-          ?.value?.value;
+        const v = props?.entries.find((e) => e.path === "frameBounds")?.value
+          ?.value;
         if (v) lefts.push(v[1]);
       }
       return lefts;

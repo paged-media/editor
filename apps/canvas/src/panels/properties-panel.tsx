@@ -1,78 +1,152 @@
-// SDK Phase 5 (v1 sweep) — Properties panel.
+// Cockpit — the Properties tab: the kit's CONTEXT INSPECTOR
+// (inspectors.jsx — swaps Text / Image / Frame / Page by what's
+// selected). Routing layer over the existing engine-backed
+// compositions; no new bindings, no new wire:
 //
-// Context-aware expert leaf that surfaces the most-relevant
-// editor for the current selection. Per
-// `panel-catalog-and-sdk-extension.md` §6 Tier 6 — the
-// "Properties" / "Control" bar idiom InDesign uses. Composes
-// existing compositions (Object Transform, Stroke, Character,
-// Paragraph) rather than authoring new editor JSX:
+//   - Content selection (caret/range)  ⇒ Text: Character + Paragraph.
+//   - Element(s) whose geometry hosts a placed image ⇒ Image:
+//     Object Transform + Frame fitting + Stroke.
+//   - Other element(s) ⇒ Frame: Object Transform + Stroke (+ the
+//     text-frame compositions ride the content selection).
+//   - Nothing selected ⇒ the panel-rail steer (`inspectorContext`)
+//     picks the Page summary or a per-kind guidance hint.
 //
-//   - No selection ⇒ guidance hint.
-//   - One or more elements selected ⇒ stack Object Transform +
-//     Stroke (frame-level surface).
-//   - A content selection set (text caret/range) ⇒ stack
-//     Character + Paragraph below.
-//
-// Conditional rendering keeps the panel honest: it shows only
-// the rows that have something to operate on. No new bindings,
-// no new wire — just a routing layer over what already exists.
+// The AI Assistant card renders below as a visible, inert seam.
 
 import {
+  AIAssistantSeam,
   CatalogRegistryProvider,
+  CockpitPanelHeader,
+  CockpitRow,
+  CockpitSection,
+  CockpitValue,
   CompositionRenderer,
   useContentSelection,
+  useDocument,
+  useOptionalCockpitState,
   useSelection,
 } from "@paged-media/shell";
 
 import { appCatalogRegistry } from "./catalog-registry";
 import { characterComposition } from "./character.composition";
+import { frameFittingComposition } from "./frame-fitting.composition";
 import { objectTransformComposition } from "./object-transform.composition";
 import { paragraphComposition } from "./paragraph.composition";
 import { strokeComposition } from "./stroke.composition";
 
+type InspectorKind = "text" | "image" | "frame" | "page" | "none";
+
 export function PropertiesPanel() {
-  const { elementSelection } = useSelection();
+  const { elementSelection, elementGeometry } = useSelection();
   const { contentSelection } = useContentSelection();
+  const cockpit = useOptionalCockpitState();
+
   const hasElement = elementSelection.length > 0;
   const hasContent = !!contentSelection;
+  const hasImage =
+    hasElement &&
+    elementGeometry.some(
+      (g) => (g as { hasImage?: boolean }).hasImage === true,
+    );
+
+  // Live selection wins; the panel-rail steer covers the empty case.
+  const kind: InspectorKind = hasContent
+    ? "text"
+    : hasImage
+      ? "image"
+      : hasElement
+        ? "frame"
+        : (cockpit?.inspectorContext ?? "none");
+
+  const title =
+    kind === "text"
+      ? "Text"
+      : kind === "image"
+        ? "Image"
+        : kind === "frame"
+          ? "Frame"
+          : kind === "page"
+            ? "Page"
+            : "Properties";
 
   return (
     <CatalogRegistryProvider registry={appCatalogRegistry()}>
       <div
-        className="p-3 flex flex-col gap-3"
         data-properties-panel="ready"
+        data-inspector-kind={kind}
         data-has-element={hasElement ? "true" : "false"}
         data-has-content={hasContent ? "true" : "false"}
+        style={{ display: "flex", flexDirection: "column", minHeight: 0 }}
       >
-        {!hasElement && !hasContent ? (
+        <CockpitPanelHeader title={title} />
+
+        {kind === "none" && (
           <div
-            className="text-xs text-muted-foreground"
+            className="pg-ui-xs"
             data-properties-empty
+            style={{ padding: "0 14px 12px", lineHeight: 1.5 }}
           >
-            Select a frame or place a text caret to see properties.
+            Select a frame or place a text caret to see its properties.
           </div>
-        ) : null}
-        {hasElement ? (
-          <div data-properties-section="object">
-            <CompositionRenderer composition={objectTransformComposition} />
-          </div>
-        ) : null}
-        {hasElement ? (
-          <div data-properties-section="stroke">
-            <CompositionRenderer composition={strokeComposition} />
-          </div>
-        ) : null}
-        {hasContent ? (
-          <div data-properties-section="character">
-            <CompositionRenderer composition={characterComposition} />
-          </div>
-        ) : null}
-        {hasContent ? (
-          <div data-properties-section="paragraph">
-            <CompositionRenderer composition={paragraphComposition} />
-          </div>
-        ) : null}
+        )}
+
+        {kind === "page" && <PageSummary />}
+
+        <div className="p-3 pt-0 flex flex-col gap-3">
+          {hasElement ? (
+            <div data-properties-section="object">
+              <CompositionRenderer composition={objectTransformComposition} />
+            </div>
+          ) : null}
+          {kind === "image" ? (
+            <div data-properties-section="fitting">
+              <CompositionRenderer composition={frameFittingComposition} />
+            </div>
+          ) : null}
+          {hasElement ? (
+            <div data-properties-section="stroke">
+              <CompositionRenderer composition={strokeComposition} />
+            </div>
+          ) : null}
+          {hasContent ? (
+            <div data-properties-section="character">
+              <CompositionRenderer composition={characterComposition} />
+            </div>
+          ) : null}
+          {hasContent ? (
+            <div data-properties-section="paragraph">
+              <CompositionRenderer composition={paragraphComposition} />
+            </div>
+          ) : null}
+        </div>
+
+        {kind !== "none" && <AIAssistantSeam />}
       </div>
     </CatalogRegistryProvider>
+  );
+}
+
+/** Page geometry summary (kit PageInspector). REAL: size from the
+ *  document handle. Margins / bleed / columns await the engine's
+ *  page-geometry reads; section/status await collaboration. */
+function PageSummary() {
+  const { handle } = useDocument();
+  const first = handle?.pageSizesPt[0];
+  const fmt = (pt: number) => `${(pt / 72).toFixed(2).replace(/\.00$/, "")} in`;
+  return (
+    <CockpitSection title="Geometry">
+      <CockpitRow label="Pages">
+        <CockpitValue>{handle ? handle.pageCount : "—"}</CockpitValue>
+      </CockpitRow>
+      <CockpitRow label="Size">
+        <CockpitValue>
+          {first ? `${fmt(first[0])} × ${fmt(first[1])}` : "—"}
+        </CockpitValue>
+      </CockpitRow>
+      <span className="pg-ui-xs" style={{ lineHeight: 1.45 }}>
+        Margins, bleed and column reads land with the engine's page-geometry
+        accessors.
+      </span>
+    </CockpitSection>
   );
 }

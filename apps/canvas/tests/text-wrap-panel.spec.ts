@@ -8,7 +8,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,15 +19,13 @@ test.describe("Phase 5 — Text Wrap panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page.getByText("Text Wrap", { exact: true }).first().click();
+    await openPanel(page, "paged.text-wrap");
   });
 
   test("AC-TW-1 — panel mounts as a composition with a toggle-group + bounds row", async ({
     page,
   }) => {
-    await expect(
-      page.locator('[data-text-wrap-panel="ready"]'),
-    ).toBeVisible();
+    await expect(page.locator('[data-text-wrap-panel="ready"]')).toBeVisible();
   });
 
   test("AC-TW-2 — mode + offsets round-trip; partial commit preserves the unset half", async ({
@@ -72,7 +70,9 @@ test.describe("Phase 5 — Text Wrap panel", () => {
         `paged.set(${JSON.stringify(addr)}, "frameTextWrapMode", "ContourTextWrap");`,
       );
       if (setMode.error || setMode.output[0]?.trim() !== "true") {
-        throw new Error(`mode set failed: ${setMode.error ?? setMode.output[0]}`);
+        throw new Error(
+          `mode set failed: ${setMode.error ?? setMode.output[0]}`,
+        );
       }
       await new Promise((r) => setTimeout(r, 30));
 
@@ -97,9 +97,7 @@ test.describe("Phase 5 — Text Wrap panel", () => {
           value: { type: string; value: unknown } | null;
         }>;
       };
-      const mode = inspect.entries.find(
-        (e) => e.path === "frameTextWrapMode",
-      );
+      const mode = inspect.entries.find((e) => e.path === "frameTextWrapMode");
       const offsets = inspect.entries.find(
         (e) => e.path === "frameTextWrapOffsets",
       );

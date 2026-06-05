@@ -22,6 +22,10 @@ export interface PanelRailItem {
   title: string;
   /** Glyph name. */
   icon: string;
+  /** Cockpit — steer the Properties inspector when this item
+   *  activates (the kit's Text / Image / Pages rail clicks all
+   *  open Properties with a different sub-inspector). */
+  inspectorContext?: "text" | "image" | "page";
 }
 
 export function PanelRail({ items }: { items: PanelRailItem[] }) {
@@ -39,23 +43,32 @@ export function PanelRail({ items }: { items: PanelRailItem[] }) {
 
   if ((!cockpit && !substrate) || items.length === 0) return null;
 
-  const isActive = (panelId: string) =>
+  const isActive = (item: PanelRailItem) =>
     cockpit
-      ? cockpit.activeTab === panelId
-      : Boolean(substrate?.hasPanel(panelId));
+      ? cockpit.activeTab === item.panelId &&
+        (item.inspectorContext == null ||
+          cockpit.inspectorContext === item.inspectorContext)
+      : Boolean(substrate?.hasPanel(item.panelId));
 
-  const toggle = (panelId: string) => {
-    const contribution = panels.get(panelId);
+  const toggle = (item: PanelRailItem) => {
+    const contribution = panels.get(item.panelId);
     if (!contribution) return;
     if (cockpit) {
-      // Cockpit: active tab → close; otherwise ensure + activate.
-      if (cockpit.activeTab === panelId) cockpit.closeTab(panelId);
-      else cockpit.openPanel(panelId);
+      // Cockpit: active → close (and clear the steer); otherwise
+      // ensure + activate, steering the Properties sub-inspector
+      // when the item carries a context (kit Text/Image/Pages).
+      if (isActive(item)) {
+        cockpit.closeTab(item.panelId);
+        if (item.inspectorContext) cockpit.setInspectorContext(null);
+      } else {
+        cockpit.openPanel(item.panelId);
+        cockpit.setInspectorContext(item.inspectorContext ?? null);
+      }
       return;
     }
     if (!substrate) return;
-    if (substrate.hasPanel(panelId)) {
-      substrate.closePanel(panelId);
+    if (substrate.hasPanel(item.panelId)) {
+      substrate.closePanel(item.panelId);
     } else {
       substrate.addPanel(resolvePanelSpec(contribution));
     }
@@ -65,15 +78,19 @@ export function PanelRail({ items }: { items: PanelRailItem[] }) {
   return (
     <div data-panel-rail style={railStyle}>
       {items.map((item) => {
-        const active = isActive(item.panelId);
+        const active = isActive(item);
         return (
           <button
-            key={item.panelId}
+            key={`${item.panelId}:${item.inspectorContext ?? ""}`}
             type="button"
-            data-panel-rail-item={item.panelId}
+            data-panel-rail-item={
+              item.inspectorContext
+                ? `${item.panelId}:${item.inspectorContext}`
+                : item.panelId
+            }
             data-active={active ? "true" : "false"}
             title={item.title}
-            onClick={() => toggle(item.panelId)}
+            onClick={() => toggle(item)}
             style={{
               display: "flex",
               flexDirection: "column",

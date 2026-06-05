@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -15,19 +15,15 @@ test.describe("Phase 5 — Control bar", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page.getByText("Control", { exact: true }).first().click();
+    await openPanel(page, "paged.control");
   });
 
   test("AC-CTRL-1 — empty selection shows the guidance hint", async ({
     page,
   }) => {
+    await expect(page.locator('[data-control-panel="ready"]')).toBeVisible();
     await expect(
-      page.locator('[data-control-panel="ready"]'),
-    ).toBeVisible();
-    await expect(
-      page.locator(
-        '[data-control-panel="ready"] [data-control-empty]',
-      ),
+      page.locator('[data-control-panel="ready"] [data-control-empty]'),
     ).toBeVisible();
   });
 
@@ -68,9 +64,7 @@ test.describe("Phase 5 — Control bar", () => {
       await new Promise((r) => setTimeout(r, 80));
     });
     await expect(
-      page.locator(
-        '[data-control-panel="ready"][data-has-element="true"]',
-      ),
+      page.locator('[data-control-panel="ready"][data-has-element="true"]'),
     ).toBeVisible();
     await expect(
       page.locator(

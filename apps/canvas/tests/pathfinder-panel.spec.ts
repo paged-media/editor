@@ -17,7 +17,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -28,15 +28,13 @@ test.describe("Phase 5 — Pathfinder panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page.getByText("Pathfinder", { exact: true }).first().click();
+    await openPanel(page, "paged.pathfinder");
   });
 
   test("AC-PF-1 — panel mounts; 4 buttons; all enabled when 2+ selected", async ({
     page,
   }) => {
-    await expect(
-      page.locator('[data-pathfinder-panel="ready"]'),
-    ).toBeVisible();
+    await expect(page.locator('[data-pathfinder-panel="ready"]')).toBeVisible();
     const buttons = page.locator(
       '[data-pathfinder-panel="ready"] button[data-pathfinder-kind]',
     );
@@ -194,7 +192,10 @@ test.describe("Phase 5 — Pathfinder panel", () => {
       if (!dbg?.client) throw new Error("no client");
       const pair = JSON.parse(pairJson) as Array<{ kind: string; id: string }>;
       const props = await dbg.client.elementProperties(pair[0]);
-      return props?.entries.find((e) => e.path === "frameBounds")?.value?.value ?? null;
+      return (
+        props?.entries.find((e) => e.path === "frameBounds")?.value?.value ??
+        null
+      );
     }, result);
     // The kept frame's bounds aren't touched by FramePath — only
     // its anchors. Bounds stay at [0,0,20,20] (the prior setup).

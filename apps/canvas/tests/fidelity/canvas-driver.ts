@@ -75,7 +75,11 @@ export async function openCanvas(page: Page): Promise<void> {
     console.log(`[browser:pageerror] ${err.message}`);
   });
   await page.waitForFunction(
-    () => Boolean((globalThis as unknown as { __canvas?: { client: unknown } }).__canvas?.client),
+    () =>
+      Boolean(
+        (globalThis as unknown as { __canvas?: { client: unknown } }).__canvas
+          ?.client,
+      ),
     null,
     { timeout: 30_000 },
   );
@@ -87,18 +91,20 @@ export async function openCanvas(page: Page): Promise<void> {
     // target for the PNG readback is a separate texture; the
     // attached canvas is only needed to seed the wgpu device+queue.
     await page.evaluate(async () => {
-      const c = (globalThis as unknown as {
-        __canvas: {
-          client: {
-            attachCanvas: (
-              canvas: OffscreenCanvas,
-              dpr: number,
-              cssW: number,
-              cssH: number,
-            ) => void;
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              attachCanvas: (
+                canvas: OffscreenCanvas,
+                dpr: number,
+                cssW: number,
+                cssH: number,
+              ) => void;
+            };
           };
-        };
-      }).__canvas;
+        }
+      ).__canvas;
       const offscreen = new OffscreenCanvas(1, 1);
       c.client.attachCanvas(offscreen, 1, 1, 1);
       // Give the worker a tick to receive the transfer + run initGpu.
@@ -149,21 +155,23 @@ export async function loadIdml(
     async ({ idmlUrl, fontUrl, cmykUrl }) => {
       const fetchBytes = async (url: string): Promise<Uint8Array> =>
         new Uint8Array(await (await fetch(url)).arrayBuffer());
-      const c = (globalThis as unknown as {
-        __canvas: {
-          client: {
-            loadDocument: (
-              bytes: Uint8Array,
-              font?: Uint8Array,
-              cmykIccProfile?: Uint8Array,
-            ) => Promise<{
-              pageCount: number;
-              pageIds: string[];
-              pageSizesPt: [number, number][];
-            }>;
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              loadDocument: (
+                bytes: Uint8Array,
+                font?: Uint8Array,
+                cmykIccProfile?: Uint8Array,
+              ) => Promise<{
+                pageCount: number;
+                pageIds: string[];
+                pageSizesPt: [number, number][];
+              }>;
+            };
           };
-        };
-      }).__canvas;
+        }
+      ).__canvas;
       const [idml, font, icc] = await Promise.all([
         fetchBytes(idmlUrl),
         fetchBytes(fontUrl),
@@ -209,27 +217,32 @@ async function preloadPackFonts(page: Page, packName: string): Promise<void> {
     style: m.style,
     url: vitePathFor(m.ttfPath),
   }));
-  await page.evaluate(async ({ entries }) => {
-    const fetchBytes = async (url: string): Promise<Uint8Array> =>
-      new Uint8Array(await (await fetch(url)).arrayBuffer());
-    const c = (globalThis as unknown as {
-      __canvas: {
-        client: {
-          clearFontRegistry: () => Promise<void>;
-          registerFont: (
-            family: string,
-            bytes: Uint8Array,
-            style?: string | null,
-          ) => Promise<void>;
-        };
-      };
-    }).__canvas;
-    await c.client.clearFontRegistry();
-    for (const e of entries) {
-      const bytes = await fetchBytes(e.url);
-      await c.client.registerFont(e.family, bytes, e.style);
-    }
-  }, { entries });
+  await page.evaluate(
+    async ({ entries }) => {
+      const fetchBytes = async (url: string): Promise<Uint8Array> =>
+        new Uint8Array(await (await fetch(url)).arrayBuffer());
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              clearFontRegistry: () => Promise<void>;
+              registerFont: (
+                family: string,
+                bytes: Uint8Array,
+                style?: string | null,
+              ) => Promise<void>;
+            };
+          };
+        }
+      ).__canvas;
+      await c.client.clearFontRegistry();
+      for (const e of entries) {
+        const bytes = await fetchBytes(e.url);
+        await c.client.registerFont(e.family, bytes, e.style);
+      }
+    },
+    { entries },
+  );
 }
 
 /**
@@ -260,16 +273,18 @@ export async function snapshotPagePng(
   if (backend === "gpu") {
     const b64 = await page.evaluate(
       async ({ pageId, dpi }) => {
-        const c = (globalThis as unknown as {
-          __canvas: {
-            client: {
-              requestVelloPng: (
-                pageId: string,
-                dpi: number,
-              ) => Promise<Uint8Array | null>;
+        const c = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                requestVelloPng: (
+                  pageId: string,
+                  dpi: number,
+                ) => Promise<Uint8Array | null>;
+              };
             };
-          };
-        }).__canvas;
+          }
+        ).__canvas;
         const bytes = await c.client.requestVelloPng(pageId, dpi);
         if (!bytes) return null;
         // btoa needs a binary string; do it in 32 KB chunks so the
@@ -291,17 +306,19 @@ export async function snapshotPagePng(
   }
   const b64 = await page.evaluate(
     async ({ pageId, targetWidthPx, dpi }) => {
-      const c = (globalThis as unknown as {
-        __canvas: {
-          client: {
-            requestSnapshot: (
-              pageId: string,
-              targetWidthPx: number,
-              dpi?: number,
-            ) => Promise<{ pngBytes: number[] }>;
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              requestSnapshot: (
+                pageId: string,
+                targetWidthPx: number,
+                dpi?: number,
+              ) => Promise<{ pngBytes: number[] }>;
+            };
           };
-        };
-      }).__canvas;
+        }
+      ).__canvas;
       const snap = await c.client.requestSnapshot(pageId, targetWidthPx, dpi);
       // `pngBytes` is still a `number[]` on the wire (the wasm/JSON
       // channel hasn't been changed); convert to base64 in the
@@ -317,4 +334,29 @@ export async function snapshotPagePng(
     { pageId, targetWidthPx, dpi },
   );
   return Buffer.from(b64, "base64");
+}
+
+/**
+ * Cockpit — open a registered panel as the active right-dock tab
+ * (the panel-rail / Window-menu path). Replaces the dockview-era
+ * idiom of clicking the always-mounted tab by title text: the
+ * cockpit only mounts a panel when something opens it.
+ */
+export async function openPanel(page: Page, panelId: string): Promise<void> {
+  await page.waitForFunction(
+    () =>
+      Boolean(
+        (globalThis as unknown as { __canvas?: { openPanel?: unknown } })
+          .__canvas?.openPanel,
+      ),
+    null,
+    { timeout: 10_000 },
+  );
+  await page.evaluate((id) => {
+    (
+      globalThis as unknown as {
+        __canvas: { openPanel: (id: string) => void };
+      }
+    ).__canvas.openPanel(id);
+  }, panelId);
 }

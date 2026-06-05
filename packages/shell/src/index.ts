@@ -339,6 +339,7 @@ export {
   ComingSoon,
   type StatusTone,
 } from "./components/cockpit/kit";
+export { AIAssistantSeam } from "./components/cockpit/ai-assistant-seam";
 export {
   registerBuiltInCatalogEntries,
   PAGED_INPUT_LENGTH,

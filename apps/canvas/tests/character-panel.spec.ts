@@ -10,7 +10,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -24,7 +24,7 @@ test.describe("Phase 3 — Character panel (declarative composition)", () => {
     // The three property panels (Character, Stroke, Object) share
     // the "properties" group in dockview — only one is rendered
     // at a time. Activate Character explicitly before asserting.
-    await page.getByText("Character", { exact: true }).first().click();
+    await openPanel(page, "paged.character");
   });
 
   test("AC-CHAR-1 — Character panel mounts and shows section title", async ({
@@ -46,9 +46,7 @@ test.describe("Phase 3 — Character panel (declarative composition)", () => {
   }) => {
     // No content selection by default → every binding resolves to
     // null → every leaf shows the em-dash placeholder.
-    const mixed = page.locator(
-      '[data-character-panel="ready"] [data-mixed]',
-    );
+    const mixed = page.locator('[data-character-panel="ready"] [data-mixed]');
     // 4 fields × em-dash = 4 placeholders.
     await expect(mixed).toHaveCount(4);
     // All show the em-dash character.

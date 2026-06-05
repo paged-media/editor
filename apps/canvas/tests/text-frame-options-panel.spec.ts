@@ -9,7 +9,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,7 +20,7 @@ test.describe("Phase 5 — Text Frame Options panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page.getByText("Text Frame", { exact: true }).first().click();
+    await openPanel(page, "paged.text-frame-options");
   });
 
   test("AC-TFO-1 — panel mounts as a composition", async ({ page }) => {
@@ -84,9 +84,7 @@ test.describe("Phase 5 — Text Frame Options panel", () => {
           value: { type: string; value: number[] } | null;
         }>;
       };
-      const entry = inspect.entries.find(
-        (e) => e.path === "frameInsetSpacing",
-      );
+      const entry = inspect.entries.find((e) => e.path === "frameInsetSpacing");
       return entry?.value?.value ?? null;
     });
 

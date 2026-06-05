@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -15,15 +15,13 @@ test.describe("Phase 5 — Conditions panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page.getByText("Conditions", { exact: true }).first().click();
+    await openPanel(page, "paged.conditions");
   });
 
   test("AC-COND-1 — panel mounts; either lists conditions or shows empty placeholder", async ({
     page,
   }) => {
-    await expect(
-      page.locator('[data-conditions-panel="ready"]'),
-    ).toBeVisible();
+    await expect(page.locator('[data-conditions-panel="ready"]')).toBeVisible();
     // One of the two outcomes is visible — both prove the
     // channel + dispatcher + accessor chain completes.
     const list = page.locator(

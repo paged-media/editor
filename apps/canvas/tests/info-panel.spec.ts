@@ -9,7 +9,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,15 +20,13 @@ test.describe("Phase 5 — Info panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page.getByText("Info", { exact: true }).first().click();
+    await openPanel(page, "paged.info");
   });
 
   test("AC-INFO-1 — panel mounts and surfaces the six DocumentMeta fields", async ({
     page,
   }) => {
-    await expect(
-      page.locator('[data-info-panel="ready"]'),
-    ).toBeVisible();
+    await expect(page.locator('[data-info-panel="ready"]')).toBeVisible();
     for (const label of [
       "Pages",
       "Active page",
@@ -37,9 +35,7 @@ test.describe("Phase 5 — Info panel", () => {
       "Document",
       "Dirty",
     ]) {
-      await expect(
-        page.locator(`[data-info-row="${label}"]`),
-      ).toBeVisible();
+      await expect(page.locator(`[data-info-row="${label}"]`)).toBeVisible();
     }
   });
 

@@ -12,7 +12,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -23,15 +23,13 @@ test.describe("Phase 5 — Gradients panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page.getByText("Gradients", { exact: true }).first().click();
+    await openPanel(page, "paged.gradients");
   });
 
   test("AC-GRAD-1 — panel mounts as a composition with a gradients select", async ({
     page,
   }) => {
-    await expect(
-      page.locator('[data-gradients-panel="ready"]'),
-    ).toBeVisible();
+    await expect(page.locator('[data-gradients-panel="ready"]')).toBeVisible();
     await expect(
       page.locator(
         '[data-gradients-panel="ready"] select[data-collection="gradients"][data-value-type="colorRef"]',

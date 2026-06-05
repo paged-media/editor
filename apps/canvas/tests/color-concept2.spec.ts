@@ -11,7 +11,7 @@ import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, expect, type Page } from "@playwright/test";
 
-import { openCanvas } from "./fidelity/canvas-driver";
+import { openCanvas, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -44,18 +44,27 @@ test.describe("Concept 2 — colour engine + panels", () => {
     page,
   }) => {
     const result = await page.evaluate(async () => {
-      const c = (globalThis as unknown as {
-        __canvas: {
-          client: {
-            colorCompute: (a: {
-              space: string;
-              value: number[];
-              tint?: number | null;
-            }) => Promise<{ rgbHex: string; cmyk: number[] | null; outOfGamut: boolean }>;
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              colorCompute: (a: {
+                space: string;
+                value: number[];
+                tint?: number | null;
+              }) => Promise<{
+                rgbHex: string;
+                cmyk: number[] | null;
+                outOfGamut: boolean;
+              }>;
+            };
           };
-        };
-      }).__canvas;
-      const lab = await c.client.colorCompute({ space: "LAB", value: [50, 29.5, 5.2] });
+        }
+      ).__canvas;
+      const lab = await c.client.colorCompute({
+        space: "LAB",
+        value: [50, 29.5, 5.2],
+      });
       const cmyk = await c.client.colorCompute({
         space: "CMYK",
         value: [0, 50, 100, 0],
@@ -80,25 +89,34 @@ test.describe("Concept 2 — colour engine + panels", () => {
     page,
   }) => {
     const out = await page.evaluate(async () => {
-      const c = (globalThis as unknown as {
-        __canvas: {
-          client: {
-            mutate: (m: unknown) => Promise<{ kind: string }>;
-            collection: (n: string) => Promise<{ selfId: string; name: string }[]>;
-            colorPreview: (id: string) => Promise<{
-              name: string;
-              space?: string | null;
-              value?: number[] | null;
-              rgbHex: string;
-            } | null>;
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              mutate: (m: unknown) => Promise<{ kind: string }>;
+              collection: (
+                n: string,
+              ) => Promise<{ selfId: string; name: string }[]>;
+              colorPreview: (id: string) => Promise<{
+                name: string;
+                space?: string | null;
+                value?: number[] | null;
+                rgbHex: string;
+              } | null>;
+            };
           };
-        };
-      }).__canvas;
+        }
+      ).__canvas;
       // Create a Lab swatch (the lossless-seed case).
       await c.client.mutate({
         op: "createSwatch",
         args: {
-          spec: { name: "Test Lab", space: "LAB", value: [50, 30, -20], model: "Process" },
+          spec: {
+            name: "Test Lab",
+            space: "LAB",
+            value: [50, 30, -20],
+            model: "Process",
+          },
         },
       });
       const created = (await c.client.collection("swatches")).find(
@@ -110,7 +128,13 @@ test.describe("Concept 2 — colour engine + panels", () => {
         op: "editSwatch",
         args: {
           swatchId: created.selfId,
-          spec: { selfId: created.selfId, name: "Test Lab", space: "LAB", value: [70, 10, 10], model: "Process" },
+          spec: {
+            selfId: created.selfId,
+            name: "Test Lab",
+            space: "LAB",
+            value: [70, 10, 10],
+            model: "Process",
+          },
         },
       });
       const after = await c.client.colorPreview(created.selfId);
@@ -119,7 +143,13 @@ test.describe("Concept 2 — colour engine + panels", () => {
         op: "editSwatch",
         args: {
           swatchId: created.selfId,
-          spec: { selfId: created.selfId, name: "Renamed Lab", space: "LAB", value: [70, 10, 10], model: "Process" },
+          spec: {
+            selfId: created.selfId,
+            name: "Renamed Lab",
+            space: "LAB",
+            value: [70, 10, 10],
+            model: "Process",
+          },
         },
       });
       const renamed = await c.client.colorPreview(created.selfId);
@@ -137,32 +167,48 @@ test.describe("Concept 2 — colour engine + panels", () => {
     page,
   }) => {
     const out = await page.evaluate(async () => {
-      const c = (globalThis as unknown as {
-        __canvas: {
-          client: {
-            mutate: (m: unknown) => Promise<{ kind: string }>;
-            collection: (n: string) => Promise<{ selfId: string }[]>;
-            colorPreview: (id: string) => Promise<unknown>;
-            gradientDetail: (id: string) => Promise<{
-              kind: string;
-              stops: {
-                stopColorRef: string;
-                resolvedRgbHex: string;
-                locationPct: number;
-                midpointPct: number | null;
-              }[];
-            } | null>;
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              mutate: (m: unknown) => Promise<{ kind: string }>;
+              collection: (n: string) => Promise<{ selfId: string }[]>;
+              colorPreview: (id: string) => Promise<unknown>;
+              gradientDetail: (id: string) => Promise<{
+                kind: string;
+                stops: {
+                  stopColorRef: string;
+                  resolvedRgbHex: string;
+                  locationPct: number;
+                  midpointPct: number | null;
+                }[];
+              } | null>;
+            };
           };
-        };
-      }).__canvas;
+        }
+      ).__canvas;
       // Ensure two swatches exist for the stops.
       await c.client.mutate({
         op: "createSwatch",
-        args: { spec: { name: "GA", space: "CMYK", value: [100, 0, 0, 0], model: "Process" } },
+        args: {
+          spec: {
+            name: "GA",
+            space: "CMYK",
+            value: [100, 0, 0, 0],
+            model: "Process",
+          },
+        },
       });
       await c.client.mutate({
         op: "createSwatch",
-        args: { spec: { name: "GB", space: "CMYK", value: [0, 100, 0, 0], model: "Process" } },
+        args: {
+          spec: {
+            name: "GB",
+            space: "CMYK",
+            value: [0, 100, 0, 0],
+            model: "Process",
+          },
+        },
       });
       const swatches = await c.client.collection("swatches");
       const a = swatches[swatches.length - 2].selfId;
@@ -216,15 +262,19 @@ test.describe("Concept 2 — colour engine + panels", () => {
     // Use the BUNDLED HLC asset — fetch its dev-server URL from the
     // app module graph by reading a small slice through the page.
     const out = await page.evaluate(async () => {
-      const c = (globalThis as unknown as {
-        __canvas: {
-          client: {
-            mutate: (m: unknown) => Promise<{ kind: string }>;
-            collection: (n: string) => Promise<{ selfId: string; name: string }[]>;
-            undo: () => Promise<unknown>;
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              mutate: (m: unknown) => Promise<{ kind: string }>;
+              collection: (
+                n: string,
+              ) => Promise<{ selfId: string; name: string }[]>;
+              undo: () => Promise<unknown>;
+            };
           };
-        };
-      }).__canvas;
+        }
+      ).__canvas;
       // Minimal hand-built ASEF (1 group, 2 LAB colours) — the
       // bundled-asset URL isn't importable from test scope, and the
       // wire path is identical.
@@ -244,21 +294,55 @@ test.describe("Concept 2 — colour engine + panels", () => {
       const color = (name: string, l: number, a: number, bb: number) => {
         const body = [
           ...enc(name),
-          0x4c, 0x41, 0x42, 0x20, // "LAB "
+          0x4c,
+          0x41,
+          0x42,
+          0x20, // "LAB "
           ...f32(l / 100),
           ...f32(a),
           ...f32(bb),
-          0, 0, // global
+          0,
+          0, // global
         ];
-        return [0x00, 0x01, (body.length >> 24) & 0xff, (body.length >> 16) & 0xff, (body.length >> 8) & 0xff, body.length & 0xff, ...body];
+        return [
+          0x00,
+          0x01,
+          (body.length >> 24) & 0xff,
+          (body.length >> 16) & 0xff,
+          (body.length >> 8) & 0xff,
+          body.length & 0xff,
+          ...body,
+        ];
       };
       const group = enc("HLC Test");
       const bytes = [
-        0x41, 0x53, 0x45, 0x46, 0, 1, 0, 0, 0, 0, 0, 4,
-        0xc0, 0x01, (group.length >> 24) & 0xff, (group.length >> 16) & 0xff, (group.length >> 8) & 0xff, group.length & 0xff, ...group,
+        0x41,
+        0x53,
+        0x45,
+        0x46,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0xc0,
+        0x01,
+        (group.length >> 24) & 0xff,
+        (group.length >> 16) & 0xff,
+        (group.length >> 8) & 0xff,
+        group.length & 0xff,
+        ...group,
         ...color("HLC H010_L50_C030", 50, 29.5, 5.2),
         ...color("HLC H090_L70_C040", 70, 0.0, 40.0),
-        0xc0, 0x02, 0, 0, 0, 0,
+        0xc0,
+        0x02,
+        0,
+        0,
+        0,
+        0,
       ];
       const swatchesBefore = (await c.client.collection("swatches")).length;
       const reply = await c.client.mutate({
@@ -289,19 +373,25 @@ test.describe("Concept 2 — colour engine + panels", () => {
     page,
   }) => {
     const out = await page.evaluate(async () => {
-      const c = (globalThis as unknown as {
-        __canvas: {
-          client: {
-            mutate: (m: unknown) => Promise<{ kind: string }>;
-            collection: (n: string) => Promise<{
-              spotId?: string;
-              name: string;
-              convertToProcess?: boolean;
-            }[]>;
-            documentMeta: () => Promise<{ useStandardLabForSpots?: boolean | null }>;
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              mutate: (m: unknown) => Promise<{ kind: string }>;
+              collection: (n: string) => Promise<
+                {
+                  spotId?: string;
+                  name: string;
+                  convertToProcess?: boolean;
+                }[]
+              >;
+              documentMeta: () => Promise<{
+                useStandardLabForSpots?: boolean | null;
+              }>;
+            };
           };
-        };
-      }).__canvas;
+        }
+      ).__canvas;
       // Create a spot swatch so the ink list has a row.
       await c.client.mutate({
         op: "createSwatch",
@@ -343,33 +433,51 @@ test.describe("Concept 2 — colour engine + panels", () => {
     page,
   }) => {
     const out = await page.evaluate(async () => {
-      const c = (globalThis as unknown as {
-        __canvas: {
-          client: {
-            mutate: (m: unknown) => Promise<{ kind: string; payload?: unknown }>;
-            documentMeta: () => Promise<{
-              renderingIntent?: string | null;
-              blackPointCompensation?: boolean | null;
-              proofProfileName?: string | null;
-            }>;
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              mutate: (
+                m: unknown,
+              ) => Promise<{ kind: string; payload?: unknown }>;
+              documentMeta: () => Promise<{
+                renderingIntent?: string | null;
+                blackPointCompensation?: boolean | null;
+                proofProfileName?: string | null;
+              }>;
+            };
           };
-        };
-      }).__canvas;
+        }
+      ).__canvas;
       // Intent/BPC are settable without a profile.
       await c.client.mutate({
         op: "setColorSettings",
-        args: { cmykProfileName: null, rgbPolicy: null, intent: "Perceptual", bpc: false },
+        args: {
+          cmykProfileName: null,
+          rgbPolicy: null,
+          intent: "Perceptual",
+          bpc: false,
+        },
       });
       const meta = await c.client.documentMeta();
       // Unknown profile names fail loudly.
       const bad = await c.client.mutate({
         op: "setColorSettings",
-        args: { cmykProfileName: "No Such Profile", rgbPolicy: null, intent: null, bpc: null },
+        args: {
+          cmykProfileName: "No Such Profile",
+          rgbPolicy: null,
+          intent: null,
+          bpc: null,
+        },
       });
       // Proof with an unregistered profile also fails.
       const badProof = await c.client.mutate({
         op: "setProofSetup",
-        args: { profileName: "No Such Profile", simulatePaperWhite: false, intent: null },
+        args: {
+          profileName: "No Such Profile",
+          simulatePaperWhite: false,
+          intent: null,
+        },
       });
       return { meta, bad: bad.kind, badProof: badProof.kind };
     });
@@ -383,15 +491,19 @@ test.describe("Concept 2 — colour engine + panels", () => {
     page,
   }) => {
     // Color panel hosts the mixer (activate its dock tab first).
-    await page.getByText("Color", { exact: true }).first().click();
+    await openPanel(page, "paged.color");
     await expect(page.locator('[data-color-mixer="ready"]')).toBeVisible();
-    await expect(page.locator('[data-mixer-preview]')).toBeVisible();
+    await expect(page.locator("[data-mixer-preview]")).toBeVisible();
     // Swatches panel: grid + libraries menu with attribution.
-    await page.getByText("Swatches", { exact: true }).first().click();
-    await expect(page.locator('[data-swatch-collection="ready"]')).toBeVisible();
+    await openPanel(page, "paged.swatches");
+    await expect(
+      page.locator('[data-swatch-collection="ready"]'),
+    ).toBeVisible();
     await page.locator('[data-action="open-libraries"]').click();
     await expect(page.locator("[data-libraries-menu]")).toBeVisible();
-    await expect(page.locator("[data-hlc-attribution]")).toContainText("freieFarbe");
+    await expect(page.locator("[data-hlc-attribution]")).toContainText(
+      "freieFarbe",
+    );
     await expect(
       page.locator('[data-library-id="hlc-colour-atlas"]'),
     ).toBeVisible();

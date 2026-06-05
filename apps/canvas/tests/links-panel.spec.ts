@@ -7,7 +7,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,7 +19,7 @@ test.describe("Phase 5 — Links panel", () => {
   }) => {
     await openCanvas(page);
     await loadIdml(page, `${REPO_ROOT}/corpus/generated/geometry-groups.idml`);
-    await page.getByText("Links", { exact: true }).first().click();
+    await openPanel(page, "paged.links");
     await expect(page.locator('[data-links-panel="ready"]')).toBeVisible();
     await expect(page.locator("[data-empty-links]")).toBeVisible();
   });
@@ -29,7 +29,7 @@ test.describe("Phase 5 — Links panel", () => {
   }) => {
     await openCanvas(page);
     await loadIdml(page, `${REPO_ROOT}/corpus/generated/images.idml`);
-    await page.getByText("Links", { exact: true }).first().click();
+    await openPanel(page, "paged.links");
     await expect(page.locator('[data-links-panel="ready"]')).toBeVisible();
     const rows = page.locator("[data-link-list] [data-link-host]");
     await expect(rows).not.toHaveCount(0);

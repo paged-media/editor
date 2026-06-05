@@ -9,7 +9,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,25 +20,19 @@ test.describe("Phase 5 — Properties panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page.getByText("Properties", { exact: true }).first().click();
+    await openPanel(page, "paged.properties");
   });
 
   test("AC-PROP-1 — empty selection shows the guidance hint", async ({
     page,
   }) => {
+    await expect(page.locator('[data-properties-panel="ready"]')).toBeVisible();
     await expect(
-      page.locator('[data-properties-panel="ready"]'),
-    ).toBeVisible();
-    await expect(
-      page.locator(
-        '[data-properties-panel="ready"] [data-properties-empty]',
-      ),
+      page.locator('[data-properties-panel="ready"] [data-properties-empty]'),
     ).toBeVisible();
     // No section panels rendered yet.
     await expect(
-      page.locator(
-        '[data-properties-panel="ready"] [data-properties-section]',
-      ),
+      page.locator('[data-properties-panel="ready"] [data-properties-section]'),
     ).toHaveCount(0);
   });
 
@@ -79,9 +73,7 @@ test.describe("Phase 5 — Properties panel", () => {
       await new Promise((r) => setTimeout(r, 80));
     });
     await expect(
-      page.locator(
-        '[data-properties-panel="ready"][data-has-element="true"]',
-      ),
+      page.locator('[data-properties-panel="ready"][data-has-element="true"]'),
     ).toBeVisible();
     await expect(
       page.locator(

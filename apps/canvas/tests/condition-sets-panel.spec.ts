@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,7 +17,7 @@ test.describe("Phase 5 — Condition Sets panel", () => {
   }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page.getByText("Condition Sets", { exact: true }).first().click();
+    await openPanel(page, "paged.condition-sets");
     await expect(
       page.locator('[data-condition-sets-panel="ready"]'),
     ).toBeVisible();

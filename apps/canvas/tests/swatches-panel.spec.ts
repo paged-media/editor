@@ -11,7 +11,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -22,15 +22,13 @@ test.describe("Phase 5 — Swatches panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page.getByText("Swatches", { exact: true }).first().click();
+    await openPanel(page, "paged.swatches");
   });
 
   test("AC-SWATCH-1 — panel mounts as a composition with a swatches select", async ({
     page,
   }) => {
-    await expect(
-      page.locator('[data-swatches-panel="ready"]'),
-    ).toBeVisible();
+    await expect(page.locator('[data-swatches-panel="ready"]')).toBeVisible();
     await expect(
       page.locator(
         '[data-swatches-panel="ready"] select[data-collection="swatches"][data-value-type="colorRef"]',
@@ -67,7 +65,10 @@ test.describe("Phase 5 — Swatches panel", () => {
       const walk = (nodes: Node[] | undefined): Node["id"] => {
         if (!nodes) return null;
         for (const n of nodes) {
-          if (n.id && (n.id.kind === "textFrame" || n.id.kind === "rectangle")) {
+          if (
+            n.id &&
+            (n.id.kind === "textFrame" || n.id.kind === "rectangle")
+          ) {
             return n.id;
           }
           const found = walk(n.children);

@@ -8,7 +8,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,7 +19,7 @@ test.describe("Phase 5 — Frame Fitting panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page.getByText("Frame Fitting", { exact: true }).first().click();
+    await openPanel(page, "paged.frame-fitting");
   });
 
   test("AC-FF-1 — panel mounts", async ({ page }) => {
@@ -71,7 +71,9 @@ test.describe("Phase 5 — Frame Fitting panel", () => {
         `paged.set(${JSON.stringify(addr)}, "frameFittingType", "Proportionally");`,
       );
       if (setType.error || setType.output[0]?.trim() !== "true") {
-        throw new Error(`type set failed: ${setType.error ?? setType.output[0]}`);
+        throw new Error(
+          `type set failed: ${setType.error ?? setType.output[0]}`,
+        );
       }
       await new Promise((r) => setTimeout(r, 30));
 
@@ -99,9 +101,7 @@ test.describe("Phase 5 — Frame Fitting panel", () => {
       const fittingType = inspect.entries.find(
         (e) => e.path === "frameFittingType",
       );
-      const crops = inspect.entries.find(
-        (e) => e.path === "frameFittingCrops",
-      );
+      const crops = inspect.entries.find((e) => e.path === "frameFittingCrops");
       return {
         type: fittingType?.value?.value ?? null,
         crops: crops?.value?.value ?? null,

@@ -8,7 +8,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,15 +19,13 @@ test.describe("Phase 5 — Effects panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page.getByText("Effects", { exact: true }).first().click();
+    await openPanel(page, "paged.effects");
   });
 
   test("AC-EFFECTS-1 — panel mounts; em-dash when no selection", async ({
     page,
   }) => {
-    await expect(
-      page.locator('[data-effects-panel="ready"]'),
-    ).toBeVisible();
+    await expect(page.locator('[data-effects-panel="ready"]')).toBeVisible();
     // Multiple em-dash placeholders now (toggle + 6 per-field
     // editors all render em-dash without a selection). Strict-
     // mode requires `.first()` here; the count check below pins
@@ -95,9 +93,7 @@ test.describe("Phase 5 — Effects panel", () => {
           value: { type: string; value: boolean } | null;
         }>;
       };
-      const entry = inspect.entries.find(
-        (e) => e.path === "frameDropShadow",
-      );
+      const entry = inspect.entries.find((e) => e.path === "frameDropShadow");
       return entry?.value?.value ?? null;
     });
 

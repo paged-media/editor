@@ -75,21 +75,23 @@ test.describe("Cockpit — workflow modes", () => {
     page,
   }) => {
     await openCanvas(page);
-    const item = page.locator('[data-panel-rail-item="paged.effects"]');
+    const item = page.locator('[data-panel-rail-item="paged.object-styles"]');
     await expect(item).toBeVisible();
     await expect(item).toHaveAttribute("data-active", "false");
 
     // Click → the panel joins the right dock as the active tab.
     await item.click();
     await expect(item).toHaveAttribute("data-active", "true");
-    await expect(page.locator('[data-dock-tab="paged.effects"]')).toBeVisible();
+    await expect(
+      page.locator('[data-dock-tab="paged.object-styles"]'),
+    ).toBeVisible();
 
     // Click again → the tab closes and the rail un-highlights.
     await item.click();
     await expect(item).toHaveAttribute("data-active", "false");
-    await expect(page.locator('[data-dock-tab="paged.effects"]')).toHaveCount(
-      0,
-    );
+    await expect(
+      page.locator('[data-dock-tab="paged.object-styles"]'),
+    ).toHaveCount(0);
   });
 });
 
@@ -122,11 +124,13 @@ test.describe("Cockpit — per-mode panel sets + toolbars (D3-D4)", () => {
 
     // Customise prepress: open the Effects panel via the panel rail —
     // it joins the right dock as an extra tab.
-    await page.locator('[data-panel-rail-item="paged.effects"]').click();
+    await page.locator('[data-panel-rail-item="paged.object-styles"]').click();
     await expect(
-      page.locator('[data-panel-rail-item="paged.effects"]'),
+      page.locator('[data-panel-rail-item="paged.object-styles"]'),
     ).toHaveAttribute("data-active", "true");
-    await expect(page.locator('[data-dock-tab="paged.effects"]')).toBeVisible();
+    await expect(
+      page.locator('[data-dock-tab="paged.object-styles"]'),
+    ).toBeVisible();
 
     // Leave and come back: the customisation survives (per-mode
     // cockpit tab state persists).
@@ -136,9 +140,11 @@ test.describe("Cockpit — per-mode panel sets + toolbars (D3-D4)", () => {
     ).toBeVisible();
     await page.evaluate(() => window.__canvas.setMode("prepress"));
     await expect(
-      page.locator('[data-panel-rail-item="paged.effects"]'),
+      page.locator('[data-panel-rail-item="paged.object-styles"]'),
     ).toHaveAttribute("data-active", "true");
-    await expect(page.locator('[data-dock-tab="paged.effects"]')).toBeVisible();
+    await expect(
+      page.locator('[data-dock-tab="paged.object-styles"]'),
+    ).toBeVisible();
 
     // Reset for other tests.
     await page.evaluate(() => window.__canvas.setMode("design"));
