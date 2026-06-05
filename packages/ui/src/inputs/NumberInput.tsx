@@ -140,6 +140,11 @@ export function NumberInput(props: NumberInputProps) {
     const factor = Math.pow(10, precision);
     v = Math.round(v * factor) / factor;
     setText(displayFor(v));
+    // Enter commits AND blurs — without this guard the blur handler
+    // committed the same value a second time, landing a junk
+    // duplicate entry on the undo stack for every panel edit (found
+    // by the E2E sandwich's single-undo restore check).
+    if (v === lastCommittedRef.current) return;
     lastCommittedRef.current = v;
     onChange(v);
     onCommit?.(v);
