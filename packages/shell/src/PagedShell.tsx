@@ -1,7 +1,7 @@
 // The shell root. Composes every provider, registers the supplied
 // panels + the built-in file-open command, hosts the chrome
-// (header, warnings, command palette), and mounts DockviewRoot
-// as the main work area.
+// (header, warnings, command palette), and mounts the fixed cockpit
+// layout as the main work area.
 //
 // Apps render `<PagedShell client={...} panels={...}>{integration}</PagedShell>`
 // where `integration` is a (renderless) component that uses the
@@ -49,7 +49,6 @@ import { ToolProvider } from "./state/tool-context";
 import { ScreenModeProvider } from "./state/screen-mode-context";
 import { ThemeProvider, useTheme } from "./state/theme-context";
 import { useOptionalPaged } from "./state/paged-editor";
-import { useModeLayout } from "./docking/use-mode-layout";
 import { Header } from "./chrome/Header";
 import { ContextToolbar } from "./chrome/ContextToolbar";
 import { ModeSwitcher } from "./chrome/ModeSwitcher";
@@ -69,8 +68,6 @@ import { ToolRail } from "./chrome/ToolRail";
 import { ScreenModeSelector } from "./chrome/ScreenModeSelector";
 import { FillStrokeCluster } from "./chrome/FillStrokeCluster";
 import { SoftProofToggle } from "./chrome/SoftProofToggle";
-import { DockviewRoot } from "./docking/DockviewRoot";
-import { DockingSubstrateProvider } from "./docking/substrate-context";
 import { CockpitLayout } from "./cockpit/CockpitLayout";
 import {
   CockpitStateProvider,
@@ -93,15 +90,8 @@ import {
   PALETTE_TOGGLE_COMMAND,
   PALETTE_TOGGLE_KEYBINDING,
   PALETTE_TOGGLE_KEYBINDING_CTRL,
-  PERSPECTIVE_EXPORT_COMMAND,
-  PERSPECTIVE_IMPORT_COMMAND,
-  PERSPECTIVE_SAVE_AS_COMMAND,
   PAGED_PALETTE_TOGGLE,
-  PAGED_PERSPECTIVE_EXPORT,
-  PAGED_PERSPECTIVE_IMPORT,
-  PAGED_PERSPECTIVE_SAVE_AS,
   buildPanelToggleCommands,
-  buildPerspectiveLifecycleCommands,
 } from "./state/commands/built-in-commands";
 import {
   buildToolbarContributions,
@@ -109,11 +99,6 @@ import {
 } from "./state/commands/tool-commands";
 import { useSpringLoadedTools } from "./tools/use-spring-loaded-tools";
 import type { PagedEditor } from "./state/paged-editor";
-import type { LayoutSnapshot } from "./docking/substrate";
-import {
-  PERSPECTIVES_CHANGED_EVENT,
-  listPerspectives,
-} from "./persistence/layout-persistence";
 import type { OverlayContribution } from "./registries/overlay";
 import type { PanelContribution, PanelProps } from "./registries/panel";
 import type { ToolContribution } from "./registries/tool";
@@ -148,10 +133,6 @@ export interface PagedShellProps {
    * CanvasPanel). Required for the fixed cockpit layout: the canvas
    * is a SLOT, not a dockview panel. */
   canvasComponent?: ComponentType<PanelProps>;
-  /** Cockpit — render the fixed publishing-cockpit layout instead of
-   * the dockview substrate. Transitional flag; the dockview path is
-   * removed once the cockpit is the proven default. */
-  cockpit?: boolean;
 }
 
 /**
@@ -169,7 +150,6 @@ export function PagedShell({
   modes,
   panelRail,
   canvasComponent,
-  cockpit,
   children,
 }: PropsWithChildren<PagedShellProps>) {
   return (
@@ -189,25 +169,19 @@ export function PagedShell({
                           <ContentSelectionProvider>
                             <OverlaySignalsProvider>
                               <InstrumentationProvider>
-                                {/* DockingSubstrateProvider above PagedEditorProvider so
-                                 *  the editor handle (`paged.substrate`) sees the live
-                                 *  substrate once DockviewRoot's onReady publishes it. */}
-                                <DockingSubstrateProvider>
-                                  <PagedEditorProvider>
-                                    <ShellChrome
-                                      panels={panels}
-                                      overlays={overlays}
-                                      tools={tools}
-                                      headerExtras={headerExtras}
-                                      modes={modes}
-                                      panelRail={panelRail}
-                                      canvasComponent={canvasComponent}
-                                      cockpit={cockpit}
-                                    >
-                                      {children}
-                                    </ShellChrome>
-                                  </PagedEditorProvider>
-                                </DockingSubstrateProvider>
+                                <PagedEditorProvider>
+                                  <ShellChrome
+                                    panels={panels}
+                                    overlays={overlays}
+                                    tools={tools}
+                                    headerExtras={headerExtras}
+                                    modes={modes}
+                                    panelRail={panelRail}
+                                    canvasComponent={canvasComponent}
+                                  >
+                                    {children}
+                                  </ShellChrome>
+                                </PagedEditorProvider>
                               </InstrumentationProvider>
                             </OverlaySignalsProvider>
                           </ContentSelectionProvider>
@@ -239,7 +213,6 @@ function ShellChrome({
   modes,
   panelRail,
   canvasComponent,
-  cockpit,
   children,
 }: PropsWithChildren<{
   panels: PanelContribution[];
@@ -249,7 +222,6 @@ function ShellChrome({
   modes?: ModeContribution[];
   panelRail?: PanelRailItem[];
   canvasComponent?: ComponentType<PanelProps>;
-  cockpit?: boolean;
 }>) {
   const client = useCanvasClient();
   const {
@@ -357,86 +329,28 @@ function ShellChrome({
     };
   }, [registries, tools]);
 
-  // Cockpit — the fixed layout replaces the dockview substrate when
-  // the app opts in AND supplies the viewport component.
-  const cockpitActive = Boolean(cockpit && canvasComponent);
+  // The fixed cockpit layout is the only work area — apps supply the
+  // viewport component (the canvas is a SLOT, not a panel).
+  const cockpitActive = Boolean(canvasComponent);
 
   // Concept 1 — Tab / Shift+Tab chrome hide. Tab toggles panels + the
-  // tool rail; Shift+Tab toggles panels only.
-  //
-  // Cockpit path: pure state — the fixed slots simply unmount
-  // (canvas column stays). Dockview path: hiding serializes the dock
-  // layout, closes everything but the canvas, and restores the
-  // snapshot on show. (Reloading while hidden persists the hidden
-  // layout — same trade-off InDesign makes.)
+  // tool rail; Shift+Tab toggles panels only. Pure state — the fixed
+  // slots simply unmount (canvas column stays).
   const [railHidden, setRailHidden] = useState(false);
   const [panelsHidden, setPanelsHidden] = useState(false);
-  const panelsSnapshotRef = useRef<LayoutSnapshot | null>(null);
 
-  const hidePanels = (paged: PagedEditor) => {
-    if (cockpitActive) {
-      setPanelsHidden(true);
-      return;
-    }
-    const substrate = paged.substrate;
-    if (!substrate || panelsSnapshotRef.current) return;
-    panelsSnapshotRef.current = substrate.serialize();
-    substrate.closePanelsExcept(["paged.canvas"]);
+  const toggleAll = (_paged: PagedEditor) => {
+    const hidden = panelsHidden || railHidden;
+    setPanelsHidden(!hidden);
+    setRailHidden(!hidden);
   };
-  const showPanels = (paged: PagedEditor) => {
-    if (cockpitActive) {
-      setPanelsHidden(false);
-      return;
-    }
-    const snap = panelsSnapshotRef.current;
-    panelsSnapshotRef.current = null;
-    if (paged.substrate && snap) paged.substrate.restore(snap);
-  };
-  const toggleAll = (paged: PagedEditor) => {
-    const hidden = cockpitActive
-      ? panelsHidden || railHidden
-      : Boolean(panelsSnapshotRef.current) || railHidden;
-    if (hidden) {
-      showPanels(paged);
-      setRailHidden(false);
-    } else {
-      hidePanels(paged);
-      setRailHidden(true);
-    }
-  };
-  const togglePanels = (paged: PagedEditor) => {
-    const hidden = cockpitActive
-      ? panelsHidden
-      : Boolean(panelsSnapshotRef.current);
-    if (hidden) showPanels(paged);
-    else hidePanels(paged);
+  const togglePanels = (_paged: PagedEditor) => {
+    setPanelsHidden((v) => !v);
   };
   const toggleAllRef = useRef(toggleAll);
   toggleAllRef.current = toggleAll;
   const togglePanelsRef = useRef(togglePanels);
   togglePanelsRef.current = togglePanels;
-
-  // Cockpit (D3) — per-mode panel sets + layout memory. A Tab-hidden
-  // chrome is restored before switching so the outgoing snapshot is
-  // the real layout.
-  const beforeModeSwitch = useCallback(() => {
-    const snap = panelsSnapshotRef.current;
-    if (snap && paged?.substrate) {
-      panelsSnapshotRef.current = null;
-      paged.substrate.restore(snap);
-      setRailHidden(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paged]);
-  useModeLayout({
-    substrate: paged?.substrate ?? null,
-    registries,
-    mode: workflowMode,
-    // The cockpit resolves mode slots directly — no dockview layout
-    // park/restore.
-    enabled: Boolean(modes && modes.length > 0) && !cockpitActive,
-    beforeSwitch: beforeModeSwitch,
-  });
 
   // Cockpit — the Window menu lists every REGISTERED panel and opens
   // it as a right-dock tab (`paged.panel.show.*`). Registry-driven so
@@ -611,46 +525,9 @@ function ShellChrome({
     };
   }, [registries]);
 
-  // Perspective save/export/import commands — the always-on triplet.
-  // Per-perspective load/delete commands are auto-generated below.
-  useEffect(() => {
-    const cmds = [
-      registries.commands.register(PERSPECTIVE_SAVE_AS_COMMAND),
-      registries.commands.register(PERSPECTIVE_EXPORT_COMMAND),
-      registries.commands.register(PERSPECTIVE_IMPORT_COMMAND),
-    ];
-    return () => {
-      for (const c of cmds) c.dispose();
-    };
-  }, [registries]);
-
-  // Auto-generate paged.perspective.load.<name> + delete.<name>
-  // commands from the persisted list. Re-runs on the custom
-  // `paged:perspectives-changed` event the persistence layer emits
-  // every time a perspective is saved/deleted/imported.
-  useEffect(() => {
-    let disposables: Disposable[] = [];
-    const refresh = () => {
-      for (const d of disposables) d.dispose();
-      disposables = listPerspectives().flatMap((name) => {
-        const [load, del] = buildPerspectiveLifecycleCommands(name);
-        return [
-          registries.commands.register(load),
-          registries.commands.register(del),
-        ];
-      });
-    };
-    refresh();
-    window.addEventListener(PERSPECTIVES_CHANGED_EVENT, refresh);
-    return () => {
-      window.removeEventListener(PERSPECTIVES_CHANGED_EVENT, refresh);
-      for (const d of disposables) d.dispose();
-    };
-  }, [registries]);
-
   // Default menu items. Static — they reference always-on commands;
-  // per-panel and per-perspective entries are deferred to the
-  // command registry surface (the palette already shows them).
+  // per-panel entries are deferred to the command registry surface
+  // (the palette already shows them).
   useEffect(() => {
     const items = registries.menus;
     const handles = [
@@ -670,24 +547,6 @@ function ShellChrome({
         path: "View/Toggle command palette",
         command: PAGED_PALETTE_TOGGLE,
         order: 10,
-      }),
-      items.register({
-        path: "View/Save perspective…",
-        command: PAGED_PERSPECTIVE_SAVE_AS,
-        order: 90,
-        group: "perspective",
-      }),
-      items.register({
-        path: "View/Export perspective…",
-        command: PAGED_PERSPECTIVE_EXPORT,
-        order: 91,
-        group: "perspective",
-      }),
-      items.register({
-        path: "View/Import perspective…",
-        command: PAGED_PERSPECTIVE_IMPORT,
-        order: 92,
-        group: "perspective",
       }),
     ];
     return () => {
@@ -889,15 +748,16 @@ function ShellChrome({
             }
           />
         )}
-        {cockpitActive && canvasComponent ? (
+        {canvasComponent ? (
           <CockpitLayout
             canvasComponent={canvasComponent}
             panelsHidden={panelsHidden}
             onFile={onFile}
           />
         ) : (
-          <div style={dockviewContainerStyle}>
-            <DockviewRoot />
+          <div className="pg-ui-xs" style={{ flex: 1, padding: 24 }}>
+            No viewport component supplied — pass `canvasComponent` to
+            PagedShell.
           </div>
         )}
         {!railHidden && panelRail && panelRail.length > 0 && (
@@ -974,12 +834,6 @@ const shellStyle: React.CSSProperties = {
   flexDirection: "column",
   height: "100vh",
   width: "100vw",
-};
-
-const dockviewContainerStyle: React.CSSProperties = {
-  flex: 1,
-  minHeight: 0,
-  position: "relative",
 };
 
 const bodyRowStyle: React.CSSProperties = {

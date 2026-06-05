@@ -10,7 +10,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,12 +19,12 @@ const FIXTURE = `${REPO_ROOT}/corpus/generated/text-advanced.idml`;
 
 async function mountAndAssert(
   page: Page,
-  tabLabel: string,
+  panelId: string,
   readySelector: string,
   rowsSelector: string,
   emptySelector: string,
 ) {
-  await page.getByText(tabLabel, { exact: true }).first().click();
+  await openPanel(page, panelId);
   await expect(page.locator(readySelector)).toBeVisible();
   const list = page.locator(rowsSelector);
   const empty = page.locator(emptySelector);
@@ -44,7 +44,7 @@ test.describe("Phase 5 — Wave 1 structural panels", () => {
   }) => {
     await mountAndAssert(
       page,
-      "Pages (list)",
+      "paged.pages-list",
       '[data-pages-list-panel="ready"]',
       "[data-page-list]",
       "[data-empty-pages]",
@@ -54,7 +54,7 @@ test.describe("Phase 5 — Wave 1 structural panels", () => {
   test("AC-WAVE1-2 — Spreads panel mounts", async ({ page }) => {
     await mountAndAssert(
       page,
-      "Spreads",
+      "paged.spreads",
       '[data-spreads-panel="ready"]',
       "[data-spread-list]",
       "[data-empty-spreads]",
@@ -64,7 +64,7 @@ test.describe("Phase 5 — Wave 1 structural panels", () => {
   test("AC-WAVE1-3 — Master Pages panel mounts", async ({ page }) => {
     await mountAndAssert(
       page,
-      "Master Pages",
+      "paged.master-pages",
       '[data-master-pages-panel="ready"]',
       "[data-master-page-list]",
       "[data-empty-master-pages]",
@@ -74,7 +74,7 @@ test.describe("Phase 5 — Wave 1 structural panels", () => {
   test("AC-WAVE1-4 — Cell Styles panel mounts", async ({ page }) => {
     await mountAndAssert(
       page,
-      "Cell Styles",
+      "paged.cell-styles",
       '[data-cell-styles-panel="ready"]',
       "[data-cell-style-list]",
       "[data-empty-cell-styles]",
@@ -84,7 +84,7 @@ test.describe("Phase 5 — Wave 1 structural panels", () => {
   test("AC-WAVE1-5 — Table Styles panel mounts", async ({ page }) => {
     await mountAndAssert(
       page,
-      "Table Styles",
+      "paged.table-styles",
       '[data-table-styles-panel="ready"]',
       "[data-table-style-list]",
       "[data-empty-table-styles]",
@@ -96,7 +96,7 @@ test.describe("Phase 5 — Wave 1 structural panels", () => {
   }) => {
     await mountAndAssert(
       page,
-      "Fonts",
+      "paged.fonts",
       '[data-fonts-panel="ready"]',
       "[data-font-list]",
       "[data-empty-fonts]",

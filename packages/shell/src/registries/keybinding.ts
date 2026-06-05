@@ -25,6 +25,13 @@ export interface KeybindingRegistry {
   register(contribution: KeybindingContribution): Disposable;
   /** Listing for diagnostics + the future "Show keybindings" panel. */
   list(): KeybindingContribution[];
+  /** (Re-)install the global keydown listener. Idempotent — the
+   * provider calls this from a mount effect so StrictMode's
+   * mount→unmount→mount cycle re-attaches what `detach` removed
+   * (the registry instance itself survives in a ref). */
+  attach(): void;
+  /** Remove the global keydown listener, keeping the bindings. */
+  detach(): void;
 }
 
 /** Internal: parsed key combo + the command to invoke. */
@@ -139,14 +146,15 @@ export function createKeybindingRegistry(
     if (target) {
       const tag = target.tagName;
       const isEditable =
-        tag === "INPUT" ||
-        tag === "TEXTAREA" ||
-        target.isContentEditable;
+        tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
       // Cmd-K + similar modifier combos still apply inside inputs
       // so the palette opens regardless; pure-letter keys are
       // suppressed.
       const isPureLetter =
-        !event.metaKey && !event.ctrlKey && !event.altKey && event.key.length === 1;
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        event.key.length === 1;
       if (isEditable && isPureLetter) {
         return;
       }
@@ -164,7 +172,18 @@ export function createKeybindingRegistry(
     }
   };
 
-  window.addEventListener("keydown", onKeyDown);
+  let listening = false;
+  const attach = () => {
+    if (listening) return;
+    window.addEventListener("keydown", onKeyDown);
+    listening = true;
+  };
+  const detach = () => {
+    if (!listening) return;
+    window.removeEventListener("keydown", onKeyDown);
+    listening = false;
+  };
+  attach();
 
   return {
     register(contribution) {
@@ -181,8 +200,10 @@ export function createKeybindingRegistry(
     list() {
       return bindings.map((b) => b.contribution);
     },
+    attach,
+    detach,
     dispose() {
-      window.removeEventListener("keydown", onKeyDown);
+      detach();
       bindings.length = 0;
     },
   };

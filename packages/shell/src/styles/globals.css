@@ -16,7 +16,6 @@
 @import "@fontsource/cormorant-garamond/700.css";
 
 @import "./theme.css";
-@import "./dockview-theme.css";
 
 @tailwind base;
 @tailwind components;

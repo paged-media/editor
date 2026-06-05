@@ -1,17 +1,12 @@
 // Design system (publishing cockpit) — the 64px right-edge panel
-// launcher (the kit's panel-selector rail). In the cockpit, each
-// entry opens its panel as a right-dock tab (or closes it when it
-// is already the open tab) — panels surface in ONE predictable
-// place, never scattered. On the legacy dockview path it toggles
-// the panel through the substrate. Config comes from the app
+// launcher (the kit's panel-selector rail). Each entry opens its
+// panel as a right-dock tab (or closes it when it is already the
+// open tab) — panels surface in ONE predictable place, never
+// scattered. Config comes from the app
 // (`<PagedShell panelRail={...}>`) — the shell renders, never
 // hardcodes the list.
 
-import { useEffect, useState } from "react";
-
 import { Icon } from "../icons";
-import { resolvePanelSpec } from "../docking/panel-bridge";
-import { useDockingSubstrate } from "../docking/substrate-context";
 import { useRegistries } from "../state/registries-context";
 import { useOptionalCockpitState } from "../cockpit/cockpit-state-context";
 
@@ -29,50 +24,29 @@ export interface PanelRailItem {
 }
 
 export function PanelRail({ items }: { items: PanelRailItem[] }) {
-  const substrate = useDockingSubstrate();
   const cockpit = useOptionalCockpitState();
   const { panels } = useRegistries();
-  // Re-render on layout changes so active states track reality
-  // (panels closed from their tabs, restored layouts, mode swaps).
-  const [, bump] = useState(0);
-  useEffect(() => {
-    if (!substrate) return;
-    const sub = substrate.onLayoutChange(() => bump((n) => n + 1));
-    return () => sub.dispose();
-  }, [substrate]);
 
-  if ((!cockpit && !substrate) || items.length === 0) return null;
+  if (!cockpit || items.length === 0) return null;
 
   const isActive = (item: PanelRailItem) =>
-    cockpit
-      ? cockpit.activeTab === item.panelId &&
-        (item.inspectorContext == null ||
-          cockpit.inspectorContext === item.inspectorContext)
-      : Boolean(substrate?.hasPanel(item.panelId));
+    cockpit.activeTab === item.panelId &&
+    (item.inspectorContext == null ||
+      cockpit.inspectorContext === item.inspectorContext);
 
   const toggle = (item: PanelRailItem) => {
     const contribution = panels.get(item.panelId);
     if (!contribution) return;
-    if (cockpit) {
-      // Cockpit: active → close (and clear the steer); otherwise
-      // ensure + activate, steering the Properties sub-inspector
-      // when the item carries a context (kit Text/Image/Pages).
-      if (isActive(item)) {
-        cockpit.closeTab(item.panelId);
-        if (item.inspectorContext) cockpit.setInspectorContext(null);
-      } else {
-        cockpit.openPanel(item.panelId);
-        cockpit.setInspectorContext(item.inspectorContext ?? null);
-      }
-      return;
-    }
-    if (!substrate) return;
-    if (substrate.hasPanel(item.panelId)) {
-      substrate.closePanel(item.panelId);
+    // Active → close (and clear the steer); otherwise ensure +
+    // activate, steering the Properties sub-inspector when the item
+    // carries a context (kit Text/Image/Pages).
+    if (isActive(item)) {
+      cockpit.closeTab(item.panelId);
+      if (item.inspectorContext) cockpit.setInspectorContext(null);
     } else {
-      substrate.addPanel(resolvePanelSpec(contribution));
+      cockpit.openPanel(item.panelId);
+      cockpit.setInspectorContext(item.inspectorContext ?? null);
     }
-    bump((n) => n + 1);
   };
 
   return (

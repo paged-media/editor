@@ -9,7 +9,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,11 +18,11 @@ const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
 
 async function mountAndAssert(
   page: Page,
-  tabLabel: string,
+  panelId: string,
   readySelector: string,
   emptySelector: string,
 ) {
-  await page.getByText(tabLabel, { exact: true }).first().click();
+  await openPanel(page, panelId);
   await expect(page.locator(readySelector)).toBeVisible();
   await expect(page.locator(emptySelector)).toBeVisible();
 }
@@ -36,7 +36,7 @@ test.describe("Phase 5 — five remaining collection panels", () => {
   test("AC-V2-1 — Articles", async ({ page }) => {
     await mountAndAssert(
       page,
-      "Articles",
+      "paged.articles",
       '[data-articles-panel="ready"]',
       "[data-empty-articles]",
     );
@@ -45,7 +45,7 @@ test.describe("Phase 5 — five remaining collection panels", () => {
   test("AC-V2-2 — Hyperlinks", async ({ page }) => {
     await mountAndAssert(
       page,
-      "Hyperlinks",
+      "paged.hyperlinks",
       '[data-hyperlinks-panel="ready"]',
       "[data-empty-hyperlinks]",
     );
@@ -54,7 +54,7 @@ test.describe("Phase 5 — five remaining collection panels", () => {
   test("AC-V2-3 — Bookmarks", async ({ page }) => {
     await mountAndAssert(
       page,
-      "Bookmarks",
+      "paged.bookmarks",
       '[data-bookmarks-panel="ready"]',
       "[data-empty-bookmarks]",
     );
@@ -63,7 +63,7 @@ test.describe("Phase 5 — five remaining collection panels", () => {
   test("AC-V2-4 — Cross References", async ({ page }) => {
     await mountAndAssert(
       page,
-      "Cross References",
+      "paged.cross-references",
       '[data-cross-references-panel="ready"]',
       "[data-empty-cross-references]",
     );
@@ -72,7 +72,7 @@ test.describe("Phase 5 — five remaining collection panels", () => {
   test("AC-V2-5 — Index", async ({ page }) => {
     await mountAndAssert(
       page,
-      "Index",
+      "paged.index",
       '[data-index-panel="ready"]',
       "[data-empty-index]",
     );

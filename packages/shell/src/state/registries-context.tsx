@@ -58,14 +58,12 @@ export function RegistriesProvider({
   // because we want guaranteed identity even if React invokes the
   // memo factory twice (Strict Mode does this in dev).
   const ref = useRef<ShellRegistries | null>(null);
-  const keybindingsDisposeRef = useRef<(() => void) | null>(null);
   if (!ref.current) {
     const commands = createCommandRegistry(getEditor);
     // Pass `getEditor` as the keybinding state thunk too, so `when`
     // predicates (e.g. the tool-shortcut text-suppression guard) read
     // the live editor handle.
     const keybindings = createKeybindingRegistry(commands, getEditor);
-    keybindingsDisposeRef.current = () => keybindings.dispose();
     // Tools are supplied by the app via `<PagedShell tools={...}>` and
     // registered in ShellChrome (mirrors panels/overlays), so the rail
     // contains zero hardcoded entries. Bundles add more via
@@ -83,11 +81,15 @@ export function RegistriesProvider({
     };
   }
 
-  // Tear down the global keydown listener on unmount.
+  // Keydown listener lifecycle — symmetric attach/detach so
+  // StrictMode's mount→unmount→mount cycle re-installs the listener
+  // (the registry instance survives in the ref; only the listener
+  // is torn down at unmount).
   useEffect(() => {
+    const keybindings = ref.current?.keybindings;
+    keybindings?.attach();
     return () => {
-      keybindingsDisposeRef.current?.();
-      keybindingsDisposeRef.current = null;
+      keybindings?.detach();
     };
   }, []);
 

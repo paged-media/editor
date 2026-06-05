@@ -237,20 +237,6 @@ export { MenuBar } from "./chrome/MenuBar";
 // ── Icons (Concept 1 — shared tool + panel glyph resolver) ─────
 export { Icon, hasIcon, type IconProps } from "./icons";
 
-// ── Persistence ────────────────────────────────────────────────
-export {
-  PERSPECTIVES_CHANGED_EVENT,
-  clearStoredLayout,
-  deletePerspective,
-  exportPerspective,
-  getPerspective,
-  importPerspective,
-  listPerspectives,
-  restoreLayoutOrDefault,
-  savePerspective,
-  setupLayoutPersistence,
-} from "./persistence/layout-persistence";
-
 // ── Hooks ──────────────────────────────────────────────────────
 export { useModifierState, type ModifierState } from "./hooks/useModifierState";
 
@@ -304,20 +290,6 @@ export {
   type BundleToShell,
   type ShellToBundle,
 } from "./bundles";
-
-// ── Docking substrate ──────────────────────────────────────────
-export {
-  DockviewSubstrate,
-  DockviewRoot,
-  DockingSubstrateProvider,
-  PanelBridge,
-  useDockingSubstrate,
-  type DockingSubstrate,
-  type LayoutSnapshot,
-  type PanelHandle,
-  type ResolvedPanelSpec,
-  type SemanticLocation,
-} from "./docking";
 
 // ── SDK Phase 3 — declarative catalog renderer + primitive leaves
 export { CompositionRenderer, CatalogRegistryProvider } from "./catalog/render";

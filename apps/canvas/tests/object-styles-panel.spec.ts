@@ -8,7 +8,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,10 +19,7 @@ test.describe("Phase 5 — Object Styles panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page
-      .getByText("Object Styles", { exact: true })
-      .first()
-      .click();
+    await openPanel(page, "paged.object-styles");
   });
 
   test("AC-OSTYLE-1 — panel mounts as a composition with a select", async ({
@@ -76,7 +73,10 @@ test.describe("Phase 5 — Object Styles panel", () => {
       const walk = (nodes: Node[] | undefined): Node["id"] => {
         if (!nodes) return null;
         for (const n of nodes) {
-          if (n.id && (n.id.kind === "textFrame" || n.id.kind === "rectangle")) {
+          if (
+            n.id &&
+            (n.id.kind === "textFrame" || n.id.kind === "rectangle")
+          ) {
             return n.id;
           }
           const found = walk(n.children);
@@ -97,9 +97,7 @@ test.describe("Phase 5 — Object Styles panel", () => {
         .then((r) => r.output[0] ?? "[]");
       const styles = JSON.parse(stylesJson);
       if (!styles.length) {
-        throw new Error(
-          `fixture has no object styles; raw=${stylesJson}`,
-        );
+        throw new Error(`fixture has no object styles; raw=${stylesJson}`);
       }
       const style = (styles as Array<{ selfId: string }>).find(
         (s) => s.selfId && s.selfId.length > 0,

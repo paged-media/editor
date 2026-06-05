@@ -9,7 +9,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,10 +20,7 @@ test.describe("Phase 5 — Character Styles panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page
-      .getByText("Character Styles", { exact: true })
-      .first()
-      .click();
+    await openPanel(page, "paged.character-styles");
   });
 
   test("AC-CSTYLE-1 — panel mounts as a composition with a select", async ({
@@ -50,11 +47,13 @@ test.describe("Phase 5 — Character Styles panel", () => {
             error: string | null;
           }>;
         };
-        setContentSelection?(sel: {
-          storyId: string;
-          start: number;
-          end: number;
-        } | null): void;
+        setContentSelection?(
+          sel: {
+            storyId: string;
+            start: number;
+            end: number;
+          } | null,
+        ): void;
       };
       const w = window as unknown as { __canvas?: DebugCanvas };
       const dbg = w.__canvas;
@@ -83,9 +82,7 @@ test.describe("Phase 5 — Character Styles panel", () => {
         .then((r) => r.output[0] ?? "[]");
       const styles = JSON.parse(stylesJson);
       if (!styles.length) {
-        throw new Error(
-          `fixture has no character styles; raw=${stylesJson}`,
-        );
+        throw new Error(`fixture has no character styles; raw=${stylesJson}`);
       }
       const target = (styles as Array<{ selfId: string }>).find(
         (s) => s.selfId && s.selfId.length > 0,

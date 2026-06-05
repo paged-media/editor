@@ -19,8 +19,6 @@ import {
   useRegistries,
   type ShellRegistries,
 } from "./registries-context";
-import { useDockingSubstrate } from "../docking/substrate-context";
-import type { DockingSubstrate } from "../docking/substrate";
 
 // eslint-disable-next-line import/no-relative-parent-imports
 import type { CanvasClient } from "@paged-media/client";
@@ -60,10 +58,6 @@ export interface PagedEditor {
 
   /** The four shell registries. */
   registries: ShellRegistries;
-
-  /** Docking substrate. Null until DockviewRoot's `onReady` fires;
-   * commands that need the substrate should guard for that. */
-  substrate: DockingSubstrate | null;
 }
 
 /**
@@ -115,7 +109,6 @@ function PagedEditorBinder({
   const overlaySignals = useOverlaySignals();
   const contentSelection = useContentSelection();
   const registries = useRegistries();
-  const substrate = useDockingSubstrate();
 
   const editor = useMemo<PagedEditor>(
     () => ({
@@ -128,13 +121,24 @@ function PagedEditorBinder({
       overlaySignals,
       contentSelection,
       registries,
-      substrate,
     }),
-    [client, document, camera, selection, tool, screenMode, overlaySignals, contentSelection, registries, substrate],
+    [
+      client,
+      document,
+      camera,
+      selection,
+      tool,
+      screenMode,
+      overlaySignals,
+      contentSelection,
+      registries,
+    ],
   );
   editorRef.current = editor;
 
-  return <EditorContextProvider editor={editor}>{children}</EditorContextProvider>;
+  return (
+    <EditorContextProvider editor={editor}>{children}</EditorContextProvider>
+  );
 }
 
 // React-context surface for the editor handle. Distinct from the
@@ -147,7 +151,9 @@ function EditorContextProvider({
   editor,
   children,
 }: PropsWithChildren<{ editor: PagedEditor }>) {
-  return <EditorContext.Provider value={editor}>{children}</EditorContext.Provider>;
+  return (
+    <EditorContext.Provider value={editor}>{children}</EditorContext.Provider>
+  );
 }
 
 /**

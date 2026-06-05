@@ -10,7 +10,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -56,11 +56,10 @@ async function selectFrame(page: import("@playwright/test").Page, id: string) {
  *  tests explicitly activate the tab they're asserting on. */
 async function activateTab(
   page: import("@playwright/test").Page,
-  title: string,
+  panelId: string,
 ) {
-  // Dockview renders tabs as divs with the panel title as text;
-  // clicking by exact text content activates the tab.
-  await page.getByText(title, { exact: true }).first().click();
+  // Cockpit — panels open as right-dock tabs through the registry.
+  await openPanel(page, panelId);
 }
 
 test.describe("Phase 3 — element-scope declarative panels", () => {
@@ -72,7 +71,7 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
   test("AC-STROKE-1 — Stroke panel mounts; shows em-dash placeholders when no selection", async ({
     page,
   }) => {
-    await activateTab(page, "Stroke");
+    await activateTab(page, "paged.stroke");
     await expect(page.locator('[data-stroke-panel="ready"]')).toBeVisible();
     await expect(
       page.locator('[data-stroke-panel="ready"] [data-section="Stroke"]'),
@@ -87,7 +86,7 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
     page,
   }) => {
     await selectFrame(page, TEXT_FRAME_ID);
-    await activateTab(page, "Stroke");
+    await activateTab(page, "paged.stroke");
     // After selecting a TextFrame, Weight + Color resolve (no
     // em-dash). The End cap row stays em-dash because TextFrame
     // doesn't carry the `end_cap` field at the parse layer
@@ -106,7 +105,7 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
   test("AC-OBJECT-1 — Object panel mounts; em-dash placeholders when no selection", async ({
     page,
   }) => {
-    await activateTab(page, "Object");
+    await activateTab(page, "paged.object-transform");
     await expect(
       page.locator('[data-object-transform-panel="ready"]'),
     ).toBeVisible();
@@ -126,7 +125,7 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
     page,
   }) => {
     await selectFrame(page, TEXT_FRAME_ID);
-    await activateTab(page, "Object");
+    await activateTab(page, "paged.object-transform");
     await expect(
       page.locator('[data-object-transform-panel="ready"] [data-mixed]'),
     ).toHaveCount(0);
@@ -166,7 +165,7 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
       );
       c.setElementSelection(ids);
     });
-    await activateTab(page, "Object");
+    await activateTab(page, "paged.object-transform");
     // The two frames have different bounds → Bounds field is mixed
     // → em-dash. Opacity may or may not be mixed depending on
     // fixture; assert at least 1 mixed appears (Bounds).

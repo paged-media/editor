@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   PagedShell,
@@ -24,12 +24,6 @@ import {
   type PanelContribution,
 } from "@paged-media/shell";
 import "@paged-media/shell/styles/globals.css";
-
-// Cockpit — the fixed publishing-cockpit layout (the dockview
-// replacement, styleguide ui_kits/editor). Transitional flag while
-// the swap is verified; the dockview path is deleted once the
-// cockpit is the proven default.
-const COCKPIT_LAYOUT = true;
 
 import { CanvasClient } from "@paged-media/client";
 import { BUILT_IN_TOOLS } from "@paged-media/tools";
@@ -130,19 +124,12 @@ const BUILT_IN_OVERLAYS: OverlayContribution[] = [
   caretContribution,
 ];
 
-// The three built-in panels for the canvas app. Bundle authors
-// register additional panels through the registry once Step 4's
-// loader lands; for now these are the entire panel set.
+// The built-in panels for the canvas app. Bundle authors register
+// additional panels through the registry once Step 4's loader
+// lands; the cockpit's Window menu surfaces every entry. The
+// CANVAS itself is not a panel — it is the cockpit's viewport slot
+// (`canvasComponent`).
 const BUILT_IN_PANELS: PanelContribution[] = [
-  {
-    id: "paged.canvas",
-    title: "Canvas",
-    component: CanvasPanel,
-    defaultDock: "center",
-    defaultGroup: "center",
-    closable: false,
-    movable: false,
-  },
   {
     id: "paged.pages",
     title: "Pages",
@@ -826,7 +813,6 @@ function CanvasAppRoot() {
       modes={COCKPIT_MODES}
       panelRail={PANEL_RAIL}
       canvasComponent={CanvasPanel}
-      cockpit={COCKPIT_LAYOUT}
       headerExtras={<CorpusPicker />}
     >
       <CanvasAppIntegration />
@@ -838,8 +824,8 @@ const root = document.getElementById("root");
 if (!root) {
   throw new Error("missing #root");
 }
-// StrictMode intentionally disabled: dockview-react's React-part
-// lifecycle isn't StrictMode-safe — its components are disposed
-// twice on dev double-mount and throw `resource already disposed`.
-// Re-enable once dockview ships a StrictMode-aware fix.
-createRoot(root).render(<CanvasAppRoot />);
+createRoot(root).render(
+  <StrictMode>
+    <CanvasAppRoot />
+  </StrictMode>,
+);

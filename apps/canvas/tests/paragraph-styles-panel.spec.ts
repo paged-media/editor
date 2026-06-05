@@ -16,7 +16,7 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -27,10 +27,7 @@ test.describe("Phase 5 — Paragraph Styles panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await page
-      .getByText("Paragraph Styles", { exact: true })
-      .first()
-      .click();
+    await openPanel(page, "paged.paragraph-styles");
   });
 
   test("AC-PSTYLE-1 — panel mounts as a composition with a select", async ({
@@ -85,17 +82,21 @@ test.describe("Phase 5 — Paragraph Styles panel", () => {
             output: string[];
             error: string | null;
           }>;
-          setContentSelection?(sel: {
+          setContentSelection?(
+            sel: {
+              storyId: string;
+              start: number;
+              end: number;
+            } | null,
+          ): void;
+        };
+        setContentSelection?(
+          sel: {
             storyId: string;
             start: number;
             end: number;
-          } | null): void;
-        };
-        setContentSelection?(sel: {
-          storyId: string;
-          start: number;
-          end: number;
-        } | null): void;
+          } | null,
+        ): void;
       };
       const w = window as unknown as {
         __canvas?: DebugCanvas;
