@@ -15,6 +15,30 @@ export interface ModeToolbarProps {
 }
 
 /**
+ * Cockpit slot assignment for one mode (ui_kits/editor reference:
+ * one fixed LEFT panel, a RIGHT dock that is either a tab group or a
+ * single inspector, and an optional canvas-area override). Panel ids
+ * resolve through the normal panel registry — a mode is a VIEW
+ * selecting which subset renders where, never a second registration
+ * path.
+ */
+export interface ModeCockpitSlots {
+  /** The single left-panel id (Document Map, Stories, Preflight, …). */
+  left: string;
+  /** Design-style right dock: the INITIAL ordered tab set. The first
+   * entry is active on first visit. Additional panels open later as
+   * closable tabs (panel rail / Window menu / `openPanel`). Mutually
+   * exclusive with `inspector`. */
+  tabs?: string[];
+  /** Single fixed right inspector id (non-design modes). */
+  inspector?: string;
+  /** Canvas-area main override: `panel:<id>` renders that panel as
+   * the work-area centre (Export Center, generated data grid).
+   * Absent → the document viewport. */
+  canvas?: string;
+}
+
+/**
  * One workflow mode. The PANELS named here must be registered
  * through the normal panel registry — a mode is a VIEW selecting
  * which subset is mounted and where, never a second registration
@@ -32,8 +56,10 @@ export interface ModeContribution {
   blurb?: string;
   /** Mode-specific left segment of the ContextToolbar. */
   toolbarLeft?: ComponentType<ModeToolbarProps>;
-  /** Panel ids visible in this mode, by dock edge. The canvas panel
-   * is always present and never listed. */
+  /** Cockpit slot assignment (the fixed layout). */
+  slots?: ModeCockpitSlots;
+  /** Legacy dockview panel sets — superseded by `slots`; removed
+   * with the docking substrate. */
   panelSet?: { left?: string[]; right?: string[]; bottom?: string[] };
   /** Command ids surfaced as "Suggested in <Mode>" in the palette. */
   paletteSuggestions?: string[];

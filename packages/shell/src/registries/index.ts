@@ -55,6 +55,7 @@ export {
 } from "./tool";
 export {
   createModeRegistry,
+  type ModeCockpitSlots,
   type ModeContribution,
   type ModeRegistry,
   type ModeRegistryEvent,

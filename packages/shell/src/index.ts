@@ -154,6 +154,7 @@ export {
   type ToolRegistryEvent,
   type VisibilityPredicate,
   DEFAULT_TOOLS,
+  type ModeCockpitSlots,
   type ModeContribution,
   type ModeRegistry,
   type ModeRegistryEvent,
@@ -233,10 +234,7 @@ export {
 } from "./persistence/layout-persistence";
 
 // ── Hooks ──────────────────────────────────────────────────────
-export {
-  useModifierState,
-  type ModifierState,
-} from "./hooks/useModifierState";
+export { useModifierState, type ModifierState } from "./hooks/useModifierState";
 
 // ── Gestures ───────────────────────────────────────────────────
 export {
@@ -304,10 +302,7 @@ export {
 } from "./docking";
 
 // ── SDK Phase 3 — declarative catalog renderer + primitive leaves
-export {
-  CompositionRenderer,
-  CatalogRegistryProvider,
-} from "./catalog/render";
+export { CompositionRenderer, CatalogRegistryProvider } from "./catalog/render";
 export { useBindings, type ResolvedBinding } from "./catalog/binding-hook";
 export {
   useCollection,

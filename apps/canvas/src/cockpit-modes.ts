@@ -24,6 +24,10 @@ export const COCKPIT_MODES: ModeContribution[] = [
     icon: "panel-canvas",
     order: 10,
     blurb: "Composition, typography, grids, components",
+    slots: {
+      left: "paged.document-map",
+      tabs: ["paged.properties", "paged.component-library", "paged.swatches"],
+    },
     panelSet: {
       left: ["paged.pages", "paged.publication-health"],
       right: [
@@ -44,6 +48,10 @@ export const COCKPIT_MODES: ModeContribution[] = [
     icon: "panel-character",
     order: 20,
     blurb: "Safe text editing, stories, review flow",
+    slots: {
+      left: "paged.stories",
+      inspector: "paged.story-inspector",
+    },
     panelSet: {
       left: ["paged.stories"],
       right: [
@@ -61,6 +69,10 @@ export const COCKPIT_MODES: ModeContribution[] = [
     icon: "ui-target",
     order: 30,
     blurb: "Preflight, bleed, colour, output readiness",
+    slots: {
+      left: "paged.preflight",
+      inspector: "paged.output-readiness",
+    },
     panelSet: {
       left: ["paged.preflight"],
       right: ["paged.ink-manager", "paged.color-settings", "paged.links"],
@@ -73,6 +85,11 @@ export const COCKPIT_MODES: ModeContribution[] = [
     icon: "ui-database",
     order: 40,
     blurb: "Structured data → repeatable pages",
+    slots: {
+      left: "paged.data-source",
+      inspector: "paged.data-mapping",
+      canvas: "panel:paged.data-grid",
+    },
     panelSet: {
       left: ["paged.data-mapping"],
       right: ["paged.inspector"],
@@ -85,6 +102,10 @@ export const COCKPIT_MODES: ModeContribution[] = [
     icon: "ui-comment",
     order: 50,
     blurb: "Comments, approvals, versions",
+    slots: {
+      left: "paged.comments",
+      inspector: "paged.review-inspector",
+    },
     panelSet: {
       left: ["paged.comments"],
       right: ["paged.pages"],
@@ -98,6 +119,11 @@ export const COCKPIT_MODES: ModeContribution[] = [
     icon: "ui-export",
     order: 60,
     blurb: "Multi-format publishing",
+    slots: {
+      left: "paged.outputs",
+      inspector: "paged.export-inspector",
+      canvas: "panel:paged.export-center",
+    },
     panelSet: {
       left: ["paged.export-center"],
       right: [],
@@ -107,9 +133,21 @@ export const COCKPIT_MODES: ModeContribution[] = [
 
 export const PANEL_RAIL: PanelRailItem[] = [
   { panelId: "paged.character", title: "Text", icon: "panel-character" },
-  { panelId: "paged.frame-fitting", title: "Image", icon: "panel-frame-fitting" },
-  { panelId: "paged.object-styles", title: "Styles", icon: "panel-object-styles" },
-  { panelId: "paged.component-library", title: "Library", icon: "ui-component" },
+  {
+    panelId: "paged.frame-fitting",
+    title: "Image",
+    icon: "panel-frame-fitting",
+  },
+  {
+    panelId: "paged.object-styles",
+    title: "Styles",
+    icon: "panel-object-styles",
+  },
+  {
+    panelId: "paged.component-library",
+    title: "Library",
+    icon: "ui-component",
+  },
   { panelId: "paged.swatches", title: "Swatches", icon: "panel-swatches" },
   { panelId: "paged.pages", title: "Pages", icon: "panel-pages" },
   { panelId: "paged.layers", title: "Layers", icon: "panel-layers" },

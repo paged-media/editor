@@ -26,7 +26,11 @@ import "@paged-media/shell/styles/globals.css";
 
 import { CanvasClient } from "@paged-media/client";
 import { BUILT_IN_TOOLS } from "@paged-media/tools";
-import { APP_KEYBINDINGS, APP_MENU_ITEMS, buildAppCommands } from "./app-commands";
+import {
+  APP_KEYBINDINGS,
+  APP_MENU_ITEMS,
+  buildAppCommands,
+} from "./app-commands";
 import { COCKPIT_MODES, PANEL_RAIL } from "./cockpit-modes";
 import { CanvasPanel } from "./panels/canvas-panel";
 import { CharacterPanel } from "./panels/character-panel";
@@ -82,6 +86,17 @@ import {
   DataMappingPanel,
   StoriesPanel,
 } from "./panels/cockpit/stub-panels";
+import { DocumentMapPanel } from "./panels/cockpit/document-map-panel";
+import {
+  ExportInspectorPanel,
+  OutputsPanel,
+} from "./panels/cockpit/export-views";
+import { DataGridPanel, DataSourcePanel } from "./panels/cockpit/data-views";
+import {
+  OutputReadinessPanel,
+  ReviewInspectorPanel,
+  StoryInspectorPanel,
+} from "./panels/cockpit/mode-inspectors";
 import { useAnimatedCamera } from "./ui/useAnimatedCamera";
 import { useKeyboardShortcuts } from "./ui/useKeyboardShortcuts";
 import { documentBounds, fitCamera, layoutPages } from "./ui/layout";
@@ -184,6 +199,73 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultDock: "right",
     defaultGroup: "cockpit",
     icon: "ui-component",
+  },
+  // ── Cockpit fixed-slot panels (kit left panels + per-mode right
+  //    inspectors + canvas-area mains). Registered like any panel;
+  //    the mode `slots` select where they render. ──
+  {
+    id: "paged.document-map",
+    title: "Document Map",
+    component: DocumentMapPanel,
+    defaultDock: "left",
+    defaultGroup: "cockpit",
+    icon: "panel-pages",
+  },
+  {
+    id: "paged.outputs",
+    title: "Outputs",
+    component: OutputsPanel,
+    defaultDock: "left",
+    defaultGroup: "cockpit",
+    icon: "ui-export",
+  },
+  {
+    id: "paged.data-source",
+    title: "Data Source",
+    component: DataSourcePanel,
+    defaultDock: "left",
+    defaultGroup: "cockpit",
+    icon: "ui-database",
+  },
+  {
+    id: "paged.data-grid",
+    title: "Generated pages",
+    component: DataGridPanel,
+    defaultDock: "center",
+    defaultGroup: "cockpit",
+    icon: "ui-bolt",
+  },
+  {
+    id: "paged.story-inspector",
+    title: "Story",
+    component: StoryInspectorPanel,
+    defaultDock: "right",
+    defaultGroup: "cockpit",
+    icon: "panel-paragraph",
+  },
+  {
+    id: "paged.output-readiness",
+    title: "Output readiness",
+    component: OutputReadinessPanel,
+    defaultDock: "right",
+    defaultGroup: "cockpit",
+    icon: "ui-target",
+  },
+  {
+    id: "paged.review-inspector",
+    title: "Review",
+    component: ReviewInspectorPanel,
+    defaultDock: "right",
+    defaultGroup: "cockpit",
+    icon: "ui-pin",
+  },
+  {
+    id: "paged.export-inspector",
+    title: "Export settings",
+    component: ExportInspectorPanel,
+    defaultDock: "right",
+    defaultGroup: "cockpit",
+    icon: "ui-export",
   },
   // NOTE: the old `paged.tools` dock panel is retired — the left
   // ToolRail (shell chrome, Concept 1 AC-9) is the only tool surface.
@@ -630,7 +712,11 @@ function CanvasAppIntegration() {
         const docX = (cx - camera.tx) / camera.scale;
         const docY = (cy - camera.ty) / camera.scale;
         const newScale = camera.scale * 1.5;
-        animateCamera({ scale: newScale, tx: cx - docX * newScale, ty: cy - docY * newScale });
+        animateCamera({
+          scale: newScale,
+          tx: cx - docX * newScale,
+          ty: cy - docY * newScale,
+        });
       },
       zoomOut: () => {
         const cx = vw / 2;
@@ -638,7 +724,11 @@ function CanvasAppIntegration() {
         const docX = (cx - camera.tx) / camera.scale;
         const docY = (cy - camera.ty) / camera.scale;
         const newScale = camera.scale / 1.5;
-        animateCamera({ scale: newScale, tx: cx - docX * newScale, ty: cy - docY * newScale });
+        animateCamera({
+          scale: newScale,
+          tx: cx - docX * newScale,
+          ty: cy - docY * newScale,
+        });
       },
       zoom100: () => {
         const cx = vw / 2;
