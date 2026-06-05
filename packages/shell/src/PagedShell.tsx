@@ -17,6 +17,7 @@ import React, {
   useMemo,
   useRef,
   useState,
+  type ComponentType,
   type PropsWithChildren,
   type ReactNode,
 } from "react";
@@ -70,6 +71,11 @@ import { FillStrokeCluster } from "./chrome/FillStrokeCluster";
 import { SoftProofToggle } from "./chrome/SoftProofToggle";
 import { DockviewRoot } from "./docking/DockviewRoot";
 import { DockingSubstrateProvider } from "./docking/substrate-context";
+import { CockpitLayout } from "./cockpit/CockpitLayout";
+import {
+  CockpitStateProvider,
+  cockpitActions,
+} from "./cockpit/cockpit-state-context";
 import { loadDocumentFile } from "./state/document-loader";
 import {
   PAGED_FILE_OPEN_IDML,
@@ -109,7 +115,7 @@ import {
   listPerspectives,
 } from "./persistence/layout-persistence";
 import type { OverlayContribution } from "./registries/overlay";
-import type { PanelContribution } from "./registries/panel";
+import type { PanelContribution, PanelProps } from "./registries/panel";
 import type { ToolContribution } from "./registries/tool";
 import type { Disposable } from "./registries/types";
 import { useFps } from "./hooks/useFps";
@@ -138,6 +144,14 @@ export interface PagedShellProps {
   /** Cockpit — the right-edge panel launcher's entries. Each must
    * name a REGISTERED panel id. Empty/omitted hides the rail. */
   panelRail?: PanelRailItem[];
+  /** Cockpit — the document viewport component (apps/canvas's
+   * CanvasPanel). Required for the fixed cockpit layout: the canvas
+   * is a SLOT, not a dockview panel. */
+  canvasComponent?: ComponentType<PanelProps>;
+  /** Cockpit — render the fixed publishing-cockpit layout instead of
+   * the dockview substrate. Transitional flag; the dockview path is
+   * removed once the cockpit is the proven default. */
+  cockpit?: boolean;
 }
 
 /**
@@ -154,6 +168,8 @@ export function PagedShell({
   headerExtras,
   modes,
   panelRail,
+  canvasComponent,
+  cockpit,
   children,
 }: PropsWithChildren<PagedShellProps>) {
   return (
@@ -185,6 +201,8 @@ export function PagedShell({
                                       headerExtras={headerExtras}
                                       modes={modes}
                                       panelRail={panelRail}
+                                      canvasComponent={canvasComponent}
+                                      cockpit={cockpit}
                                     >
                                       {children}
                                     </ShellChrome>
@@ -220,6 +238,8 @@ function ShellChrome({
   headerExtras,
   modes,
   panelRail,
+  canvasComponent,
+  cockpit,
   children,
 }: PropsWithChildren<{
   panels: PanelContribution[];
@@ -228,6 +248,8 @@ function ShellChrome({
   headerExtras?: ReactNode;
   modes?: ModeContribution[];
   panelRail?: PanelRailItem[];
+  canvasComponent?: ComponentType<PanelProps>;
+  cockpit?: boolean;
 }>) {
   const client = useCanvasClient();
   const {
@@ -335,27 +357,46 @@ function ShellChrome({
     };
   }, [registries, tools]);
 
+  // Cockpit — the fixed layout replaces the dockview substrate when
+  // the app opts in AND supplies the viewport component.
+  const cockpitActive = Boolean(cockpit && canvasComponent);
+
   // Concept 1 — Tab / Shift+Tab chrome hide. Tab toggles panels + the
-  // tool rail; Shift+Tab toggles panels only. Hiding serializes the
-  // dock layout, closes everything but the canvas, and restores the
+  // tool rail; Shift+Tab toggles panels only.
+  //
+  // Cockpit path: pure state — the fixed slots simply unmount
+  // (canvas column stays). Dockview path: hiding serializes the dock
+  // layout, closes everything but the canvas, and restores the
   // snapshot on show. (Reloading while hidden persists the hidden
   // layout — same trade-off InDesign makes.)
   const [railHidden, setRailHidden] = useState(false);
+  const [panelsHidden, setPanelsHidden] = useState(false);
   const panelsSnapshotRef = useRef<LayoutSnapshot | null>(null);
 
   const hidePanels = (paged: PagedEditor) => {
+    if (cockpitActive) {
+      setPanelsHidden(true);
+      return;
+    }
     const substrate = paged.substrate;
     if (!substrate || panelsSnapshotRef.current) return;
     panelsSnapshotRef.current = substrate.serialize();
     substrate.closePanelsExcept(["paged.canvas"]);
   };
   const showPanels = (paged: PagedEditor) => {
+    if (cockpitActive) {
+      setPanelsHidden(false);
+      return;
+    }
     const snap = panelsSnapshotRef.current;
     panelsSnapshotRef.current = null;
     if (paged.substrate && snap) paged.substrate.restore(snap);
   };
   const toggleAll = (paged: PagedEditor) => {
-    if (panelsSnapshotRef.current || railHidden) {
+    const hidden = cockpitActive
+      ? panelsHidden || railHidden
+      : Boolean(panelsSnapshotRef.current) || railHidden;
+    if (hidden) {
       showPanels(paged);
       setRailHidden(false);
     } else {
@@ -364,7 +405,10 @@ function ShellChrome({
     }
   };
   const togglePanels = (paged: PagedEditor) => {
-    if (panelsSnapshotRef.current) showPanels(paged);
+    const hidden = cockpitActive
+      ? panelsHidden
+      : Boolean(panelsSnapshotRef.current);
+    if (hidden) showPanels(paged);
     else hidePanels(paged);
   };
   const toggleAllRef = useRef(toggleAll);
@@ -388,9 +432,47 @@ function ShellChrome({
     substrate: paged?.substrate ?? null,
     registries,
     mode: workflowMode,
-    enabled: Boolean(modes && modes.length > 0),
+    // The cockpit resolves mode slots directly — no dockview layout
+    // park/restore.
+    enabled: Boolean(modes && modes.length > 0) && !cockpitActive,
     beforeSwitch: beforeModeSwitch,
   });
+
+  // Cockpit — the Window menu lists every REGISTERED panel and opens
+  // it as a right-dock tab (`paged.panel.show.*`). Registry-driven so
+  // late-registered plugin/bundle panels appear automatically; this
+  // is the guaranteed reachable home for any custom panel.
+  useEffect(() => {
+    if (!cockpitActive) return;
+    const items = new Map<string, Disposable>();
+    const add = (p: PanelContribution) => {
+      if (p.id === "paged.canvas" || items.has(p.id)) return;
+      try {
+        items.set(
+          p.id,
+          registries.menus.register({
+            path: `Window/${p.title}`,
+            command: `paged.panel.show.${p.id}`,
+            group: "panels",
+          }),
+        );
+      } catch {
+        // Two panels sharing a title — the first one keeps the path.
+      }
+    };
+    for (const p of registries.panels.list()) add(p);
+    const sub = registries.panels.onChange((e) => {
+      if (e.kind === "registered") add(e.contribution);
+      else {
+        items.get(e.id)?.dispose();
+        items.delete(e.id);
+      }
+    });
+    return () => {
+      sub.dispose();
+      for (const d of items.values()) d.dispose();
+    };
+  }, [cockpitActive, registries]);
 
   useEffect(() => {
     // Tab must keep its focus-move role inside DOM editables; the
@@ -657,6 +739,9 @@ function ShellChrome({
       // Cockpit — Playwright drives/asserts the workflow mode.
       mode: workflowMode,
       setMode: setWorkflowMode,
+      // Cockpit — open any REGISTERED panel as a right-dock tab
+      // (the panel-rail / Window-menu path, exposed for tests).
+      openPanel: (id: string) => cockpitActions.openPanel?.(id),
     };
   }
 
@@ -762,7 +847,7 @@ function ShellChrome({
     ],
   );
 
-  return (
+  const shellBody = (
     <div style={shellStyle}>
       <Header onFile={onFile} headerExtras={headerExtras} status={status} />
 
@@ -789,7 +874,8 @@ function ShellChrome({
       )}
 
       {/* Body row: the left tool rail (shell chrome, OUTSIDE the
-       *   dockview substrate) + the docking area. */}
+       *   dockview substrate) + the work area — either the fixed
+       *   cockpit layout or the legacy dockview substrate. */}
       <div style={bodyRowStyle}>
         {!railHidden && (
           <ToolRail
@@ -802,9 +888,16 @@ function ShellChrome({
             }
           />
         )}
-        <div style={dockviewContainerStyle}>
-          <DockviewRoot />
-        </div>
+        {cockpitActive && canvasComponent ? (
+          <CockpitLayout
+            canvasComponent={canvasComponent}
+            panelsHidden={panelsHidden}
+          />
+        ) : (
+          <div style={dockviewContainerStyle}>
+            <DockviewRoot />
+          </div>
+        )}
         {!railHidden && panelRail && panelRail.length > 0 && (
           <PanelRail items={panelRail} />
         )}
@@ -822,6 +915,14 @@ function ShellChrome({
        *   key off canvas-specific helpers. Renders nothing. */}
       {children}
     </div>
+  );
+
+  // The cockpit's tab state mounts only on the cockpit path so the
+  // legacy dockview layout keys survive while the flag is off.
+  return cockpitActive ? (
+    <CockpitStateProvider>{shellBody}</CockpitStateProvider>
+  ) : (
+    shellBody
   );
 }
 

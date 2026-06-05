@@ -85,15 +85,27 @@ function groupByTopLevel(
   for (const bucket of groups.values()) {
     bucket.sort((a, b) => a.order - b.order);
   }
-  return Array.from(groups.entries()).sort(([a], [b]) =>
-    topLevelOrder(a) - topLevelOrder(b),
+  return Array.from(groups.entries()).sort(
+    ([a], [b]) => topLevelOrder(a) - topLevelOrder(b),
   );
 }
 
-/** Canonical top-level menu ordering. Anything not listed lands
- * after the named menus in alphabetical order. */
+/** Canonical top-level menu ordering — the kit's nine-menu line
+ * (File … Help) plus Tools. Anything not listed lands after the
+ * named menus in alphabetical order. */
 function topLevelOrder(label: string): number {
-  const i = ["File", "Edit", "View", "Tools", "Help"].indexOf(label);
+  const i = [
+    "File",
+    "Edit",
+    "Layout",
+    "Type",
+    "Object",
+    "Data",
+    "View",
+    "Tools",
+    "Window",
+    "Help",
+  ].indexOf(label);
   return i >= 0 ? i : 100 + label.charCodeAt(0);
 }
 

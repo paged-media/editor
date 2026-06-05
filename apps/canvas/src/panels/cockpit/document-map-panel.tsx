@@ -15,71 +15,19 @@ import { useMemo, useState } from "react";
 import {
   Icon,
   StatusPill,
+  groupSpreads,
   useCamera,
   useCollection,
   useDocument,
   useDocumentMeta,
   useDocumentStats,
   type PanelProps,
+  type SpreadEntry,
 } from "@paged-media/shell";
 import type { LinkSummary, PageId, SpreadSummary } from "@paged-media/client";
 
 import { documentBounds, layoutPages, fitCamera } from "../../ui/layout";
 import { useAnimatedCamera } from "../../ui/useAnimatedCamera";
-
-interface SpreadEntry {
-  key: string;
-  /** "Cover" for a 1-page first spread, else the spread label. */
-  name: string;
-  /** En-dash page range — `2–3`, `1`. */
-  range: string;
-  pageIndices: number[];
-}
-
-/** Group page indices by walking the spreads collection in document
- *  order (each spread consumes `pageCount` pages). Falls back to
- *  one-page-per-entry when the collection isn't available yet. */
-function groupSpreads(
-  pageIds: ReadonlyArray<PageId>,
-  spreads: ReadonlyArray<SpreadSummary> | null,
-): SpreadEntry[] {
-  const entries: SpreadEntry[] = [];
-  let cursor = 0;
-  if (spreads && spreads.length > 0) {
-    for (const s of spreads) {
-      const count = Math.max(1, s.pageCount);
-      const pageIndices: number[] = [];
-      for (let i = 0; i < count && cursor < pageIds.length; i++) {
-        pageIndices.push(cursor++);
-      }
-      if (pageIndices.length === 0) break;
-      const first = pageIndices[0] + 1;
-      const last = pageIndices[pageIndices.length - 1] + 1;
-      const range = first === last ? String(first) : `${first}–${last}`;
-      entries.push({
-        key: s.selfId,
-        name:
-          entries.length === 0 && pageIndices.length === 1
-            ? "Cover"
-            : s.label || `Spread ${range}`,
-        range,
-        pageIndices,
-      });
-    }
-  }
-  // Any pages the spreads didn't cover (or no spreads at all).
-  while (cursor < pageIds.length) {
-    const n = cursor + 1;
-    entries.push({
-      key: `page-${pageIds[cursor]}`,
-      name: cursor === 0 ? "Cover" : `Page ${n}`,
-      range: String(n),
-      pageIndices: [cursor],
-    });
-    cursor++;
-  }
-  return entries;
-}
 
 export function DocumentMapPanel(_props: PanelProps) {
   const { handle, snapshots } = useDocument();

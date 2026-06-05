@@ -13,6 +13,7 @@ import {
   rotateHandleContribution,
   rulerGuidesContribution,
   selectionChromeContribution,
+  setCockpitPageNavigator,
   snapLinesContribution,
   useCamera,
   useCanvasClient,
@@ -23,6 +24,12 @@ import {
   type PanelContribution,
 } from "@paged-media/shell";
 import "@paged-media/shell/styles/globals.css";
+
+// Cockpit — the fixed publishing-cockpit layout (the dockview
+// replacement, styleguide ui_kits/editor). Transitional flag while
+// the swap is verified; the dockview path is deleted once the
+// cockpit is the proven default.
+const COCKPIT_LAYOUT = true;
 
 import { CanvasClient } from "@paged-media/client";
 import { BUILT_IN_TOOLS } from "@paged-media/tools";
@@ -689,6 +696,22 @@ function CanvasAppIntegration() {
   });
   usePathEditMode();
 
+  // Cockpit — the thumbnail filmstrip / document map navigate by
+  // page indices; the camera-fit math (page layout convention) is
+  // app-side, registered with the shell's navigation hand-off.
+  useEffect(() => {
+    setCockpitPageNavigator((pageIndices) => {
+      const pageSizes = handle?.pageSizesPt ?? [];
+      if (pageSizes.length === 0 || pageIndices.length === 0) return;
+      const rects = layoutPages(pageSizes);
+      const targets = pageIndices.map((i) => rects[i]).filter((r) => r != null);
+      if (targets.length === 0) return;
+      const [vw, vh] = viewportSize;
+      animateCamera(fitCamera(vw, vh, documentBounds(targets)));
+    });
+    return () => setCockpitPageNavigator(null);
+  }, [animateCamera, handle, viewportSize]);
+
   // SDK Phase 4 — register canvas-app commands + menu items +
   // keybindings. Closures capture the *current* camera / handle /
   // viewportSize so the zoom commands see live values; dependency
@@ -802,6 +825,8 @@ function CanvasAppRoot() {
       tools={BUILT_IN_TOOLS}
       modes={COCKPIT_MODES}
       panelRail={PANEL_RAIL}
+      canvasComponent={CanvasPanel}
+      cockpit={COCKPIT_LAYOUT}
       headerExtras={
         <>
           <CorpusPicker />

@@ -3,6 +3,7 @@
 // toggles without writing them itself.
 
 import { notifyPalette } from "../../chrome/CommandPalette";
+import { cockpitActions } from "../../cockpit/cockpit-state-context";
 import {
   deletePerspective,
   exportPerspective,
@@ -67,6 +68,11 @@ export function buildPanelToggleCommands(
     title: `Show: ${panel.title}`,
     category: "View",
     handler: (paged) => {
+      // Cockpit path: the panel opens as a right-dock tab.
+      if (cockpitActions.openPanel) {
+        cockpitActions.openPanel(panel.id);
+        return;
+      }
       const editor = paged as PagedEditor;
       const substrate = editor.substrate;
       if (!substrate) return;
@@ -89,6 +95,11 @@ export function buildPanelToggleCommands(
     title: `Hide: ${panel.title}`,
     category: "View",
     handler: (paged) => {
+      // Cockpit path: close the right-dock tab.
+      if (cockpitActions.closeTab) {
+        cockpitActions.closeTab(panel.id);
+        return;
+      }
       const editor = paged as PagedEditor;
       const substrate = editor.substrate;
       if (!substrate) return;

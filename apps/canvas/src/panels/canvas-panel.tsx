@@ -56,16 +56,26 @@ export function CanvasPanel(_props: PanelProps) {
   // viewportSize stays in sync. Previously the shell observed its
   // own mainStyle wrapper; after the dockview swap each panel
   // observes its own container.
+  //
+  // The ref only exists once a document is loaded (the empty state
+  // renders without it), so the observer must re-attach when the
+  // handle arrives — otherwise viewportSize wedges at [0,0] and
+  // every context-driven camera fit collapses to the minimum zoom.
+  const loaded = handle != null && handle.pageCount > 0;
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!loaded || !containerRef.current) return;
     const el = containerRef.current;
+    // Seed immediately — ResizeObserver deliveries ride the rendering
+    // steps, which a hidden/occluded tab suspends entirely.
+    const r0 = el.getBoundingClientRect();
+    if (r0.width > 0 && r0.height > 0) setViewportSize([r0.width, r0.height]);
     const ro = new ResizeObserver(() => {
       const r = el.getBoundingClientRect();
       setViewportSize([r.width, r.height]);
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [setViewportSize]);
+  }, [loaded, setViewportSize]);
 
   // Track L — Escape exits the active group (matches InDesign's
   // group-escape UX). Skips when an editable element has focus so
@@ -89,7 +99,10 @@ export function CanvasPanel(_props: PanelProps) {
   }, [activeGroup, setActiveGroup]);
 
   const onHit = useCallback(
-    (s: SelectionState | null, modifiers?: { shift?: boolean; cmd?: boolean }) => {
+    (
+      s: SelectionState | null,
+      modifiers?: { shift?: boolean; cmd?: boolean },
+    ) => {
       setHitSelection(s);
       if (activeTool === "select") {
         const mode: SelectionMode = modifiers?.shift
@@ -212,7 +225,10 @@ export function CanvasPanel(_props: PanelProps) {
   }, [client, elementSelection, setElementGeometry]);
 
   const onDoubleClickGroup = useCallback(
-    (groupId: string, hitElement: import("@paged-media/client").ElementId | null) => {
+    (
+      groupId: string,
+      hitElement: import("@paged-media/client").ElementId | null,
+    ) => {
       // Track L — double-click enters the group: set
       // `activeGroup` AND select the leaf the user clicked.
       // Subsequent single-clicks stay scoped to that group's

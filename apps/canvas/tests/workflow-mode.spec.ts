@@ -71,23 +71,24 @@ test.describe("Cockpit — workflow modes", () => {
     await page.evaluate(() => window.__canvas.setMode("design"));
   });
 
-  test("the panel rail toggles a registered panel open and closed", async ({
+  test("the panel rail opens a panel as a right-dock tab and closes it", async ({
     page,
   }) => {
     await openCanvas(page);
     const item = page.locator('[data-panel-rail-item="paged.effects"]');
     await expect(item).toBeVisible();
+    await expect(item).toHaveAttribute("data-active", "false");
 
-    const wasActive = (await item.getAttribute("data-active")) === "true";
+    // Click → the panel joins the right dock as the active tab.
     await item.click();
-    await expect(item).toHaveAttribute(
-      "data-active",
-      wasActive ? "false" : "true",
-    );
+    await expect(item).toHaveAttribute("data-active", "true");
+    await expect(page.locator('[data-dock-tab="paged.effects"]')).toBeVisible();
+
+    // Click again → the tab closes and the rail un-highlights.
     await item.click();
-    await expect(item).toHaveAttribute(
-      "data-active",
-      wasActive ? "true" : "false",
+    await expect(item).toHaveAttribute("data-active", "false");
+    await expect(page.locator('[data-dock-tab="paged.effects"]')).toHaveCount(
+      0,
     );
   });
 });
@@ -101,64 +102,43 @@ test.describe("Cockpit — per-mode panel sets + toolbars (D3-D4)", () => {
     await expect
       .poll(() =>
         page.evaluate(() => {
-          const c = (globalThis as unknown as {
-            __canvas: { registries: unknown };
-          }).__canvas;
+          const c = (
+            globalThis as unknown as {
+              __canvas: { registries: unknown };
+            }
+          ).__canvas;
           return Boolean(c);
         }),
       )
       .toBe(true);
 
-    const hasPanel = (id: string) =>
-      page.evaluate(
-        (pid) =>
-          Boolean(
-            document.querySelector(`.dv-tab[data-testid="dv-tab-${pid}"]`) ||
-              Array.from(document.querySelectorAll(".dv-tab")).some((el) =>
-                el.textContent?.length ? false : false,
-              ) ||
-              (
-                globalThis as unknown as {
-                  __canvas: {
-                    registries: unknown;
-                  };
-                }
-              ).__canvas && // fall back to substrate probe below
-              false,
-          ),
-        id,
-      );
-    void hasPanel;
+    // Cockpit slots: each mode mounts its declared left panel +
+    // right dock content directly — assert by the panels' own
+    // ready markers and the dock-tab hooks.
 
-    // Probe through the substrate via a tiny page hook: the panel
-    // rail exposes hasPanel indirectly via data-active, but for
-    // arbitrary ids we go through __canvas → registries? Simpler:
-    // the dockview DOM renders one tab per mounted panel with the
-    // panel title; assert by visible tab text.
-    const tab = (title: string) =>
-      page.locator(".dv-default-tab-content", { hasText: title }).first();
-
-    // Switch to prepress: ink manager appears.
+    // Switch to prepress: the Output readiness inspector appears.
     await page.evaluate(() => window.__canvas.setMode("prepress"));
-    await expect(tab("Ink Manager")).toBeVisible();
+    await expect(page.locator("[data-output-readiness-panel]")).toBeVisible();
 
-    // Customise prepress: close the Color Settings panel via rail-
-    // less path (drive substrate through __canvas not available) —
-    // instead park a marker: open the Effects panel via the panel
-    // rail, making the prepress layout differ from its default.
+    // Customise prepress: open the Effects panel via the panel rail —
+    // it joins the right dock as an extra tab.
     await page.locator('[data-panel-rail-item="paged.effects"]').click();
     await expect(
       page.locator('[data-panel-rail-item="paged.effects"]'),
     ).toHaveAttribute("data-active", "true");
+    await expect(page.locator('[data-dock-tab="paged.effects"]')).toBeVisible();
 
-    // Leave and come back: the customisation survives.
+    // Leave and come back: the customisation survives (per-mode
+    // cockpit tab state persists).
     await page.evaluate(() => window.__canvas.setMode("design"));
-    await expect(tab("Swatches")).toBeVisible();
+    await expect(
+      page.locator('[data-dock-tab="paged.swatches"]'),
+    ).toBeVisible();
     await page.evaluate(() => window.__canvas.setMode("prepress"));
     await expect(
       page.locator('[data-panel-rail-item="paged.effects"]'),
     ).toHaveAttribute("data-active", "true");
-    await expect(tab("Ink Manager")).toBeVisible();
+    await expect(page.locator('[data-dock-tab="paged.effects"]')).toBeVisible();
 
     // Reset for other tests.
     await page.evaluate(() => window.__canvas.setMode("design"));
@@ -170,9 +150,7 @@ test.describe("Cockpit — per-mode panel sets + toolbars (D3-D4)", () => {
     await expect(
       page.locator('[data-cockpit-action="tool:paged.tool.type"]'),
     ).toBeVisible();
-    await page
-      .locator('[data-cockpit-action="tool:paged.tool.type"]')
-      .click();
+    await page.locator('[data-cockpit-action="tool:paged.tool.type"]').click();
     await expect
       .poll(() =>
         page.evaluate(

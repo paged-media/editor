@@ -1,9 +1,11 @@
 // Design system (publishing cockpit) — the 64px right-edge panel
-// launcher. Each entry toggles a REGISTERED panel through the
-// docking substrate (open ⇄ close); the active state tracks the
-// live layout, so a panel closed from its tab un-highlights here.
-// Config comes from the app (`<PagedShell panelRail={...}>`) — the
-// shell renders, never hardcodes the list.
+// launcher (the kit's panel-selector rail). In the cockpit, each
+// entry opens its panel as a right-dock tab (or closes it when it
+// is already the open tab) — panels surface in ONE predictable
+// place, never scattered. On the legacy dockview path it toggles
+// the panel through the substrate. Config comes from the app
+// (`<PagedShell panelRail={...}>`) — the shell renders, never
+// hardcodes the list.
 
 import { useEffect, useState } from "react";
 
@@ -11,6 +13,7 @@ import { Icon } from "../icons";
 import { resolvePanelSpec } from "../docking/panel-bridge";
 import { useDockingSubstrate } from "../docking/substrate-context";
 import { useRegistries } from "../state/registries-context";
+import { useOptionalCockpitState } from "../cockpit/cockpit-state-context";
 
 export interface PanelRailItem {
   /** A registered panel id (`paged.swatches`, …). */
@@ -23,6 +26,7 @@ export interface PanelRailItem {
 
 export function PanelRail({ items }: { items: PanelRailItem[] }) {
   const substrate = useDockingSubstrate();
+  const cockpit = useOptionalCockpitState();
   const { panels } = useRegistries();
   // Re-render on layout changes so active states track reality
   // (panels closed from their tabs, restored layouts, mode swaps).
@@ -33,11 +37,23 @@ export function PanelRail({ items }: { items: PanelRailItem[] }) {
     return () => sub.dispose();
   }, [substrate]);
 
-  if (!substrate || items.length === 0) return null;
+  if ((!cockpit && !substrate) || items.length === 0) return null;
+
+  const isActive = (panelId: string) =>
+    cockpit
+      ? cockpit.activeTab === panelId
+      : Boolean(substrate?.hasPanel(panelId));
 
   const toggle = (panelId: string) => {
     const contribution = panels.get(panelId);
     if (!contribution) return;
+    if (cockpit) {
+      // Cockpit: active tab → close; otherwise ensure + activate.
+      if (cockpit.activeTab === panelId) cockpit.closeTab(panelId);
+      else cockpit.openPanel(panelId);
+      return;
+    }
+    if (!substrate) return;
     if (substrate.hasPanel(panelId)) {
       substrate.closePanel(panelId);
     } else {
@@ -49,7 +65,7 @@ export function PanelRail({ items }: { items: PanelRailItem[] }) {
   return (
     <div data-panel-rail style={railStyle}>
       {items.map((item) => {
-        const active = substrate.hasPanel(item.panelId);
+        const active = isActive(item.panelId);
         return (
           <button
             key={item.panelId}

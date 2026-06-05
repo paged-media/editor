@@ -212,6 +212,24 @@ export {
 // ── Shell root ─────────────────────────────────────────────────
 export { PagedShell, type PagedShellProps } from "./PagedShell";
 
+// ── Cockpit (the fixed publishing-cockpit layout) ──────────────
+export {
+  CockpitLayout,
+  CockpitStateProvider,
+  PanelHost,
+  RightDock,
+  groupSpreads,
+  navigateToPages,
+  setCockpitPageNavigator,
+  useCockpitState,
+  useOptionalCockpitState,
+  type CockpitLayoutProps,
+  type CockpitState,
+  type InspectorContext,
+  type PageNavigator,
+  type SpreadEntry,
+} from "./cockpit";
+
 // ── Chrome ─────────────────────────────────────────────────────
 export { CommandPalette } from "./chrome/CommandPalette";
 export { MenuBar } from "./chrome/MenuBar";
