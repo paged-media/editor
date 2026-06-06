@@ -275,6 +275,12 @@ importers:
       '@paged-media/client':
         specifier: workspace:*
         version: link:../client
+      '@paged-media/draw-geometry':
+        specifier: link:../../../plugin-draw/packages/draw-geometry
+        version: link:../../../plugin-draw/packages/draw-geometry
+      '@paged-media/draw-tools':
+        specifier: link:../../../plugin-draw/packages/draw-tools
+        version: link:../../../plugin-draw/packages/draw-tools
       '@paged-media/shell':
         specifier: workspace:*
         version: link:../shell

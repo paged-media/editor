@@ -12,10 +12,16 @@
 
 import type { CursorSpec, ToolContribution } from "@paged-media/shell";
 
+import {
+  createAddAnchorHandler,
+  createConvertAnchorHandler,
+  createDeleteAnchorHandler,
+} from "./handlers/anchor-tools";
 import { createGradientFeatherHandler } from "./handlers/gradient-feather-tool";
 import { createGradientSwatchHandler } from "./handlers/gradient-tool";
 import { createLineHandler } from "./handlers/line-tool";
 import { createPageHandler } from "./handlers/page-tool";
+import { createPenHandler } from "./handlers/pen-tool";
 import { createPencilHandler } from "./handlers/pencil-tool";
 import { createRectangleHandler } from "./handlers/rectangle-tool";
 import { createScissorsHandler } from "./handlers/scissors-tool";
@@ -123,6 +129,9 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     section: "drawType",
     order: 0,
     isGroupDefault: true,
+    // plugin-draw D2 — shim over @paged-media/draw-tools' PenMachine:
+    // click/drag/Alt/Shift matrix → one `insertPath` (protocol v27).
+    gesture: createPenHandler,
   },
   {
     id: "paged.tool.addAnchor",
@@ -132,6 +141,8 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "pen",
     section: "drawType",
     order: 1,
+    // plugin-draw D2 — curve-preserving segment split → 3-op batch.
+    gesture: createAddAnchorHandler,
   },
   {
     id: "paged.tool.deleteAnchor",
@@ -141,6 +152,8 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "pen",
     section: "drawType",
     order: 2,
+    // plugin-draw D2 — nearest anchor → `pathPointRemove`.
+    gesture: createDeleteAnchorHandler,
   },
   {
     id: "paged.tool.convertAnchor",
@@ -150,6 +163,8 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "pen",
     section: "drawType",
     order: 3,
+    // plugin-draw D2 — corner ↔ smooth → `pathPointCurveType`.
+    gesture: createConvertAnchorHandler,
   },
   {
     id: "paged.tool.pencil",

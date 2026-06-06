@@ -517,6 +517,14 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       }
       const drag = dragStateRef.current;
       if (!drag) {
+        // plugin-draw D2 — forward HOVER moves to the active handler
+        // too (the Pen's rubber band tracks them between clicks).
+        // Every handler guards its drag state, so hover moves are
+        // inert for drag-only tools; maxDelta 0 keeps click-vs-drag
+        // semantics intact.
+        if (props.toolGesture) {
+          props.toolGesture.onMove(buildToolPointer(e, 0));
+        }
         // Concept 1 (Phase 3) — no drag in flight: let the active
         // handler refine the cursor per pointer position (Pen near an
         // anchor ≠ Pen over empty canvas). Imperative style write so a

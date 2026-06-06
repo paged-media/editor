@@ -7,12 +7,18 @@
 // Schneider fit over the simplified polyline, so the committed path
 // is smooth cubics, not the jittery samples. One stroke per element —
 // lift-and-redraw starts a new path (v1 semantics).
+//
+// The RDP implementation moved to `@paged-media/draw-geometry`
+// (plugin-draw milestone D1) — same algorithm, now shared with the
+// paged.draw machines and unit-tested there.
 
 import type {
   CanvasPointerEvent,
   GestureHandler,
   PagedEditor,
 } from "@paged-media/shell";
+
+import { simplifyRdp } from "@paged-media/draw-geometry";
 
 import {
   beginPageDrag,
@@ -27,52 +33,6 @@ import {
  *  would otherwise chase. */
 const RDP_TOLERANCE_PX = 1.5;
 const MIN_POINTS = 2;
-
-/** Perpendicular distance from `p` to the segment a→b. */
-function segmentDistance(
-  p: [number, number],
-  a: [number, number],
-  b: [number, number],
-): number {
-  const dx = b[0] - a[0];
-  const dy = b[1] - a[1];
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) return Math.hypot(p[0] - a[0], p[1] - a[1]);
-  const t = Math.max(
-    0,
-    Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lenSq),
-  );
-  return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
-}
-
-/** Iterative RDP (explicit stack — strokes can run thousands of
- *  samples and recursion depth tracks the sample count). */
-function simplifyRdp(
-  points: ReadonlyArray<[number, number]>,
-  tolerance: number,
-): [number, number][] {
-  if (points.length <= 2) return points.slice();
-  const keep = new Array<boolean>(points.length).fill(false);
-  keep[0] = keep[points.length - 1] = true;
-  const stack: [number, number][] = [[0, points.length - 1]];
-  while (stack.length > 0) {
-    const [first, last] = stack.pop()!;
-    let maxDist = 0;
-    let index = -1;
-    for (let i = first + 1; i < last; i++) {
-      const d = segmentDistance(points[i], points[first], points[last]);
-      if (d > maxDist) {
-        maxDist = d;
-        index = i;
-      }
-    }
-    if (index >= 0 && maxDist > tolerance) {
-      keep[index] = true;
-      stack.push([first, index], [index, last]);
-    }
-  }
-  return points.filter((_, i) => keep[i]);
-}
 
 export function createPencilHandler(): GestureHandler {
   let paged: PagedEditor | null = null;
