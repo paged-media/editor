@@ -15,6 +15,7 @@ import {
   selectionChromeContribution,
   setCockpitPageNavigator,
   snapLinesContribution,
+  threadingPortsContribution,
   useCamera,
   useCanvasClient,
   useContentSelection,
@@ -132,6 +133,8 @@ const BUILT_IN_OVERLAYS: OverlayContribution[] = [
   selectionChromeContribution,
   resizeHandlesContribution,
   rotateHandleContribution,
+  // W2.9 — text-frame threading ports on the selection chrome.
+  threadingPortsContribution,
   contentGrabberContribution,
   pathEditContribution,
   marqueeContribution,

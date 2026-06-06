@@ -21,6 +21,7 @@ import { RightDock } from "./RightDock";
 import { DocTitleBar } from "./canvas-frame/DocTitleBar";
 import { GuideDragController } from "./canvas-frame/GuideDragController";
 import { HRuler, VRulerStrip } from "./canvas-frame/Rulers";
+import { ThreadingController } from "./canvas-frame/ThreadingController";
 import { ThumbnailRail } from "./canvas-frame/ThumbnailRail";
 
 export interface CockpitLayoutProps {
@@ -132,6 +133,9 @@ export function CockpitLayout({
             insert/move/delete guide). Only on the real canvas surface,
             not the export-style overrides (which have no rulers). */}
         {!isOverride && <GuideDragController />}
+        {/* W2.9 — headless threading controller (out-port → loaded
+            cursor → linkFrames / insertTextFrame; overset badge set). */}
+        {!isOverride && <ThreadingController />}
         {!isOverride && <ThumbnailRail />}
       </div>
 

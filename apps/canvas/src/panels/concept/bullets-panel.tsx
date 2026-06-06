@@ -26,7 +26,7 @@ import type { Value } from "@paged-media/client";
 
 import { appCatalogRegistry } from "../catalog-registry";
 import { bulletsNumberingComposition } from "../bullets-numbering.composition";
-import { Kicker, Row, SeamNum, SeamSelect } from "./concept-kit";
+import { ConceptShell, Kicker, Row, SeamNum, SeamSelect } from "./concept-kit";
 
 const TEXT_BINDINGS = {
   bullet: {
@@ -98,9 +98,10 @@ export function BulletsPanel() {
 
   return (
     <CatalogRegistryProvider registry={appCatalogRegistry()}>
-      <div
-        className="flex flex-col gap-2 p-3"
-        data-bullets-panel="ready"
+      <ConceptShell
+        testId="bullets-panel"
+        live
+        target="List type, bullet glyph and numbering format are live (the v28 list-authoring paths); list definitions / level / restart / position land with a list-definition surface on the paragraph model."
       >
         {/* LIVE — list type segment (paragraphListType). */}
         <CompositionRenderer composition={bulletsNumberingComposition} />
@@ -174,7 +175,7 @@ export function BulletsPanel() {
           <div>1.&emsp;Solid oak frame</div>
           <div>2.&emsp;Natural oil finish</div>
         </div>
-      </div>
+      </ConceptShell>
     </CatalogRegistryProvider>
   );
 }

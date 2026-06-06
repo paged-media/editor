@@ -84,9 +84,13 @@ interface ThreadingContextValue {
   /** Drop links touching `frame` (controller, after unlinkFrames). */
   linkRemoved(frame: string): void;
 
-  /** Frame ids to badge overset (controller, from `stories` overset). */
+  /** Frame ids whose owning story is overset (controller, resolved
+   *  from the live `stories` collection). Engine-truth — not the
+   *  optimistic mirror. */
   oversetFrames: ReadonlySet<string>;
   setOversetFrames: React.Dispatch<React.SetStateAction<Set<string>>>;
+  /** True when this frame's story overflows (out-port red "+" badge). */
+  isOverset(frameId: string): boolean;
 
   /** True when a frame is the `to` of a session link (continues a
    *  chain → its in-port shows the ▸ glyph). */
@@ -136,6 +140,10 @@ export function ThreadingProvider({ children }: PropsWithChildren) {
     (frameId: string) => links.some((l) => l.from === frameId),
     [links],
   );
+  const isOverset = useCallback(
+    (frameId: string) => oversetFrames.has(frameId),
+    [oversetFrames],
+  );
 
   const value = useMemo<ThreadingContextValue>(
     () => ({
@@ -147,6 +155,7 @@ export function ThreadingProvider({ children }: PropsWithChildren) {
       linkRemoved,
       oversetFrames,
       setOversetFrames,
+      isOverset,
       continuesChain,
       hasNext,
     }),
@@ -158,6 +167,7 @@ export function ThreadingProvider({ children }: PropsWithChildren) {
       linkMade,
       linkRemoved,
       oversetFrames,
+      isOverset,
       continuesChain,
       hasNext,
     ],

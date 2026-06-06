@@ -1,10 +1,17 @@
-// Panel-gallery pass — the six CONCEPT panels (INDESIGN_PARITY.md:
-// Table / Tabs / Glyphs / Bullets & Numbering + Object Export
-// Options / Export Tagging). Each opens from the registry, renders
-// its kit-shaped seam structure with the Concept (or Partial)
-// badge + the Target footnote, and keeps every unbacked control
-// disabled. Glyphs' live insertion is covered separately
-// (glyphs-panel.spec.ts).
+// Panel-gallery pass — the CONCEPT / PARTIAL panels (INDESIGN_PARITY.md:
+// Table / Glyphs / Bullets & Numbering + Object Export Options /
+// Export Tagging). Each opens from the registry, renders its
+// kit-shaped seam structure with the Concept (or Partial) badge + the
+// Target footnote, and keeps every unbacked control disabled. Glyphs'
+// live insertion is covered separately (glyphs-panel.spec.ts).
+//
+// W2.4 (2026-06-06): Tabs flipped fully LIVE — its whole-list
+// `paragraphTabStops` editor has no remaining seams, so it left this
+// list and gained its own acceptance + op-sandwich coverage
+// (tabs-panel.spec.ts / e2e/tabs-ops.spec.ts). Bullets & Numbering
+// went PARTIAL — list type + bullet glyph + numbering format are live
+// over the v28 text paths, with the list-definition rows still seamed
+// (badge flips concept→partial, the Glyphs precedent).
 
 import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
@@ -19,12 +26,11 @@ const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
 
 const CONCEPTS = [
   { id: "paged.table", ready: "table-panel", badge: "concept" },
-  { id: "paged.tabs", ready: "tabs-panel", badge: "concept" },
   { id: "paged.glyphs", ready: "glyphs-panel", badge: "partial" },
   {
     id: "paged.bullets-numbering",
     ready: "bullets-panel",
-    badge: "concept",
+    badge: "partial",
   },
   {
     id: "paged.object-export",

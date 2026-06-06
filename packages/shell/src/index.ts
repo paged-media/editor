@@ -106,6 +106,16 @@ export {
   type OptimisticGuide,
 } from "./state/guide-drag-context";
 
+// W2.9 — text-frame threading state (ports + controller + loaded
+// cursor).
+export {
+  ThreadingProvider,
+  useThreading,
+  useOptionalThreading,
+  type LoadedCursor,
+  type ThreadLink,
+} from "./state/threading-context";
+
 // Concept 2 — the gradient ramp (pure; reused by the editor panel
 // and the FillStrokeCluster chips).
 export {
@@ -288,6 +298,7 @@ export {
   rulerGuidesContribution,
   guideOverlayContribution,
   selectionChromeContribution,
+  threadingPortsContribution,
   snapLinesContribution,
   applyAffine,
   type IdmlAffine,

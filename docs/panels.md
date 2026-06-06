@@ -527,11 +527,19 @@ Rows/cols, row height (at-least), col width, alternating fills/strokes,
 header/footer pills, cell inset, vert. justify — all seams.
 **Target** — live with the Table NodeId surface (gap 8).
 
-### Tabs — `paged.tabs` ○
+### Tabs — `paged.tabs` ✓ — W2.4 live 2026-06-06
 
-Alignment segments (L/C/R/Decimal), position, the static stop ruler,
-leader + align-on, repeat — all seams.
-**Target** — the InDesign Tabs ruler, live with tab-stop reads/writes.
+A live ruler-style **whole-list** stop editor over the v28
+`paragraphTabStops` path (`Value::TabStops(TabStopSpec[])`, the
+gradient-feather stop-list precedent — `Value` has no per-element
+list-edit form, so each change commits the full new stop list in one
+`setElementProperty`, undoable). Add/remove/reorder stops; per-stop
+position, alignment (L/C/R/Decimal → `LeftAlign`/`CenterAlign`/
+`RightAlign`/`CharacterAlign`), leader string, and align-on character
+(decimal stops). The marker ruler lights the live positions.
+Content-scope; the apply layer rounds the StoryRange to whole
+paragraphs.
+**Target** — repeat-tab + drag-on-ruler authoring polish.
 
 ### Glyphs — `paged.glyphs` ◐ _(partially live)_
 
@@ -541,11 +549,18 @@ Seams: Show scope + font selects (await the font registry).
 **Target** — full character map, OpenType-feature filter, alternates
 flyout, glyph sets.
 
-### Bullets & Numbering — `paged.bullets-numbering` ○
+### Bullets & Numbering — `paged.bullets-numbering` ◐ _(partially live)_ — W2.4 2026-06-06
 
-List type segments, list/level, numbering style (format `^#.^t`, char
-style, restart), position + the static preview — all seams.
-**Target** — live with list definitions on the paragraph model.
+List type segments (None/Bullet/Number → `paragraphListType` IDML enum
+`NoList`/`BulletList`/`NumberedList`), the bullet glyph
+(`paragraphBulletCharacter`) and the numbering-format expression
+(`paragraphNumberingFormat`, e.g. `^#.^t`) are **live** over the v28
+list-authoring text paths (content-scope, paragraph-rounded; one mutate
+per commit). Seams: list definition / level / numbering-style picker /
+char style / restart / position + the static preview (await a
+list-definition surface on the paragraph model).
+**Target** — full list definitions (named lists, level nesting, restart
+scope, position) on the paragraph model.
 
 ### Object Export Options — `paged.object-export` ○
 
@@ -608,8 +623,14 @@ gallery seams; several extend gaps above):
     number, shuffle toggles (extends 9's sections).
 20. **Structured preflight findings** — severity + page refs on export
     diagnostics (drives the Critical/Warnings groups + jump-to).
-21. **Tab stops** — per-paragraph stop table (the Tabs panel).
+21. **Tab stops** — per-paragraph stop table (the Tabs panel). _(W2.4:
+    DONE — `paragraphTabStops` whole-list read/write; the Tabs panel is
+    a live ruler-style stop editor.)_
 22. **List definitions** — bullets & numbering model (the B&N panel).
+    _(W2.4: list type + bullet glyph + numbering format live via the
+    `paragraphListType`/`paragraphBulletCharacter`/`paragraphNumberingFormat`
+    text paths; residual = named list definitions, level nesting, restart
+    scope, position.)_
 23. **Export metadata** — per-object alt text/role/conversion + per-style
     HTML/CSS/PDF tagging (Object Export Options, Export Tagging).
 24. **Tint swatch children** + mixed-ink swatches (Swatches parity).
