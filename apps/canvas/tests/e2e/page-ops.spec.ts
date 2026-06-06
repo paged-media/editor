@@ -48,26 +48,19 @@ test.describe("E2E page ops", () => {
     fx = await loadFixture(page, "text");
   });
 
-  // ENGINE BUG (found by this suite, 2026-06-05): once a render
-  // pipeline exists (i.e. any page was rasterised), insertPage panics
-  // the renderer during its post-mutation rebuild —
-  // `index out of bounds: the len is N but the index is N` at
-  // paged-renderer/src/pipeline/mod.rs:1890; the per-page pipeline
-  // vector isn't grown on insert, so `mutate()` never resolves. The
-  // capability matrix classifies insertPage "supported" because it
-  // never snapshots first. PAGE-1 therefore asserts the MODEL effect
-  // WITHOUT a snapshot (no pipeline → no panic); the render
-  // integration is owned by AC-E2E-PAGE-4 (fixme) until core grows
-  // the pipeline vector on page insert. deletePage/resizePage don't
-  // grow the vector and render fine (PAGE-2 / PAGE-3).
+  // ENGINE BUG (found 2026-06-05, FIXED in core 2026-06-06): the
+  // body-story emit cache survived undo with absolute page indices
+  // that a mid-set insert shifts — the splice then panicked
+  // (`index out of bounds: the len is N but the index is N`,
+  // paged-renderer pipeline) and `mutate()` never resolved. Core now
+  // clears the caches on undo/redo, keys the body-story signature on
+  // the chain's page indices, and bounds-guards the splice (engine
+  // guard: paged-canvas tests/emit_cache_undo.rs). PAGE-1 keeps the
+  // model assertion; AC-E2E-PAGE-4 owns the mid-set render
+  // integration that used to panic.
   test("AC-E2E-PAGE-1 — insertPage grows the page set; undo restores the count (model)", async ({
     page,
   }) => {
-    // afterPageId:null appends — the form the capability matrix proves
-    // replies. Inserting in the MIDDLE (after a specific page) trips
-    // the renderer pipeline-grow panic (AC-E2E-PAGE-4) because the
-    // rebuild has to re-render a shifted trailing page past the stale
-    // vector length.
     const reply = (await mutate(page, {
       op: "insertPage",
       args: { afterPageId: null, masterId: null },
@@ -119,16 +112,62 @@ test.describe("E2E page ops", () => {
     ).toBe(true);
   });
 
-  // ENGINE BUG (found by this suite, 2026-06-05): inserting a page in
-  // the MIDDLE of the set (afterPageId = an existing page) panics the
-  // renderer once a pipeline exists — `index out of bounds: the len
-  // is N but the index is N` at paged-renderer/src/pipeline/mod.rs:1890.
-  // The rebuild re-renders the shifted trailing page past the stale
-  // per-page pipeline vector, which isn't grown on insert; mutate()
-  // then never resolves. Appending (afterPageId:null, PAGE-1) is fine.
-  // fixme (not a live trigger — the panic poisons the worker AND hangs
-  // the call); promote to a render sandwich once core grows the vector.
-  test.fixme("AC-E2E-PAGE-4 — insertPage in the middle keeps the document renderable", async () => {});
+  test("AC-E2E-PAGE-4 — insertPage in the middle keeps the document renderable", async ({
+    page,
+  }) => {
+    // The case that used to panic the worker: rasterise first (so a
+    // pipeline + populated emit caches exist), then insert AFTER an
+    // existing page so the trailing pages shift, then prove the
+    // shifted trailing page still renders its content and undo
+    // restores it byte-identically.
+    const control = fx.pages[0];
+    const trailing = fx.pages[fx.pageCount - 1];
+    const controlBaseline = await snap(page, control.pageId, control.widthPt);
+    const trailingBaseline = await snap(
+      page,
+      trailing.pageId,
+      trailing.widthPt,
+    );
+
+    const reply = (await mutate(page, {
+      op: "insertPage",
+      args: { afterPageId: control.pageId, masterId: null },
+    })) as MutReply;
+
+    expect(reply.payload?.pageStructureChanged, "pageStructureChanged").toBe(
+      true,
+    );
+    expect(reply.payload?.pageSizesPt?.length, "page count grew by one").toBe(
+      fx.pageCount + 1,
+    );
+
+    // The shifted trailing page still renders its own content — a
+    // stale cache splice would corrupt it (or panic the worker).
+    expect(
+      (await snap(page, trailing.pageId, trailing.widthPt)).equals(
+        trailingBaseline,
+      ),
+      "trailing page content survived the index shift",
+    ).toBe(true);
+
+    const undoReply = await undo(page);
+    expect(
+      undoReply.payload?.pageSizesPt?.length,
+      "undo restored the original page count",
+    ).toBe(fx.pageCount);
+    expect(
+      (await snap(page, control.pageId, control.widthPt)).equals(
+        controlBaseline,
+      ),
+      "control page restored byte-identically after undo",
+    ).toBe(true);
+    expect(
+      (await snap(page, trailing.pageId, trailing.widthPt)).equals(
+        trailingBaseline,
+      ),
+      "trailing page restored byte-identically after undo",
+    ).toBe(true);
+  });
 
   test("AC-E2E-PAGE-3 — resizePage changes a page's dimensions; undo restores them", async ({
     page,

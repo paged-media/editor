@@ -6,16 +6,13 @@
 // matrix: harness/capabilities.ts) — tracked there, asserted
 // test.fixme here so they flip loudly the day core wires them.
 //
-// ENGINE BUG (found by this suite, 2026-06-05): undo()/redo() of a
-// text op apply the inverse + rebuild but DON'T clear the
-// body_story_emit_cache / master_text_emit_cache the way the forward
-// apply_mutation does — so after undo the canvas keeps the stale
-// post-edit text layout for the body story (model restores; one text
-// line's pixels do not). The forward op + model restore are asserted
-// hard; the strict undo-render check is owned by AC-E2E-TEXT-5
-// (test.fail), which flips when core clears the caches on undo/redo.
-const UNDO_TEXT_CACHE_BUG =
-  "engine: undo/redo don't clear body_story_emit_cache (stale text render after undo)";
+// ENGINE BUG (found 2026-06-05, FIXED in core 2026-06-06, protocol
+// v27): undo()/redo() didn't clear body_story_emit_cache /
+// master_text_emit_cache the way the forward apply paths do, so undo
+// kept the stale post-edit text layout. Core now clears both caches
+// on undo/redo (guarded engine-side by paged-canvas
+// tests/emit_cache_undo.rs); the strict undo-render checks below
+// assert it end-to-end.
 
 import { expect, test } from "@playwright/test";
 
@@ -76,7 +73,6 @@ test.describe("E2E text ops", () => {
       // Text reflow can nudge glyphs to the frame edge; the key
       // proof is "changed inside", not strict containment.
       containment: false,
-      skipUndoPixelCheck: UNDO_TEXT_CACHE_BUG,
       apply: async () => {
         // No stable typing UI yet (Type tool pending) — the story
         // edit rides the wire, exactly as the glyphs panel / script
@@ -110,7 +106,6 @@ test.describe("E2E text ops", () => {
       pageWidthPt: pageInfo.widthPt,
       region,
       containment: false,
-      skipUndoPixelCheck: UNDO_TEXT_CACHE_BUG,
       apply: async () => {
         await mutate(page, {
           op: "deleteRange",
@@ -129,12 +124,9 @@ test.describe("E2E text ops", () => {
   test("AC-E2E-TEXT-5 — undo of a text edit restores the canvas byte-identically", async ({
     page,
   }) => {
-    // Owns the strict undo-render check the two sandwiches above
-    // waive. test.fail keeps CI green while the cache bug is open and
-    // flips to an UNEXPECTED PASS the day core clears the text emit
-    // caches on undo/redo — then delete this test.fail + the
-    // skipUndoPixelCheck waivers above.
-    test.fail(true, UNDO_TEXT_CACHE_BUG);
+    // Owns the strict undo-render check (the byte-identical pixel
+    // assertion inside the sandwich). Was a test.fail until core
+    // cleared the text emit caches on undo/redo (2026-06-06).
     const story = fx.firstStory!;
     const frame = fx.frames.find((f) => f.ref.kind === "textFrame")!;
     const pageInfo = fx.pages[frame.pageIndex];

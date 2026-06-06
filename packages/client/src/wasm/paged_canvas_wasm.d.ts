@@ -180,13 +180,15 @@ export interface ExportPdfWireOptions {
 
 /**
  * Description of a node about to be inserted. Carries the minimal
- * Stage-1 supported field set — `RemoveNode` → undo → re-insertion
- * round-trips these reliably. Non-essential fields (item_transform,
- * drop_shadow, anchors, …) default on re-insertion; this is a known
- * Stage 1 limitation flagged in the plan and will tighten in later
- * stages.
+ * Stage-1 supported field set plus `item_transform` — `RemoveNode` →
+ * undo → re-insertion round-trips these reliably. (Without the
+ * transform, undoing a deleteFrame snapped the frame back to the page
+ * origin — the editor-suite AC-E2E-PROVE-3 finding.) Remaining
+ * non-essential fields (drop_shadow, opacity, effects, …) still
+ * default on re-insertion; that residue of the Stage 1 limitation
+ * tightens in later stages.
  */
-export type NodeSpec = { kind: "textFrame"; self_id: string; bounds: [number, number, number, number]; fill_color?: string | null; stroke_color?: string | null; stroke_weight?: number | null } | { kind: "rectangle"; self_id: string; bounds: [number, number, number, number]; fill_color?: string | null; stroke_color?: string | null; stroke_weight?: number | null } | { kind: "graphicLine"; self_id: string; bounds: [number, number, number, number]; anchors?: PathAnchorSpec[]; subpath_starts?: number[]; subpath_open?: boolean[]; stroke_color?: string | null; stroke_weight?: number | null } | { kind: "polygon"; self_id: string; bounds: [number, number, number, number]; anchors?: PathAnchorSpec[]; subpath_starts?: number[]; subpath_open?: boolean[]; fill_color?: string | null; stroke_color?: string | null; stroke_weight?: number | null } | { kind: "cloneTranslate"; self_id: string; source: NodeId; dx: number; dy: number; destination_spread_id?: string | null };
+export type NodeSpec = { kind: "textFrame"; self_id: string; bounds: [number, number, number, number]; fill_color?: string | null; stroke_color?: string | null; stroke_weight?: number | null; item_transform?: [number, number, number, number, number, number] | null } | { kind: "rectangle"; self_id: string; bounds: [number, number, number, number]; fill_color?: string | null; stroke_color?: string | null; stroke_weight?: number | null; item_transform?: [number, number, number, number, number, number] | null } | { kind: "graphicLine"; self_id: string; bounds: [number, number, number, number]; anchors?: PathAnchorSpec[]; subpath_starts?: number[]; subpath_open?: boolean[]; stroke_color?: string | null; stroke_weight?: number | null; item_transform?: [number, number, number, number, number, number] | null } | { kind: "polygon"; self_id: string; bounds: [number, number, number, number]; anchors?: PathAnchorSpec[]; subpath_starts?: number[]; subpath_open?: boolean[]; fill_color?: string | null; stroke_color?: string | null; stroke_weight?: number | null; item_transform?: [number, number, number, number, number, number] | null } | { kind: "cloneTranslate"; self_id: string; source: NodeId; dx: number; dy: number; destination_spread_id?: string | null };
 
 /**
  * Discriminated payload of a `WorkerToMain` message.

@@ -140,17 +140,11 @@ test.describe("E2E harness proving", () => {
   test("AC-E2E-PROVE-3 — deleteFrame removes the pixels; undo restores byte-identically", async ({
     page,
   }) => {
-    // ENGINE BUG (found by this suite, 2026-06-05): undoing
-    // RemoveNode re-inserts the frame with an IDENTITY item
-    // transform — the element jumps to the page origin
-    // (paged-mutate invert_remove_node loses item_transform).
-    // The test asserts the CORRECT behaviour; test.fail() keeps CI
-    // green while the bug is open and flips loudly when core fixes
-    // it (then delete this marker).
-    test.fail(
-      true,
-      "engine: invert_remove_node drops the item transform (frame returns at page origin)",
-    );
+    // ENGINE BUG (found 2026-06-05, FIXED in core 2026-06-06,
+    // protocol v27): undoing RemoveNode re-inserted the frame with an
+    // IDENTITY item transform. NodeSpec now carries item_transform
+    // through the RemoveNode capture → undo round-trip (engine-side
+    // guard: paged-mutate remove_node_undo_restores_item_transform).
     const target = fx.frames.find((f) => f.ref.kind === "rectangle")!;
     const { ref, pageIndex } = target;
     const pageInfo = fx.pages[pageIndex];

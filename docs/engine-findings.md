@@ -10,6 +10,16 @@ turns **red the day core fixes it** — so this list stays honest.
 
 Discovered 2026-06-05.
 
+> **STATUS 2026-06-06 — all four resolved; markers flipped.** Core
+> (protocol v27) fixes #1/#3/#4 and adds engine-side regression guards
+> (`paged-canvas/tests/emit_cache_undo.rs`, `paged-mutate`
+> `remove_node_undo_restores_item_transform`). #2 was diagnosed as a
+> FIXTURE issue, not an engine bug — see its section. The anchor specs
+> now assert the correct behaviour directly (no `test.fail` /
+> `test.fixme` left for these): AC-E2E-TEXT-5, AC-E2E-STYLE-1,
+> AC-E2E-PAGE-4 (promoted to a live render sandwich), AC-E2E-PROVE-3.
+> Per-finding details below.
+
 ## 1. Text undo/redo don't clear the body-story emit cache
 
 **Symptom.** After `insertText` / `deleteRange`, undo restores the
@@ -33,6 +43,13 @@ the forward path.
 two forward text sandwiches waive only the undo-pixel check via
 `skipUndoPixelCheck`.
 
+**RESOLVED (core, 2026-06-06).** Exactly the likely fix: `undo()` /
+`redo()` clear both emit caches before the rebuild — for both log arms
+(frame inverses replay structural ops under the same caches). Engine
+guard: `paged-canvas/tests/emit_cache_undo.rs`
+`text_undo_restores_the_display_list`. Marker + waivers removed;
+AC-E2E-TEXT-5 asserts strictly.
+
 ## 2. setStyleProperty on a text style doesn't repaint the canvas
 
 **Symptom.** Editing an in-use paragraph style's `characterFontSize`
@@ -47,6 +64,18 @@ generated fixture's text carrying direct formatting; to confirm,
 re-check once #1 is fixed.)
 
 **Suite anchor.** `style-ops.spec.ts` AC-E2E-STYLE-1 (`test.fail`).
+
+**RESOLVED — fixture, not engine (2026-06-06).** The engine cascade
+repaints correctly (proven by core's
+`set_style_property_repaints_styled_text`, which drives
+`characterFontSize` through a style with NO direct formatting). The
+no-repaint here was the second hypothesis: the generated
+`text-advanced` story carries direct `PointSize="12"` on its
+`CharacterStyleRange`, which outranks the paragraph style in the
+cascade — a style font-size edit legitimately changes nothing visible.
+AC-E2E-STYLE-1 now edits `paragraphJustification` (not overridden by
+the fixture's direct formatting) and passes as a real cascade-repaint
+proof. The style-edit *undo* leg was additionally covered by fix #1.
 
 ## 3. insertPage in the MIDDLE of the set panics the renderer
 
@@ -75,6 +104,18 @@ position.
 **Suite anchor.** `page-ops.spec.ts` — PAGE-1 appends (works); PAGE-4
 (`test.fixme`) owns the middle-insert render case.
 
+**RESOLVED (core, 2026-06-06).** Root cause was sharper than the
+hypothesis: not an ungrown pipeline vector but the **body-story emit
+cache** — its signature ignored the chain's page *indices*, so cached
+per-page deltas survived page-set changes with stale absolute indices;
+the un-cleared undo/redo path (finding #1) then spliced past
+`pages.len()`. Core now (a) clears the caches on undo/redo, (b) keys
+the signature on the chain page indices, and (c) bounds-guards the
+splice as a cache miss. The exact panic (`len is 2 but the index
+is 2`) reproduces in core's
+`insert_page_middle_undo_redo_round_trips_built_pages` before the fix.
+PAGE-4 is promoted to a live render sandwich and passes.
+
 ## 4. deleteFrame undo loses the item transform (pre-existing)
 
 **Symptom.** Undoing `deleteFrame` (RemoveNode) re-inserts the frame
@@ -85,6 +126,12 @@ origin instead of its original position.
 `item_transform` when building the re-insert inverse.
 
 **Suite anchor.** `proving.spec.ts` AC-E2E-PROVE-3 (`test.fail`).
+
+**RESOLVED (core, 2026-06-06, protocol v27).** `NodeSpec` gained an
+optional `item_transform` carried through the RemoveNode capture →
+undo re-insertion (the wire type change behind the v26→v27 bump).
+Engine guard: `paged-mutate` `remove_node_undo_restores_item_transform`
+(byte-identical spread round-trip). Marker removed.
 
 ## 5. EDITOR bug (fixed here): draw tools never drew on first use
 
