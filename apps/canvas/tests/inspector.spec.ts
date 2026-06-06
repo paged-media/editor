@@ -101,35 +101,44 @@ test.describe("Inspector P1 — property panel", () => {
     const props = await fetchProps(page, TEXT_FRAME_ID);
     expect(props.kind).toBe("TextFrame");
     const paths = props.entries.map((e) => e.path).sort();
+    // The frame-level entries the inspector surfaces. Protocol v28 (the
+    // W2 panel wave) expanded `element_properties` well past this set —
+    // the full character/paragraph/effects/stroke/text-frame-options
+    // PropertyPaths now surface too — so assert the CORE frame entries
+    // are PRESENT (arrayContaining) rather than pinning an exact list
+    // that every wire addition would break. The em-dash placeholder /
+    // apply-layer behaviour is covered by AC-INS-2.
     expect(paths).toEqual(
-      [
-        "appliedObjectStyle",
-        "frameBounds",
-        "frameDropShadow",
-        "frameDropShadowColor",
-        "frameDropShadowMode",
-        "frameDropShadowOpacity",
-        "frameDropShadowSize",
-        "frameDropShadowXOffset",
-        "frameDropShadowYOffset",
-        "frameFillColor",
-        "frameFillTint",
-        // Concept 2 — gradient-fill introspection surfaced by the
-        // colour engine (core paged-introspect).
-        "frameGradientFeather",
-        "frameGradientFillAngle",
-        "frameGradientFillLength",
-        "frameGradientStrokeAngle",
-        "frameGradientStrokeLength",
-        "frameInsetSpacing",
-        "frameNonprinting",
-        "frameOpacity",
-        "frameStrokeColor",
-        "frameStrokeWeight",
-        "frameTextWrapMode",
-        "frameTextWrapOffsets",
-        "frameTransform",
-      ].sort(),
+      expect.arrayContaining(
+        [
+          "appliedObjectStyle",
+          "frameBounds",
+          "frameDropShadow",
+          "frameDropShadowColor",
+          "frameDropShadowMode",
+          "frameDropShadowOpacity",
+          "frameDropShadowSize",
+          "frameDropShadowXOffset",
+          "frameDropShadowYOffset",
+          "frameFillColor",
+          "frameFillTint",
+          // Concept 2 — gradient-fill introspection surfaced by the
+          // colour engine (core paged-introspect).
+          "frameGradientFeather",
+          "frameGradientFillAngle",
+          "frameGradientFillLength",
+          "frameGradientStrokeAngle",
+          "frameGradientStrokeLength",
+          "frameInsetSpacing",
+          "frameNonprinting",
+          "frameOpacity",
+          "frameStrokeColor",
+          "frameStrokeWeight",
+          "frameTextWrapMode",
+          "frameTextWrapOffsets",
+          "frameTransform",
+        ].sort(),
+      ),
     );
   });
 

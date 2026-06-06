@@ -188,13 +188,23 @@ test.describe("gestures.md GD-02 — reposition / delete a placed guide", () => 
     // 60% down the page (snapped to whole pt on release).
     await expect.poll(() => previewCount(page)).toBe(0);
     expect(await guideLineCount(page, "horizontal")).toBe(1);
-    const y = Number(
-      await page
-        .locator('[data-guide-overlay="horizontal"]')
-        .first()
-        .getAttribute("y1"),
-    );
-    expect(y).toBeCloseTo(Math.round(p0.heightPt * 0.6), 0);
+    // POLL the placed line's y — the optimistic mirror repositions only
+    // after the moveGuide `mutationApplied` lands (a round-trip to the
+    // worker), which can arrive a frame or two after the preview clears.
+    // Reading `y1` once races that update and samples the pre-move value.
+    const want = Math.round(p0.heightPt * 0.6);
+    await expect
+      .poll(
+        async () =>
+          Number(
+            await page
+              .locator('[data-guide-overlay="horizontal"]')
+              .first()
+              .getAttribute("y1"),
+          ),
+        { timeout: 5_000 },
+      )
+      .toBeCloseTo(want, 0);
   });
 
   test("AC-GD-02-DELETE: dragging a placed guide back onto a ruler deletes it", async ({

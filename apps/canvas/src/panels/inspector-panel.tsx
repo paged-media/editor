@@ -108,7 +108,13 @@ export function InspectorPanel(_: PanelProps) {
     // textually so the header keeps showing *something*.
     typeof target.id === "string"
       ? target.id
-      : `${target.id.story_id}@${target.id.start}..${target.id.end}`;
+      : "start" in target.id
+        ? `${target.id.story_id}@${target.id.start}..${target.id.end}`
+        : // W3.A1 — table-scoped addresses (table / cell) joined the
+          // structured-id union; render their parts textually too.
+          "row" in target.id
+          ? `${target.id.story_id}/${target.id.table_id}[${target.id.row},${target.id.col}]`
+          : `${target.id.story_id}/${target.id.table_id}`;
 
   return (
     <div className="p-3 space-y-3 text-sm" data-inspector="ready">

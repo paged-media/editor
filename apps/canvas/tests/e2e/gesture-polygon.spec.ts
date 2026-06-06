@@ -61,14 +61,21 @@ async function setPolygonOption(
   key: "sides" | "starInset",
   value: number,
 ): Promise<void> {
+  const popover = page.locator('[data-tool-options="paged.tool.polygon"]');
   await page.locator('[data-tool-slot="shape"]').dblclick();
-  const input = page.locator(
-    `[data-tool-options="paged.tool.polygon"] [data-tool-option="${key}"]`,
-  );
+  const input = popover.locator(`[data-tool-option="${key}"]`);
   await expect(input).toBeVisible();
   await input.fill(String(value));
   // Commit the change (React onChange fires on input; blur for safety).
   await input.blur();
+  // DISMISS the popover. The T8 popover renders a full-screen click-away
+  // overlay (ToolRail.tsx, zIndex 50, inset 0) that closes it on click —
+  // and that overlay sits OVER the canvas, so a subsequent drag would
+  // land on the overlay (closing the popover) instead of starting the
+  // gesture. Click the off-canvas top-left corner to dismiss it (Escape
+  // is not wired), then confirm it's gone before drawing.
+  await page.mouse.click(5, 5);
+  await expect(popover).toBeHidden();
 }
 
 /** Drag the Polygon between two page-0-local pt points; resolve the

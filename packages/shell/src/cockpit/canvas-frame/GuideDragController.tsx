@@ -78,7 +78,7 @@ export function GuideDragController() {
   const client = useCanvasClient();
   const { camera } = useCamera();
   const { handle } = useDocument();
-  const { drag, updateDrag, clearDrag, setGuides } = useGuideDrag();
+  const { drag, guides, updateDrag, clearDrag, setGuides } = useGuideDrag();
 
   // Live refs so the once-per-drag window listeners read fresh values
   // without re-subscribing every preview tick.
@@ -88,6 +88,11 @@ export function GuideDragController() {
   handleRef.current = handle;
   const dragRef = useRef<GuideDragState | null>(drag);
   dragRef.current = drag;
+  // The live optimistic mirror, so the async seed below can tell
+  // whether the session has already populated it (a create/move) by
+  // the time the spreads collection resolves.
+  const guidesRef = useRef(guides);
+  guidesRef.current = guides;
 
   // Spread ids for the loaded document, document order. Guides are
   // spread-scoped; a created guide lands on the spread that owns the
@@ -123,6 +128,13 @@ export function GuideDragController() {
       .collection<{ selfId: string }>("spreads")
       .then((spreads) => {
         spreadIdsRef.current = spreads.map((s) => s.selfId);
+        // The spreads collection resolves asynchronously. If the user
+        // created or moved a guide WHILE it was in flight, the optimistic
+        // mirror is now authoritative for this session — replacing it
+        // with the (stale, load-time) `rulerGuides` snapshot would wipe
+        // that edit (the AC-GD-02 move snapped straight back to its
+        // create position). Only seed an untouched mirror.
+        if (guidesRef.current.length > 0) return;
         const seeded: OptimisticGuide[] = (handle.rulerGuides ?? []).map(
           (g) => ({
             id: "",
@@ -136,7 +148,7 @@ export function GuideDragController() {
       })
       .catch(() => {
         spreadIdsRef.current = [];
-        setGuides([]);
+        if (guidesRef.current.length === 0) setGuides([]);
       });
   }, [handle, client, setGuides, spreadForPageId]);
 

@@ -154,6 +154,17 @@ test.describe("W2.10 — content rotate / scale gestures (channel)", () => {
       pageWidthPt: pageInfo.widthPt,
       region,
       containment: false,
+      // FIXTURE GAP — `images.idml`'s placements are dead `file:` links
+      // (checker-128.png + an absolute path into the archived ~/idml/
+      // monorepo), so the frame renders the grey MISSING-IMAGE
+      // placeholder, which is rotation-invariant → 0 px delta. The
+      // gesture still COMMITS (proven by the model leg below: the frame
+      // ItemTransform + page-rect are untouched, the content arm edited
+      // only the inner image transform) and by the AC-W2.10-3 cancel
+      // sibling. noRenderChange asserts the placeholder's zero delta and
+      // flips loudly the day a resolvable-image fixture lands (same
+      // missing-bytes gap as links-panel AC-LINKS-3).
+      noRenderChange: true,
       apply: async () => {
         await runContentGesture(
           page,
@@ -218,6 +229,11 @@ test.describe("W2.10 — content rotate / scale gestures (channel)", () => {
       pageWidthPt: pageInfo.widthPt,
       region,
       containment: false,
+      // FIXTURE GAP (see AC-W2.10-1) — the placeholder render is also
+      // scale-invariant, so the commit lands (model leg + AC-W2.10-4
+      // cancel prove the gesture) but paints 0 px. Flips loudly when a
+      // resolvable-image fixture lands.
+      noRenderChange: true,
       apply: async () => {
         await runContentGesture(
           page,

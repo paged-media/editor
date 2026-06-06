@@ -20,6 +20,12 @@ Discovered 2026-06-05.
 > AC-E2E-PAGE-4 (promoted to a live render sandwich), AC-E2E-PROVE-3.
 > Per-finding details below.
 
+> **STATUS 2026-06-06 — W2 sweep adds #6 + #7 (OPEN).** The W2 gesture /
+> ops suite surfaced a batch-insertFrame duplicate-self_id bug (#6,
+> gridify) and a cluster of property paths that round-trip on the wire
+> but aren't yet consumed by core's render (#7). Both are filed for core
+> and anchored by markers that flip the day core fixes them.
+
 ## 1. Text undo/redo don't clear the body-story emit cache
 
 **Symptom.** After `insertText` / `deleteRange`, undo restores the
@@ -148,6 +154,69 @@ dep (a pan, a selection change) happened to rebuild the callback.
 (`apps/canvas/src/ui/ViewportCanvas.tsx`). `onPointerMove` / `onPointerUp`
 already depend on the whole `props` and were unaffected. `tools-ui`
 AC-E2E-TOOLS-1 (a real mouse drag → a frame) is the regression guard.
+
+## 6. batch insertFrame mints DUPLICATE self_ids (gridify N×M)
+
+Discovered 2026-06-06 (W2 gesture sweep).
+
+**Symptom.** The Rectangle tool's gridify (DR-05) commits an N×M grid as
+ONE `batch` of N `insertFrame` ops (so the grid is a single undo step,
+INV-1). Core rejects the batch:
+
+```
+frame mutation failed: batch failed at index 1:
+  duplicate self_id "ufe7ab9" — IDML node IDs must be unique
+```
+
+The first frame lands; the second collides with the first's id.
+
+**Cause.** `insertFrame` carries no `selfId` on the wire (`Mutation` =
+`{ op: "insertFrame"; args: { pageId; bounds } }`), so the engine mints
+the new node's self_id. Within a single `batch`, that minting derives
+the id from the **pre-batch** document state (unchanged across the
+sub-ops), so every batched `insertFrame` gets the SAME id. A single
+`insertFrame` (the 1×1 / DR-07 path) is unaffected.
+
+**Likely fix.** Advance the id generator against the in-progress
+(post-prior-sub-op) document state when applying a `batch`, so each
+batched create mints a fresh id — or seed insert ids from a
+monotonically-incrementing counter rather than a snapshot hash.
+
+**Editor side is correct.** `packages/tools/src/handlers/rectangle-tool.ts`
+builds the batch the documented way; there is no wire field to
+disambiguate ids from the client.
+
+**Suite anchor.** `gesture-gridify.spec.ts`
+"DR-05/E2E-02 — … 3×2 grid in ONE undo step" (`test.fixme`). The DR-07
+(1×1), Escape (INV-1), and no-active-drag cases stay live and pass.
+
+## 7. text/paragraph/frame property RENDER consumption gaps
+
+Discovered 2026-06-06 (W2 ops sweep). A cluster of `setElementProperty`
+paths round-trip on the wire (protocol v28 — the value applies to the
+model and survives undo, asserted by the panel specs + capability
+matrix) but core's compose/layout does NOT consume them yet, so the
+page repaints with a **zero-pixel** delta:
+
+- `characterSkew` (false-italic shear) — `character-ops` AC-E2E-CHAR-skew
+- `paragraphLeftIndent` / `paragraphRightIndent` — `paragraph-ops`
+- `paragraphRuleAbove` (rule line) — `paragraph-ops` AC-E2E-PARA-ruleAbove
+- `frameOuterGlowEnabled` / `frameInnerGlowEnabled` (glow blur) —
+  `effects-ops` (drop/inner shadow, bevel, satin, feather DO composite)
+- `frameStrokeGapColor` (dashed-stroke gap under-paint) — `stroke-ops`
+
+**Cause (likely).** The value reaches `element_properties` (read-back
+works) but the corresponding compose stage (text shaper for skew/indents,
+rule painter, effect compositor's glow pass, stroke shapes.rs gap pass)
+doesn't read it. Sibling effects in the same families render, so the
+wiring is per-property, not a whole-stage gap.
+
+**Suite anchors.** Each test keeps the MODEL + undo assertions hard and
+relaxes only the pixel gate via the op-sandwich's `noRenderChange`
+(asserts ZERO render) — so it flips loudly ("declared noRenderChange but
+pixels changed") the day core wires the render. Bullets
+(`paragraphBulletCharacter`) was in this list on first pass but core
+DOES composite it (~3.2k px), so its sandwich asserts a live render.
 
 ---
 

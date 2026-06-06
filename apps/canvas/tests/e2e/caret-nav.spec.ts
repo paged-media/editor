@@ -248,14 +248,29 @@ test.describe("W2.11 caret navigation", () => {
     expect(sel.start).toBe(0); // anchor stayed put
     expect(sel.end).toBeGreaterThan(0); // focus moved down
 
-    // Selection geometry spans (at least) two lines — distinct row tops.
+    // The FOCUS caret moved to a lower visual line — the geometric proof
+    // of vertical extension. We assert against the caret of the focus
+    // offset, NOT the selection rects: Shift+ArrowDown can land the
+    // focus exactly at the next line's START (zero glyphs selected on
+    // that line), in which case `selectionGeometry` legitimately returns
+    // only the first line's rect (it emits rects for lines with selected
+    // glyphs). The caret top is the read-surface that distinguishes the
+    // line, so compare the focus caret's top to the anchor's.
+    const anchorCaret = await caretGeo(page, { storyId, start: 0, end: 0 });
+    const focusCaret = await caretGeo(page, {
+      storyId,
+      start: sel.end,
+      end: sel.end,
+    });
+    expect(anchorCaret, "anchor caret geometry").toBeTruthy();
+    expect(focusCaret, "focus caret geometry").toBeTruthy();
+    expect(
+      focusCaret!.topPt - anchorCaret!.topPt,
+      "Shift+ArrowDown moved the focus to a lower line",
+    ).toBeGreaterThan(0.5);
+    // And the selection paints at least one line's worth of glyphs.
     const rects = await selRects(page, sel);
     expect(rects.length, "selection rects").toBeGreaterThan(0);
-    const tops = new Set(rects.map((r) => Math.round(r.topPt)));
-    expect(
-      tops.size,
-      "Shift+ArrowDown range covers more than one line",
-    ).toBeGreaterThanOrEqual(2);
   });
 
   test("CARET-NAV-4 — Home/End move the caret to the line start/end", async ({
@@ -263,8 +278,13 @@ test.describe("W2.11 caret navigation", () => {
   }) => {
     const chars = await storyChars(page, storyId);
     expect(chars).toBeGreaterThan(1);
-    // Place the caret mid-story so Home has somewhere to travel.
-    const mid = Math.floor(chars / 2);
+    // Place the caret at offset 1 — guaranteed INTERIOR to the first
+    // line (every fixture line has many glyphs), so Home (→ line start)
+    // and End (→ line end) land at DISTINCT offsets. `chars/2` can fall
+    // exactly on a wrap boundary where Home and End collapse to the same
+    // offset (font-substitution changes the wrap point run-to-run),
+    // which made the `home < end` assertion flaky.
+    const mid = 1;
     await setCaret(page, storyId, mid);
     await blurFocus(page);
 

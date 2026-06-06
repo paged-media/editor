@@ -22,9 +22,14 @@ test.describe("Phase 5 — Attributes panel", () => {
     page,
   }) => {
     await expect(page.locator('[data-attributes-panel="ready"]')).toBeVisible();
-    await expect(
-      page.locator('[data-attributes-panel="ready"] [data-mixed]'),
-    ).toBeVisible();
+    // Without a selection every bound control shows the mixed/em-dash
+    // placeholder. Protocol v28 (the W2 wave) added the overprint
+    // fill/stroke toggles alongside Nonprinting, so this now matches
+    // several controls — assert ≥1 is visible via `.first()` rather than
+    // a strict single-match `toBeVisible()`.
+    const mixed = page.locator('[data-attributes-panel="ready"] [data-mixed]');
+    await expect(mixed.first()).toBeVisible();
+    expect(await mixed.count()).toBeGreaterThan(0);
   });
 
   test("AC-ATTR-2 — frameNonprinting toggle round-trips", async ({ page }) => {

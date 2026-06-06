@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren,
 } from "react";
@@ -25,15 +26,23 @@ interface ToolSettingsValue {
 const Context = createContext<ToolSettingsValue | null>(null);
 
 export function ToolSettingsProvider({ children }: PropsWithChildren) {
+  // `store` drives re-renders (the popover reflects edits); `storeRef`
+  // mirrors it so the read accessors are STABLE — a gesture handler
+  // captures `paged.toolSettings` once at activation and must see the
+  // value the popover wrote AFTER that capture. Closing `getValue` over
+  // the `store` state instead would hand the handler a stale snapshot
+  // (the polygon `sides` edit never reached the draw → DEFAULT_SIDES).
   const [store, setStore] = useState<Record<string, ToolSettings>>({});
+  const storeRef = useRef(store);
+  storeRef.current = store;
 
   const get = useCallback(
-    (toolId: string): ToolSettings => store[toolId] ?? {},
-    [store],
+    (toolId: string): ToolSettings => storeRef.current[toolId] ?? {},
+    [],
   );
   const getValue = useCallback(
-    (toolId: string, key: string) => store[toolId]?.[key],
-    [store],
+    (toolId: string, key: string) => storeRef.current[toolId]?.[key],
+    [],
   );
   const set = useCallback(
     (toolId: string, key: string, value: ToolSettingValue) => {

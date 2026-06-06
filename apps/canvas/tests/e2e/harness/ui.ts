@@ -15,11 +15,13 @@ interface CanvasGlobal {
     client: {
       mutate: (m: unknown) => Promise<unknown>;
       setElementSelection: (ids: unknown[], mode: string) => Promise<unknown[]>;
+      elementGeometry: (ids: unknown[]) => Promise<unknown[]>;
       executeScript: (
         src: string,
       ) => Promise<{ output: string[]; error: string | null }>;
     };
     setElementSelection?: (ids: unknown[]) => void;
+    setElementGeometry?: (items: unknown[]) => void;
     setContentSelection?: (
       sel: { storyId: string; start: number; end: number } | null,
     ) => void;
@@ -27,7 +29,11 @@ interface CanvasGlobal {
 }
 
 /** Install an element selection through both the worker and the
- *  React selection context (panels read the latter). */
+ *  React selection context (panels read the latter). Also mirrors the
+ *  selection's GEOMETRY into the context the way the canvas-panel click
+ *  path does — overlays keyed on `useSelection().elementGeometry`
+ *  (threading ports, selection chrome) won't render without it, and a
+ *  programmatic select otherwise leaves it empty. */
 export async function selectElements(
   page: Page,
   refs: ElementRef[],
@@ -36,6 +42,14 @@ export async function selectElements(
     const c = (globalThis as unknown as CanvasGlobal).__canvas;
     const applied = await c.client.setElementSelection(ids, "replace");
     c.setElementSelection?.(applied);
+    if (c.setElementGeometry) {
+      try {
+        const geo = await c.client.elementGeometry(applied);
+        c.setElementGeometry(geo);
+      } catch {
+        /* worker reload / disconnect — fine */
+      }
+    }
   }, refs);
 }
 

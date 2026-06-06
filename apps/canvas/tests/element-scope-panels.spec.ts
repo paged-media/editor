@@ -290,21 +290,26 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
     const before = (await readFlip()) as boolean | null;
     expect(before).not.toBeNull();
 
-    await page.evaluate(async (id) => {
-      const c = (
-        globalThis as unknown as {
-          __canvas: { client: { mutate: (x: unknown) => Promise<unknown> } };
-        }
-      ).__canvas;
-      await c.client.mutate({
-        op: "setElementProperty",
-        args: {
-          elementId: id,
-          path: "frameFlipH",
-          value: { type: "bool", value: !before },
-        },
-      });
-    }, target);
+    await page.evaluate(
+      async ({ id, before }) => {
+        const c = (
+          globalThis as unknown as {
+            __canvas: { client: { mutate: (x: unknown) => Promise<unknown> } };
+          }
+        ).__canvas;
+        await c.client.mutate({
+          op: "setElementProperty",
+          args: {
+            elementId: id,
+            path: "frameFlipH",
+            // `before` is captured on the Node side and passed IN — it
+            // is not in the browser-context closure's scope.
+            value: { type: "bool", value: !before },
+          },
+        });
+      },
+      { id: target, before },
+    );
 
     await expect.poll(readFlip).toBe(!before);
 

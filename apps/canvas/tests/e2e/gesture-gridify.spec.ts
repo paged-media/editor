@@ -118,7 +118,16 @@ test.describe("gestures.md DR-05/DR-07 — gridify (Rectangle tool)", () => {
     await loadViaReactPath(page, "geometry");
   });
 
-  test("DR-05/E2E-02 — drag + 2×Right + 1×Up commits a 3×2 grid in ONE undo step", async ({
+  // ENGINE BUG (docs/engine-findings.md #6) — a `batch` of N `insertFrame`
+  // ops fails: core generates the SAME self_id for every frame in the
+  // batch ("batch failed at index 1: duplicate self_id … — IDML node IDs
+  // must be unique"), so the N×M grid is rejected. The EDITOR side is
+  // correct: the gridify handler builds the right batch (rectangle-tool.ts),
+  // and `insertFrame` carries no `selfId` on the wire, so the engine MUST
+  // mint unique ids per batched insert and currently doesn't. The 1×1
+  // (DR-07) path is a single insertFrame and works. fixme until core
+  // uniquifies batched node ids — it flips loudly the day it lands.
+  test.fixme("DR-05/E2E-02 — drag + 2×Right + 1×Up commits a 3×2 grid in ONE undo step", async ({
     page,
   }) => {
     const before = await treeCount(page, "rectangle");

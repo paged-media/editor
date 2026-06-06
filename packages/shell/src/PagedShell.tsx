@@ -249,6 +249,7 @@ function ShellChrome({
     elementSelection,
     setElementSelection,
     elementGeometry,
+    setElementGeometry,
     activeTool,
     setActiveTool,
     activeGroup,
@@ -588,6 +589,12 @@ function ShellChrome({
       // affordance.
       setElementSelection,
       elementGeometry,
+      // Tests that drive selection programmatically (no viewport click)
+      // must also populate the geometry mirror the canvas-panel click
+      // path fetches — overlays keyed on it (threading ports, selection
+      // chrome) read `useSelection().elementGeometry`, not the worker
+      // directly. Exposed so the harness can mirror a real selection.
+      setElementGeometry,
       // SDK Phase 3 — text-side selection mirror, also needed by
       // tests that drive content-scope binding hooks (Character
       // panel etc.).
