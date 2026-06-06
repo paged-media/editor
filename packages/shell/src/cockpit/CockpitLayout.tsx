@@ -19,6 +19,7 @@ import { useWorkflowMode } from "../state/workflow-mode-context";
 import { PanelHost } from "./PanelHost";
 import { RightDock } from "./RightDock";
 import { DocTitleBar } from "./canvas-frame/DocTitleBar";
+import { GuideDragController } from "./canvas-frame/GuideDragController";
 import { HRuler, VRulerStrip } from "./canvas-frame/Rulers";
 import { ThumbnailRail } from "./canvas-frame/ThumbnailRail";
 
@@ -113,7 +114,13 @@ export function CockpitLayout({
           }}
         >
           {!isOverride && <VRulerStrip />}
-          <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
+          {/* W2.8 — `data-paged-viewport` tags the viewport wrapper so
+              the GuideDragController can invert client → document
+              coordinates against the same rect the canvas uses. */}
+          <div
+            data-paged-viewport
+            style={{ flex: 1, minWidth: 0, position: "relative" }}
+          >
             {isOverride ? (
               <PanelHost id={canvasOverride} />
             ) : (
@@ -121,6 +128,10 @@ export function CockpitLayout({
             )}
           </div>
         </div>
+        {/* W2.8 — headless guide-drag controller (ruler → drag →
+            insert/move/delete guide). Only on the real canvas surface,
+            not the export-style overrides (which have no rulers). */}
+        {!isOverride && <GuideDragController />}
         {!isOverride && <ThumbnailRail />}
       </div>
 

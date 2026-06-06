@@ -2,8 +2,17 @@
 // left strip). REAL: marks are document-space coordinates mapped
 // through the live camera (scale + translate), so they track zoom
 // and pan like a DTP ruler must.
+//
+// W2.8 — each ruler strip is also a GUIDE hit zone: a pointer-down
+// anywhere on the strip drags a new guide out onto the canvas (GD-01).
+// HRuler → horizontal guides, VRulerStrip → vertical, matching
+// InDesign. Works with ANY active tool (no tool switch) — the strip
+// captures the pointer-down before it reaches the viewport / tool
+// spine. The controller (GuideDragController) tracks the rest of the
+// drag and commits on release; here we only START it.
 
 import { useCamera } from "../../state/camera-context";
+import { useOptionalGuideDrag } from "../../state/guide-drag-context";
 
 /** Pick a "nice" doc-space step so marks sit 60–140 px apart. */
 function rulerStep(scale: number): number {
@@ -16,6 +25,7 @@ function rulerStep(scale: number): number {
 
 export function HRuler() {
   const { camera, viewportSize } = useCamera();
+  const guideDrag = useOptionalGuideDrag();
   const width = viewportSize[0] || 0;
   const step = rulerStep(camera.scale);
   const marks: Array<{ px: number; label: number }> = [];
@@ -29,6 +39,16 @@ export function HRuler() {
   return (
     <div
       data-h-ruler
+      onPointerDown={
+        guideDrag
+          ? (e) => {
+              // GD-01 — drag a HORIZONTAL guide out of the top ruler.
+              if (e.button !== 0) return;
+              e.preventDefault();
+              guideDrag.beginCreate("horizontal");
+            }
+          : undefined
+      }
       style={{
         height: 22,
         position: "relative",
@@ -37,6 +57,7 @@ export function HRuler() {
         overflow: "hidden",
         flexShrink: 0,
         marginLeft: 22,
+        cursor: guideDrag ? "ns-resize" : undefined,
       }}
     >
       {marks.map((m) => (
@@ -73,6 +94,7 @@ export function HRuler() {
  *  plain — a quiet ruler track). */
 export function VRulerStrip() {
   const { camera, viewportSize } = useCamera();
+  const guideDrag = useOptionalGuideDrag();
   const height = viewportSize[1] || 0;
   const step = rulerStep(camera.scale);
   const marks: Array<{ px: number; label: number }> = [];
@@ -86,6 +108,16 @@ export function VRulerStrip() {
   return (
     <div
       data-v-ruler
+      onPointerDown={
+        guideDrag
+          ? (e) => {
+              // GD-01 — drag a VERTICAL guide out of the left ruler.
+              if (e.button !== 0) return;
+              e.preventDefault();
+              guideDrag.beginCreate("vertical");
+            }
+          : undefined
+      }
       style={{
         width: 22,
         position: "relative",
@@ -93,6 +125,7 @@ export function VRulerStrip() {
         borderRight: "1px solid var(--chrome-border)",
         overflow: "hidden",
         flexShrink: 0,
+        cursor: guideDrag ? "ew-resize" : undefined,
       }}
     >
       {marks.map((m) => (

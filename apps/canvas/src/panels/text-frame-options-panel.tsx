@@ -1,7 +1,9 @@
 // SDK Phase 5 (v1 sweep) — Text Frame Options panel.
 //
-// Composition shim. Element-scope binding to frameInsetSpacing
-// via the existing BoundsInput primitive.
+// Composition shim. Element-scope bindings to the text-frame
+// preference paths (columns / balance / inset / vertical justify /
+// auto-size / first baseline). W2.3 flipped the COLUMNS + justify +
+// auto-size + baseline rows live on protocol v28 (engine gap 13).
 
 import {
   CatalogRegistryProvider,

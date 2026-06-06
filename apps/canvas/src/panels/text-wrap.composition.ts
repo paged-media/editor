@@ -5,10 +5,16 @@
 //   OFFSET kicker → 4-up T/L/B/R                 LIVE
 //   Wrap to (label-left select)                  seam
 //   Contour (label-left soft select)             seam
-//   Invert (check row)                           seam
+//   Invert (check row)                           LIVE  (W2.3)
 //
-// Both LIVE rows share one `Option<TextWrap>`; the apply layer
-// preserves the unset half. Seams await gap 14 (wrap refinement).
+// All three LIVE rows share one `Option<TextWrap>`; the apply layer
+// preserves the unset members (mode/offsets/invert). W2.3 (2026-06-06)
+// — protocol v28 lands `textWrapInvert` (Bool) on every wrap-capable
+// kind (TextFrame / Rectangle / Oval / Polygon / GraphicLine). Wrap-to
+// (side) + contour source still seam — no PropertyPath on the v28 wire.
+//
+// NOTE the wire name is `textWrapInvert` (NOT `frameTextWrapInvert`)
+// — it matches the PropertyPath union verbatim.
 
 import type { CompositionNode } from "@paged-media/catalog";
 import {
@@ -75,10 +81,17 @@ export const textWrapComposition: CompositionNode = {
       bindings: {},
     },
     {
-      // Engine gap — no invert flag yet.
+      // LIVE invert flag (W2.3). Shares the `Option<TextWrap>` field
+      // with mode/offsets; the apply arm preserves the other members.
       catalogId: PAGED_INPUT_TOGGLE_SWITCH,
-      props: { label: "Invert", seam: true },
-      bindings: {},
+      props: { label: "Invert" },
+      bindings: {
+        value: {
+          kind: "selectionProperty",
+          scope: "element",
+          path: "textWrapInvert",
+        },
+      },
     },
   ],
 };

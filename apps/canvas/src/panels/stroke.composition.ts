@@ -3,14 +3,36 @@
 //
 //   Weight  metric "1 pt"                       LIVE
 //   Color   swatch                              LIVE
-//   Type    select "Solid"                      seam
+//   Type    select "Solid"                      LIVE  (W2.2)
 //   Cap     segments                            LIVE
-//   Join    icon segments (deep1 stand-ins)     seam
-//   Align   segments Center/Inside/Outside      seam
+//   Join    icon segments                       LIVE  (W2.2, Rect-only)
+//   Miter   metric "4"                          LIVE  (W2.2, Rect-only)
+//   Align   segments Center/Inside/Outside      LIVE  (W2.2, Rect-only)
+//   Gap     swatch + tint metric                LIVE  (W2.2)
 //   Dashes & arrows (collapsed): dash/gap 2-up + start/end selects
 //                                                seam
 //
-// Seams await engine gap 17 (stroke detail).
+// W2.2 (2026-06-06) — protocol v28 lands the stroke-detail paths
+// (engine gap 17 closed bar dash-array + arrowheads). Every detail
+// field flips seam→live on its `frameStroke*` PropertyPath.
+//
+// Enum-string wires (`Value::Text`): the canvas read-side returns
+// the RAW IDML reference / enum string, so the select/segment option
+// `value`s MUST be those exact strings to reflect + round-trip:
+//   • Type      → `StrokeStyle/$ID/{Solid,Dashed,Dotted}` (the
+//                 built-in StrokeType refs the renderer maps to a
+//                 dash pattern; Striped/Wavy only exist for custom
+//                 `<StrokeStyle>` definitions, not the built-in $ID
+//                 names, so they're out of the static list).
+//   • Join      → `{Miter,Round,Bevel}EndJoin`
+//   • Alignment → `{Center,Inside,Outside}Alignment`
+// Join / Miter / Alignment are Rectangle-only parse fields (the apply
+// arm + read-side only expose them on Rectangle) — they em-dash on
+// TextFrame / Oval / Polygon / GraphicLine, the same kind-specific
+// honesty as the existing end-cap row.
+//
+// Still seamed: the "Dashes & arrows" disclosure — no
+// `frameStrokeDashArray` or arrowhead PropertyPath on the v28 wire.
 
 import type { CompositionNode } from "@paged-media/catalog";
 import {
@@ -22,6 +44,15 @@ import {
   PAGED_LAYOUT_CLUSTER,
   PAGED_LAYOUT_SECTION,
 } from "@paged-media/shell";
+
+// Built-in IDML StrokeType references. The canvas read-side returns
+// the full `StrokeStyle/$ID/...` ref; an out-of-list custom stroke
+// still renders via SelectLeaf's pass-through option.
+const STROKE_TYPES = [
+  { value: "StrokeStyle/$ID/Solid", label: "Solid" },
+  { value: "StrokeStyle/$ID/Dashed", label: "Dashed" },
+  { value: "StrokeStyle/$ID/Dotted", label: "Dotted" },
+];
 
 export const strokeComposition: CompositionNode = {
   catalogId: PAGED_LAYOUT_SECTION,
@@ -51,10 +82,16 @@ export const strokeComposition: CompositionNode = {
       },
     },
     {
-      // Engine gap — no stroke-type (dash/dot/stripe) path yet.
+      // LIVE stroke-type (built-in StrokeStyle refs → dash pattern).
       catalogId: PAGED_INPUT_SELECT,
-      props: { label: "Type", seam: true, placeholder: "Solid" },
-      bindings: {},
+      props: { label: "Type", placeholder: "Solid", options: STROKE_TYPES },
+      bindings: {
+        value: {
+          kind: "selectionProperty",
+          scope: "element",
+          path: "frameStrokeType",
+        },
+      },
     },
     {
       // LIVE end-cap (TextFrame raises UnsupportedProperty →
@@ -77,36 +114,84 @@ export const strokeComposition: CompositionNode = {
       },
     },
     {
-      // Engine gap — no stroke-join path yet. Glyph stand-ins per
-      // the deep1 card.
+      // LIVE end-join (Rectangle-only parse field → em-dash on
+      // other kinds). Glyph stand-ins per the deep1 card.
       catalogId: PAGED_INPUT_TOGGLE_GROUP,
       props: {
         label: "Join",
-        seam: true,
         options: [
-          { value: "MiterJoin", label: "tool-polygon" },
-          { value: "RoundJoin", label: "tool-ellipse" },
-          { value: "BevelJoin", label: "tool-rectangle" },
+          { value: "MiterEndJoin", label: "tool-polygon" },
+          { value: "RoundEndJoin", label: "tool-ellipse" },
+          { value: "BevelEndJoin", label: "tool-rectangle" },
         ],
       },
-      bindings: {},
+      bindings: {
+        value: {
+          kind: "selectionProperty",
+          scope: "element",
+          path: "frameStrokeJoin",
+        },
+      },
     },
     {
-      // Engine gap — no stroke-alignment path yet.
+      // LIVE miter limit (Rectangle-only).
+      catalogId: PAGED_INPUT_NUMERIC_SCRUB,
+      props: { label: "Miter" },
+      bindings: {
+        value: {
+          kind: "selectionProperty",
+          scope: "element",
+          path: "frameStrokeMiterLimit",
+        },
+      },
+    },
+    {
+      // LIVE stroke-to-path alignment (Rectangle-only).
       catalogId: PAGED_INPUT_TOGGLE_GROUP,
       props: {
         label: "Align",
-        seam: true,
         options: [
-          { value: "Center", label: "Center" },
-          { value: "Inside", label: "Inside" },
-          { value: "Outside", label: "Outside" },
+          { value: "CenterAlignment", label: "Center" },
+          { value: "InsideAlignment", label: "Inside" },
+          { value: "OutsideAlignment", label: "Outside" },
         ],
       },
-      bindings: {},
+      bindings: {
+        value: {
+          kind: "selectionProperty",
+          scope: "element",
+          path: "frameStrokeAlignment",
+        },
+      },
     },
     {
-      // Engine gap — dash pattern + arrowheads unwired.
+      // LIVE gap colour + tint (the colour painted between dashes /
+      // stripes). Mirrors the frameStrokeColor swatch binding.
+      catalogId: PAGED_INPUT_COLOR_SWATCH,
+      props: { label: "Gap color" },
+      bindings: {
+        value: {
+          kind: "selectionProperty",
+          scope: "element",
+          path: "frameStrokeGapColor",
+        },
+      },
+    },
+    {
+      catalogId: PAGED_INPUT_NUMERIC_SCRUB,
+      props: { label: "Gap tint", suffix: "%" },
+      bindings: {
+        value: {
+          kind: "selectionProperty",
+          scope: "element",
+          path: "frameStrokeGapTint",
+        },
+      },
+    },
+    {
+      // Engine gap 17 (residual) — no `frameStrokeDashArray` or
+      // arrowhead PropertyPath on the v28 wire; the dash-pattern
+      // editor + start/end arrowhead selects stay seamed.
       catalogId: PAGED_LAYOUT_SECTION,
       props: {
         title: "Dashes & arrows",

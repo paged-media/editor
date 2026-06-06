@@ -1,9 +1,9 @@
 // SDK Phase 5 (v1 sweep) — Text Wrap panel.
 //
 // Composition shim. Element-scope bindings to frameTextWrapMode +
-// frameTextWrapOffsets. Both share the same Option<TextWrap>
-// backing field; the apply arms preserve the other half when one
-// is committed in isolation.
+// frameTextWrapOffsets + textWrapInvert (W2.3). All three share the
+// same Option<TextWrap> backing field; the apply arms preserve the
+// other members when one is committed in isolation.
 
 import {
   CatalogRegistryProvider,

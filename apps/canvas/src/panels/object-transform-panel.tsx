@@ -8,9 +8,18 @@
 //   [X …  | Y … ]   2-up prefixes      LIVE (translate)
 //   [W …  | H … ] 🔒 2-up + lock        LIVE (resize) · lock = seam
 //   Rotate & scale (open disclosure)
-//     SmartDial micro Rotation          seam (decompose gap 6/16)
-//     [100 % | 100 %] scale 2-up        seam
-//     [Flip H][Flip V] soft buttons     seam
+//     SmartDial micro Rotation          LIVE  (W2.3 decompose)
+//     [100 % | 100 %] scale 2-up        LIVE  (W2.3 decompose)
+//     [Flip H][Flip V] soft buttons     Flip H LIVE · Flip V seam
+//
+// W2.3 (2026-06-06) — protocol v28 lands the transform-decompose
+// primitive (engine gap 6/16). Read = decomposed components of the
+// node's `item_transform`; write recomposes. `frameRotationAngle`
+// (deg) / `frameScaleX` / `frameScaleY` (multiplier; 1.0 = 100%) read
+// as `Value::Length`; `frameFlipH` as `Value::Bool`. NOTE Flip V:
+// `frameFlipV` is WRITE-only on the v28 wire — the read-side reflects
+// `frameFlipH` only — so the Flip V button stays a seam (it would
+// em-dash on read). All five apply to every path kind + Group.
 
 import { Icon, ReferencePointGrid, useBindings } from "@paged-media/shell";
 import { LengthInput, NumberInput, SmartDialMicro } from "@paged-media/ui";
@@ -28,6 +37,26 @@ const BINDINGS = {
     scope: "element" as const,
     path: "frameOpacity" as const,
   },
+  rotation: {
+    kind: "selectionProperty" as const,
+    scope: "element" as const,
+    path: "frameRotationAngle" as const,
+  },
+  scaleX: {
+    kind: "selectionProperty" as const,
+    scope: "element" as const,
+    path: "frameScaleX" as const,
+  },
+  scaleY: {
+    kind: "selectionProperty" as const,
+    scope: "element" as const,
+    path: "frameScaleY" as const,
+  },
+  flipH: {
+    kind: "selectionProperty" as const,
+    scope: "element" as const,
+    path: "frameFlipH" as const,
+  },
 };
 
 function unwrapBounds(
@@ -42,12 +71,28 @@ function unwrapLength(v: Value | null): number | null {
   return v.value ?? 0;
 }
 
+function unwrapBool(v: Value | null): boolean | null {
+  if (!v || v.type !== "bool") return null;
+  return v.value === true;
+}
+
 export function ObjectTransformPanel() {
   const resolved = useBindings(BINDINGS);
   const bounds = unwrapBounds(resolved.bounds.value);
   const opacity = unwrapLength(resolved.opacity.value);
   const canWrite = resolved.bounds.onCommit != null;
   const [rsOpen, setRsOpen] = useState(true);
+
+  // W2.3 transform-decompose reads (deg / multiplier / bool).
+  const rotation = unwrapLength(resolved.rotation.value);
+  // Scale is a 0..1+ multiplier engine-side; the kit shows percent.
+  const scaleX = unwrapLength(resolved.scaleX.value);
+  const scaleY = unwrapLength(resolved.scaleY.value);
+  const flipH = unwrapBool(resolved.flipH.value);
+  const canRotate = resolved.rotation.onCommit != null;
+  const canScaleX = resolved.scaleX.onCommit != null;
+  const canScaleY = resolved.scaleY.onCommit != null;
+  const canFlipH = resolved.flipH.onCommit != null;
 
   // Derived projection: IDML bounds are [top, left, bottom, right].
   const x = bounds ? bounds[1] : null;
@@ -166,12 +211,13 @@ export function ObjectTransformPanel() {
             aria-label="opacity"
           />
         </div>
-        {/* Rotate & scale — awaiting the rotation/scale decompose
-            primitive on frameTransform (engine roadmap gap 6/16). */}
+        {/* Rotate & scale — W2.3 transform-decompose. Read =
+            decomposed components of item_transform; write recomposes.
+            Flip V stays a seam: frameFlipV is write-only on the v28
+            wire (the read-side reflects frameFlipH only). */}
         <div
           className="-mx-3 border-t border-input px-3"
           data-section="Rotate & scale"
-          data-seam
         >
           <button
             type="button"
@@ -196,41 +242,74 @@ export function ObjectTransformPanel() {
             <div className="flex flex-col gap-[9px] pb-3">
               <SmartDialMicro
                 label="Rotation"
-                value={null}
+                value={rotation}
                 min={-180}
                 max={180}
                 unit="°"
                 signed
-                disabled
+                disabled={!canRotate}
+                onChange={() => {
+                  /* live updates ignored; commit on drag-end / wheel */
+                }}
+                onCommit={(next) => {
+                  resolved.rotation.onCommit?.({
+                    type: "length",
+                    value: next,
+                  } as Value);
+                }}
               />
               <div className="grid grid-cols-2 gap-2">
                 <NumberInput
-                  value={null}
+                  value={scaleX == null ? null : scaleX * 100}
                   icon="ui-size"
-                  displayText="100 %"
-                  disabled
+                  suffix="%"
+                  min={0}
+                  precision={0}
+                  disabled={!canScaleX}
                   onChange={() => {}}
+                  onCommit={(next) => {
+                    resolved.scaleX.onCommit?.({
+                      type: "length",
+                      value: next / 100,
+                    } as Value);
+                  }}
                   aria-label="scale x"
                 />
                 <NumberInput
-                  value={null}
+                  value={scaleY == null ? null : scaleY * 100}
                   icon="ui-size"
-                  displayText="100 %"
-                  disabled
+                  suffix="%"
+                  min={0}
+                  precision={0}
+                  disabled={!canScaleY}
                   onChange={() => {}}
+                  onCommit={(next) => {
+                    resolved.scaleY.onCommit?.({
+                      type: "length",
+                      value: next / 100,
+                    } as Value);
+                  }}
                   aria-label="scale y"
                 />
               </div>
               <div className="flex gap-[6px]">
                 <button
                   type="button"
-                  disabled
+                  disabled={!canFlipH}
                   data-flip-h
-                  title="Flip horizontal — awaiting engine support"
-                  className="h-[28px] flex-1 rounded-[6px] border-0 text-xs font-semibold opacity-55"
+                  data-on={flipH === true ? "true" : "false"}
+                  title="Flip horizontal"
+                  className="h-[28px] flex-1 rounded-[6px] border-0 text-xs font-semibold"
                   style={{
-                    background: "var(--pg-muted)",
-                    color: "var(--pg-fg)",
+                    background: flipH ? "var(--pg-primary)" : "var(--pg-muted)",
+                    color: flipH ? "var(--pg-primary-fg)" : "var(--pg-fg)",
+                    opacity: canFlipH ? 1 : 0.55,
+                  }}
+                  onClick={() => {
+                    resolved.flipH.onCommit?.({
+                      type: "bool",
+                      value: !(flipH === true),
+                    } as Value);
                   }}
                 >
                   Flip H
@@ -239,7 +318,8 @@ export function ObjectTransformPanel() {
                   type="button"
                   disabled
                   data-flip-v
-                  title="Flip vertical — awaiting engine support"
+                  data-seam
+                  title="Flip vertical — write-only on the v28 wire (no read-side reflection)"
                   className="h-[28px] flex-1 rounded-[6px] border-0 text-xs font-semibold opacity-55"
                   style={{
                     background: "var(--pg-muted)",

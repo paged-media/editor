@@ -1,4 +1,5 @@
-// Concept 1 (Phase 2) — the Rectangle tool's gesture handler.
+// Concept 1 (Phase 2) — the Rectangle tool's gesture handler, with
+// gridify (W2.7).
 //
 // Proves the Tool→Operation map end-to-end: a drag on the canvas
 // shows a live rubber-band (published through
@@ -9,9 +10,22 @@
 // against the START page so the frame is correct even if the pointer
 // is released over another page or the pasteboard.
 //
+// Gridify (gestures.md DR-05/DR-06/DR-07): while the drag is ACTIVE,
+// the arrow keys split the pending frame into an N×M grid —
+// Right/Left = ±columns, Up/Down = ±rows, each clamped to ≥ 1. The
+// preview shows the cells inset by the standard gutter
+// (GRIDIFY_GUTTER_PT); pointer-up commits ALL cells as ONE `batch`
+// Mutation, so the whole grid is a single undo step (DR-05 / INV-1).
+// Keys back to 1×1 commit a single plain frame, no residual grid
+// metadata (DR-07). Shift constrains each cell toward a square via the
+// shared `drawBoundsFor` (the bounds is squared; the cells inherit it —
+// DR-06). Arrow keys with no active drag do nothing here, so cursor
+// nav is unaffected.
+//
 // Lifecycle: `onDeactivate("suspend")` (a spring-load — hold Space for
 // a momentary Hand) KEEPS the in-flight gesture so it resumes on
-// release; `"switch"` cancels it. Escape cancels mid-drag.
+// release; `"switch"` cancels it. Escape cancels mid-drag (zero
+// mutation).
 
 import type {
   CanvasPointerEvent,
@@ -19,7 +33,16 @@ import type {
   PagedEditor,
 } from "@paged-media/shell";
 
-import { mutateAndSelect, CLICK_DRAG_THRESHOLD_PX } from "./shared";
+import type { Mutation } from "@paged-media/client";
+
+import {
+  drawBoundsFor,
+  gridCellsFor,
+  mutateAndSelect,
+  GRIDIFY_GUTTER_PT,
+  CLICK_DRAG_THRESHOLD_PX,
+  type Bounds,
+} from "./shared";
 
 const MIN_SIZE_PT = 1;
 
@@ -29,6 +52,15 @@ export function createRectangleHandler(): GestureHandler {
   // Page origin in document pt = docPoint − pagePoint at pointer-down.
   let startPageOrigin: [number, number] | null = null;
   let startLocal: [number, number] | null = null;
+  // The last sample's local end + modifiers, so an arrow key (which
+  // carries no pointer position) can repaint the grid at the current
+  // drag size (INV-5 — the grid is a pure function of the live bounds).
+  let lastEnd: [number, number] | null = null;
+  let lastMods = { shift: false, alt: false };
+  let dragging = false;
+  // Gridify grid dimensions, reset to 1×1 on each pointer-down.
+  let cols = 1;
+  let rows = 1;
 
   const clearPreview = () => {
     paged?.overlaySignals.setToolPreview(null);
@@ -38,6 +70,11 @@ export function createRectangleHandler(): GestureHandler {
     startPageId = null;
     startPageOrigin = null;
     startLocal = null;
+    lastEnd = null;
+    lastMods = { shift: false, alt: false };
+    dragging = false;
+    cols = 1;
+    rows = 1;
   };
 
   const cancel = () => {
@@ -51,14 +88,25 @@ export function createRectangleHandler(): GestureHandler {
     e.docPoint[1] - startPageOrigin![1],
   ];
 
-  const boundsFor = (
-    end: [number, number],
-  ): [number, number, number, number] => [
-    Math.min(startLocal![1], end[1]),
-    Math.min(startLocal![0], end[0]),
-    Math.max(startLocal![1], end[1]),
-    Math.max(startLocal![0], end[0]),
-  ];
+  /** Bounds for the current sample, modifier-resolved (Shift → square,
+   *  Alt → from centre) — the same rule the Ellipse/Polygon tools use. */
+  const boundsFor = (end: [number, number]): Bounds =>
+    drawBoundsFor(startLocal!, end, lastMods);
+
+  /** Repaint from the last known end + grid dims: a single rect at 1×1,
+   *  or the N×M cell grid otherwise. */
+  const repaint = () => {
+    if (!paged || !startPageId || !lastEnd) return;
+    const bounds = boundsFor(lastEnd);
+    if (cols === 1 && rows === 1) {
+      paged.overlaySignals.setToolPreview({ pageId: startPageId, rect: bounds });
+      return;
+    }
+    paged.overlaySignals.setToolPreview({
+      pageId: startPageId,
+      cells: gridCellsFor(bounds, cols, rows, GRIDIFY_GUTTER_PT),
+    });
+  };
 
   return {
     onActivate(p) {
@@ -81,14 +129,19 @@ export function createRectangleHandler(): GestureHandler {
         e.docPoint[1] - e.pagePoint[1],
       ];
       startLocal = e.pagePoint;
+      lastEnd = e.pagePoint;
+      lastMods = { shift: e.modifiers.shift, alt: e.modifiers.alt };
+      dragging = false;
+      cols = 1;
+      rows = 1;
     },
     onPointerMove(e: CanvasPointerEvent) {
       if (!paged || !startPageId || !startPageOrigin || !startLocal) return;
+      lastEnd = endLocalFor(e);
+      lastMods = { shift: e.modifiers.shift, alt: e.modifiers.alt };
       if (e.maxDelta <= CLICK_DRAG_THRESHOLD_PX) return;
-      paged.overlaySignals.setToolPreview({
-        pageId: startPageId,
-        rect: boundsFor(endLocalFor(e)),
-      });
+      dragging = true;
+      repaint();
     },
     onPointerUp(e: CanvasPointerEvent) {
       if (!paged || !startPageId || !startPageOrigin || !startLocal) {
@@ -97,21 +150,67 @@ export function createRectangleHandler(): GestureHandler {
       }
       const bounds = boundsFor(endLocalFor(e));
       const pageId = startPageId;
+      const gridCols = cols;
+      const gridRows = rows;
       cancel();
       const [top, left, bottom, right] = bounds;
       // A click (no real drag) creates nothing — InDesign opens an
       // options dialog there; that's a follow-up.
       if (bottom - top < MIN_SIZE_PT || right - left < MIN_SIZE_PT) return;
-      // Engine op landed with protocol v24 — the reply's `createdId`
-      // selects the fresh frame (shared post-insert flow).
+      const cells = gridCellsFor(bounds, gridCols, gridRows, GRIDIFY_GUTTER_PT);
+      // 1×1 → a single insertFrame (DR-07 — no residual grid). Engine op
+      // landed with protocol v24; the reply's `createdId` selects the
+      // fresh frame (shared post-insert flow).
+      if (cells.length === 1) {
+        mutateAndSelect(
+          paged,
+          { op: "insertFrame", args: { pageId, bounds: cells[0] } },
+          "insertFrame",
+        );
+        return;
+      }
+      // N×M → ALL cells in ONE `batch` so the grid is a single undo step
+      // (DR-05 / INV-1). batch is capability-verified supported on the
+      // wire (Mutation union).
+      const ops: Mutation[] = cells
+        .filter(([t, l, b, r]) => b - t >= MIN_SIZE_PT && r - l >= MIN_SIZE_PT)
+        .map((cell) => ({ op: "insertFrame", args: { pageId, bounds: cell } }));
+      if (ops.length === 0) return;
       mutateAndSelect(
         paged,
-        { op: "insertFrame", args: { pageId, bounds } },
-        "insertFrame",
+        { op: "batch", args: { ops } },
+        "insertFrame (gridify)",
       );
     },
     onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") cancel();
+      if (e.key === "Escape") {
+        cancel();
+        return;
+      }
+      // Arrow keys gridify ONLY while a drag is active — otherwise they
+      // fall through to cursor nav untouched (DR-05 acceptance: arrows
+      // with no active drag do nothing here).
+      if (!dragging || !startPageId || !lastEnd) return;
+      switch (e.key) {
+        case "ArrowRight":
+          cols += 1;
+          break;
+        case "ArrowLeft":
+          cols = Math.max(1, cols - 1);
+          break;
+        case "ArrowUp":
+          rows += 1;
+          break;
+        case "ArrowDown":
+          rows = Math.max(1, rows - 1);
+          break;
+        default:
+          return;
+      }
+      // Consume the key so the active gesture owns it (the page doesn't
+      // scroll / the selection doesn't nudge while we gridify).
+      e.preventDefault();
+      repaint();
     },
   };
 }

@@ -26,21 +26,26 @@ test.describe("Phase 5 — Effects panel", () => {
     page,
   }) => {
     await expect(page.locator('[data-effects-panel="ready"]')).toBeVisible();
-    // Gallery shape: two LIVE fields em-dash without a selection
-    // (opacity + the Drop Shadow pill); the per-field editors only
-    // render inside the expanded Drop Shadow row, and the five
-    // seam effects are disabled pills, not mixed sentinels.
+    // W2.2 — every top field + effect pill is LIVE now, so all show
+    // the em-dash mixed sentinel without a selection: Opacity metric
+    // + Blend select + 8 effect pills (Drop/Inner shadow, Outer/Inner
+    // glow, Bevel, Satin, Feather, Directional feather). The per-field
+    // editors only render inside an expanded (enabled) row, which
+    // never happens at no-selection.
     await expect(
       page.locator('[data-effects-panel="ready"] [data-mixed]').first(),
     ).toBeVisible();
     await expect(
       page.locator('[data-effects-panel="ready"] [data-mixed]'),
-    ).toHaveCount(2);
-    // The honest-seam effect rows are present and inert (the seam
-    // hook sits ON the row).
+    ).toHaveCount(10);
+    // No more honest-seam pills — every effect family flipped live.
     await expect(
       page.locator('[data-effects-panel="ready"] [data-effect-row][data-seam]'),
-    ).toHaveCount(5);
+    ).toHaveCount(0);
+    // All eight effect families render as disclosure rows.
+    await expect(
+      page.locator('[data-effects-panel="ready"] [data-effect-row]'),
+    ).toHaveCount(8);
   });
 
   test("AC-EFFECTS-2 — drop-shadow toggle round-trips via the apply layer", async ({

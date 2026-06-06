@@ -14,6 +14,28 @@ function ToolPreviewRender(props: OverlayProps) {
   const p = signals.toolPreview;
   const pr = props.pageRects.get(p.pageId);
   if (!pr) return null;
+  // Editor-ops — gridify variant (W2.7): the N×M cell outlines a
+  // rectangle/frame drag splits into under arrow keys. Each cell is a
+  // rect in the same stroke family as the single rubber-band.
+  if ("cells" in p) {
+    return (
+      <g fill="none" stroke="var(--overlay-snap)" strokeWidth={1.25}>
+        {p.cells.map(([top, left, bottom, right], i) => (
+          <rect
+            // Static list (one published grid frame); index key is stable.
+            // eslint-disable-next-line react/no-array-index-key
+            key={i}
+            x={pr.x + left}
+            y={pr.y + top}
+            width={Math.max(0, right - left)}
+            height={Math.max(0, bottom - top)}
+            vectorEffect="non-scaling-stroke"
+            pointerEvents="none"
+          />
+        ))}
+      </g>
+    );
+  }
   // Editor-ops — polyline variant (Line drag, Pencil stroke,
   // Gradient axis). Same stroke as the rect rubber-band so every
   // tool preview reads as one visual family.

@@ -91,9 +91,20 @@ export {
   useOptionalOverlaySignals,
   type MarqueeRectPageLocal,
   type SelectionState,
+  type ToolPreviewGrid,
   type ToolPreviewPolyline,
   type ToolPreviewShape,
 } from "./state/overlay-signals-context";
+
+// W2.8 — guide creation/drag state (rulers + overlay + controller).
+export {
+  GuideDragProvider,
+  useGuideDrag,
+  useOptionalGuideDrag,
+  type GuideOrientation,
+  type GuideDragState,
+  type OptimisticGuide,
+} from "./state/guide-drag-context";
 
 // Concept 2 — the gradient ramp (pure; reused by the editor panel
 // and the FillStrokeCluster chips).
@@ -275,6 +286,7 @@ export {
   resizeHandlesContribution,
   rotateHandleContribution,
   rulerGuidesContribution,
+  guideOverlayContribution,
   selectionChromeContribution,
   snapLinesContribution,
   applyAffine,

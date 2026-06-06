@@ -110,4 +110,93 @@ test.describe("Phase 5 — Text Wrap panel", () => {
     expect(result.mode).toBe("ContourTextWrap");
     expect(result.offsets).toEqual([8, 8, 8, 8]);
   });
+
+  test("AC-TW-3 — invert sandwich: set true (preserving mode) → assert → undo", async ({
+    page,
+  }) => {
+    // W2.3 — `textWrapInvert` shares the Option<TextWrap> field with
+    // mode/offsets; the apply arm preserves the other members.
+    const result = await page.evaluate(async () => {
+      type DebugCanvas = {
+        client?: {
+          executeScript(src: string): Promise<{
+            output: string[];
+            error: string | null;
+          }>;
+          elementProperties(id: unknown): Promise<{
+            entries: Array<{
+              path: string;
+              value: { type: string; value: unknown } | null;
+            }>;
+          } | null>;
+          mutate(op: unknown): Promise<unknown>;
+          undo(): Promise<unknown>;
+        };
+      };
+      const dbg = (window as unknown as { __canvas?: DebugCanvas }).__canvas;
+      if (!dbg?.client) throw new Error("__canvas client not available");
+
+      const treeJson = await dbg.client
+        .executeScript("paged.tree()")
+        .then((r) => r.output[0] ?? "[]");
+      type Node = {
+        id?: { kind: string; id: string } | null;
+        children?: Node[];
+      };
+      const walk = (nodes: Node[] | undefined): Node["id"] => {
+        if (!nodes) return null;
+        for (const n of nodes) {
+          if (n.id && n.id.kind === "textFrame") return n.id;
+          const f = walk(n.children);
+          if (f) return f;
+        }
+        return null;
+      };
+      const target = walk(JSON.parse(treeJson) as Node[]);
+      if (!target) throw new Error("fixture has no TextFrame");
+
+      const read = async (path: string) => {
+        const props = await dbg.client!.elementProperties(target);
+        return props?.entries.find((e) => e.path === path)?.value?.value ?? null;
+      };
+
+      // Establish a known mode so invert's mode-preservation is
+      // observable.
+      await dbg.client.mutate({
+        op: "setElementProperty",
+        args: {
+          elementId: target,
+          path: "frameTextWrapMode",
+          value: { type: "text", value: "BoundingBoxTextWrap" },
+        },
+      });
+      await new Promise((r) => setTimeout(r, 30));
+      const invertBefore = await read("textWrapInvert");
+
+      await dbg.client.mutate({
+        op: "setElementProperty",
+        args: {
+          elementId: target,
+          path: "textWrapInvert",
+          value: { type: "bool", value: true },
+        },
+      });
+      await new Promise((r) => setTimeout(r, 30));
+      const after = {
+        invert: await read("textWrapInvert"),
+        mode: await read("frameTextWrapMode"),
+      };
+
+      await dbg.client.undo();
+      await new Promise((r) => setTimeout(r, 30));
+      const restoredInvert = await read("textWrapInvert");
+
+      return { invertBefore, after, restoredInvert };
+    });
+
+    expect(result.after.invert).toBe(true);
+    // Invert preserves the wrap mode.
+    expect(result.after.mode).toBe("BoundingBoxTextWrap");
+    expect(result.restoredInvert).toBe(result.invertBefore);
+  });
 });

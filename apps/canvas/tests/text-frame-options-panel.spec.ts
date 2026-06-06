@@ -90,4 +90,101 @@ test.describe("Phase 5 — Text Frame Options panel", () => {
 
     expect(result).toEqual([10, 20, 30, 40]);
   });
+
+  test("AC-TFO-3 — text-frame-pref sandwich: VJ + auto-size + columns set → assert → undo", async ({
+    page,
+  }) => {
+    // W2.3 — the TextFrame-only preference paths. Enum-string fields
+    // carry the RAW IDML strings (CenterAlign / WidthOnly); columns
+    // are Length. set → assert → undo → restored, through the REAL
+    // apply + undo dispatch.
+    const result = await page.evaluate(async () => {
+      type DebugCanvas = {
+        client?: {
+          executeScript(src: string): Promise<{
+            output: string[];
+            error: string | null;
+          }>;
+          elementProperties(id: unknown): Promise<{
+            entries: Array<{
+              path: string;
+              value: { type: string; value: unknown } | null;
+            }>;
+          } | null>;
+          mutate(op: unknown): Promise<unknown>;
+          undo(): Promise<unknown>;
+        };
+      };
+      const dbg = (window as unknown as { __canvas?: DebugCanvas }).__canvas;
+      if (!dbg?.client) throw new Error("__canvas client not available");
+
+      const treeJson = await dbg.client
+        .executeScript("paged.tree()")
+        .then((r) => r.output[0] ?? "[]");
+      type Node = {
+        id?: { kind: string; id: string } | null;
+        children?: Node[];
+      };
+      const walk = (nodes: Node[] | undefined): Node["id"] => {
+        if (!nodes) return null;
+        for (const n of nodes) {
+          if (n.id && n.id.kind === "textFrame") return n.id;
+          const f = walk(n.children);
+          if (f) return f;
+        }
+        return null;
+      };
+      const target = walk(JSON.parse(treeJson) as Node[]);
+      if (!target) throw new Error("fixture has no TextFrame");
+
+      const read = async (path: string) => {
+        const props = await dbg.client!.elementProperties(target);
+        return props?.entries.find((e) => e.path === path)?.value?.value ?? null;
+      };
+
+      const before = {
+        vj: await read("textFrameVerticalJustification"),
+        autoSize: await read("textFrameAutoSizing"),
+        cols: await read("textFrameColumnCount"),
+      };
+
+      const set = (path: string, value: unknown) =>
+        dbg.client!.mutate({
+          op: "setElementProperty",
+          args: { elementId: target, path, value },
+        });
+
+      await set("textFrameVerticalJustification", {
+        type: "text",
+        value: "CenterAlign",
+      });
+      await set("textFrameAutoSizing", { type: "text", value: "WidthOnly" });
+      await set("textFrameColumnCount", { type: "length", value: 3 });
+      await new Promise((r) => setTimeout(r, 40));
+
+      const after = {
+        vj: await read("textFrameVerticalJustification"),
+        autoSize: await read("textFrameAutoSizing"),
+        cols: await read("textFrameColumnCount"),
+      };
+
+      // Undo the three writes.
+      await dbg.client.undo();
+      await dbg.client.undo();
+      await dbg.client.undo();
+      await new Promise((r) => setTimeout(r, 40));
+      const restored = {
+        vj: await read("textFrameVerticalJustification"),
+        autoSize: await read("textFrameAutoSizing"),
+        cols: await read("textFrameColumnCount"),
+      };
+
+      return { before, after, restored };
+    });
+
+    expect(result.after.vj).toBe("CenterAlign");
+    expect(result.after.autoSize).toBe("WidthOnly");
+    expect(result.after.cols).toBe(3);
+    expect(result.restored).toEqual(result.before);
+  });
 });

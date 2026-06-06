@@ -111,4 +111,97 @@ test.describe("Phase 5 — Frame Fitting panel", () => {
     expect(result.type).toBe("Proportionally");
     expect(result.crops).toEqual([4, 8, 12, 16]);
   });
+
+  test("AC-FF-3 — reference-point + auto-fit sandwich: set → assert → undo", async ({
+    page,
+  }) => {
+    // W2.3 — Rectangle-only. `frameFittingReferencePoint` is the raw
+    // IDML anchor string (CenterPoint); `frameAutoFit` is Bool. set
+    // → assert → undo → restored.
+    const result = await page.evaluate(async () => {
+      type DebugCanvas = {
+        client?: {
+          executeScript(src: string): Promise<{
+            output: string[];
+            error: string | null;
+          }>;
+          elementProperties(id: unknown): Promise<{
+            entries: Array<{
+              path: string;
+              value: { type: string; value: unknown } | null;
+            }>;
+          } | null>;
+          mutate(op: unknown): Promise<unknown>;
+          undo(): Promise<unknown>;
+        };
+      };
+      const dbg = (window as unknown as { __canvas?: DebugCanvas }).__canvas;
+      if (!dbg?.client) throw new Error("__canvas client not available");
+
+      const treeJson = await dbg.client
+        .executeScript("paged.tree()")
+        .then((r) => r.output[0] ?? "[]");
+      type Node = {
+        id?: { kind: string; id: string } | null;
+        children?: Node[];
+      };
+      const walk = (nodes: Node[] | undefined): Node["id"] => {
+        if (!nodes) return null;
+        for (const n of nodes) {
+          if (n.id && n.id.kind === "rectangle") return n.id;
+          const f = walk(n.children);
+          if (f) return f;
+        }
+        return null;
+      };
+      const target = walk(JSON.parse(treeJson) as Node[]);
+      if (!target) throw new Error("fixture has no Rectangle");
+
+      const read = async (path: string) => {
+        const props = await dbg.client!.elementProperties(target);
+        return props?.entries.find((e) => e.path === path)?.value?.value ?? null;
+      };
+
+      const before = {
+        ref: await read("frameFittingReferencePoint"),
+        autoFit: await read("frameAutoFit"),
+      };
+
+      await dbg.client.mutate({
+        op: "setElementProperty",
+        args: {
+          elementId: target,
+          path: "frameFittingReferencePoint",
+          value: { type: "text", value: "CenterPoint" },
+        },
+      });
+      await dbg.client.mutate({
+        op: "setElementProperty",
+        args: {
+          elementId: target,
+          path: "frameAutoFit",
+          value: { type: "bool", value: true },
+        },
+      });
+      await new Promise((r) => setTimeout(r, 40));
+      const after = {
+        ref: await read("frameFittingReferencePoint"),
+        autoFit: await read("frameAutoFit"),
+      };
+
+      await dbg.client.undo();
+      await dbg.client.undo();
+      await new Promise((r) => setTimeout(r, 40));
+      const restored = {
+        ref: await read("frameFittingReferencePoint"),
+        autoFit: await read("frameAutoFit"),
+      };
+
+      return { before, after, restored };
+    });
+
+    expect(result.after.ref).toBe("CenterPoint");
+    expect(result.after.autoFit).toBe(true);
+    expect(result.restored).toEqual(result.before);
+  });
 });

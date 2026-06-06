@@ -44,6 +44,7 @@ import {
   useInstrumentation,
 } from "./state/instrumentation-context";
 import { OverlaySignalsProvider } from "./state/overlay-signals-context";
+import { GuideDragProvider } from "./state/guide-drag-context";
 import { SelectionProvider, useSelection } from "./state/selection-context";
 import { ToolProvider } from "./state/tool-context";
 import { ScreenModeProvider } from "./state/screen-mode-context";
@@ -168,21 +169,26 @@ export function PagedShell({
                         <SelectionProvider>
                           <ContentSelectionProvider>
                             <OverlaySignalsProvider>
-                              <InstrumentationProvider>
-                                <PagedEditorProvider>
-                                  <ShellChrome
-                                    panels={panels}
-                                    overlays={overlays}
-                                    tools={tools}
-                                    headerExtras={headerExtras}
-                                    modes={modes}
-                                    panelRail={panelRail}
-                                    canvasComponent={canvasComponent}
-                                  >
-                                    {children}
-                                  </ShellChrome>
-                                </PagedEditorProvider>
-                              </InstrumentationProvider>
+                              {/* W2.8 — guide creation/drag state, shared
+                                  by the ruler hit zones, the controller,
+                                  and the guide overlay. */}
+                              <GuideDragProvider>
+                                <InstrumentationProvider>
+                                  <PagedEditorProvider>
+                                    <ShellChrome
+                                      panels={panels}
+                                      overlays={overlays}
+                                      tools={tools}
+                                      headerExtras={headerExtras}
+                                      modes={modes}
+                                      panelRail={panelRail}
+                                      canvasComponent={canvasComponent}
+                                    >
+                                      {children}
+                                    </ShellChrome>
+                                  </PagedEditorProvider>
+                                </InstrumentationProvider>
+                              </GuideDragProvider>
                             </OverlaySignalsProvider>
                           </ContentSelectionProvider>
                         </SelectionProvider>

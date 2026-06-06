@@ -48,8 +48,23 @@ export interface ToolPreviewPolyline {
   close?: boolean;
 }
 
+/**
+ * Editor-ops — a gridify tool preview (W2.7): the N×M cell outlines a
+ * rectangle/frame drag splits into while arrow keys are held (DR-05).
+ * Each `cell` is `[top,left,bottom,right]` page-local pt, already
+ * gutter-inset; the overlay shifts by the page origin at draw time and
+ * strokes each as a rect, same family as the single rubber-band.
+ */
+export interface ToolPreviewGrid {
+  pageId: PageId;
+  cells: ReadonlyArray<[number, number, number, number]>;
+}
+
 /** What a tool handler can publish as its in-progress preview. */
-export type ToolPreviewShape = MarqueeRectPageLocal | ToolPreviewPolyline;
+export type ToolPreviewShape =
+  | MarqueeRectPageLocal
+  | ToolPreviewPolyline
+  | ToolPreviewGrid;
 
 interface OverlaySignalsValue {
   /** Last click hit-result. Cleared when the user clicks empty space. */

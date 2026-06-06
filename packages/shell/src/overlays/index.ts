@@ -11,6 +11,7 @@ export {
 export { resizeHandlesContribution } from "./resize-handles";
 export { rotateHandleContribution } from "./rotate-handle";
 export { rulerGuidesContribution } from "./ruler-guides";
+export { guideOverlayContribution } from "./guide-overlay";
 export { selectionChromeContribution } from "./selection-chrome";
 export { snapLinesContribution } from "./snap-lines";
 

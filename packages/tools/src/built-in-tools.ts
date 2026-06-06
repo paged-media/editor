@@ -12,11 +12,14 @@
 
 import type { CursorSpec, ToolContribution } from "@paged-media/shell";
 
+import { createEllipseHandler } from "./handlers/ellipse-tool";
 import { createGradientFeatherHandler } from "./handlers/gradient-feather-tool";
 import { createGradientSwatchHandler } from "./handlers/gradient-tool";
 import { createLineHandler } from "./handlers/line-tool";
+import { createPolygonHandler } from "./handlers/polygon-tool";
 import { createPageHandler } from "./handlers/page-tool";
 import { createPencilHandler } from "./handlers/pencil-tool";
+import { createPenHandler } from "./handlers/pen-tool";
 import { createRectangleHandler } from "./handlers/rectangle-tool";
 import { createScissorsHandler } from "./handlers/scissors-tool";
 import { createShearHandler } from "./handlers/shear-tool";
@@ -114,10 +117,23 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     // Editor-ops — drag → `insertLine` (protocol v24).
     gesture: createLineHandler,
   },
-  // plugin-draw D3 — the pen group (Pen + Add/Delete/Convert Anchor)
-  // is contributed by the paged.draw BUNDLE (`media.paged.draw.tool.*`,
-  // registered via `loadBundle(drawBundle)` in apps/canvas/main.tsx),
-  // not by this catalog. Removing that call removes the tools cleanly.
+  // W2.5 — the built-in Pen (group default of the "pen" slot): click =
+  // corner anchor, click-drag = smooth anchor, Enter/first-anchor click
+  // commits a single `insertPath`, Escape cancels. The Add/Delete/
+  // Convert Anchor companions in the same slot are contributed by the
+  // paged.draw BUNDLE (`media.paged.draw.tool.*`, registered via
+  // `loadBundle(drawBundle)` in apps/canvas/main.tsx) and edit EXISTING
+  // paths — orthogonal to authoring a new one here.
+  {
+    id: "paged.tool.pen",
+    title: "Pen",
+    icon: "tool-pen",
+    shortcut: "p",
+    group: "pen",
+    section: "drawType",
+    isGroupDefault: true,
+    gesture: createPenHandler,
+  },
   {
     id: "paged.tool.pencil",
     title: "Pencil",
@@ -192,6 +208,9 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "shape",
     section: "drawType",
     order: 1,
+    // W2.6 — drag → bounds preview → one `insertOval` (Shift = circle,
+    // Alt = from centre; DR-02/DR-03).
+    gesture: createEllipseHandler,
   },
   {
     id: "paged.tool.polygon",
@@ -200,6 +219,9 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "shape",
     section: "drawType",
     order: 2,
+    // W2.6 — drag → N-gon/star preview → one `insertPath` (corner
+    // anchors). Reads sides/starInset from tool-settings (T8 below).
+    gesture: createPolygonHandler,
     // T8 — the canonical tool-options example (double-click the slot).
     options: {
       toolId: "paged.tool.polygon",
@@ -342,6 +364,7 @@ const TOOL_CURSORS: Record<string, CursorSpec> = {
   "paged.tool.type": TEXT,
   "paged.tool.typePath": TEXT,
   "paged.tool.line": CROSS,
+  "paged.tool.pen": CROSS,
   "paged.tool.pencil": CROSS,
   "paged.tool.smooth": CROSS,
   "paged.tool.erase": CROSS,

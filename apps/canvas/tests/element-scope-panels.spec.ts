@@ -76,10 +76,12 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
     await expect(
       page.locator('[data-stroke-panel="ready"] [data-section="Stroke"]'),
     ).toBeVisible();
-    // 3 fields: Weight + Color + End cap (toggle-group). All show
-    // em-dash with no selection.
+    // W2.2 — nine LIVE controls, all em-dash with no selection:
+    // Weight, Color, Type, Cap, Join, Miter, Align, Gap color, Gap
+    // tint. The four "Dashes & arrows" controls stay disabled seams
+    // (no dash-array / arrowhead path), so they don't count as mixed.
     const mixed = page.locator('[data-stroke-panel="ready"] [data-mixed]');
-    await expect(mixed).toHaveCount(3);
+    await expect(mixed).toHaveCount(9);
   });
 
   test("AC-STROKE-2 — selecting a frame populates the Stroke panel fields", async ({
@@ -87,16 +89,22 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
   }) => {
     await selectFrame(page, TEXT_FRAME_ID);
     await activateTab(page, "paged.stroke");
-    // After selecting a TextFrame, Weight + Color resolve (no
-    // em-dash). The End cap row stays em-dash because TextFrame
-    // doesn't carry the `end_cap` field at the parse layer
-    // (Rectangle / Oval / Polygon / GraphicLine do). One honest
-    // placeholder — the Stroke panel reflects the kind-specific
-    // surface rather than pretending the field is universal.
+    // W2.2 — the Stroke panel reflects the kind-specific surface. The
+    // TextFrame property set exposes Weight / Color / Type / Gap
+    // colour / Gap tint, but NOT End cap / Join / Miter / Align —
+    // those are Rectangle-only parse fields with no TextFrame
+    // PropertyEntry, so they em-dash. Assert the kind-specific seams
+    // are present (Cap toggle-group + Join toggle-group + Align
+    // toggle-group + Miter scrub all mixed) rather than pinning a
+    // fixture-dependent total: the resolved-vs-null split of the
+    // shared fields depends on the fixture's emitted stroke defaults.
     await expect(
-      page.locator('[data-stroke-panel="ready"] [data-mixed]'),
-    ).toHaveCount(1);
-    // Weight is a LengthInput; the input is visible.
+      page.locator(
+        '[data-stroke-panel="ready"] [data-section="Stroke"] [data-mixed]',
+      ).first(),
+    ).toBeVisible();
+    // Weight is a LengthInput; the input is visible + resolved (the
+    // fixture emits a StrokeWeight default attribute).
     await expect(
       page.locator('[data-stroke-panel="ready"] input').first(),
     ).toBeVisible();
@@ -114,14 +122,15 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
         '[data-object-transform-panel="ready"] [data-section="Object"]',
       ),
     ).toBeVisible();
-    // 5 live metrics: X, Y, W, H (derived from frameBounds) and
-    // Opacity — each control carries the em-dash mixed state with
-    // no selection. The rotate/scale seams render disabled
-    // controls, not mixed sentinels.
+    // 7 live metrics carry the em-dash mixed state with no
+    // selection: X, Y, W, H (derived from frameBounds), Opacity, and
+    // the W2.3 Scale X / Scale Y NumberInputs (each null → mixed).
+    // The Rotation SmartDial is inert (no mixed sentinel while
+    // disabled) and Flip H/V are buttons, not metric fields.
     const mixed = page.locator(
       '[data-object-transform-panel="ready"] [data-mixed]',
     );
-    await expect(mixed).toHaveCount(5);
+    await expect(mixed).toHaveCount(7);
   });
 
   test("AC-OBJECT-2 — selecting a frame populates Bounds + Opacity", async ({
@@ -132,17 +141,19 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
     await expect(
       page.locator('[data-object-transform-panel="ready"] [data-mixed]'),
     ).toHaveCount(0);
-    // 5 LIVE inputs: X, Y, W, H (the frameBounds projection) +
-    // Opacity. The scale seams are disabled inputs (rotation is
-    // the inert SmartDial — no input element while idle).
+    // 7 LIVE inputs once a frame is selected: X, Y, W, H (the
+    // frameBounds projection) + Opacity + the W2.3 Scale X / Scale Y
+    // metrics (now bound to frameScaleX/frameScaleY, no longer
+    // disabled seams). Rotation is the SmartDial value span (renders
+    // an <input> only while click-editing) and Flip H/V are buttons.
     await expect(
       page.locator(
         '[data-object-transform-panel="ready"] input:not([disabled])',
       ),
-    ).toHaveCount(5);
+    ).toHaveCount(7);
     await expect(
       page.locator('[data-object-transform-panel="ready"] input[disabled]'),
-    ).toHaveCount(2);
+    ).toHaveCount(0);
   });
 
   test("AC-OBJECT-3 — multi-selection with differing bounds shows mixed", async ({
@@ -186,5 +197,126 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
             .count(),
       )
       .toBeGreaterThanOrEqual(1);
+  });
+
+  test("AC-OBJECT-4 — rotation decompose sandwich: rotate 30° → reads ~30 → undo restores", async ({
+    page,
+  }) => {
+    // W2.3 transform-decompose round-trip through the REAL apply
+    // dispatch. Read = decomposed angle of item_transform; write
+    // recomposes. set → assert → undo → restored.
+    const target = { kind: "rectangle", id: "ueccee2" };
+    const read = async () =>
+      page.evaluate(async (id) => {
+        const c = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                elementProperties: (
+                  id: unknown,
+                ) => Promise<{
+                  entries: { path: string; value?: { value?: number } }[];
+                } | null>;
+              };
+            };
+          }
+        ).__canvas;
+        const props = await c.client.elementProperties(id);
+        return (
+          props?.entries.find((e) => e.path === "frameRotationAngle")?.value
+            ?.value ?? null
+        );
+      }, target);
+
+    const before = (await read()) as number | null;
+    expect(before).not.toBeNull();
+
+    await page.evaluate(async (id) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: { client: { mutate: (x: unknown) => Promise<unknown> } };
+        }
+      ).__canvas;
+      await c.client.mutate({
+        op: "setElementProperty",
+        args: {
+          elementId: id,
+          path: "frameRotationAngle",
+          value: { type: "length", value: 30 },
+        },
+      });
+    }, target);
+
+    await expect.poll(read).toBeCloseTo(30, 1);
+
+    await page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: { client: { undo: () => Promise<unknown> } };
+        }
+      ).__canvas;
+      await c.client.undo();
+    });
+
+    await expect.poll(read).toBeCloseTo(before ?? 0, 1);
+  });
+
+  test("AC-OBJECT-5 — flipH decompose sandwich: toggle → reads true → undo restores", async ({
+    page,
+  }) => {
+    const target = { kind: "rectangle", id: "ueccee2" };
+    const readFlip = async () =>
+      page.evaluate(async (id) => {
+        const c = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                elementProperties: (
+                  id: unknown,
+                ) => Promise<{
+                  entries: { path: string; value?: { value?: boolean } }[];
+                } | null>;
+              };
+            };
+          }
+        ).__canvas;
+        const props = await c.client.elementProperties(id);
+        return (
+          props?.entries.find((e) => e.path === "frameFlipH")?.value?.value ??
+          null
+        );
+      }, target);
+
+    const before = (await readFlip()) as boolean | null;
+    expect(before).not.toBeNull();
+
+    await page.evaluate(async (id) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: { client: { mutate: (x: unknown) => Promise<unknown> } };
+        }
+      ).__canvas;
+      await c.client.mutate({
+        op: "setElementProperty",
+        args: {
+          elementId: id,
+          path: "frameFlipH",
+          value: { type: "bool", value: !before },
+        },
+      });
+    }, target);
+
+    await expect.poll(readFlip).toBe(!before);
+
+    await page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: { client: { undo: () => Promise<unknown> } };
+        }
+      ).__canvas;
+      await c.client.undo();
+    });
+
+    await expect.poll(readFlip).toBe(before);
   });
 });

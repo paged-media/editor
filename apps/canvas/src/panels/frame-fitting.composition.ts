@@ -3,11 +3,16 @@
 // between Fit and Crop per the deep1 card order:
 //
 //   Fit (stacked text segments)                  LIVE
-//   [ref grid] Align content                     seam (bespoke)
+//   [ref grid] Align content                     LIVE  (W2.3, bespoke)
 //   Crop (stacked 4-up T/L/B/R)                  LIVE
-//   Auto-fit / Fill frame proportionally rows    seams
+//   Auto-fit row                                 LIVE  (W2.3)
+//   Fill frame proportionally row                seam
 //
-// Rectangle-only — other kinds em-dash.
+// Rectangle-only — every field is a `NodeId::Rectangle` apply arm,
+// so other kinds have no PropertyEntry and em-dash. W2.3 (2026-06-06)
+// — protocol v28 lands `frameFittingReferencePoint` (raw IDML anchor
+// string) + `frameAutoFit` (Bool). Fill-frame-proportionally stays a
+// seam — it is a place-time behaviour with no PropertyPath.
 
 import type { CompositionNode } from "@paged-media/catalog";
 import {
@@ -77,13 +82,21 @@ export const frameFittingCropComposition: CompositionNode = {
       },
     },
     {
-      // Engine gap — no auto-fit flag yet.
+      // LIVE auto-fit flag (W2.3). Rectangle-only → em-dash on
+      // other kinds.
       catalogId: PAGED_INPUT_TOGGLE_SWITCH,
-      props: { label: "Auto-fit", seam: true },
-      bindings: {},
+      props: { label: "Auto-fit" },
+      bindings: {
+        value: {
+          kind: "selectionProperty",
+          scope: "element",
+          path: "frameAutoFit",
+        },
+      },
     },
     {
-      // Engine gap — no fill-frame-proportionally-on-place flag.
+      // Engine gap — fill-frame-proportionally is a place-time
+      // behaviour, not a persisted PropertyPath.
       catalogId: PAGED_INPUT_TOGGLE_SWITCH,
       props: { label: "Fill frame proportionally", seam: true },
       bindings: {},

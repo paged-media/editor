@@ -20,8 +20,8 @@ importers:
         specifier: link:../../../plugin-draw/packages/draw-bundle
         version: link:../../../plugin-draw/packages/draw-bundle
       '@paged-media/plugin-sdk':
-        specifier: link:../../../sdk/packages/plugin-sdk
-        version: link:../../../sdk/packages/plugin-sdk
+        specifier: link:../../../plugin-sdk/packages/plugin-sdk
+        version: link:../../../plugin-sdk/packages/plugin-sdk
       '@paged-media/shell':
         specifier: workspace:*
         version: link:../../packages/shell

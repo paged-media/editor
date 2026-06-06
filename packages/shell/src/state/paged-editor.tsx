@@ -14,6 +14,7 @@ import { useTool } from "./tool-context";
 import { useScreenMode } from "./screen-mode-context";
 import { useOverlaySignals } from "./overlay-signals-context";
 import { useContentSelection } from "./content-selection-context";
+import { useToolSettings } from "./tool-settings-context";
 import {
   RegistriesProvider,
   useRegistries,
@@ -52,6 +53,11 @@ export interface PagedEditor {
   /** Transient overlay signals (marquee, snap lines, tool preview).
    *  Gesture handlers publish their in-progress preview here. */
   overlaySignals: ReturnType<typeof useOverlaySignals>;
+
+  /** Tool-scoped settings store (T8 — Polygon sides/star inset, …).
+   *  App-state keyed by tool id, NOT document mutations. Gesture
+   *  handlers read it to parameterise the op they commit. */
+  toolSettings: ReturnType<typeof useToolSettings>;
 
   /** Text caret + range. */
   contentSelection: ReturnType<typeof useContentSelection>;
@@ -108,6 +114,7 @@ function PagedEditorBinder({
   const screenMode = useScreenMode();
   const overlaySignals = useOverlaySignals();
   const contentSelection = useContentSelection();
+  const toolSettings = useToolSettings();
   const registries = useRegistries();
 
   const editor = useMemo<PagedEditor>(
@@ -120,6 +127,7 @@ function PagedEditorBinder({
       screenMode,
       overlaySignals,
       contentSelection,
+      toolSettings,
       registries,
     }),
     [
@@ -131,6 +139,7 @@ function PagedEditorBinder({
       screenMode,
       overlaySignals,
       contentSelection,
+      toolSettings,
       registries,
     ],
   );

@@ -4,19 +4,35 @@
 //   Visible / Locked       check rows            seams (layer-level)
 //   Nonprinting            check row             LIVE
 //   ── OVERPRINT kicker ──
-//   Overprint fill/stroke  check rows            seams
+//   Overprint fill/stroke  check rows            LIVE  (W2.3)
 //   Gap color               label-left swatch    seam
 //
-// The LIVE pill binds `selectionProperty:frameNonprinting`.
+// The LIVE pills bind `selectionProperty:frame{Nonprinting,
+// OverprintFill,OverprintStroke}`. W2.3 (2026-06-06) — protocol v28
+// lands the overprint Bool pair. Kind coverage: OverprintStroke is on
+// every stroked kind; OverprintFill is on every FILLED kind
+// (TextFrame / Rectangle / Oval / Polygon — NOT GraphicLine). On a
+// kind without the PropertyEntry the binding reads null → the pill
+// shows the mixed (em-dash) sentinel, disabled.
 
 import { Icon, TogglePill, useBindings } from "@paged-media/shell";
 import type { Value } from "@paged-media/client";
 
-const NONPRINTING_BINDING = {
-  value: {
+const BINDINGS = {
+  nonprinting: {
     kind: "selectionProperty" as const,
     scope: "element" as const,
     path: "frameNonprinting" as const,
+  },
+  overprintFill: {
+    kind: "selectionProperty" as const,
+    scope: "element" as const,
+    path: "frameOverprintFill" as const,
+  },
+  overprintStroke: {
+    kind: "selectionProperty" as const,
+    scope: "element" as const,
+    path: "frameOverprintStroke" as const,
   },
 };
 
@@ -61,9 +77,13 @@ function CheckRow({
 }
 
 export function AttributesPanel() {
-  const resolved = useBindings(NONPRINTING_BINDING);
-  const np = resolved.value;
+  const resolved = useBindings(BINDINGS);
+  const np = resolved.nonprinting;
   const checked = unwrapBool(np.value);
+  const opFill = resolved.overprintFill;
+  const opFillChecked = unwrapBool(opFill.value);
+  const opStroke = resolved.overprintStroke;
+  const opStrokeChecked = unwrapBool(opStroke.value);
 
   return (
     <div className="p-3 flex flex-col" data-attributes-panel="ready">
@@ -81,8 +101,24 @@ export function AttributesPanel() {
       />
       <div className="-mx-3 mt-2 border-t border-input px-3 pt-2">
         <div className="pg-label mb-1">Overprint</div>
-        <CheckRow label="Overprint fill" on={false} seam />
-        <CheckRow label="Overprint stroke" on={false} seam />
+        <CheckRow
+          label="Overprint fill"
+          on={opFillChecked === true}
+          mixed={opFillChecked === null}
+          disabled={opFill.onCommit == null}
+          onToggle={(next) => {
+            opFill.onCommit?.({ type: "bool", value: next } as Value);
+          }}
+        />
+        <CheckRow
+          label="Overprint stroke"
+          on={opStrokeChecked === true}
+          mixed={opStrokeChecked === null}
+          disabled={opStroke.onCommit == null}
+          onToggle={(next) => {
+            opStroke.onCommit?.({ type: "bool", value: next } as Value);
+          }}
+        />
       </div>
       <div className="mt-1 grid grid-cols-[84px_1fr] items-center gap-2">
         <span className="text-xs" style={{ color: "var(--pg-muted-fg)" }}>

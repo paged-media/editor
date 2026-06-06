@@ -2,15 +2,28 @@
 // the deep1 card (gallery-deep1.jsx `Effects`):
 //
 //   Opacity   (label-left metric "%")          LIVE
-//   Blend     (label-left select)              seam
+//   Blend     (object blend-mode select)       LIVE — W2.2
 //   ── EFFECTS kicker (full-bleed border) ──
-//   [pill] Drop Shadow  ⌄                      LIVE — expansion
-//     │ (2px violet rail, indented fields from effects.composition)
-//   [pill] Inner Shadow / Outer Glow / Inner Glow / Feather /
-//          Bevel & Emboss                      seams (pills off)
+//   [pill] Drop shadow ⌄                       LIVE — expansion
+//   [pill] Inner shadow / Outer glow / Inner   LIVE — W2.2
+//          glow / Bevel / Satin / Feather /
+//          Directional feather  ⌄              (per-effect disclosures)
+//     │ (2px violet rail, indented per-field composition)
 //
 // Pills sit LEFT of the effect name (the kit's row order); names
 // read muted when off.
+//
+// W2.2 (2026-06-06) — protocol v28 lands every per-effect field path
+// (engine gap 18). Each family flips from a disabled seam pill to a
+// live disclosure: the pill writes its enable bool, the expanded
+// composition writes the per-field `frame{Family}{Field}` paths. The
+// object-level Blend select flips live on `frameBlendMode`.
+//
+// Enable wires: drop shadow keeps the legacy `frameDropShadow` bool;
+// the other families enable via `frame{Family}Enabled`. The apply arm
+// materialises a default effect struct on enable so the disclosure's
+// per-field editors always have a target. Each family's read-side
+// reports the same bool, so the pill reflects on/off + mixed.
 
 import {
   CatalogRegistryProvider,
@@ -20,31 +33,59 @@ import {
   useBindings,
 } from "@paged-media/shell";
 import { KitSelect, NumberInput } from "@paged-media/ui";
-import type { Value } from "@paged-media/client";
+import type { Binding, CompositionNode } from "@paged-media/catalog";
+import type { PropertyPath, Value } from "@paged-media/client";
 
 import { appCatalogRegistry } from "./catalog-registry";
-import { effectsComposition } from "./effects.composition";
+import {
+  BLEND_MODES,
+  bevelComposition,
+  directionalFeatherComposition,
+  dropShadowComposition,
+  featherComposition,
+  innerGlowComposition,
+  innerShadowComposition,
+  outerGlowComposition,
+  satinComposition,
+} from "./effects.composition";
 
-const BINDINGS = {
-  dropShadow: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "frameDropShadow" as const,
-  },
-  opacity: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "frameOpacity" as const,
-  },
-};
+// Typed against `PropertyPath` so a mistyped path is a tsc error.
+function elementProp(path: PropertyPath): Binding {
+  return {
+    kind: "selectionProperty",
+    scope: "element",
+    path,
+  };
+}
 
-const SEAM_EFFECTS = [
-  "Inner shadow",
-  "Outer glow",
-  "Inner glow",
-  "Feather",
-  "Bevel and emboss",
+// One row per effect family. `enable` is the stable bindings map the
+// pill's `useBindings` reads (a module-level object so the hook never
+// re-fetches on identity churn); `fields` is the per-field composition
+// rendered inside the violet rail when the effect is on. Drop shadow's
+// enable rides the legacy `frameDropShadow` bool (not `*Enabled`).
+const EFFECT_FAMILIES: {
+  name: string;
+  enable: { enabled: Binding };
+  fields: CompositionNode;
+}[] = [
+  { name: "Drop shadow", enable: { enabled: elementProp("frameDropShadow") }, fields: dropShadowComposition },
+  { name: "Inner shadow", enable: { enabled: elementProp("frameInnerShadowEnabled") }, fields: innerShadowComposition },
+  { name: "Outer glow", enable: { enabled: elementProp("frameOuterGlowEnabled") }, fields: outerGlowComposition },
+  { name: "Inner glow", enable: { enabled: elementProp("frameInnerGlowEnabled") }, fields: innerGlowComposition },
+  { name: "Bevel and emboss", enable: { enabled: elementProp("frameBevelEnabled") }, fields: bevelComposition },
+  { name: "Satin", enable: { enabled: elementProp("frameSatinEnabled") }, fields: satinComposition },
+  { name: "Feather", enable: { enabled: elementProp("frameFeatherEnabled") }, fields: featherComposition },
+  {
+    name: "Directional feather",
+    enable: { enabled: elementProp("frameDirectionalFeatherEnabled") },
+    fields: directionalFeatherComposition,
+  },
 ];
+
+const TOP_BINDINGS = {
+  opacity: elementProp("frameOpacity"),
+  blend: elementProp("frameBlendMode"),
+};
 
 function unwrapBool(v: Value | null): boolean | null {
   if (!v) return null;
@@ -57,29 +98,36 @@ function unwrapLength(v: Value | null): number | null {
   return v.value ?? 0;
 }
 
-function EffectRow({
+function unwrapText(v: Value | null): string {
+  if (!v || v.type !== "text") return "";
+  return v.value;
+}
+
+/** A single live effect disclosure: enable pill + name + chevron,
+ *  with the per-field composition rendered inside the violet rail
+ *  when on. Mirrors the original drop-shadow template, generalised. */
+function EffectDisclosure({
   name,
-  on,
-  mixed,
-  disabled,
-  onToggle,
-  children,
+  enable,
+  fields,
 }: {
   name: string;
-  on: boolean;
-  mixed?: boolean;
-  disabled?: boolean;
-  onToggle?: (next: boolean) => void;
-  children?: React.ReactNode;
+  enable: { enabled: Binding };
+  fields: CompositionNode;
 }) {
+  const resolved = useBindings(enable);
+  const checked = unwrapBool(resolved.enabled.value);
+  const on = checked === true;
   return (
     <div data-effect-row={name}>
       <div className="flex items-center gap-[9px] py-[5px]">
         <TogglePill
           checked={on}
-          mixed={mixed}
-          disabled={disabled}
-          onToggle={onToggle}
+          mixed={checked === null}
+          disabled={resolved.enabled.onCommit == null}
+          onToggle={(next) => {
+            resolved.enabled.onCommit?.({ type: "bool", value: next } as Value);
+          }}
           testId={name}
         />
         <span
@@ -96,15 +144,25 @@ function EffectRow({
           />
         )}
       </div>
-      {children}
+      {on && (
+        <div
+          className="mb-[6px] ml-1 py-2 pl-3"
+          data-effect-fields={name}
+          style={{ borderLeft: "2px solid var(--pg-primary-soft)" }}
+        >
+          <CompositionRenderer composition={fields} />
+        </div>
+      )}
     </div>
   );
 }
 
 export function EffectsPanel() {
-  const resolved = useBindings(BINDINGS);
-  const checked = unwrapBool(resolved.dropShadow.value);
-  const opacity = unwrapLength(resolved.opacity.value);
+  const top = useBindings(TOP_BINDINGS);
+  const opacity = unwrapLength(top.opacity.value);
+  const blendId = unwrapText(top.blend.value);
+  const blendDisabled = top.blend.onCommit == null;
+  const blendMixed = top.blend.value == null;
 
   return (
     <CatalogRegistryProvider registry={appCatalogRegistry()}>
@@ -120,10 +178,10 @@ export function EffectsPanel() {
             min={0}
             max={100}
             precision={0}
-            disabled={resolved.opacity.onCommit == null}
+            disabled={top.opacity.onCommit == null}
             onChange={() => {}}
             onCommit={(next) => {
-              resolved.opacity.onCommit?.({
+              top.opacity.onCommit?.({
                 type: "length",
                 value: next,
               } as Value);
@@ -131,58 +189,47 @@ export function EffectsPanel() {
             aria-label="opacity"
           />
         </div>
-        {/* Engine gap — no blend-mode path yet. */}
+        {/* Object-level blend mode — LIVE (W2.2) on frameBlendMode. */}
         <div className="grid grid-cols-[84px_1fr] items-center gap-2">
           <span className="text-xs" style={{ color: "var(--pg-muted-fg)" }}>
             Blend
           </span>
-          <KitSelect value="" soft disabled data-seam>
-            <option value="">Normal</option>
+          <KitSelect
+            value={blendMixed ? "__mixed__" : blendId}
+            soft={blendMixed}
+            disabled={blendDisabled}
+            data-blend-mode
+            data-mixed={blendMixed ? "" : undefined}
+            onChange={(e) => {
+              if (e.target.value === "__mixed__") return;
+              top.blend.onCommit?.({
+                type: "text",
+                value: e.target.value,
+              } as Value);
+            }}
+          >
+            {blendMixed && (
+              <option value="__mixed__" disabled>
+                —
+              </option>
+            )}
+            {BLEND_MODES.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </KitSelect>
         </div>
         <div className="-mx-3 border-t border-input px-3 pt-2">
           <div className="pg-label mb-1">Effects</div>
           <div className="flex flex-col">
-            <EffectRow
-              name="Drop shadow"
-              on={checked === true}
-              mixed={checked === null}
-              disabled={resolved.dropShadow.onCommit == null}
-              onToggle={(next) => {
-                resolved.dropShadow.onCommit?.({
-                  type: "bool",
-                  value: next,
-                } as Value);
-              }}
-            >
-              {checked === true && (
-                <div
-                  className="mb-[6px] ml-1 py-2 pl-3"
-                  data-drop-shadow-fields
-                  style={{ borderLeft: "2px solid var(--pg-primary-soft)" }}
-                >
-                  <CompositionRenderer composition={effectsComposition} />
-                </div>
-              )}
-            </EffectRow>
-            {/* Engine gaps — effect models beyond drop shadow are
-                unwired; the rows ship as neutral disabled pills. */}
-            {SEAM_EFFECTS.map((name) => (
-              <div key={name} data-seam-effect={name}>
-                <div
-                  className="flex items-center gap-[9px] py-[5px]"
-                  data-effect-row={name}
-                  data-seam
-                >
-                  <TogglePill checked={false} disabled testId={name} />
-                  <span
-                    className="flex-1 text-xs"
-                    style={{ color: "var(--pg-muted-fg)" }}
-                  >
-                    {name}
-                  </span>
-                </div>
-              </div>
+            {EFFECT_FAMILIES.map((fam) => (
+              <EffectDisclosure
+                key={fam.name}
+                name={fam.name}
+                enable={fam.enable}
+                fields={fam.fields}
+              />
             ))}
           </div>
         </div>

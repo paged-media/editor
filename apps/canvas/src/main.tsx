@@ -7,11 +7,11 @@ import {
   hitMarkerContribution,
   marqueeContribution,
   toolPreviewContribution,
+  guideOverlayContribution,
   pageDecorationsContribution,
   pathEditContribution,
   resizeHandlesContribution,
   rotateHandleContribution,
-  rulerGuidesContribution,
   selectionChromeContribution,
   setCockpitPageNavigator,
   snapLinesContribution,
@@ -123,7 +123,11 @@ import { CorpusPicker } from "./ui/CorpusPicker";
 // contributions' `z` values inside OverlayHost.
 const BUILT_IN_OVERLAYS: OverlayContribution[] = [
   pageDecorationsContribution,
-  rulerGuidesContribution,
+  // W2.8 — the INTERACTIVE guide overlay supersedes the read-only
+  // `rulerGuidesContribution` in the editor: it seeds its mirror from
+  // the same `DocumentHandle.rulerGuides` AND drives create/move/
+  // delete. The static one stays in the shell barrel for the viewer.
+  guideOverlayContribution,
   hitMarkerContribution,
   selectionChromeContribution,
   resizeHandlesContribution,
@@ -694,7 +698,8 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     icon: "panel-table-styles",
   },
   {
-    // The Tabs ruler awaits tab-stop reads/writes.
+    // W2.4 — LIVE: the stop editor rides the whole-list
+    // `paragraphTabStops` path (protocol v28).
     id: "paged.tabs",
     title: "Tabs",
     component: TabsPanel,
@@ -713,7 +718,9 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     icon: "panel-character",
   },
   {
-    // List definitions await the paragraph-model surface.
+    // W2.4 — PARTIALLY LIVE: list type + bullet glyph + numbering
+    // format ride the v28 list-authoring text paths; list
+    // definitions / level / position remain seams.
     id: "paged.bullets-numbering",
     title: "Bullets & Numbering",
     component: BulletsPanel,
