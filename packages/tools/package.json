@@ -14,7 +14,6 @@
   "dependencies": {
     "@paged-media/client": "workspace:*",
     "@paged-media/draw-geometry": "link:../../../plugin-draw/packages/draw-geometry",
-    "@paged-media/draw-tools": "link:../../../plugin-draw/packages/draw-tools",
     "@paged-media/shell": "workspace:*"
   },
   "peerDependencies": {

@@ -12,16 +12,10 @@
 
 import type { CursorSpec, ToolContribution } from "@paged-media/shell";
 
-import {
-  createAddAnchorHandler,
-  createConvertAnchorHandler,
-  createDeleteAnchorHandler,
-} from "./handlers/anchor-tools";
 import { createGradientFeatherHandler } from "./handlers/gradient-feather-tool";
 import { createGradientSwatchHandler } from "./handlers/gradient-tool";
 import { createLineHandler } from "./handlers/line-tool";
 import { createPageHandler } from "./handlers/page-tool";
-import { createPenHandler } from "./handlers/pen-tool";
 import { createPencilHandler } from "./handlers/pencil-tool";
 import { createRectangleHandler } from "./handlers/rectangle-tool";
 import { createScissorsHandler } from "./handlers/scissors-tool";
@@ -120,52 +114,10 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     // Editor-ops — drag → `insertLine` (protocol v24).
     gesture: createLineHandler,
   },
-  {
-    id: "paged.tool.pen",
-    title: "Pen",
-    icon: "tool-pen",
-    shortcut: "p",
-    group: "pen",
-    section: "drawType",
-    order: 0,
-    isGroupDefault: true,
-    // plugin-draw D2 — shim over @paged-media/draw-tools' PenMachine:
-    // click/drag/Alt/Shift matrix → one `insertPath` (protocol v27).
-    gesture: createPenHandler,
-  },
-  {
-    id: "paged.tool.addAnchor",
-    title: "Add Anchor Point",
-    icon: "tool-addAnchor",
-    shortcut: "=",
-    group: "pen",
-    section: "drawType",
-    order: 1,
-    // plugin-draw D2 — curve-preserving segment split → 3-op batch.
-    gesture: createAddAnchorHandler,
-  },
-  {
-    id: "paged.tool.deleteAnchor",
-    title: "Delete Anchor Point",
-    icon: "tool-deleteAnchor",
-    shortcut: "-",
-    group: "pen",
-    section: "drawType",
-    order: 2,
-    // plugin-draw D2 — nearest anchor → `pathPointRemove`.
-    gesture: createDeleteAnchorHandler,
-  },
-  {
-    id: "paged.tool.convertAnchor",
-    title: "Convert Direction Point",
-    icon: "tool-convertAnchor",
-    shortcut: "shift+c",
-    group: "pen",
-    section: "drawType",
-    order: 3,
-    // plugin-draw D2 — corner ↔ smooth → `pathPointCurveType`.
-    gesture: createConvertAnchorHandler,
-  },
+  // plugin-draw D3 — the pen group (Pen + Add/Delete/Convert Anchor)
+  // is contributed by the paged.draw BUNDLE (`media.paged.draw.tool.*`,
+  // registered via `loadBundle(drawBundle)` in apps/canvas/main.tsx),
+  // not by this catalog. Removing that call removes the tools cleanly.
   {
     id: "paged.tool.pencil",
     title: "Pencil",
@@ -390,10 +342,6 @@ const TOOL_CURSORS: Record<string, CursorSpec> = {
   "paged.tool.type": TEXT,
   "paged.tool.typePath": TEXT,
   "paged.tool.line": CROSS,
-  "paged.tool.pen": CROSS,
-  "paged.tool.addAnchor": CROSS,
-  "paged.tool.deleteAnchor": CROSS,
-  "paged.tool.convertAnchor": CROSS,
   "paged.tool.pencil": CROSS,
   "paged.tool.smooth": CROSS,
   "paged.tool.erase": CROSS,

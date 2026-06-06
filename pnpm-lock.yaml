@@ -16,6 +16,12 @@ importers:
       '@paged-media/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@paged-media/draw-bundle':
+        specifier: link:../../../plugin-draw/packages/draw-bundle
+        version: link:../../../plugin-draw/packages/draw-bundle
+      '@paged-media/plugin-sdk':
+        specifier: link:../../../sdk/packages/plugin-sdk
+        version: link:../../../sdk/packages/plugin-sdk
       '@paged-media/shell':
         specifier: workspace:*
         version: link:../../packages/shell
@@ -278,9 +284,6 @@ importers:
       '@paged-media/draw-geometry':
         specifier: link:../../../plugin-draw/packages/draw-geometry
         version: link:../../../plugin-draw/packages/draw-geometry
-      '@paged-media/draw-tools':
-        specifier: link:../../../plugin-draw/packages/draw-tools
-        version: link:../../../plugin-draw/packages/draw-tools
       '@paged-media/shell':
         specifier: workspace:*
         version: link:../shell

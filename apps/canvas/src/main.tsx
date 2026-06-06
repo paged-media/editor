@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState } from "react";
+import { StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   PagedShell,
@@ -19,6 +19,7 @@ import {
   useCanvasClient,
   useContentSelection,
   useDocument,
+  usePaged,
   useRegistries,
   type OverlayContribution,
   type PanelContribution,
@@ -27,6 +28,8 @@ import "@paged-media/shell/styles/globals.css";
 
 import { CanvasClient } from "@paged-media/client";
 import { BUILT_IN_TOOLS } from "@paged-media/tools";
+import { loadBundle } from "@paged-media/plugin-sdk";
+import { drawBundle } from "@paged-media/draw-bundle";
 import {
   APP_KEYBINDINGS,
   APP_MENU_ITEMS,
@@ -739,6 +742,30 @@ const BUILT_IN_PANELS: PanelContribution[] = [
 ];
 
 /**
+ * plugin-draw D3 — load first-party plugin bundles through the public
+ * SDK surface (`@paged-media/plugin-sdk`). One `loadBundle` call per
+ * bundle; the returned handle's dispose unregisters every
+ * contribution (tools, activation commands, guarded shortcuts), so
+ * removing this component removes the plugins cleanly — the
+ * platform-honesty smoke test. Side-effect-only child of PagedShell
+ * (the CanvasAppIntegration pattern). The thunk resolves the LIVE
+ * editor handle per call (the command-registry idiom), so bundle
+ * handlers never close over a stale snapshot.
+ */
+function PluginBundles() {
+  const paged = usePaged();
+  const pagedRef = useRef(paged);
+  pagedRef.current = paged;
+  useEffect(() => {
+    const loaded = loadBundle(() => pagedRef.current, drawBundle);
+    return () => loaded.dispose();
+    // Mount-once by design; the ref keeps the handle live.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
+/**
  * Canvas-app integration: legacy keyboard + camera + text-editing
  * hooks that read from the shell contexts but key off canvas
  * specifics (page rect math, IDML mutation API). Renders nothing —
@@ -899,6 +926,7 @@ function CanvasAppRoot() {
       headerExtras={<CorpusPicker />}
     >
       <CanvasAppIntegration />
+      <PluginBundles />
     </PagedShell>
   );
 }
