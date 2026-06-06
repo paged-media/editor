@@ -111,31 +111,29 @@ test.describe("E2E paragraph ops", () => {
     });
   }
 
-  test("AC-E2E-PARA-leftIndent — paragraphLeftIndent lands (model); render is a known engine gap", async ({
+  test("AC-E2E-PARA-leftIndent — paragraphLeftIndent lands + repaints", async ({
     page,
   }) => {
-    // Indents round-trip on the wire but core's paragraph compose does
-    // not yet honour them — a 120pt left indent over the 160-char story
-    // produces 0 px delta (verified). Model + undo stay hard; renderGap
-    // relaxes the pixel gate and flips loudly when core wires indents.
+    // Indents now honoured by core's paragraph compose (render-honor
+    // batch, core 27f7d0a) — a 24pt left indent shifts the run and
+    // produces a pixel delta. Model + undo stay hard; the render gate
+    // is now ENFORCED (renderGap dropped).
     await paraSandwich(page, {
       path: "paragraphLeftIndent",
       value: { type: "length", value: 24 },
       assertValue: (v) => expect((v as { value: number }).value).toBe(24),
-      renderGap: true,
     });
   });
 
-  test("AC-E2E-PARA-rightIndent — paragraphRightIndent lands (model); render is a known engine gap", async ({
+  test("AC-E2E-PARA-rightIndent — paragraphRightIndent lands + repaints", async ({
     page,
   }) => {
-    // Same engine render gap as the left indent — model + undo hard,
-    // pixel gate relaxed via renderGap.
+    // Same as the left indent — core now honours the right indent
+    // (render-honor batch, core 27f7d0a); render gate ENFORCED.
     await paraSandwich(page, {
       path: "paragraphRightIndent",
       value: { type: "length", value: 24 },
       assertValue: (v) => expect((v as { value: number }).value).toBe(24),
-      renderGap: true,
     });
   });
 
@@ -198,21 +196,24 @@ test.describe("E2E paragraph ops", () => {
     });
   });
 
-  test("AC-E2E-PARA-ruleAbove — paragraphRuleAbove struct lands (model); render is a known engine gap", async ({
+  test("AC-E2E-PARA-ruleAbove — paragraphRuleAbove struct lands + repaints", async ({
     page,
   }) => {
     // Whole-struct ParagraphRule value (the bespoke disclosure's
     // write). The struct round-trips on the wire (model + undo
-    // asserted) but core's paragraph compose doesn't draw the rule line
-    // yet — a weight-8 rule produces 0 px delta (verified). renderGap
-    // (noRenderChange) relaxes the pixel gate; it flips loudly the day
-    // core wires paragraph rules.
+    // asserted) AND core now draws the rule line (render-honor batch,
+    // core 27f7d0a — the resolver captures the instance rule). The pixel
+    // gate is ENFORCED (noRenderChange dropped). The rule MUST carry a
+    // colour to paint a visible bar: core's own render-honor test sets
+    // `RuleAboveColor="Color/Black"`, and an instance rule with no
+    // colour resolves to no paint (0 px delta) — so we set the
+    // guaranteed `Color/Black` swatch and a heavier weight for a clean
+    // delta above the first line.
     await opSandwich(page, {
       pageId: pageInfo.pageId,
       pageWidthPt: pageInfo.widthPt,
       region,
       containment: false,
-      noRenderChange: true,
       dumpModel: () => dumpElement(page, range),
       apply: async () => {
         await mutate(page, {
@@ -222,7 +223,12 @@ test.describe("E2E paragraph ops", () => {
             path: "paragraphRuleAbove",
             value: {
               type: "paragraphRule",
-              value: { on: true, weight: 2, offset: 0 },
+              value: {
+                on: true,
+                weight: 4,
+                offset: 2,
+                color: "Color/Black",
+              },
             },
           },
         });
@@ -234,7 +240,7 @@ test.describe("E2E paragraph ops", () => {
         } | null;
         expect(v?.type).toBe("paragraphRule");
         expect(v?.value?.on).toBe(true);
-        expect(v?.value?.weight).toBe(2);
+        expect(v?.value?.weight).toBe(4);
       },
     });
   });

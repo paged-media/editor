@@ -223,22 +223,21 @@ test.describe("E2E stroke op round-trips", () => {
     });
   });
 
-  test("AC-E2E-STROKE-gap-color — gap swatch lands (model); under-paint render is a known engine gap", async ({
+  test("AC-E2E-STROKE-gap-color — gap swatch lands + under-paints beneath the dashes, undo restores", async ({
     page,
   }) => {
     // `frameStrokeGapColor` round-trips on the wire (model + undo
-    // asserted) but core's stroke compose does NOT paint the gap-colour
-    // under-stroke beneath the dashes yet — a vivid gap swatch over the
-    // beforeEach dashed stroke produces 0 px delta (verified).
-    // noRenderChange relaxes the pixel gate and flips loudly the day
-    // core wires the gap-colour second pass (renderer shapes.rs).
+    // asserted) AND core now paints the gap-colour under-stroke beneath
+    // the dashes (render-honor batch, core 27f7d0a) — a vivid gap swatch
+    // over the beforeEach dashed stroke produces a pixel delta. The
+    // gap-colour second pass (renderer shapes.rs) is now exercised; the
+    // pixel gate is ENFORCED (noRenderChange dropped).
     let magenta: string;
     await opSandwich(page, {
       pageId: pageInfo.pageId,
       pageWidthPt: pageInfo.widthPt,
       region,
       containment: false,
-      noRenderChange: true,
       dumpModel: () => dumpElement(page, rect),
       apply: async () => {
         magenta = (await createVividSwatch(page))!;

@@ -94,6 +94,12 @@ test.describe("E2E character ops", () => {
        *  it yet, so the page repaints with NO pixel delta. Asserting
        *  zero render flips loudly the day core wires the glyph effect. */
       renderGap?: boolean;
+      /** KNOWN engine undo non-determinism — the forward render gate
+       *  stays HARD (the edit paints) and model-restore stays HARD, but
+       *  the undo PIXEL byte-identity is relaxed with this logged reason.
+       *  A dedicated `test.fail` owns the strict undo check so it flips
+       *  loudly the day core makes the undo byte-identical. */
+      undoNonDeterministic?: string;
     },
   ) {
     await opSandwich(page, {
@@ -102,6 +108,7 @@ test.describe("E2E character ops", () => {
       region,
       containment: false,
       noRenderChange: o.renderGap ?? false,
+      skipUndoPixelCheck: o.undoNonDeterministic,
       dumpModel: () => dumpElement(page, range),
       apply: async () => {
         await mutate(page, {
@@ -158,21 +165,66 @@ test.describe("E2E character ops", () => {
     });
   });
 
-  test("AC-E2E-CHAR-skew — characterSkew lands (model); render is a known engine gap", async ({
+  test("AC-E2E-CHAR-skew — characterSkew lands + repaints", async ({
     page,
   }) => {
-    // characterSkew (false-italic slant) round-trips on the wire but
-    // core's glyph compose doesn't apply the shear yet — a 30° skew
-    // over the whole story produces 0 px delta (verified). Model +
-    // undo stay hard; the render gate is relaxed via renderGap and
-    // will flip loudly when core wires the shear.
+    // characterSkew (false-italic slant) now applies in core's glyph
+    // compose (render-honor batch, core 27f7d0a — tan(skew)·sy folded
+    // into the glyph affine `c` term) — a 12° skew over the run produces
+    // a pixel delta, so the FORWARD render gate is now ENFORCED
+    // (renderGap dropped). HOWEVER undo does NOT restore byte-identically
+    // (~58 px residual in a tiny bbox around the sheared glyphs — the
+    // skew compose interacts with the layout cache so the revert isn't
+    // pixel-exact). That is a newly-surfaced engine undo-determinism gap,
+    // distinct from the render-honor fix. The undo PIXEL check is relaxed
+    // with a logged reason (model-restore stays hard); the dedicated
+    // `test.fail` below owns the strict undo check so it flips loudly the
+    // day core makes the skew undo byte-identical.
     await charSandwich(page, {
       path: "characterSkew",
       value: { type: "length", value: 12 },
       assertValue: (v) => expect((v as { value: number }).value).toBe(12),
-      renderGap: true,
+      undoNonDeterministic:
+        "characterSkew undo leaves ~58 px residual (skew compose vs layout cache) — core determinism follow-up",
     });
   });
+
+  // Owns the STRICT undo byte-identity check for characterSkew that the
+  // test above relaxes. `test.fail` = expected-to-fail today; it flips
+  // GREEN (and Playwright reports it as an unexpected pass to fix) the
+  // day core makes the skew undo byte-identical, forcing the relaxation
+  // above to be removed.
+  test.fail(
+    "AC-E2E-CHAR-skew-undo — characterSkew undo restores byte-identically (engine determinism follow-up)",
+    async ({ page }) => {
+      await opSandwich(page, {
+        pageId: pageInfo.pageId,
+        pageWidthPt: pageInfo.widthPt,
+        region,
+        containment: false,
+        dumpModel: () => dumpElement(page, range),
+        apply: async () => {
+          await mutate(page, {
+            op: "setElementProperty",
+            args: {
+              elementId: range,
+              path: "characterSkew",
+              value: { type: "length", value: 12 },
+            },
+          });
+        },
+        expectModel: async () => {
+          expect(
+            (
+              (await readRangeProp(page, range, "characterSkew")) as {
+                value: number;
+              }
+            ).value,
+          ).toBe(12);
+        },
+      });
+    },
+  );
 
   test("AC-E2E-CHAR-baseline — characterBaselineShift lands + repaints", async ({
     page,

@@ -69,6 +69,12 @@ interface EffectCase {
    *  noRenderChange asserts zero pixels and flips loudly the day core
    *  wires the effect. */
   renderGap?: boolean;
+  /** Extra setup writes applied AFTER enable + the representative field
+   *  (each is one more mutation → one more undo step). Used where the
+   *  effect's DEFAULT blend mode/colour make it invisible on this
+   *  white-page fixture and a visible-on-white configuration is needed
+   *  to pixel-prove the paint. */
+  setupOps?: Array<{ path: string; value: { type: string; value: unknown } }>;
 }
 
 const EFFECT_CASES: EffectCase[] = [
@@ -82,13 +88,31 @@ const EFFECT_CASES: EffectCase[] = [
   {
     label: "outer glow",
     enablePath: "frameOuterGlowEnabled",
+    // Core now emits the outer-glow command (render-honor batch, core
+    // 27f7d0a — its default colour fixed black→white). But an OUTER glow
+    // paints OUTWARD onto the page, and the DEFAULT glow blend is Screen
+    // (renderer effects.rs line 277): a WHITE glow Screened onto the
+    // geometry fixture's white page is white-on-white = 0 px delta, and
+    // a black glow is the Screen identity (also invisible). The inner
+    // glow shows with the default because it paints INWARD over the
+    // coloured fill. To pixel-prove the OUTER glow we set Multiply blend
+    // + the guaranteed `Color/Black` swatch — a black glow Multiplied
+    // onto the white page is unmistakably dark. Render gate ENFORCED
+    // (renderGap dropped); the representative field is the size, and the
+    // two setupOps make it visible (→ undoSteps 4 in the loop).
     fieldPath: "frameOuterGlowSize",
     fieldValue: { type: "length", value: 7 },
     assertField: (v) => expect((v as { value: number }).value).toBe(7),
-    // Sibling effects (drop/inner shadow, bevel, satin, feather)
-    // composite, but core's effect path doesn't paint the glow blur
-    // yet — model + undo round-trip, render is a known gap.
-    renderGap: true,
+    setupOps: [
+      {
+        path: "frameOuterGlowBlendMode",
+        value: { type: "text", value: "Multiply" },
+      },
+      {
+        path: "frameOuterGlowColor",
+        value: { type: "colorRef", value: "Color/Black" },
+      },
+    ],
   },
   {
     label: "inner glow",
@@ -96,8 +120,8 @@ const EFFECT_CASES: EffectCase[] = [
     fieldPath: "frameInnerGlowSize",
     fieldValue: { type: "length", value: 6 },
     assertField: (v) => expect((v as { value: number }).value).toBe(6),
-    // Same glow render gap as outer glow.
-    renderGap: true,
+    // Core now paints the inner-glow blur (render-honor batch, core
+    // 27f7d0a) — render gate ENFORCED (renderGap dropped).
   },
   {
     label: "bevel and emboss",
@@ -197,12 +221,14 @@ test.describe("E2E effects op round-trips", () => {
     test(`AC-E2E-FX-${c.label.replace(/\s+/g, "-")} — enable + field land, undo ×2 restores`, async ({
       page,
     }) => {
+      const setupOps = c.setupOps ?? [];
       await opSandwich(page, {
         pageId: pageInfo.pageId,
         pageWidthPt: pageInfo.widthPt,
         region,
         containment: false,
-        undoSteps: 2,
+        // enable + representative field + each setup op = one undo each.
+        undoSteps: 2 + setupOps.length,
         noRenderChange: c.renderGap ?? false,
         dumpModel: () => dumpElement(page, rect),
         apply: async () => {
@@ -218,6 +244,12 @@ test.describe("E2E effects op round-trips", () => {
             op: "setElementProperty",
             args: { elementId: rect, path: c.fieldPath, value: c.fieldValue },
           });
+          for (const s of setupOps) {
+            await mutate(page, {
+              op: "setElementProperty",
+              args: { elementId: rect, path: s.path, value: s.value },
+            });
+          }
         },
         expectModel: async () => {
           expect(
