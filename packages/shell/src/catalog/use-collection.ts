@@ -24,6 +24,7 @@ import type {
 } from "@paged-media/client";
 
 import { useCanvasClient } from "../state/canvas-client-context";
+import { useDocument } from "../state/document-context";
 
 /**
  * Hook returning the live array for a named document collection.
@@ -134,7 +135,19 @@ export function useDocumentMeta(): DocumentMeta | null {
  */
 export function useDocumentStats(): DocumentStats | null {
   const client = useCanvasClient();
-  const [stats, setStats] = useState<DocumentStats | null>(null);
+  // The `documentLoaded` / `stats` messages are one-shot and unsolicited
+  // (there's no `requestStats` to re-pull). A panel that mounts AFTER the
+  // load fires would miss them and wedge at null, so seed from the
+  // document handle's stats (persisted in context across mounts) and let
+  // the live subscription override on later stats pushes (post-mutation).
+  const { handle } = useDocument();
+  const [stats, setStats] = useState<DocumentStats | null>(
+    handle?.stats ?? null,
+  );
+
+  useEffect(() => {
+    if (handle?.stats) setStats(handle.stats);
+  }, [handle]);
 
   useEffect(() => {
     const off = client.subscribe((msg) => {

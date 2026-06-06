@@ -47,9 +47,11 @@
 // round-trip, not a mirror rewrite.
 //
 // OVERSET is also live-readable (`StorySummary.overset` via
-// `paged.stories()`), so the badge is engine-truth. TH-04's badge leg
-// induces overset by stuffing a small frame's story, then asserts the
-// out-port paints the red "+" (`data-thread-state="overset"`).
+// `paged.stories()`), so the badge is engine-truth. Aftercare-D: TH-04's
+// badge leg loads the `text-overset` fixture (overset at load time),
+// finds an overset frame via a frame→story centre hit-test, selects it,
+// and asserts the out-port paints the red "+"
+// (`data-thread-state="overset"`).
 //
 // The gesture-plan-deferred.spec.ts E2E-05 stub stays until the sweep
 // flips it; this file is the real TH-01…04 implementation it points at.
@@ -293,98 +295,108 @@ test.describe("gestures.md TH — text-frame threading ports", () => {
 });
 
 test.describe("gestures.md TH-04 — overset badge", () => {
-  // FIXME (read-surface, not implementation). The OUT-port renders the
-  // overset badge whenever the controller marks the selected frame's
-  // id in `oversetFrames`, which it derives from `StorySummary.overset`
-  // (the `paged.stories()` script surface) mapped through a centre
-  // hit-test. The plumbing is wired and unit-typecheck-clean. What is
-  // NOT verifiable in this suite is the FIXTURE/SOURCE for an overset
-  // story:
-  //
-  //   - The generated `text` fixture ships NO overset frame — every
-  //     story is small and FITS its box (verified: all stories < 200
-  //     chars in boxes sized for them). So there's no ready overset
-  //     frame to select.
-  //   - Inducing overset by stuffing a story (the body below) relies on
-  //     `StorySummary.overset` being RECOMPUTED on an INCREMENTAL
-  //     insertText rebuild. The flag is documented as "Derived from the
-  //     build's OversetTextDropped diagnostics"; whether an in-session
-  //     edit re-derives it (vs. only the initial load build) is
-  //     unproven — no existing spec asserts overset after an edit, and
-  //     the W2.8 sibling found load-time-snapshot patterns in adjacent
-  //     diagnostics. Asserting it here without a verified recompute
-  //     would be a guess.
-  //
-  // Wire this leg the moment EITHER (a) a generated `text-overset`
-  // fixture ships an overset frame, OR (b) a spec confirms
-  // `paged.stories()` overset re-derives on incremental insertText.
-  // The body below is the real assertion — delete the fixme and run it.
-  test.fixme(
-    "an overset frame's out-port shows the red + overset badge",
-    async ({ page }) => {
-      test.setTimeout(120_000);
-      await openCanvas(page);
-      const fx = await loadViaReactPath(page, "text");
-      const source = fx.firstTextFrame as ElementRef;
-      expect(source).not.toBeNull();
-      expect(fx.firstStory).not.toBeNull();
+  // Aftercare-D: the `text-overset` fixture ships overset frames at LOAD
+  // time (no induced edit needed). Page 1 is a single short frame
+  // overset by its body story; page 2 is a threaded A→B chain that
+  // oversets past frame B. Inter is seeded by the React loader so the
+  // overset diagnostic fires deterministically. The controller marks the
+  // selected frame's id in `oversetFrames` (derived from
+  // `StorySummary.overset` via a centre hit-test), so selecting an
+  // overset frame paints the red "+" overset badge on its out-port.
+  test("an overset frame's out-port shows the red + overset badge", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await openCanvas(page);
+    const fx = await loadViaReactPath(page, "text-overset");
+    expect(fx.frames.length).toBeGreaterThan(0);
 
-      // Induce overset: stuff the selected frame's story far past its
-      // box. `StorySummary.overset` is engine-truth (the only LIVE
-      // threading read), so this is a real overset, not a mocked flag.
-      const story = fx.firstStory as {
+    // The set of overset story ids (engine truth via the live script
+    // surface the controller reads).
+    const oversetStoryIds = await page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              executeScript: (
+                s: string,
+              ) => Promise<{ output: string[]; error: string | null }>;
+            };
+          };
+        }
+      ).__canvas;
+      const r = await c.client.executeScript("paged.stories()");
+      const stories = JSON.parse(r.output[0] ?? "[]") as Array<{
         selfId: string;
-        characterCount: number;
-      };
-      const filled = await mutate(page, {
-        op: "insertText",
-        args: {
-          storyId: story.selfId,
-          offset: story.characterCount,
-          text: " " + "overset filler text ".repeat(400),
-        },
-      });
-      expect(filled.kind).toBe("mutationApplied");
+        overset?: boolean;
+      }>;
+      return stories.filter((s) => s.overset).map((s) => s.selfId);
+    });
+    expect(
+      oversetStoryIds.length,
+      "text-overset ships at least one overset story",
+    ).toBeGreaterThan(0);
 
-      // The story must now report overset (engine truth via the same
-      // script surface the controller reads).
-      await expect
-        .poll(
-          async () => {
-            const out = await page.evaluate(async () => {
-              const c = (
-                globalThis as unknown as {
-                  __canvas: {
-                    client: {
-                      executeScript: (
-                        s: string,
-                      ) => Promise<{ output: string[]; error: string | null }>;
-                    };
-                  };
-                }
-              ).__canvas;
-              const r = await c.client.executeScript("paged.stories()");
-              return r.output[0] ?? "[]";
-            });
-            const stories = JSON.parse(out) as Array<{
-              selfId: string;
-              overset?: boolean;
-            }>;
-            return (
-              stories.find((s) => s.selfId === story.selfId)?.overset ?? false
-            );
-          },
-          { timeout: 8_000 },
-        )
-        .toBe(true);
+    // Find a text frame whose parent story is overset — a centre
+    // hit-test resolves frame→story the same way the controller does.
+    const oversetFrame = await page.evaluate(
+      async ({ frames, pages, oversetStoryIds }) => {
+        const c = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                elementGeometry: (ids: unknown[]) => Promise<
+                  Array<{
+                    pageId: string;
+                    bounds: [number, number, number, number];
+                    itemTransform?:
+                      | [number, number, number, number, number, number]
+                      | null;
+                  }>
+                >;
+                send: (m: unknown) => Promise<{
+                  kind: string;
+                  payload?: { storyId?: string | null };
+                }>;
+              };
+            };
+          }
+        ).__canvas;
+        for (const f of frames) {
+          if (f.ref.kind !== "textFrame") continue;
+          const geo = (await c.client.elementGeometry([f.ref]))[0];
+          if (!geo) continue;
+          const [top, left, bottom, right] = geo.bounds;
+          const [a, b, cc, d, tx, ty] = geo.itemTransform ?? [1, 0, 0, 1, 0, 0];
+          const cx0 = (left + right) / 2;
+          const cy0 = (top + bottom) / 2;
+          const cx = a * cx0 + cc * cy0 + tx;
+          const cy = b * cx0 + d * cy0 + ty;
+          const page = pages.find((p) => p.pageId === geo.pageId);
+          if (!page) continue;
+          const hit = await c.client.send({
+            kind: "hitTest",
+            payload: {
+              pageId: geo.pageId,
+              docPoint: [cx, cy],
+              filter: "text",
+            },
+          });
+          const sid = hit.payload?.storyId ?? null;
+          if (sid && oversetStoryIds.includes(sid)) {
+            return f.ref;
+          }
+        }
+        return null;
+      },
+      { frames: fx.frames, pages: fx.pages, oversetStoryIds },
+    );
+    expect(oversetFrame, "an overset text frame to select").not.toBeNull();
 
-      // Select the overset frame → its out-port paints the overset
-      // badge (controller resolves frame→story via a centre hit-test,
-      // then story→overset via the live script surface).
-      await selectElements(page, [source]);
-      await expect
-        .poll(() => portState(page, "out"), { timeout: 8_000 })
-        .toBe("overset");
-    },
-  );
+    // Select the overset frame → its out-port paints the overset badge.
+    await selectElements(page, [oversetFrame as ElementRef]);
+    await expect
+      .poll(() => portState(page, "out"), { timeout: 8_000 })
+      .toBe("overset");
+  });
 });

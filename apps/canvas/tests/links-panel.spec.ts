@@ -38,16 +38,14 @@ test.describe("Phase 5 — Links panel", () => {
   test.fixme("AC-LINKS-3 — resolved links carry no missing/lo-res badge", async ({
     page,
   }) => {
-    // Genuinely deferred — same fixture gap as AC-LINKS-4/5. NO
-    // generated fixture ships a placed image whose bytes RESOLVE:
-    // `images.idml`'s placements point at external `file:` URIs
-    // (`file:checker-128.png` and an absolute path into the archived
-    // `~/idml/` monorepo) that don't exist, so every row reports
-    // `status: "missing"` in any environment. The "all links ok →
-    // no missing badge" assertion needs a fixture with embedded or
-    // package-relative image bytes the renderer can decode (the
-    // companion to the AC-LINKS-4 broken-link fixture). Until that
-    // fixture lands, this positive case is unreachable.
+    // STILL deferred (Aftercare-D). The assertion is "NO missing badge
+    // ANYWHERE in the list", which needs an ALL-healthy fixture.
+    // `images.idml`'s placements point at non-existent `file:` URIs so
+    // every row is "missing"; the new `links-broken.idml` DOES ship a
+    // resolved control (`links · ok · embedded`, inline PNG bytes), but
+    // it deliberately also carries the two broken rows + a lo-res row, so
+    // the document-wide "zero badges" assertion can't hold there either.
+    // This positive case needs a dedicated all-ok embedded-image fixture.
     await openCanvas(page);
     await loadIdml(page, `${REPO_ROOT}/corpus/generated/images.idml`);
     await openPanel(page, "paged.links");
@@ -59,29 +57,40 @@ test.describe("Phase 5 — Links panel", () => {
     await expect(page.locator('[data-row-badge="missing"]')).toHaveCount(0);
   });
 
-  test.fixme("AC-LINKS-4 — a broken link shows the missing badge + error dot", async ({
+  test("AC-LINKS-4 — a broken link shows the missing badge + error dot", async ({
     page,
   }) => {
-    // No fixture ships a placed image whose bytes fail to resolve
-    // (LinkSummary.status === "missing"). Needs a fixture with a
-    // dangling image reference to exercise the red status dot and
-    // the [data-row-badge="missing"] badge.
+    // Aftercare-D: `links-broken` ships two dangling image references
+    // (missing-tif / missing-png) whose bytes resolve nowhere, so the
+    // build classifies them LinkSummary.status === "missing" and the row
+    // paints the [data-row-badge="missing"] badge.
     await openCanvas(page);
-    await loadIdml(page, `${REPO_ROOT}/corpus/generated/images.idml`);
+    await loadIdml(page, `${REPO_ROOT}/corpus/generated/links-broken.idml`);
     await openPanel(page, "paged.links");
-    await expect(page.locator('[data-row-badge="missing"]')).toBeVisible();
+    await expect(page.locator('[data-links-panel="ready"]')).toBeVisible();
+    await expect(
+      page.locator('[data-row-badge="missing"]').first(),
+    ).toBeVisible();
   });
 
-  test.fixme("AC-LINKS-5 — a low-res placement shows the lo-res badge + PPI", async ({
+  test("AC-LINKS-5 — a low-res placement shows the lo-res badge + PPI", async ({
     page,
   }) => {
-    // Synthetic fixtures omit the <Image EffectivePpi> attribute, so
-    // LinkSummary.effectivePpi is null and the lo-res badge never
-    // fires. Needs a fixture exported from InDesign with a placed
-    // image scaled below 150 ppi.
+    // Aftercare-D: `links-broken`'s `links · ppi · low-res` row embeds a
+    // 2×2 px PNG in a large frame declaring EffectivePpi="(96 96)" — it
+    // resolves "ok" but its 96 ppi is below the 150-ppi preflight floor,
+    // so the row gets the [data-row-badge="lo-res"] badge (missing wins
+    // over lo-res, so this row must be the resolved-but-low one).
     await openCanvas(page);
-    await loadIdml(page, `${REPO_ROOT}/corpus/generated/images.idml`);
+    await loadIdml(page, `${REPO_ROOT}/corpus/generated/links-broken.idml`);
     await openPanel(page, "paged.links");
-    await expect(page.locator('[data-row-badge="lo-res"]')).toBeVisible();
+    await expect(page.locator('[data-links-panel="ready"]')).toBeVisible();
+    await expect(
+      page.locator('[data-row-badge="lo-res"]').first(),
+    ).toBeVisible();
+    // The PPI is surfaced in the row meta (e.g. "96 ppi").
+    await expect(
+      page.locator("[data-link-list]").getByText(/\b96 ppi\b/),
+    ).toBeVisible();
   });
 });
