@@ -376,18 +376,23 @@ const TEXT_PROBES: Probe[] = [
   },
   {
     op: "applyStyle",
-    build: async ({ fx }) =>
-      fx.firstStory
+    build: async ({ page, fx }) => {
+      // v28 shape: a named style ref + scope (range attributes go
+      // through setElementProperty / the splitters instead).
+      const style = await lastCollectionId(page, "paragraphStyles");
+      return fx.firstStory && style
         ? {
             op: "applyStyle",
             args: {
               storyId: fx.firstStory.selfId,
               start: 0,
               end: 1,
-              attributes: { type: "length", value: 14 },
+              style,
+              scope: "paragraph",
             },
           }
-        : null,
+        : null;
+    },
   },
   {
     op: "insertField",
@@ -398,7 +403,7 @@ const TEXT_PROBES: Probe[] = [
             args: {
               storyId: fx.firstStory.selfId,
               offset: 0,
-              fieldKind: "pageNumber",
+              field: "pageNumber",
             },
           }
         : null,
@@ -428,15 +433,48 @@ const TEXT_PROBES: Probe[] = [
   },
   {
     op: "linkFrames",
-    build: async ({ fx }) => {
-      const tfs = fx.frames.filter((f) => f.ref.kind === "textFrame");
-      return tfs.length >= 2
+    build: async ({ page, fx }) => {
+      // v28 semantics: `to` must be an EMPTY frame — insert a scratch
+      // text frame to thread into (setupUndo rolls it back).
+      const from = fx.frames.find((f) => f.ref.kind === "textFrame");
+      if (!from) return null;
+      const createdId = await page.evaluate(async (pageId) => {
+        const c = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                mutate: (x: unknown) => Promise<{
+                  kind: string;
+                  payload?: { createdId?: unknown };
+                }>;
+              };
+            };
+          }
+        ).__canvas;
+        // Threading requires an EMPTY TEXT frame target (v28
+        // insertTextFrame; a rectangle is not linkable).
+        const reply = await c.client.mutate({
+          op: "insertTextFrame",
+          args: { pageId, bounds: [400, 400, 520, 480] },
+        });
+        if (reply?.kind !== "mutationApplied") return null;
+        // createdId is an ElementId object ({kind, id}); the wire
+        // wants the bare id string.
+        const created = reply.payload?.createdId as
+          | { id?: string }
+          | string
+          | null
+          | undefined;
+        return typeof created === "string" ? created : (created?.id ?? null);
+      }, fx.pages[0].pageId);
+      return createdId
         ? {
             op: "linkFrames",
-            args: { frameA: tfs[0].ref.id, frameB: tfs[1].ref.id },
+            args: { from: from.ref.id, to: createdId },
           }
         : null;
     },
+    setupUndo: 1, // the scratch frame
   },
   {
     op: "unlinkFrames",
@@ -444,10 +482,7 @@ const TEXT_PROBES: Probe[] = [
       fx.firstTextFrame
         ? {
             op: "unlinkFrames",
-            args: {
-              chainId: fx.firstTextFrame.id,
-              afterFrame: fx.firstTextFrame.id,
-            },
+            args: { frame: fx.firstTextFrame.id },
           }
         : null,
   },
@@ -926,6 +961,134 @@ const GEOMETRY_PROBES: Probe[] = [
     },
     setupUndo: 2, // the two scratch insertFrame ops
   },
+  // ── v28 operations (W0.5 batch) ───────────────────────────────
+  {
+    op: "insertTextFrame",
+    build: async ({ fx }) => ({
+      op: "insertTextFrame",
+      args: { pageId: fx.pages[0].pageId, bounds: [30, 30, 140, 150] },
+    }),
+  },
+  {
+    op: "insertOval",
+    build: async ({ fx }) => ({
+      op: "insertOval",
+      args: { pageId: fx.pages[0].pageId, bounds: [20, 20, 120, 90] },
+    }),
+  },
+  {
+    op: "insertGuide",
+    build: async ({ page }) => {
+      const spreadId = await lastCollectionId(page, "spreads");
+      return spreadId
+        ? {
+            op: "insertGuide",
+            args: { spreadId, orientation: "horizontal", position: 100 },
+          }
+        : null;
+    },
+  },
+  {
+    op: "moveGuide",
+    build: async ({ page }) => {
+      // Guides are addressed positionally (Guide/<spread>/<index>);
+      // insert a scratch guide, then move index 0 on that spread.
+      const spreadId = await lastCollectionId(page, "spreads");
+      if (!spreadId) return null;
+      const made = await tryMutate(page, {
+        op: "insertGuide",
+        args: { spreadId, orientation: "vertical", position: 50 },
+      });
+      return made.ok
+        ? { op: "moveGuide", args: { guideId: `Guide/${spreadId}/0`, position: 80 } }
+        : null;
+    },
+    setupUndo: 1, // the scratch guide
+  },
+  {
+    op: "deleteGuide",
+    build: async ({ page }) => {
+      const spreadId = await lastCollectionId(page, "spreads");
+      if (!spreadId) return null;
+      const made = await tryMutate(page, {
+        op: "insertGuide",
+        args: { spreadId, orientation: "vertical", position: 60 },
+      });
+      return made.ok
+        ? { op: "deleteGuide", args: { guideId: `Guide/${spreadId}/0` } }
+        : null;
+    },
+    setupUndo: 1,
+  },
+  {
+    op: "setConditionVisible",
+    build: async ({ page }) => {
+      const condition = await lastCollectionId(page, "conditions");
+      return condition
+        ? { op: "setConditionVisible", args: { condition, visible: false } }
+        : null;
+    },
+  },
+  {
+    op: "activateConditionSet",
+    build: async ({ page }) => {
+      const set = await lastCollectionId(page, "conditionSets");
+      return set ? { op: "activateConditionSet", args: { set } } : null;
+    },
+  },
+  {
+    op: "applyMasterToPage",
+    build: async ({ fx }) => ({
+      // master:null = detach — exercises the op without needing a
+      // master spread in the fixture; undo restores the prior ref.
+      op: "applyMasterToPage",
+      args: { page: fx.pages[0].pageId, master: null },
+    }),
+  },
+  {
+    op: "duplicatePage",
+    build: async ({ fx }) => ({
+      op: "duplicatePage",
+      args: { page: fx.pages[0].pageId },
+    }),
+  },
+  {
+    op: "insertSection",
+    build: async ({ fx }) => ({
+      op: "insertSection",
+      args: { atPage: fx.pages[0].pageId, prefix: "A-", startAt: 1 },
+    }),
+  },
+  {
+    op: "editSection",
+    build: async ({ page, fx }) => {
+      const made = await tryMutate(page, {
+        op: "insertSection",
+        args: { atPage: fx.pages[0].pageId, prefix: "B-", startAt: 5 },
+      });
+      if (!made.ok) return null;
+      const sectionId = await lastCollectionId(page, "sections");
+      return sectionId
+        ? { op: "editSection", args: { sectionId, prefix: "C-" } }
+        : null;
+    },
+    setupUndo: 1, // the scratch section
+  },
+  {
+    op: "deleteSection",
+    build: async ({ page, fx }) => {
+      const made = await tryMutate(page, {
+        op: "insertSection",
+        args: { atPage: fx.pages[0].pageId, prefix: "D-", startAt: 9 },
+      });
+      if (!made.ok) return null;
+      const sectionId = await lastCollectionId(page, "sections");
+      return sectionId
+        ? { op: "deleteSection", args: { sectionId } }
+        : null;
+    },
+    setupUndo: 1,
+  },
 ];
 
 async function runProbes(
@@ -935,6 +1098,7 @@ async function runProbes(
   results: ProbeResult[],
 ): Promise<void> {
   for (const probe of probes) {
+    if (CAPTURE) process.stdout.write(`[probe] ${probe.op}\n`);
     const setup = probe.setupUndo ?? 0;
     let m: unknown | null;
     try {
@@ -973,6 +1137,18 @@ test("AC-E2E-CAPS — every wire op's engine support matches the table", async (
 }) => {
   test.setTimeout(240_000);
   const results: ProbeResult[] = [];
+  if (CAPTURE) {
+    // Surface worker panics live — a dead worker otherwise reads as
+    // a silent tryMutate hang.
+    page.on("console", (msg) => {
+      const t = msg.text();
+      if (/panic|error|unreachable/i.test(t))
+        process.stdout.write(`[console] ${t.slice(0, 300)}\n`);
+    });
+    page.on("pageerror", (err) =>
+      process.stdout.write(`[pageerror] ${String(err).slice(0, 300)}\n`),
+    );
+  }
 
   await openCanvas(page);
   const textFx = await loadFixture(page, "text");

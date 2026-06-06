@@ -10,7 +10,11 @@
 //   unsupported — op rejected (the note carries the error kind)
 //
 // Seeded from the capture run on 2026-06-05 (E2E_CAPS=capture);
-// update via the same run when core lands new ops.
+// re-captured 2026-06-06 against protocol v28 (the W0/W1 wave:
+// applyStyle/insertField/linkFrames/unlinkFrames went live, plus
+// insertTextFrame/insertOval, guide CRUD, masters/sections ops and
+// conditional-text ops). Update via the same run when core lands
+// new ops.
 
 export type CapabilityStatus = "supported" | "unsupported";
 
@@ -21,45 +25,52 @@ export interface Capability {
 }
 
 export const CAPABILITIES: Capability[] = [
-  // ── text ops ──────────────────────────────────────────────────
+  // ── text ops ──────────────────────────────────────────────────────
   { op: "insertText", status: "supported" },
   { op: "deleteRange", status: "supported" },
-  { op: "applyStyle", status: "unsupported", note: "notImplemented stub" },
-  { op: "insertField", status: "unsupported", note: "notImplemented stub" },
-  // ── frame / page structure ────────────────────────────────────
-  // MoveFrame is a notImplemented stub — frame moves ride the
-  // translate gesture (commitGesture), not this mutation. resize
-  // goes through SetProperty(frameBounds), which IS wired.
-  {
-    op: "moveFrame",
-    status: "unsupported",
-    note: "notImplemented stub — use translate gesture",
-  },
+  { op: "applyStyle", status: "supported" },
+  { op: "insertField", status: "supported" },
+  // ── frame / page structure ────────────────────────────────────────
+  { op: "moveFrame", status: "unsupported", note: "notImplemented stub — use translate gesture" },
   { op: "resizeFrame", status: "supported" },
-  { op: "linkFrames", status: "unsupported", note: "notImplemented stub" },
-  { op: "unlinkFrames", status: "unsupported", note: "notImplemented stub" },
+  { op: "linkFrames", status: "supported" },
+  { op: "unlinkFrames", status: "supported" },
   { op: "insertPage", status: "supported" },
   { op: "deletePage", status: "supported" },
   { op: "resizePage", status: "supported" },
+  { op: "duplicatePage", status: "supported" },
   { op: "insertFrame", status: "supported" },
+  { op: "insertTextFrame", status: "supported" },
   { op: "deleteFrame", status: "supported" },
   { op: "insertLine", status: "supported" },
   { op: "insertPath", status: "supported" },
-  // ── document settings ─────────────────────────────────────────
+  { op: "insertOval", status: "supported" },
+  // ── guides / masters / sections (v28) ─────────────────────────────
+  { op: "insertGuide", status: "supported" },
+  { op: "moveGuide", status: "supported" },
+  { op: "deleteGuide", status: "supported" },
+  { op: "applyMasterToPage", status: "supported" },
+  { op: "insertSection", status: "supported" },
+  { op: "editSection", status: "supported" },
+  { op: "deleteSection", status: "supported" },
+  // ── conditional text (v28) ────────────────────────────────────────
+  { op: "setConditionVisible", status: "unsupported", note: "engine op live (v28) — generated fixtures carry no conditions to probe" },
+  { op: "activateConditionSet", status: "unsupported", note: "engine op live (v28) — generated fixtures carry no condition sets to probe" },
+  // ── document settings ─────────────────────────────────────────────
   { op: "setDocumentDefaults", status: "supported" },
   { op: "setColorSettings", status: "supported" },
   { op: "setProofSetup", status: "supported" },
   { op: "importSwatchLibrary", status: "supported" },
   { op: "setInkSetting", status: "supported" },
   { op: "setUseStandardLabForSpots", status: "supported" },
-  // ── path topology ─────────────────────────────────────────────
+  // ── path topology ─────────────────────────────────────────────────
   { op: "pathPointInsert", status: "supported" },
   { op: "pathPointRemove", status: "supported" },
   { op: "pathOpenAt", status: "supported" },
   { op: "pathPointCurveType", status: "supported" },
   { op: "pathPointSet", status: "supported" },
   { op: "batch", status: "supported" },
-  // ── layers ────────────────────────────────────────────────────
+  // ── layers ────────────────────────────────────────────────────────
   { op: "layerSetVisible", status: "supported" },
   { op: "layerSetLocked", status: "supported" },
   { op: "layerSetPrintable", status: "supported" },
@@ -67,10 +78,10 @@ export const CAPABILITIES: Capability[] = [
   { op: "layerMove", status: "supported" },
   { op: "layerInsert", status: "supported" },
   { op: "layerRemove", status: "supported" },
-  // ── properties / boolean ──────────────────────────────────────
+  // ── properties / boolean ──────────────────────────────────────────
   { op: "setElementProperty", status: "supported" },
   { op: "pathfinderBoolean", status: "supported" },
-  // ── colour resources ──────────────────────────────────────────
+  // ── colour resources ──────────────────────────────────────────────
   { op: "createSwatch", status: "supported" },
   { op: "editSwatch", status: "supported" },
   { op: "deleteSwatch", status: "supported" },
@@ -80,7 +91,7 @@ export const CAPABILITIES: Capability[] = [
   { op: "createColorGroup", status: "supported" },
   { op: "editColorGroup", status: "supported" },
   { op: "deleteColorGroup", status: "supported" },
-  // ── styles ────────────────────────────────────────────────────
+  // ── styles ────────────────────────────────────────────────────────
   { op: "createParagraphStyle", status: "supported" },
   { op: "renameParagraphStyle", status: "supported" },
   { op: "deleteParagraphStyle", status: "supported" },

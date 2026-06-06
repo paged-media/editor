@@ -28,7 +28,7 @@ export type ByteBuf = number[];
  * the worker rejects each variant with `WorkerError::NotImplemented`.
  * Phase 3 lights these up incrementally.
  */
-export type Mutation = { op: "insertText"; args: { storyId: string; offset: number; text: string } } | { op: "deleteRange"; args: { storyId: string; start: number; end: number } } | { op: "applyStyle"; args: { storyId: string; start: number; end: number; attributes: Value } } | { op: "insertField"; args: { storyId: string; offset: number; fieldKind: string } } | { op: "moveFrame"; args: { frameId: string; transform: [number, number, number, number, number, number] } } | { op: "resizeFrame"; args: { frameId: string; bounds: [number, number, number, number] } } | { op: "linkFrames"; args: { frameA: string; frameB: string } } | { op: "unlinkFrames"; args: { chainId: string; afterFrame: string } } | { op: "insertPage"; args: { afterPageId: PageId | null; masterId: string | null } } | { op: "deletePage"; args: { pageId: PageId } } | { op: "resizePage"; args: { pageId: PageId; bounds: [number, number, number, number] } } | { op: "insertFrame"; args: { pageId: PageId; bounds: [number, number, number, number] } } | { op: "deleteFrame"; args: { frameId: string } } | { op: "insertLine"; args: { pageId: PageId; start: [number, number]; end: [number, number] } } | { op: "insertPath"; args: { pageId: PageId; anchors: PathAnchorSpec[]; open: boolean; smooth?: boolean } } | { op: "setDocumentDefaults"; args: { fillColor: string | null; strokeColor: string | null; strokeWeight: number | null } } | { op: "setColorSettings"; args: { cmykProfileName: string | null; rgbPolicy: string | null; intent: string | null; bpc: boolean | null } } | { op: "setProofSetup"; args: { profileName: string | null; simulatePaperWhite?: boolean; intent: string | null } } | { op: "importSwatchLibrary"; args: { bytes: number[]; groupName?: string | null } } | { op: "setInkSetting"; args: { spotId: string; convertToProcess?: boolean; aliasTo?: string | null } } | { op: "setUseStandardLabForSpots"; args: { enabled: boolean } } | { op: "pathPointInsert"; args: { elementId: ElementId; index: number; anchor: PathAnchorSpec; prevSubpathStarts?: number[] | null } } | { op: "pathPointRemove"; args: { elementId: ElementId; index: number } } | { op: "pathOpenAt"; args: { elementId: ElementId; index: number } } | { op: "pathPointCurveType"; args: { elementId: ElementId; index: number; smooth: boolean } } | { op: "pathPointSet"; args: { elementId: ElementId; index: number; role: PathPointRole; position: [number, number] } } | { op: "batch"; args: { ops: Mutation[] } } | { op: "layerSetVisible"; args: { layerId: string; visible: boolean } } | { op: "layerSetLocked"; args: { layerId: string; locked: boolean } } | { op: "layerSetPrintable"; args: { layerId: string; printable: boolean } } | { op: "layerSetName"; args: { layerId: string; name: string } } | { op: "layerMove"; args: { layerId: string; newIndex: number } } | { op: "layerInsert"; args: { position: number; name: string } } | { op: "layerRemove"; args: { layerId: string } } | { op: "setElementProperty"; args: { elementId: ElementId; path: PropertyPath; value: Value } } | { op: "pathfinderBoolean"; args: { kept: ElementId; others: ElementId[]; kind: PathfinderKind } } | { op: "createSwatch"; args: { spec: SwatchSpec } } | { op: "editSwatch"; args: { swatchId: string; spec: SwatchSpec } } | { op: "deleteSwatch"; args: { swatchId: string } } | { op: "createGradient"; args: { spec: GradientSpec } } | { op: "editGradient"; args: { gradientId: string; spec: GradientSpec } } | { op: "deleteGradient"; args: { gradientId: string } } | { op: "createColorGroup"; args: { spec: ColorGroupSpec } } | { op: "editColorGroup"; args: { groupId: string; spec: ColorGroupSpec } } | { op: "deleteColorGroup"; args: { groupId: string } } | { op: "createParagraphStyle"; args: { selfId?: string | null; name?: string | null; basedOn?: string | null } } | { op: "renameParagraphStyle"; args: { styleId: string; name: string } } | { op: "deleteParagraphStyle"; args: { styleId: string } } | { op: "createCharacterStyle"; args: { selfId?: string | null; name?: string | null; basedOn?: string | null } } | { op: "renameCharacterStyle"; args: { styleId: string; name: string } } | { op: "deleteCharacterStyle"; args: { styleId: string } } | { op: "createObjectStyle"; args: { selfId?: string | null; name?: string | null; basedOn?: string | null } } | { op: "renameObjectStyle"; args: { styleId: string; name: string } } | { op: "deleteObjectStyle"; args: { styleId: string } } | { op: "createCellStyle"; args: { selfId?: string | null; name?: string | null; basedOn?: string | null } } | { op: "renameCellStyle"; args: { styleId: string; name: string } } | { op: "deleteCellStyle"; args: { styleId: string } } | { op: "createTableStyle"; args: { selfId?: string | null; name?: string | null; basedOn?: string | null } } | { op: "renameTableStyle"; args: { styleId: string; name: string } } | { op: "deleteTableStyle"; args: { styleId: string } } | { op: "setStyleProperty"; args: { collection: StyleCollection; styleId: string; path: PropertyPath; value: Value } };
+export type Mutation = { op: "insertText"; args: { storyId: string; offset: number; text: string } } | { op: "deleteRange"; args: { storyId: string; start: number; end: number } } | { op: "applyStyle"; args: { storyId: string; start: number; end: number; style: string; scope: StyleScope } } | { op: "insertField"; args: { storyId: string; offset: number; field: FieldKind } } | { op: "moveFrame"; args: { frameId: string; transform: [number, number, number, number, number, number] } } | { op: "resizeFrame"; args: { frameId: string; bounds: [number, number, number, number] } } | { op: "linkFrames"; args: { from: string; to: string } } | { op: "unlinkFrames"; args: { frame: string } } | { op: "insertPage"; args: { afterPageId: PageId | null; masterId: string | null } } | { op: "deletePage"; args: { pageId: PageId } } | { op: "resizePage"; args: { pageId: PageId; bounds: [number, number, number, number] } } | { op: "insertFrame"; args: { pageId: PageId; bounds: [number, number, number, number] } } | { op: "insertTextFrame"; args: { pageId: PageId; bounds: [number, number, number, number] } } | { op: "deleteFrame"; args: { frameId: string } } | { op: "insertLine"; args: { pageId: PageId; start: [number, number]; end: [number, number] } } | { op: "insertPath"; args: { pageId: PageId; anchors: PathAnchorSpec[]; open: boolean; smooth?: boolean } } | { op: "setDocumentDefaults"; args: { fillColor: string | null; strokeColor: string | null; strokeWeight: number | null } } | { op: "setColorSettings"; args: { cmykProfileName: string | null; rgbPolicy: string | null; intent: string | null; bpc: boolean | null } } | { op: "setProofSetup"; args: { profileName: string | null; simulatePaperWhite?: boolean; intent: string | null } } | { op: "importSwatchLibrary"; args: { bytes: number[]; groupName?: string | null } } | { op: "setInkSetting"; args: { spotId: string; convertToProcess?: boolean; aliasTo?: string | null } } | { op: "setUseStandardLabForSpots"; args: { enabled: boolean } } | { op: "pathPointInsert"; args: { elementId: ElementId; index: number; anchor: PathAnchorSpec; prevSubpathStarts?: number[] | null } } | { op: "pathPointRemove"; args: { elementId: ElementId; index: number } } | { op: "pathOpenAt"; args: { elementId: ElementId; index: number } } | { op: "pathPointCurveType"; args: { elementId: ElementId; index: number; smooth: boolean } } | { op: "pathPointSet"; args: { elementId: ElementId; index: number; role: PathPointRole; position: [number, number] } } | { op: "batch"; args: { ops: Mutation[] } } | { op: "layerSetVisible"; args: { layerId: string; visible: boolean } } | { op: "layerSetLocked"; args: { layerId: string; locked: boolean } } | { op: "layerSetPrintable"; args: { layerId: string; printable: boolean } } | { op: "layerSetName"; args: { layerId: string; name: string } } | { op: "layerMove"; args: { layerId: string; newIndex: number } } | { op: "layerInsert"; args: { position: number; name: string } } | { op: "layerRemove"; args: { layerId: string } } | { op: "setElementProperty"; args: { elementId: ElementId; path: PropertyPath; value: Value } } | { op: "pathfinderBoolean"; args: { kept: ElementId; others: ElementId[]; kind: PathfinderKind } } | { op: "createSwatch"; args: { spec: SwatchSpec } } | { op: "editSwatch"; args: { swatchId: string; spec: SwatchSpec } } | { op: "deleteSwatch"; args: { swatchId: string } } | { op: "createGradient"; args: { spec: GradientSpec } } | { op: "editGradient"; args: { gradientId: string; spec: GradientSpec } } | { op: "deleteGradient"; args: { gradientId: string } } | { op: "createColorGroup"; args: { spec: ColorGroupSpec } } | { op: "editColorGroup"; args: { groupId: string; spec: ColorGroupSpec } } | { op: "deleteColorGroup"; args: { groupId: string } } | { op: "createParagraphStyle"; args: { selfId?: string | null; name?: string | null; basedOn?: string | null } } | { op: "renameParagraphStyle"; args: { styleId: string; name: string } } | { op: "deleteParagraphStyle"; args: { styleId: string } } | { op: "createCharacterStyle"; args: { selfId?: string | null; name?: string | null; basedOn?: string | null } } | { op: "renameCharacterStyle"; args: { styleId: string; name: string } } | { op: "deleteCharacterStyle"; args: { styleId: string } } | { op: "createObjectStyle"; args: { selfId?: string | null; name?: string | null; basedOn?: string | null } } | { op: "renameObjectStyle"; args: { styleId: string; name: string } } | { op: "deleteObjectStyle"; args: { styleId: string } } | { op: "createCellStyle"; args: { selfId?: string | null; name?: string | null; basedOn?: string | null } } | { op: "renameCellStyle"; args: { styleId: string; name: string } } | { op: "deleteCellStyle"; args: { styleId: string } } | { op: "createTableStyle"; args: { selfId?: string | null; name?: string | null; basedOn?: string | null } } | { op: "renameTableStyle"; args: { styleId: string; name: string } } | { op: "deleteTableStyle"; args: { styleId: string } } | { op: "setStyleProperty"; args: { collection: StyleCollection; styleId: string; path: PropertyPath; value: Value } } | { op: "insertOval"; args: { pageId: PageId; bounds: [number, number, number, number] } } | { op: "insertGuide"; args: { spreadId: string; orientation: GuideOrientationSpec; position: number; pageIndex?: number } } | { op: "moveGuide"; args: { guideId: string; position: number } } | { op: "deleteGuide"; args: { guideId: string } } | { op: "setConditionVisible"; args: { condition: string; visible: boolean } } | { op: "activateConditionSet"; args: { set: string } } | { op: "applyMasterToPage"; args: { page: PageId; master?: string | null } } | { op: "duplicatePage"; args: { page: PageId } } | { op: "insertSection"; args: { atPage: PageId; prefix?: string | null; numberingStyle?: string | null; startAt?: number | null } } | { op: "editSection"; args: { sectionId: string; prefix?: string | null | null; numberingStyle?: string | null; startAt?: number | null | null } } | { op: "deleteSection"; args: { sectionId: string } };
 
 /**
  * Axis the snap line guides. `X` is a vertical guide (snaps the x
@@ -188,12 +188,17 @@ export interface ExportPdfWireOptions {
  * default on re-insertion; that residue of the Stage 1 limitation
  * tightens in later stages.
  */
-export type NodeSpec = { kind: "textFrame"; self_id: string; bounds: [number, number, number, number]; fill_color?: string | null; stroke_color?: string | null; stroke_weight?: number | null; item_transform?: [number, number, number, number, number, number] | null } | { kind: "rectangle"; self_id: string; bounds: [number, number, number, number]; fill_color?: string | null; stroke_color?: string | null; stroke_weight?: number | null; item_transform?: [number, number, number, number, number, number] | null } | { kind: "graphicLine"; self_id: string; bounds: [number, number, number, number]; anchors?: PathAnchorSpec[]; subpath_starts?: number[]; subpath_open?: boolean[]; stroke_color?: string | null; stroke_weight?: number | null; item_transform?: [number, number, number, number, number, number] | null } | { kind: "polygon"; self_id: string; bounds: [number, number, number, number]; anchors?: PathAnchorSpec[]; subpath_starts?: number[]; subpath_open?: boolean[]; fill_color?: string | null; stroke_color?: string | null; stroke_weight?: number | null; item_transform?: [number, number, number, number, number, number] | null } | { kind: "cloneTranslate"; self_id: string; source: NodeId; dx: number; dy: number; destination_spread_id?: string | null };
+export type NodeSpec = { kind: "textFrame"; self_id: string; bounds: [number, number, number, number]; fill_color?: string | null; stroke_color?: string | null; stroke_weight?: number | null; item_transform?: [number, number, number, number, number, number] | null } | { kind: "rectangle"; self_id: string; bounds: [number, number, number, number]; fill_color?: string | null; stroke_color?: string | null; stroke_weight?: number | null; item_transform?: [number, number, number, number, number, number] | null } | { kind: "oval"; self_id: string; bounds: [number, number, number, number]; fill_color?: string | null; stroke_color?: string | null; stroke_weight?: number | null; item_transform?: [number, number, number, number, number, number] | null } | { kind: "graphicLine"; self_id: string; bounds: [number, number, number, number]; anchors?: PathAnchorSpec[]; subpath_starts?: number[]; subpath_open?: boolean[]; stroke_color?: string | null; stroke_weight?: number | null; item_transform?: [number, number, number, number, number, number] | null } | { kind: "polygon"; self_id: string; bounds: [number, number, number, number]; anchors?: PathAnchorSpec[]; subpath_starts?: number[]; subpath_open?: boolean[]; fill_color?: string | null; stroke_color?: string | null; stroke_weight?: number | null; item_transform?: [number, number, number, number, number, number] | null } | { kind: "cloneTranslate"; self_id: string; source: NodeId; dx: number; dy: number; destination_spread_id?: string | null };
+
+/**
+ * Direction for [`caret_nav`].
+ */
+export type CaretDirection = "up" | "down";
 
 /**
  * Discriminated payload of a `WorkerToMain` message.
  */
-export type WorkerToMainKind = { kind: "ready"; payload: { protocol: ProtocolVersion } } | { kind: "documentLoaded"; payload: DocumentHandle } | { kind: "loadFailed"; payload: { error: LoadError } } | { kind: "mutationFailed"; payload: { error: WorkerError } } | { kind: "displayListReady"; payload: { pageId: PageId; lod: LodTier; commands: number; layoutGeneration: number; numberingGeneration: number } } | { kind: "hitResult"; payload: HitResult } | { kind: "pagesDirty"; payload: { pageIds: PageId[] } } | { kind: "storyDirty"; payload: { storyId: string } } | { kind: "warning"; payload: { kind: string; details: string } } | { kind: "stats"; payload: DocumentStats } | { kind: "snapshotReady"; payload: SnapshotPng } | { kind: "snapshotFailed"; payload: { error: SnapshotError } } | { kind: "mutationApplied"; payload: { clientSeq: number; appliedSeq: number; pageIds: PageId[]; cacheStats: LayoutCacheStats; createdId?: ElementId | null; pageStructureChanged?: boolean; pageSizesPt?: [number, number][] | null } } | { kind: "selectionGeometry"; payload: { rects: SelectionRect[] } } | { kind: "caretGeometry"; payload: { caret: CaretGeometry | null } } | { kind: "undoApplied"; payload: { undoneSeq: number; appliedSeq: number; pageIds: PageId[]; cacheStats: LayoutCacheStats; pageStructureChanged?: boolean; pageSizesPt?: [number, number][] | null } } | { kind: "redoApplied"; payload: { redoneSeq: number; appliedSeq: number; pageIds: PageId[]; cacheStats: LayoutCacheStats; pageStructureChanged?: boolean; pageSizesPt?: [number, number][] | null } } | { kind: "fontRegistered"; payload: { family: string } } | { kind: "fontRegistryCleared" } | { kind: "colorProfileRegistered"; payload: { name: string } } | { kind: "elementSelectionApplied"; payload: { ids: ElementId[] } } | { kind: "marqueeHits"; payload: { ids: ElementId[] } } | { kind: "elementGeometry"; payload: { items: ElementGeometryItem[] } } | { kind: "groupLeaves"; payload: { ids: ElementId[] } } | { kind: "pathAnchors"; payload: { result: PathAnchorsResult | null } } | { kind: "layers"; payload: { items: LayerSummary[] } } | { kind: "collectionReply"; payload: { name: CollectionName; items: any } } | { kind: "documentMetaReply"; payload: { meta: DocumentMeta } } | { kind: "colorPreviewReply"; payload: { result: ColorPreview | null } } | { kind: "colorComputeReply"; payload: { rgbHex: string; cmyk: [number, number, number, number] | null; outOfGamut: boolean } } | { kind: "gradientDetailReply"; payload: { result: GradientDetail | null } } | { kind: "swatchLibraryExported"; payload: { aseBytes: number[] } } | { kind: "exportPdfBegun"; payload: { session: number; pageCount: number } } | { kind: "exportPdfProgress"; payload: { session: number; done: number; total: number } } | { kind: "pdfExported"; payload: { pdfBytes: number[]; diagnostics: string[] } } | { kind: "exportPdfCancelled"; payload: { session: number } } | { kind: "exportPdfFailed"; payload: { error: string } } | { kind: "elementProperties"; payload: { result: ElementProperties | null } } | { kind: "sceneTree"; payload: { roots: SceneTreeNode[] } } | { kind: "scriptResult"; payload: { output: string[]; error: string | null } } | { kind: "gestureBegun"; payload: { handle: GestureHandle } } | { kind: "gestureUpdated"; payload: { handle: GestureHandle; pageIds: PageId[]; snapLines?: SnapLine[] } } | { kind: "gestureCommitted"; payload: { handle: GestureHandle; appliedSeq: number; pageIds: PageId[]; cacheStats: LayoutCacheStats } } | { kind: "gestureCancelled"; payload: { handle: GestureHandle; pageIds: PageId[] } } | { kind: "gestureFailed"; payload: { error: GestureFailure } } | { kind: "attachReady"; payload: { gpuActive: boolean; sceneCacheBudget: number } } | { kind: "gestureSnapLines"; payload: { snapLines: SnapLine[] } } | { kind: "resolutionDone"; payload: ResolutionResult };
+export type WorkerToMainKind = { kind: "ready"; payload: { protocol: ProtocolVersion } } | { kind: "documentLoaded"; payload: DocumentHandle } | { kind: "loadFailed"; payload: { error: LoadError } } | { kind: "mutationFailed"; payload: { error: WorkerError } } | { kind: "displayListReady"; payload: { pageId: PageId; lod: LodTier; commands: number; layoutGeneration: number; numberingGeneration: number } } | { kind: "hitResult"; payload: HitResult } | { kind: "pagesDirty"; payload: { pageIds: PageId[] } } | { kind: "storyDirty"; payload: { storyId: string } } | { kind: "warning"; payload: { kind: string; details: string } } | { kind: "stats"; payload: DocumentStats } | { kind: "snapshotReady"; payload: SnapshotPng } | { kind: "snapshotFailed"; payload: { error: SnapshotError } } | { kind: "mutationApplied"; payload: { clientSeq: number; appliedSeq: number; pageIds: PageId[]; cacheStats: LayoutCacheStats; createdId?: ElementId | null; pageStructureChanged?: boolean; pageSizesPt?: [number, number][] | null } } | { kind: "selectionGeometry"; payload: { rects: SelectionRect[] } } | { kind: "caretGeometry"; payload: { caret: CaretGeometry | null } } | { kind: "caretNavResult"; payload: { offset?: number | null } } | { kind: "lineBoundsResult"; payload: { bounds?: LineBounds | null } } | { kind: "undoApplied"; payload: { undoneSeq: number; appliedSeq: number; pageIds: PageId[]; cacheStats: LayoutCacheStats; pageStructureChanged?: boolean; pageSizesPt?: [number, number][] | null } } | { kind: "redoApplied"; payload: { redoneSeq: number; appliedSeq: number; pageIds: PageId[]; cacheStats: LayoutCacheStats; pageStructureChanged?: boolean; pageSizesPt?: [number, number][] | null } } | { kind: "fontRegistered"; payload: { family: string } } | { kind: "fontRegistryCleared" } | { kind: "colorProfileRegistered"; payload: { name: string } } | { kind: "elementSelectionApplied"; payload: { ids: ElementId[] } } | { kind: "marqueeHits"; payload: { ids: ElementId[] } } | { kind: "elementGeometry"; payload: { items: ElementGeometryItem[] } } | { kind: "groupLeaves"; payload: { ids: ElementId[] } } | { kind: "pathAnchors"; payload: { result: PathAnchorsResult | null } } | { kind: "layers"; payload: { items: LayerSummary[] } } | { kind: "collectionReply"; payload: { name: CollectionName; items: any } } | { kind: "documentMetaReply"; payload: { meta: DocumentMeta } } | { kind: "colorPreviewReply"; payload: { result: ColorPreview | null } } | { kind: "colorComputeReply"; payload: { rgbHex: string; cmyk: [number, number, number, number] | null; outOfGamut: boolean } } | { kind: "gradientDetailReply"; payload: { result: GradientDetail | null } } | { kind: "swatchLibraryExported"; payload: { aseBytes: number[] } } | { kind: "exportPdfBegun"; payload: { session: number; pageCount: number } } | { kind: "exportPdfProgress"; payload: { session: number; done: number; total: number } } | { kind: "pdfExported"; payload: { pdfBytes: number[]; diagnostics: string[]; findings?: PreflightFinding[] } } | { kind: "exportPdfCancelled"; payload: { session: number } } | { kind: "exportPdfFailed"; payload: { error: string } } | { kind: "elementProperties"; payload: { result: ElementProperties | null } } | { kind: "sceneTree"; payload: { roots: SceneTreeNode[] } } | { kind: "scriptResult"; payload: { output: string[]; error: string | null } } | { kind: "gestureBegun"; payload: { handle: GestureHandle } } | { kind: "gestureUpdated"; payload: { handle: GestureHandle; pageIds: PageId[]; snapLines?: SnapLine[] } } | { kind: "gestureCommitted"; payload: { handle: GestureHandle; appliedSeq: number; pageIds: PageId[]; cacheStats: LayoutCacheStats } } | { kind: "gestureCancelled"; payload: { handle: GestureHandle; pageIds: PageId[] } } | { kind: "gestureFailed"; payload: { error: GestureFailure } } | { kind: "attachReady"; payload: { gpuActive: boolean; sceneCacheBudget: number } } | { kind: "gestureSnapLines"; payload: { snapLines: SnapLine[] } } | { kind: "resolutionDone"; payload: ResolutionResult };
 
 /**
  * Editor-ops — wire mirror of `paged_parse::GradientFeatherParams`.
@@ -710,6 +715,13 @@ export interface StorySummary {
      * the character count.
      */
     paragraphCount: number;
+    /**
+     * panels.md gap 1 — `true` when this story\'s text overflowed the
+     * last frame in its chain at build time (overset). Derived from
+     * the build\'s `OversetTextDropped` diagnostics; drives the
+     * Preflight panel + the red \"+\" overset badge on the frame.
+     */
+    overset?: boolean;
 }
 
 /**
@@ -749,7 +761,7 @@ export interface SwatchSummary {
  * `serde_json::Value::Array` for unimplemented entries, surfacing
  * a runtime warning rather than a panic.
  */
-export type CollectionName = "swatches" | "gradients" | "colorGroups" | "paragraphStyles" | "characterStyles" | "objectStyles" | "cellStyles" | "tableStyles" | "layers" | "spreads" | "pages" | "masterPages" | "links" | "articles" | "hyperlinks" | "bookmarks" | "crossReferences" | "conditions" | "conditionSets" | "fonts" | "indexTopics" | "inks";
+export type CollectionName = "swatches" | "gradients" | "colorGroups" | "paragraphStyles" | "characterStyles" | "objectStyles" | "cellStyles" | "tableStyles" | "layers" | "spreads" | "pages" | "masterPages" | "links" | "articles" | "hyperlinks" | "bookmarks" | "crossReferences" | "conditions" | "conditionSets" | "fonts" | "indexTopics" | "inks" | "sections";
 
 /**
  * SDK Phase 5 (D1) — singleton document-level state. Per
@@ -960,6 +972,20 @@ export interface FontSummary {
      * \"this font is used N times\" without a full audit pass.
      */
     referenceCount: number;
+    /**
+     * panels.md gap 4 — `true` when the family can\'t be resolved to
+     * face bytes by the worker\'s font registry (`BytesResolver`),
+     * so the renderer substituted a fallback. The Fonts/Preflight
+     * panel flags these in red. `false` means at least one style of
+     * the family resolved.
+     *
+     * `embedded` is intentionally omitted: IDML packages reference
+     * fonts by name (the `Fonts/Font_*.xml` resource carries no face
+     * bytes), so the engine can\'t honestly say whether a font is
+     * \"embedded\" — only whether it\'s installed/registered. Surfacing
+     * a fabricated `embedded` flag would mislead the panel.
+     */
+    isMissing?: boolean;
 }
 
 /**
@@ -1007,6 +1033,33 @@ export interface PageSummary {
      * `[width, height]` in points.
      */
     sizePt: [number, number];
+    /**
+     * panels.md gap 10 — page margins in pt (from the page\'s
+     * `<MarginPreference>`). All four default to 0 when the page
+     * declared no margins. The editor\'s margin-box overlay insets
+     * the page rect by these.
+     */
+    marginTopPt?: number;
+    marginLeftPt?: number;
+    marginBottomPt?: number;
+    marginRightPt?: number;
+    /**
+     * panels.md gap 10 — column grid inside the margin box.
+     * `column_count` defaults to 1, `column_gutter_pt` to 0.
+     */
+    columnCount?: number;
+    columnGutterPt?: number;
+    /**
+     * panels.md gap 10 — document bleed in pt (top, left, bottom,
+     * right), from `<DocumentPreference>`. Document-level (the same
+     * values on every page); carried per-page so the overlay can
+     * draw the bleed box without a second round-trip. All 0 when the
+     * document declares no bleed.
+     */
+    bleedTopPt?: number;
+    bleedLeftPt?: number;
+    bleedBottomPt?: number;
+    bleedRightPt?: number;
 }
 
 /**
@@ -1026,6 +1079,29 @@ export interface LinkSummary {
     hostSelfId: string;
     hostKind: string;
     uri: string;
+    /**
+     * panels.md gap 2 — `\"ok\"` when the build resolved + decoded the
+     * link, `\"missing\"` when the renderer fell back to the grey
+     * missing-image placeholder (`ImageLinkMissing` /
+     * `ImageDecodeFailed` diagnostic for this frame). Derived from
+     * the build\'s render diagnostics, so it reflects the SAME
+     * resolution outcome the rendered page shows.
+     */
+    status?: string;
+    /**
+     * panels.md gap 3 — placed-image colour space (`\"CMYK\"` /
+     * `\"RGB\"` / `\"Gray\"` / `\"LAB\"`), from the `<Image Space>`
+     * attribute InDesign baked at export. `None` when the IDML
+     * omits it (synthetic fixtures, vector placements).
+     */
+    colorspace?: string | null;
+    /**
+     * panels.md gap 3 — effective ppi at print size (native ppi ÷
+     * placement scale), from the `<Image EffectivePpi>` attribute.
+     * The number a preflight resolution check compares against a
+     * 300-ppi floor. `None` when the IDML omits it.
+     */
+    effectivePpi?: number | null;
 }
 
 /**
@@ -1178,6 +1254,16 @@ export interface DocumentStats {
     runs: number;
     glyphs: number;
     lines: number;
+    /**
+     * panels.md gap 1 — number of distinct stories whose text
+     * overflows the last frame in its chain (overset). Derived from
+     * the build\'s `OversetTextDropped` diagnostics, not from
+     * `PipelineStats`, so `DocumentStats::from(&PipelineStats)`
+     * leaves this 0 and the `handle()` builder backfills it from the
+     * document\'s render diagnostics. Drives the Preflight panel\'s
+     * \"N overset stories\" badge.
+     */
+    overset_stories?: number;
 }
 
 /**
@@ -1186,7 +1272,7 @@ export interface DocumentStats {
  * document\'s `BTreeMap` palettes/stylesheets rather than the scene
  * tree, so they\'re top-level variants rather than `InsertNode`.
  */
-export type Operation = { kind: "SetProperty"; node: NodeId; path: PropertyPath; value: Value } | { kind: "InsertNode"; parent: NodeId; position: number; node: NodeSpec; z_slot?: number | null } | { kind: "RemoveNode"; node: NodeId } | { kind: "MoveNode"; node: NodeId; new_parent: NodeId; position: number } | { kind: "Batch"; ops: Operation[] } | { kind: "InsertPage"; after_page_id?: string | null; master_id?: string | null; spread_self_id?: string | null; page_self_id?: string | null; restore_spread_json?: string | null } | { kind: "RemovePage"; page_id: string } | { kind: "MoveLayer"; layer_id: string; new_index: number } | { kind: "InsertLayer"; position: number; name: string; self_id?: string | null } | { kind: "RemoveLayer"; layer_id: string } | { kind: "CreateSwatch"; spec: SwatchSpec } | { kind: "EditSwatch"; swatch_id: string; spec: SwatchSpec } | { kind: "DeleteSwatch"; swatch_id: string } | { kind: "CreateParagraphStyle"; self_id?: string | null; name?: string | null; based_on?: string | null; restore_json?: string | null } | { kind: "RenameParagraphStyle"; style_id: string; name: string } | { kind: "DeleteParagraphStyle"; style_id: string } | { kind: "CreateCharacterStyle"; self_id?: string | null; name?: string | null; based_on?: string | null; restore_json?: string | null } | { kind: "RenameCharacterStyle"; style_id: string; name: string } | { kind: "DeleteCharacterStyle"; style_id: string } | { kind: "CreateObjectStyle"; self_id?: string | null; name?: string | null; based_on?: string | null; restore_json?: string | null } | { kind: "RenameObjectStyle"; style_id: string; name: string } | { kind: "DeleteObjectStyle"; style_id: string } | { kind: "CreateCellStyle"; self_id?: string | null; name?: string | null; based_on?: string | null; restore_json?: string | null } | { kind: "RenameCellStyle"; style_id: string; name: string } | { kind: "DeleteCellStyle"; style_id: string } | { kind: "CreateTableStyle"; self_id?: string | null; name?: string | null; based_on?: string | null; restore_json?: string | null } | { kind: "RenameTableStyle"; style_id: string; name: string } | { kind: "DeleteTableStyle"; style_id: string } | { kind: "CreateGradient"; spec: GradientSpec } | { kind: "EditGradient"; gradient_id: string; spec: GradientSpec } | { kind: "DeleteGradient"; gradient_id: string } | { kind: "CreateColorGroup"; spec: ColorGroupSpec } | { kind: "EditColorGroup"; group_id: string; spec: ColorGroupSpec } | { kind: "DeleteColorGroup"; group_id: string } | { kind: "SetStyleProperty"; collection: StyleCollection; style_id: string; path: PropertyPath; value: Value } | { kind: "PathfinderBoolean"; kept: NodeId; others: NodeId[]; opKind: PathfinderKind };
+export type Operation = { kind: "SetProperty"; node: NodeId; path: PropertyPath; value: Value } | { kind: "InsertNode"; parent: NodeId; position: number; node: NodeSpec; z_slot?: number | null } | { kind: "RemoveNode"; node: NodeId } | { kind: "MoveNode"; node: NodeId; new_parent: NodeId; position: number } | { kind: "Batch"; ops: Operation[] } | { kind: "InsertPage"; after_page_id?: string | null; master_id?: string | null; spread_self_id?: string | null; page_self_id?: string | null; restore_spread_json?: string | null } | { kind: "RemovePage"; page_id: string } | { kind: "MoveLayer"; layer_id: string; new_index: number } | { kind: "InsertLayer"; position: number; name: string; self_id?: string | null } | { kind: "RemoveLayer"; layer_id: string } | { kind: "CreateSwatch"; spec: SwatchSpec } | { kind: "EditSwatch"; swatch_id: string; spec: SwatchSpec } | { kind: "DeleteSwatch"; swatch_id: string } | { kind: "CreateParagraphStyle"; self_id?: string | null; name?: string | null; based_on?: string | null; restore_json?: string | null } | { kind: "RenameParagraphStyle"; style_id: string; name: string } | { kind: "DeleteParagraphStyle"; style_id: string } | { kind: "CreateCharacterStyle"; self_id?: string | null; name?: string | null; based_on?: string | null; restore_json?: string | null } | { kind: "RenameCharacterStyle"; style_id: string; name: string } | { kind: "DeleteCharacterStyle"; style_id: string } | { kind: "CreateObjectStyle"; self_id?: string | null; name?: string | null; based_on?: string | null; restore_json?: string | null } | { kind: "RenameObjectStyle"; style_id: string; name: string } | { kind: "DeleteObjectStyle"; style_id: string } | { kind: "CreateCellStyle"; self_id?: string | null; name?: string | null; based_on?: string | null; restore_json?: string | null } | { kind: "RenameCellStyle"; style_id: string; name: string } | { kind: "DeleteCellStyle"; style_id: string } | { kind: "CreateTableStyle"; self_id?: string | null; name?: string | null; based_on?: string | null; restore_json?: string | null } | { kind: "RenameTableStyle"; style_id: string; name: string } | { kind: "DeleteTableStyle"; style_id: string } | { kind: "CreateGradient"; spec: GradientSpec } | { kind: "EditGradient"; gradient_id: string; spec: GradientSpec } | { kind: "DeleteGradient"; gradient_id: string } | { kind: "CreateColorGroup"; spec: ColorGroupSpec } | { kind: "EditColorGroup"; group_id: string; spec: ColorGroupSpec } | { kind: "DeleteColorGroup"; group_id: string } | { kind: "SetStyleProperty"; collection: StyleCollection; style_id: string; path: PropertyPath; value: Value } | { kind: "PathfinderBoolean"; kept: NodeId; others: NodeId[]; opKind: PathfinderKind } | { kind: "LinkFrames"; from: string; to: string } | { kind: "UnlinkFrames"; frame: string; prev_next?: string | null } | { kind: "ApplyStyle"; story_id: string; start: number; end: number; style: string; scope: StyleScope } | { kind: "InsertField"; story_id: string; offset: number; field: FieldKind } | { kind: "DeleteField"; story_id: string; offset: number; field: FieldKind } | { kind: "InsertGuide"; spread_id: string; orientation: GuideOrientationSpec; position: number; page_index?: number; guide_id?: string | null } | { kind: "MoveGuide"; guide_id: string; position: number } | { kind: "DeleteGuide"; guide_id: string } | { kind: "SetConditionVisible"; condition: string; visible: boolean } | { kind: "ActivateConditionSet"; set: string } | { kind: "RestoreConditionVisibility"; states: [string, boolean][] } | { kind: "ApplyMasterToPage"; page: string; master?: string | null } | { kind: "DuplicatePage"; page: string; clone_spread_json?: string | null } | { kind: "InsertSection"; at_page: string; prefix?: string | null; numbering_style?: string | null; start_at?: number | null; self_id?: string | null } | { kind: "EditSection"; section_id: string; prefix?: string | null | null; numbering_style?: string | null; start_at?: number | null | null } | { kind: "DeleteSection"; section_id: string };
 
 /**
  * The discriminated payload of a `MainToWorker` message. Tagged so
@@ -1195,7 +1281,7 @@ export type Operation = { kind: "SetProperty"; node: NodeId; path: PropertyPath;
  * variants so e.g. `cmyk_icc_profile` becomes `cmykIccProfile` on
  * the wire — the TS protocol mirror locks the camelCase contract.
  */
-export type MainToWorkerKind = { kind: "hello" } | { kind: "loadDocument"; payload: { bytes: number[]; font?: number[] | null; cmykIccProfile?: number[] | null } } | { kind: "registerFont"; payload: { family: string; style?: string | null; bytes: number[] } } | { kind: "clearFontRegistry" } | { kind: "registerColorProfile"; payload: { name: string; bytes: number[] } } | { kind: "mutate"; payload: Mutation } | { kind: "requestPage"; payload: { pageId: PageId; lod: LodTier } } | { kind: "hitTest"; payload: { pageId: PageId; docPoint: [number, number]; filter: HitFilter } } | { kind: "requestSnapshot"; payload: { pageId: PageId; targetWidthPx: number; dpi?: number | null } } | { kind: "setSelection"; payload: { selection: ContentSelection | null } } | { kind: "requestSelectionGeometry"; payload: { selection: ContentSelection } } | { kind: "requestCaretGeometry"; payload: { selection: ContentSelection } } | { kind: "undo" } | { kind: "redo" } | { kind: "setElementSelection"; payload: { ids: ElementId[]; mode: SelectionMode } } | { kind: "requestMarqueeHits"; payload: { pageId: PageId; rect: [number, number, number, number] } } | { kind: "requestElementGeometry"; payload: { ids: ElementId[] } } | { kind: "requestGroupLeaves"; payload: { groupId: string } } | { kind: "requestPathAnchors"; payload: { id: ElementId } } | { kind: "requestLayers" } | { kind: "requestCollection"; payload: { name: CollectionName } } | { kind: "requestDocumentMeta" } | { kind: "requestColorPreview"; payload: { swatchId: string } } | { kind: "requestColorCompute"; payload: { space: string; value: number[]; tint?: number | null; model?: string | null; alternateSpace?: string | null; alternateValue?: number[] | null } } | { kind: "requestGradientDetail"; payload: { gradientId: string } } | { kind: "exportSwatchLibrary"; payload: { groupId?: string | null } } | { kind: "executeScript"; payload: { source: string } } | { kind: "exportPdfBegin"; payload: { options: ExportPdfWireOptions } } | { kind: "exportPdfPage"; payload: { session: number } } | { kind: "exportPdfFinish"; payload: { session: number } } | { kind: "exportPdfCancel"; payload: { session: number } } | { kind: "requestElementProperties"; payload: { id: ElementId } } | { kind: "requestSceneTree" } | { kind: "beginGesture"; payload: { nodes: ElementId[]; gesture: GestureType; anchor?: GestureAnchor | null; cameraScale?: number | null } } | { kind: "updateGesture"; payload: { handle: GestureHandle; delta: [number, number]; modifiers: GestureModifiers } } | { kind: "commitGesture"; payload: { handle: GestureHandle } } | { kind: "cancelGesture"; payload: { handle: GestureHandle } };
+export type MainToWorkerKind = { kind: "hello" } | { kind: "loadDocument"; payload: { bytes: number[]; font?: number[] | null; cmykIccProfile?: number[] | null } } | { kind: "registerFont"; payload: { family: string; style?: string | null; bytes: number[] } } | { kind: "clearFontRegistry" } | { kind: "registerColorProfile"; payload: { name: string; bytes: number[] } } | { kind: "mutate"; payload: Mutation } | { kind: "requestPage"; payload: { pageId: PageId; lod: LodTier } } | { kind: "hitTest"; payload: { pageId: PageId; docPoint: [number, number]; filter: HitFilter } } | { kind: "requestSnapshot"; payload: { pageId: PageId; targetWidthPx: number; dpi?: number | null } } | { kind: "setSelection"; payload: { selection: ContentSelection | null } } | { kind: "requestSelectionGeometry"; payload: { selection: ContentSelection } } | { kind: "requestCaretGeometry"; payload: { selection: ContentSelection } } | { kind: "requestCaretNav"; payload: { storyId: string; offset: number; direction: CaretDirection } } | { kind: "requestLineBounds"; payload: { storyId: string; offset: number } } | { kind: "undo" } | { kind: "redo" } | { kind: "setElementSelection"; payload: { ids: ElementId[]; mode: SelectionMode } } | { kind: "requestMarqueeHits"; payload: { pageId: PageId; rect: [number, number, number, number] } } | { kind: "requestElementGeometry"; payload: { ids: ElementId[] } } | { kind: "requestGroupLeaves"; payload: { groupId: string } } | { kind: "requestPathAnchors"; payload: { id: ElementId } } | { kind: "requestLayers" } | { kind: "requestCollection"; payload: { name: CollectionName } } | { kind: "requestDocumentMeta" } | { kind: "requestColorPreview"; payload: { swatchId: string } } | { kind: "requestColorCompute"; payload: { space: string; value: number[]; tint?: number | null; model?: string | null; alternateSpace?: string | null; alternateValue?: number[] | null } } | { kind: "requestGradientDetail"; payload: { gradientId: string } } | { kind: "exportSwatchLibrary"; payload: { groupId?: string | null } } | { kind: "executeScript"; payload: { source: string } } | { kind: "exportPdfBegin"; payload: { options: ExportPdfWireOptions } } | { kind: "exportPdfPage"; payload: { session: number } } | { kind: "exportPdfFinish"; payload: { session: number } } | { kind: "exportPdfCancel"; payload: { session: number } } | { kind: "requestElementProperties"; payload: { id: ElementId } } | { kind: "requestSceneTree" } | { kind: "beginGesture"; payload: { nodes: ElementId[]; gesture: GestureType; anchor?: GestureAnchor | null; cameraScale?: number | null } } | { kind: "updateGesture"; payload: { handle: GestureHandle; delta: [number, number]; modifiers: GestureModifiers } } | { kind: "commitGesture"; payload: { handle: GestureHandle } } | { kind: "cancelGesture"; payload: { handle: GestureHandle } };
 
 /**
  * Track J — wire-shape mirror of `paged_parse::PathAnchor`. The
@@ -1277,7 +1363,7 @@ export type LoadError = { kind: "parse"; message: string } | { kind: "scene"; me
  * of a specific kind; the apply layer\'s `TypeMismatch` error fires if
  * the variant doesn\'t match what the path expects.
  */
-export type Value = { type: "bounds"; value: [number, number, number, number] } | { type: "colorRef"; value: string | null } | { type: "length"; value: number | null } | { type: "transform"; value: [number, number, number, number, number, number] | null } | { type: "pathPoint"; value: { address: PathPointAddress; position: [number, number] } } | { type: "pathPointInsert"; value: { index: number; anchor: PathAnchorSpec; prevSubpathStarts?: number[] | null } } | { type: "pathPointRemove"; value: { index: number; prevSubpathStarts?: number[] | null } } | { type: "pathPointCurveType"; value: { index: number; smooth: boolean; prev?: PathAnchorSpec | null } } | { type: "bool"; value: boolean } | { type: "text"; value: string } | { type: "framePath"; value: { anchors: PathAnchorSpec[]; subpathStarts: number[] } } | { type: "pathOpenAt"; value: { index: number; prevAnchors?: PathAnchorSpec[] | null; prevSubpathStarts?: number[] | null; prevSubpathOpen?: boolean[] | null } } | { type: "gradientFeather"; value: GradientFeatherSpec | null };
+export type Value = { type: "bounds"; value: [number, number, number, number] } | { type: "colorRef"; value: string | null } | { type: "length"; value: number | null } | { type: "transform"; value: [number, number, number, number, number, number] | null } | { type: "pathPoint"; value: { address: PathPointAddress; position: [number, number] } } | { type: "pathPointInsert"; value: { index: number; anchor: PathAnchorSpec; prevSubpathStarts?: number[] | null } } | { type: "pathPointRemove"; value: { index: number; prevSubpathStarts?: number[] | null } } | { type: "pathPointCurveType"; value: { index: number; smooth: boolean; prev?: PathAnchorSpec | null } } | { type: "bool"; value: boolean } | { type: "text"; value: string } | { type: "framePath"; value: { anchors: PathAnchorSpec[]; subpathStarts: number[] } } | { type: "pathOpenAt"; value: { index: number; prevAnchors?: PathAnchorSpec[] | null; prevSubpathStarts?: number[] | null; prevSubpathOpen?: boolean[] | null } } | { type: "gradientFeather"; value: GradientFeatherSpec | null } | { type: "paragraphRule"; value: ParagraphRuleSpec | null } | { type: "tabStops"; value: TabStopSpec[] };
 
 /**
  * Typed property path for `SetProperty` Ops. A closed enum (rather
@@ -1287,7 +1373,7 @@ export type Value = { type: "bounds"; value: [number, number, number, number] } 
  * (`\"fill.color\"`) — so JS callers don\'t need to learn the Rust
  * enum shape.
  */
-export type PropertyPath = "frameBounds" | "frameFillColor" | "frameStrokeColor" | "frameStrokeWeight" | "frameOpacity" | "frameTransform" | "imageContentTransform" | "framePathPoint" | "pathPointInsert" | "pathPointRemove" | "pathPointCurveType" | "layerVisible" | "layerLocked" | "layerPrintable" | "layerName" | "characterFontSize" | "characterLeading" | "characterTracking" | "characterFillColor" | "paragraphSpaceBefore" | "paragraphSpaceAfter" | "paragraphFirstLineIndent" | "appliedParagraphStyle" | "appliedCharacterStyle" | "appliedObjectStyle" | "appliedCellStyle" | "appliedTableStyle" | "framePath" | "frameNonprinting" | "frameFillTint" | "frameGradientFillAngle" | "frameGradientFillLength" | "frameGradientStrokeAngle" | "frameGradientStrokeLength" | "pathOpenAt" | "frameGradientFeather" | "pageBounds" | "frameDropShadowMode" | "frameDropShadowXOffset" | "frameDropShadowYOffset" | "frameDropShadowSize" | "frameDropShadowOpacity" | "frameDropShadowColor" | "frameDropShadow" | "frameFittingCrops" | "frameFittingType" | "frameTextWrapMode" | "frameTextWrapOffsets" | "paragraphJustification" | "frameStrokeEndCap" | "frameInsetSpacing" | "appliedConditions";
+export type PropertyPath = "frameBounds" | "frameFillColor" | "frameStrokeColor" | "frameStrokeWeight" | "frameOpacity" | "frameTransform" | "imageContentTransform" | "framePathPoint" | "pathPointInsert" | "pathPointRemove" | "pathPointCurveType" | "layerVisible" | "layerLocked" | "layerPrintable" | "layerName" | "characterFontSize" | "characterLeading" | "characterTracking" | "characterFillColor" | "paragraphSpaceBefore" | "paragraphSpaceAfter" | "paragraphFirstLineIndent" | "appliedParagraphStyle" | "appliedCharacterStyle" | "appliedObjectStyle" | "appliedCellStyle" | "appliedTableStyle" | "framePath" | "frameNonprinting" | "frameFillTint" | "frameGradientFillAngle" | "frameGradientFillLength" | "frameGradientStrokeAngle" | "frameGradientStrokeLength" | "pathOpenAt" | "frameGradientFeather" | "pageBounds" | "frameDropShadowMode" | "frameDropShadowXOffset" | "frameDropShadowYOffset" | "frameDropShadowSize" | "frameDropShadowOpacity" | "frameDropShadowColor" | "frameDropShadow" | "frameFittingCrops" | "frameFittingType" | "frameTextWrapMode" | "frameTextWrapOffsets" | "paragraphJustification" | "frameStrokeEndCap" | "frameInsetSpacing" | "appliedConditions" | "characterFontFamily" | "characterFontStyle" | "characterKerningMethod" | "characterCase" | "characterPosition" | "characterLanguage" | "characterBaselineShift" | "characterHorizontalScale" | "characterVerticalScale" | "characterSkew" | "characterUnderline" | "characterStrikethru" | "characterLigatures" | "characterOtfFeatures" | "paragraphLeftIndent" | "paragraphRightIndent" | "paragraphDropCapCharacters" | "paragraphDropCapLines" | "paragraphHyphenation" | "paragraphKeepLinesTogether" | "paragraphKeepWithNext" | "paragraphRuleAbove" | "paragraphRuleBelow" | "paragraphTabStops" | "paragraphListType" | "paragraphBulletCharacter" | "paragraphNumberingFormat" | "textFrameColumnCount" | "textFrameColumnGutter" | "textFrameColumnBalance" | "textFrameVerticalJustification" | "textFrameAutoSizing" | "textFrameFirstBaseline" | "textWrapInvert" | "frameFittingReferencePoint" | "frameAutoFit" | "frameStrokeType" | "frameStrokeJoin" | "frameStrokeMiterLimit" | "frameStrokeAlignment" | "frameStrokeGapColor" | "frameStrokeGapTint" | "frameCornerOptionTopLeft" | "frameCornerOptionTopRight" | "frameCornerOptionBottomLeft" | "frameCornerOptionBottomRight" | "frameCornerRadiusTopLeft" | "frameCornerRadiusTopRight" | "frameCornerRadiusBottomLeft" | "frameCornerRadiusBottomRight" | "frameRotationAngle" | "frameScaleX" | "frameScaleY" | "frameFlipH" | "frameFlipV" | "frameOverprintFill" | "frameOverprintStroke" | "frameInnerShadowEnabled" | "frameInnerShadowBlendMode" | "frameInnerShadowColor" | "frameInnerShadowOpacity" | "frameInnerShadowAngle" | "frameInnerShadowDistance" | "frameInnerShadowSize" | "frameInnerShadowChoke" | "frameInnerShadowNoise" | "frameOuterGlowEnabled" | "frameOuterGlowBlendMode" | "frameOuterGlowColor" | "frameOuterGlowOpacity" | "frameOuterGlowSpread" | "frameOuterGlowSize" | "frameOuterGlowNoise" | "frameInnerGlowEnabled" | "frameInnerGlowBlendMode" | "frameInnerGlowColor" | "frameInnerGlowOpacity" | "frameInnerGlowChoke" | "frameInnerGlowSize" | "frameInnerGlowSource" | "frameInnerGlowNoise" | "frameBevelEnabled" | "frameBevelStyle" | "frameBevelTechnique" | "frameBevelDepth" | "frameBevelDirection" | "frameBevelSize" | "frameBevelSoften" | "frameBevelAngle" | "frameBevelAltitude" | "frameBevelHighlightColor" | "frameBevelShadowColor" | "frameBevelHighlightOpacity" | "frameBevelShadowOpacity" | "frameSatinEnabled" | "frameSatinBlendMode" | "frameSatinColor" | "frameSatinOpacity" | "frameSatinAngle" | "frameSatinDistance" | "frameSatinSize" | "frameSatinInvert" | "frameFeatherEnabled" | "frameFeatherWidth" | "frameFeatherCornerType" | "frameFeatherNoise" | "frameFeatherChoke" | "frameDirectionalFeatherEnabled" | "frameDirectionalFeatherLeftWidth" | "frameDirectionalFeatherRightWidth" | "frameDirectionalFeatherTopWidth" | "frameDirectionalFeatherBottomWidth" | "frameDirectionalFeatherAngle" | "frameDirectionalFeatherNoise" | "frameDirectionalFeatherChoke" | "frameBlendMode";
 
 /**
  * Typed worker-side error for non-load operations. Mutations,
@@ -1295,6 +1381,58 @@ export type PropertyPath = "frameBounds" | "frameFillColor" | "frameStrokeColor"
  * kept stable across protocol versions.
  */
 export type WorkerError = { kind: "notImplemented"; details: { what: string } } | { kind: "unknownPage"; details: { pageId: PageId } } | { kind: "noDocument" };
+
+/**
+ * W0.2 — wire mirror of `paged_parse::TabStop`. The `ParagraphTabStops`
+ * path replaces the paragraph\'s whole `<TabList>` in one op; `Value`
+ * has no per-element list-edit form, so the UI sends the full new
+ * stop list (the gradient-feather stop-list precedent).
+ */
+export interface TabStopSpec {
+    position: number;
+    alignment?: string | null;
+    alignmentCharacter?: string | null;
+    leader?: string | null;
+}
+
+/**
+ * W0.2 — wire mirror of `paged_parse::styles::ParagraphRule` (the
+ * AST type predates `Tsify`; the mirror keeps the op wire-shaped,
+ * the `GradientFeatherSpec` precedent). Carries every field the
+ * parser models so the whole-struct `ParagraphRuleAbove` /
+ * `ParagraphRuleBelow` paths round-trip a paragraph\'s rule verbatim.
+ */
+export interface ParagraphRuleSpec {
+    on?: boolean | null;
+    color?: string | null;
+    tint?: number | null;
+    weight?: number | null;
+    offset?: number | null;
+    leftIndent?: number | null;
+    rightIndent?: number | null;
+    width?: string | null;
+}
+
+/**
+ * W0.5 — character- vs paragraph-level style application for
+ * [`Operation::ApplyStyle`].
+ */
+export type StyleScope = "paragraph" | "character";
+
+/**
+ * W0.5 — the kind of field marker inserted by
+ * [`Operation::InsertField`]. Extensible; v1 implements `PageNumber`
+ * (the IDML auto current-page-number marker, U+E018).
+ */
+export type FieldKind = "pageNumber" | "nextPageNumber";
+
+/**
+ * W0.5 — wire mirror of `paged_parse::GuideOrientation`
+ * (which is `Deserialize` but lives in the parse crate; kept here so
+ * the operation wire type doesn\'t depend on the parser\'s
+ * serialization shape).
+ */
+export type GuideOrientationSpec = "vertical" | "horizontal";
 
 /**
  * What the resolver produced this pass. The canvas worker reads
@@ -1408,6 +1546,73 @@ export interface SwatchSpec {
  * internal `thiserror` representation.
  */
 export type GestureFailure = { kind: "noDocument" } | { kind: "unsupportedGesture"; details: { reason: string } } | { kind: "alreadyActive"; details: { handle: GestureHandle } } | { kind: "handleMismatch" } | { kind: "elementNotFound"; details: { id: ElementId } } | { kind: "rotatedFrameUnsupported" } | { kind: "emptySelection" } | { kind: "missingAnchor" } | { kind: "unknownAnchorPage"; details: { page_id: PageId } } | { kind: "other"; details: { message: string } };
+
+/**
+ * `RequestLineBounds` reply payload.
+ */
+export interface LineBounds {
+    /**
+     * Story offset of the line\'s first character.
+     */
+    lineStart: number;
+    /**
+     * Story offset just past the line\'s last character.
+     */
+    lineEnd: number;
+}
+
+/**
+ * panels.md gap 20 — one structured PDF-export preflight finding for
+ * the export dialog\'s findings list. The wire mirror of
+ * `paged_export_pdf::PreflightFinding`. `severity` is `\"warning\"` /
+ * `\"error\"`; `code` is a stable machine tag (`\"font_not_embeddable\"`
+ * / `\"image_missing_bytes\"`); `page_index` is the 0-based body-page
+ * the finding was raised on (`None` for document-level findings).
+ */
+export interface PreflightFinding {
+    code: string;
+    severity: string;
+    message: string;
+    pageIndex?: number | null;
+}
+
+/**
+ * panels.md gaps 9/10/19 — one `<Section>` definition. Backs
+ * `documentCollection:sections`. The Pages panel groups page
+ * thumbnails by section and labels each group with its prefix +
+ * numbering style; `start_page_index` + `page_count` let it draw
+ * the section bands. `page_count` is computed by walking the body
+ * pages between this section\'s start and the next section\'s start
+ * (or the document end).
+ */
+export interface SectionSummary {
+    /**
+     * IDML `Self` id of the `<Section>`.
+     */
+    selfId: string;
+    /**
+     * `SectionPrefix` (e.g. `\"A-\"`); empty when the section has no
+     * prefix or doesn\'t include it in labels.
+     */
+    prefix: string;
+    /**
+     * Page-number style — `\"arabic\"` / `\"upperRoman\"` /
+     * `\"lowerRoman\"` / `\"upperAlpha\"` / `\"lowerAlpha\"`. The label a
+     * panel renders next to the section band.
+     */
+    labelStyle: string;
+    /**
+     * 0-based flat body-page index where this section begins (the
+     * page whose `Self` matches `PageStart`). `None` when the
+     * section\'s start page can\'t be located in the built document.
+     */
+    startPageIndex?: number | null;
+    /**
+     * Number of body pages this section spans (up to the next
+     * section\'s start, or the document end).
+     */
+    pageCount: number;
+}
 
 export interface CaretGeometry {
     pageId: PageId;

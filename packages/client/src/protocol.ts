@@ -20,7 +20,7 @@
 // must update in lockstep — `scripts/check-protocol-version.sh`
 // catches drift on PRs that change the `.d.ts` structurally.
 
-export const PROTOCOL_VERSION = 27 as const;
+export const PROTOCOL_VERSION = 28 as const;
 
 export type {
   AnchorId,
@@ -28,6 +28,7 @@ export type {
   AppliedOperation,
   ByteBuf,
   CameraSabLayout,
+  CaretDirection,
   CaretGeometry,
   CharacterStyleSummary,
   CollectionName,
@@ -39,7 +40,9 @@ export type {
   ElementGeometryItem,
   ElementId,
   FieldChange,
+  FieldKind,
   FrameBounds,
+  GuideOrientationSpec,
   GestureAnchor,
   GestureFailure,
   GestureHandle,
@@ -64,10 +67,13 @@ export type {
   FontSummary,
   HyperlinkSummary,
   IndexTopicSummary,
+  LineBounds,
   LinkSummary,
   MasterPageSummary,
   PageSummary,
   PathfinderKind,
+  PreflightFinding,
+  SectionSummary,
   SpreadSummary,
   TableStyleSummary,
   ParagraphStyleSummary,
@@ -86,6 +92,9 @@ export type {
   Operation,
   GradientDetail,
   GradientFeatherSpec,
+  ParagraphRuleSpec,
+  TabStopSpec,
+  StyleScope,
   GradientFeatherStopSpec,
   GradientStopWire,
   InkSummary,
