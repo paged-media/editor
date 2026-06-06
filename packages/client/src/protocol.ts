@@ -20,7 +20,7 @@
 // must update in lockstep — `scripts/check-protocol-version.sh`
 // catches drift on PRs that change the `.d.ts` structurally.
 
-export const PROTOCOL_VERSION = 30 as const;
+export const PROTOCOL_VERSION = 32 as const;
 
 export type {
   AnchorId,
@@ -123,6 +123,7 @@ export type {
   ColorGroupSpec,
   TocEntry,
   Value,
+  WordBounds,
   WorkerError,
   WorkerToMain,
   WorkerToMainKind,

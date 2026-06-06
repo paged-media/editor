@@ -1046,16 +1046,13 @@ function bumpClickRun(
  * W2.11 / SEL-05 — set a word (double-click) or line (triple-click)
  * range selection on a story.
  *
- * WIRE GAP (honest note): protocol v28 exposes `requestLineBounds`
- * (line start/end) but NO word-bounds query, and this client has no
- * access to the story's plain text (StorySummary carries only a
- * character count), so true word granularity can't be computed
- * main-thread. Until a `requestWordBounds` wire (or story-text read)
- * lands, BOTH double- and triple-click resolve to the LINE via
- * `requestLineBounds`. Double-click therefore over-selects to the line;
- * the granularity branch is kept separate so only it changes when the
- * word wire arrives. The line range is still a useful, non-empty
- * selection (replace-on-type works), which is what callers depend on.
+ * Aftercare-A: protocol v31 added `requestWordBounds`, so double-click
+ * now selects the real UAX-29 WORD containing the offset (story-local
+ * byte `[start, end)`); a double-click on a whitespace run selects that
+ * whole whitespace run (the engine's segmentation contract). Triple-
+ * click stays LINE granularity via `requestLineBounds`. Both resolve a
+ * non-empty range (replace-on-type works), which is what callers depend
+ * on.
  */
 async function applyTextGranularity(
   client: CanvasClient,
@@ -1069,16 +1066,25 @@ async function applyTextGranularity(
     affinity?: boolean;
   } | null) => void,
 ): Promise<void> {
-  // clickCount 2 (word, line-approximated) and 3 (line) both use line
-  // bounds today — see the WIRE GAP note above.
-  void clickCount;
   try {
-    const bounds = await client.lineBounds(storyId, offset);
-    if (!bounds) return;
+    if (clickCount >= 3) {
+      const bounds = await client.lineBounds(storyId, offset);
+      if (!bounds) return;
+      setContentSelection({
+        storyId,
+        start: bounds.lineStart,
+        end: bounds.lineEnd,
+        affinity: false,
+      });
+      return;
+    }
+    // Double-click → word granularity (UAX-29 segmentation).
+    const word = await client.wordBounds(storyId, offset);
+    if (!word) return;
     setContentSelection({
       storyId,
-      start: bounds.lineStart,
-      end: bounds.lineEnd,
+      start: word.start,
+      end: word.end,
       affinity: false,
     });
   } catch {

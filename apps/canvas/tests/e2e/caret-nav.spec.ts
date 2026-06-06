@@ -107,6 +107,59 @@ async function storyChars(page: Page, id: string): Promise<number> {
   }, id);
 }
 
+/** Engine-authoritative UAX-29 word extent (story-local bytes) for the
+ *  word containing `offset`. Mirrors the wire `requestWordBounds`. */
+async function wordBoundsAt(
+  page: Page,
+  storyId: string,
+  offset: number,
+): Promise<{ start: number; end: number } | null> {
+  return page.evaluate(
+    async ({ storyId, offset }) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              wordBounds: (
+                id: string,
+                off: number,
+              ) => Promise<{ start: number; end: number } | null>;
+            };
+          };
+        }
+      ).__canvas;
+      return c.client.wordBounds(storyId, offset);
+    },
+    { storyId, offset },
+  );
+}
+
+/** Line extent (story offsets) for the line containing `offset`. */
+async function lineBoundsAt(
+  page: Page,
+  storyId: string,
+  offset: number,
+): Promise<{ lineStart: number; lineEnd: number } | null> {
+  return page.evaluate(
+    async ({ storyId, offset }) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              lineBounds: (
+                id: string,
+                off: number,
+              ) => Promise<{ lineStart: number; lineEnd: number } | null>;
+            };
+          };
+        }
+      ).__canvas;
+      return c.client.lineBounds(storyId, offset);
+    },
+    { storyId, offset },
+  );
+}
+
 /** Move keyboard focus off any input so the window keydown handler in
  *  `useTextEditing` runs (it ignores events targeting form fields). */
 async function blurFocus(page: Page): Promise<void> {
@@ -361,22 +414,98 @@ test.describe("W2.11 caret navigation", () => {
       .toBe(before - rangeLen + 1);
   });
 
-  // WIRE GAP — strict word granularity. protocol v28 has no
-  // requestWordBounds and this client can't read story text, so
-  // double-click currently over-selects to the line (CARET-NAV-5 proves
-  // the non-empty-range + replace contract). Promote this to a live
-  // test that asserts the selection is exactly the clicked WORD once a
-  // word-bounds wire (or a story-text read) lands.
-  test.fixme(
-    "CARET-NAV-6 — double-click selects exactly the clicked word (needs requestWordBounds wire)",
-    async () => {},
-  );
+  test("CARET-NAV-6 — double-click selects exactly the clicked word (requestWordBounds)", async ({
+    page,
+  }) => {
+    // Aftercare-A: protocol v31 exposes `requestWordBounds` (UAX-29
+    // segmentation, story-local BYTE offsets). Double-click now selects
+    // exactly the engine's word for the clicked offset — strictly
+    // narrower than the line when the line has >1 word.
+    const rfx = await loadViaReactPath(page, "text");
+    const rStory = rfx.firstStory!.selfId;
+    await activateTool(page, "type");
 
-  // WIRE GAP — triple-click line/paragraph granularity uses the same
-  // requestLineBounds primitive as double-click today, so it isn't
-  // independently observable from double-click. Re-enable as a distinct
-  // assertion (line for double, paragraph for triple, per spec SEL-05)
-  // once word + paragraph bounds wires exist.
+    const chars = await storyChars(page, rStory);
+    const mid = Math.max(1, Math.floor(chars / 2));
+    const geo = await caretGeo(page, { storyId: rStory, start: mid, end: mid });
+    expect(geo, "caret geometry mid-story").toBeTruthy();
+
+    // The engine's authoritative word + line extents at this offset.
+    const word = await wordBoundsAt(page, rStory, mid);
+    expect(word, "word bounds at mid offset").toBeTruthy();
+    expect(word!.end).toBeGreaterThan(word!.start); // non-empty word
+    const line = await lineBoundsAt(page, rStory, mid);
+    expect(line, "line bounds at mid offset").toBeTruthy();
+    // The word is contained within the line and (since the body copy is
+    // multi-word) strictly narrower than the whole line.
+    expect(word!.start).toBeGreaterThanOrEqual(line!.lineStart);
+    expect(word!.end).toBeLessThanOrEqual(line!.lineEnd);
+    expect(word!.end - word!.start).toBeLessThan(
+      line!.lineEnd - line!.lineStart,
+    );
+
+    // Double-click on the glyph at `mid` → the selection is EXACTLY the
+    // engine's word range (not the line).
+    const pt = await screenPoint(
+      page,
+      geo!.xPt + 2,
+      geo!.topPt + geo!.heightPt / 2,
+    );
+    await page.mouse.dblclick(pt.x, pt.y);
+
+    await expect
+      .poll(async () => {
+        const s = await currentSelection(page);
+        return s ? `${s.start}:${s.end}` : "";
+      }, { timeout: 6000 })
+      .toBe(`${word!.start}:${word!.end}`);
+
+    // Engine contract: double-click on a WHITESPACE run selects the whole
+    // whitespace run (UAX-29 segments runs of spaces as their own word).
+    // Probe a space offset directly through the wire.
+    const spaceOffset = await page.evaluate(
+      async ({ storyId, hint }) => {
+        const c = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                wordBounds: (
+                  id: string,
+                  off: number,
+                ) => Promise<{ start: number; end: number } | null>;
+              };
+            };
+          }
+        ).__canvas;
+        // Walk outward from the word end (typically a space follows a
+        // word in the body copy) until a different word range appears.
+        const base = await c.client.wordBounds(storyId, hint);
+        if (!base) return null;
+        for (let off = base.end; off < base.end + 8; off++) {
+          const w = await c.client.wordBounds(storyId, off);
+          if (w && (w.start !== base.start || w.end !== base.end)) {
+            return { off, start: w.start, end: w.end };
+          }
+        }
+        return null;
+      },
+      { storyId: rStory, hint: mid },
+    );
+    // A whitespace run between words resolves to its own non-empty range
+    // disjoint from the original word (UAX-29 whitespace segmentation).
+    expect(spaceOffset, "a distinct adjacent word/whitespace run").toBeTruthy();
+    expect(spaceOffset!.end).toBeGreaterThan(spaceOffset!.start);
+    expect(spaceOffset!.start).toBeGreaterThanOrEqual(word!.end);
+  });
+
+  // WIRE GAP (still open at protocol v31) — paragraph granularity.
+  // v31 added requestWordBounds (CARET-NAV-6, double-click), but there
+  // is NO requestParagraphBounds wire: triple-click resolves to the
+  // LINE via requestLineBounds, which is not independently observable
+  // from the paragraph until a distinct paragraph-bounds query lands.
+  // The editor's granularity ladder is word (double) → line (triple)
+  // today; re-enable this as a distinct paragraph assertion once the
+  // engine surfaces paragraph extents separately from line.
   test.fixme(
     "CARET-NAV-7 — triple-click selects the paragraph (needs paragraph-bounds wire distinct from line)",
     async () => {},

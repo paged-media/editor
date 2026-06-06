@@ -44,6 +44,7 @@ import {
   type SelectionRect,
   type SnapLine,
   type SnapshotPng,
+  type WordBounds,
   type WorkerToMain,
 } from "./protocol";
 import { CameraBuffer, type Camera } from "./sab/camera";
@@ -775,6 +776,27 @@ export class CanvasClient {
       payload: { storyId, offset },
     });
     if (reply.kind === "lineBoundsResult") return reply.payload.bounds ?? null;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
+   * Aftercare-A — word extent for the word containing `offset`: the
+   * story-local BYTE offsets `[start, end)` of the UAX-29 word break the
+   * engine resolves the offset into. Double-click selects this range.
+   * A double-click that lands on a whitespace run resolves to that whole
+   * whitespace run (the engine's UAX-29 segmentation contract). Resolves
+   * to `null` when the offset has no resolvable word (empty / unbuilt
+   * story).
+   */
+  async wordBounds(
+    storyId: string,
+    offset: number,
+  ): Promise<WordBounds | null> {
+    const reply = await this.send({
+      kind: "requestWordBounds",
+      payload: { storyId, offset },
+    });
+    if (reply.kind === "wordBoundsResult") return reply.payload.bounds ?? null;
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 

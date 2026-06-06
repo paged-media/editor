@@ -10,10 +10,12 @@
 //
 // The outline rect prefers the precise per-cell AABB
 // (`cell.cellRect`, resolved via `elementGeometry(cellElementId)` at
-// selection time) and falls back to the containing table-frame AABB
-// (`cell.frameBounds`) when the engine couldn't resolve a per-cell rect.
-// Both are page-local pt `[top, left, bottom, right]`, shifted by the
-// page origin at draw time — same convention as the guide overlay.
+// selection time — Aftercare-C: the engine now resolves per-cell
+// geometry for a TableCell ElementId, so this is the live path) and
+// falls back to the containing table-frame AABB (`cell.frameBounds`)
+// only when geometry resolution hasn't landed yet. Both are page-local
+// pt `[top, left, bottom, right]`, shifted by the page origin at draw
+// time — same convention as the guide overlay.
 
 import type { OverlayContribution, OverlayProps } from "../registries/overlay";
 import { useOptionalScreenMode } from "../state/screen-mode-context";

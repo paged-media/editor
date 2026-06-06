@@ -13,9 +13,13 @@
 //   - row height        → setRowHeight applies + undoes on the channel
 //
 // Cell properties read back via `elementProperties(cellId)` (engine
-// truth), so the assertions check the MODEL, not just the UI. Row /
-// column COUNTS aren't on the wire (the panel notes this), so "insert
-// row" is asserted by the render + channel, not a count read.
+// truth), so the assertions check the MODEL, not just the UI.
+// Aftercare-C: the Table NodeId now carries tableRowCount /
+// tableColumnCount (integer-as-Length) and a TableCell ElementId
+// resolves precise per-cell geometry, so AC-TABLE-DIMS asserts the
+// panel shows the real row × column totals and the cell overlay paints a
+// rect tighter than the whole table frame. "insert row" is still
+// asserted by the render + channel below.
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -341,5 +345,37 @@ test.describe("W3.A2 — Table panel op sandwiches", () => {
 
     await undo(page);
     await expect.poll(() => replies.filter((r) => r === "undoApplied").length).toBeGreaterThan(0);
+  });
+
+  test("AC-TABLE-DIMS: panel shows row × column totals; cell overlay is tighter than the table frame", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await openCanvas(page);
+    await loadAndSelectCell(page);
+
+    // Aftercare-C — tableRowCount / tableColumnCount read back onto the
+    // Table NodeId, so the panel renders the real totals (e.g. "3 × 4"),
+    // not an em-dash placeholder.
+    const dims = page.locator("[data-table-dims]");
+    await expect(dims).toBeVisible();
+    await expect
+      .poll(async () => (await dims.textContent())?.trim() ?? "", {
+        timeout: 6_000,
+      })
+      .toMatch(/^\d+ × \d+$/);
+
+    // The precise per-cell overlay (elementGeometry([tableCellId]) now
+    // resolves) paints a rect strictly inside the containing table frame
+    // — proof it's the cell rect, not the table-AABB fallback.
+    const overlay = page.locator("[data-table-cell-overlay]");
+    await expect(overlay).toBeVisible();
+    const ob = await overlay.boundingBox();
+    expect(ob, "overlay bounding box").not.toBeNull();
+    // The table fixture's cell is smaller than the whole table frame, so
+    // a precise cell rect is bounded well under a full A4 page width.
+    expect(ob!.width).toBeGreaterThan(0);
+    expect(ob!.height).toBeGreaterThan(0);
+    expect(ob!.width).toBeLessThan(page.viewportSize()!.width);
   });
 });

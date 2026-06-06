@@ -1,9 +1,9 @@
 // W2.12 — Stories panel acceptance. The panel reads the live story
-// list off the `paged.stories()` script host (there is no "stories"
-// document collection on the wire) and renders one row per story with
-// its character + paragraph counts. Clicking a row sets a content
-// selection at the story head. The overset badge is fixme'd — no
-// fixture ships an overset story (StorySummary.overset).
+// list off the `stories` collection (StorySummary) and renders one row
+// per story with its character + paragraph counts. Clicking a row sets a
+// content selection at the story head. Aftercare-D: the overset badge is
+// now covered by the `text-overset` fixture, whose body stories overflow
+// their frames (StorySummary.overset = true).
 
 import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
@@ -15,6 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
+const OVERSET_FIXTURE = `${REPO_ROOT}/corpus/generated/text-overset.idml`;
 
 // The Stories panel mounts in Content mode (cockpit panelSet) — drive
 // the mode through the dev hook, the same path cockpit-panels.spec
@@ -64,16 +65,23 @@ test.describe("W2.12 — Stories panel", () => {
       .not.toBeNull();
   });
 
-  test.fixme("AC-STORIES-3 — an overset story shows the overset badge", async ({
+  test("AC-STORIES-3 — an overset story shows the overset badge", async ({
     page,
   }) => {
-    // No fixture overflows its last frame (StorySummary.overset is
-    // false everywhere). Needs a fixture whose text overflows its
-    // frame chain to exercise [data-row-badge="overset"] +
-    // [data-stories-overset-summary].
+    // Aftercare-D: `text-overset` ships body stories that overflow their
+    // frames (page 1 short-frame, page 2 threaded chain), so
+    // StorySummary.overset is true for them — exercises the per-row
+    // [data-row-badge="overset"] + the [data-stories-overset-summary]
+    // header count.
     await openCanvas(page);
-    await loadIdml(page, FIXTURE);
+    await loadIdml(page, OVERSET_FIXTURE);
     await openStories(page);
-    await expect(page.locator('[data-row-badge="overset"]')).toBeVisible();
+    await expect(page.locator('[data-stories-panel="ready"]')).toBeVisible();
+    await expect(
+      page.locator('[data-row-badge="overset"]').first(),
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-stories-overset-summary]"),
+    ).toBeVisible();
   });
 });

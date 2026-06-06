@@ -168,33 +168,25 @@ test.describe("E2E character ops", () => {
   test("AC-E2E-CHAR-skew — characterSkew lands + repaints", async ({
     page,
   }) => {
-    // characterSkew (false-italic slant) now applies in core's glyph
-    // compose (render-honor batch, core 27f7d0a — tan(skew)·sy folded
-    // into the glyph affine `c` term) — a 12° skew over the run produces
-    // a pixel delta, so the FORWARD render gate is now ENFORCED
-    // (renderGap dropped). HOWEVER undo does NOT restore byte-identically
-    // (~58 px residual in a tiny bbox around the sheared glyphs — the
-    // skew compose interacts with the layout cache so the revert isn't
-    // pixel-exact). That is a newly-surfaced engine undo-determinism gap,
-    // distinct from the render-honor fix. The undo PIXEL check is relaxed
-    // with a logged reason (model-restore stays hard); the dedicated
-    // `test.fail` below owns the strict undo check so it flips loudly the
-    // day core makes the skew undo byte-identical.
+    // characterSkew (false-italic slant) applies in core's glyph compose
+    // (render-honor batch, core 27f7d0a — tan(skew)·sy folded into the
+    // glyph affine `c` term) — a 12° skew over the run produces a pixel
+    // delta, so the FORWARD render gate is ENFORCED. Aftercare-B: core's
+    // characterSkew cache fix landed, so undo now restores byte-
+    // identically; the undo PIXEL check is HARD again (no relaxation),
+    // and the dedicated strict-undo test below is a normal test.
     await charSandwich(page, {
       path: "characterSkew",
       value: { type: "length", value: 12 },
       assertValue: (v) => expect((v as { value: number }).value).toBe(12),
-      undoNonDeterministic:
-        "characterSkew undo leaves ~58 px residual (skew compose vs layout cache) — core determinism follow-up",
     });
   });
 
-  // Owns the STRICT undo byte-identity check for characterSkew that the
-  // test above relaxes. `test.fail` = expected-to-fail today; it flips
-  // GREEN (and Playwright reports it as an unexpected pass to fix) the
-  // day core makes the skew undo byte-identical, forcing the relaxation
-  // above to be removed.
-  test.fail(
+  // STRICT undo byte-identity check for characterSkew. Aftercare-B: the
+  // engine skew cache fix landed, so this is a normal test (was
+  // `test.fail` while undo left a ~58 px residual) — undo now restores
+  // the page byte-identically.
+  test(
     "AC-E2E-CHAR-skew-undo — characterSkew undo restores byte-identically (engine determinism follow-up)",
     async ({ page }) => {
       await opSandwich(page, {

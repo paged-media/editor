@@ -19,12 +19,13 @@
 //
 // All cell + applied-style values READ BACK via
 // elementProperties(cell|table) and re-fetch on every Operation push,
-// so the inputs reflect engine truth. Row/column COUNTS are NOT on the
-// wire (elementProperties(table) carries only appliedTableStyle, no
-// dimensions) and a cell's row HEIGHT / column WIDTH are write-forward
-// (no read entry) — both are surfaced honestly as the selected cell's
-// (row, col) address + an engine-gap note. CELL TEXT editing is not
-// possible in engine v1 (note in the panel).
+// so the inputs reflect engine truth. Aftercare-C: elementProperties on
+// the Table ElementId now carries tableRowCount / tableColumnCount
+// (integer-as-Length convention), so the panel shows the table's real
+// row/column TOTALS alongside the selected cell's (row, col) address. A
+// cell's row HEIGHT / column WIDTH are still write-forward (no read
+// entry). CELL TEXT editing is not possible in engine v1 (note in the
+// panel).
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -72,6 +73,11 @@ interface CellReadback {
 
 interface TableReadback {
   appliedTableStyle: string;
+  /** Table row / column totals — `tableRowCount` / `tableColumnCount`
+   *  read entries (integer-as-Length). `null` when the engine didn't
+   *  carry them. */
+  rowCount: number | null;
+  columnCount: number | null;
 }
 
 function entryValue(
@@ -120,6 +126,14 @@ function useTableReadback(
             const v = entryValue(ce, p);
             return v && v.type === "length" ? (v.value ?? 0) : 0;
           };
+          // tableRowCount / tableColumnCount ride the integer-as-Length
+          // convention on the Table NodeId; absent ⇒ null (honest gap).
+          const intLen = (p: string): number | null => {
+            const v = entryValue(te, p);
+            return v && v.type === "length" && v.value != null
+              ? Math.round(v.value)
+              : null;
+          };
           setState({
             cell: {
               fillColor:
@@ -136,6 +150,8 @@ function useTableReadback(
             },
             table: {
               appliedTableStyle: ats && ats.type === "text" ? ats.value : "",
+              rowCount: intLen("tableRowCount"),
+              columnCount: intLen("tableColumnCount"),
             },
           });
         })
@@ -288,14 +304,15 @@ export function TablePanel() {
             {cell.col}
           </span>
         </CockpitRow>
-        {/* Row / column COUNTS are not on the wire (the Table NodeId
-            read carries only appliedTableStyle); honest seam. */}
-        <div
-          className="pg-ui-xs"
-          style={{ color: "var(--pg-muted-fg)", marginTop: 4 }}
-        >
-          Row / column totals aren’t exposed by the engine yet.
-        </div>
+        {/* Aftercare-C: row / column totals now read back from the Table
+            NodeId (tableRowCount / tableColumnCount). */}
+        <CockpitRow label="Rows × columns">
+          <span className="pg-mono-meta" data-table-dims>
+            {tableRead?.rowCount != null && tableRead?.columnCount != null
+              ? `${tableRead.rowCount} × ${tableRead.columnCount}`
+              : "—"}
+          </span>
+        </CockpitRow>
       </CockpitSection>
 
       <CockpitSection title="Row & column">
