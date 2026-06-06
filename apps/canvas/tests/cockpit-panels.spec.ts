@@ -86,14 +86,14 @@ test.describe("Cockpit — Publication health + stubs", () => {
     await openCanvas(page);
     await loadFixture(page);
 
-    // Publication health (registered panel; open via the rail-less
-    // path — it's part of Design's default set only after a mode
-    // round-trip, so assert through a mode that mounts it).
+    // Content mode mounts the Stories panel — W2.12 made it a real
+    // story list off `paged.stories()`; the fixture has stories, so
+    // the list renders (not the empty-state ComingSoon).
     await page.evaluate(() => window.__canvas.setMode("content"));
-    await expect(page.locator("[data-stories-panel]")).toBeVisible();
+    await expect(page.locator('[data-stories-panel="ready"]')).toBeVisible();
     await expect(
-      page.locator("[data-stories-panel] [data-coming-soon]"),
-    ).toBeVisible();
+      page.locator("[data-story-list] [data-list-row]"),
+    ).not.toHaveCount(0);
 
     await page.evaluate(() => window.__canvas.setMode("review"));
     await expect(

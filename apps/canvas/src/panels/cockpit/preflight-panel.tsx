@@ -1,9 +1,15 @@
 // Cockpit — Preflight (Prepress mode's left panel). REAL where the
 // engine delivers today: the links inventory comes from the live
 // `links` collection, and "Validate output" runs an actual PDF
-// export (bytes discarded) to surface the exporter's diagnostics —
-// restricted fonts, images with missing bytes. PPI / bleed checks
-// are visible seams until the engine grows preflight accessors.
+// export (bytes discarded) to surface the exporter's diagnostics.
+//
+// W2.12 — the export reply now carries STRUCTURED findings
+// (`PreflightFinding{code,severity,message,pageIndex}`) alongside the
+// legacy flat strings. We group them into Errors / Warnings and make
+// each finding a jump target: clicking navigates the canvas to the
+// finding's `pageIndex` via the same `navigateToPages` hand-off the
+// Document Map and filmstrip use. PPI / bleed checks remain visible
+// seams until the engine grows dedicated preflight accessors.
 
 import { useState } from "react";
 import {
@@ -11,39 +17,53 @@ import {
   CockpitSection,
   CockpitBtn,
   StatusPill,
+  navigateToPages,
   useCanvasClient,
   useCollection,
   useDocumentMeta,
 } from "@paged-media/shell";
-import type { LinkSummary } from "@paged-media/client";
+import type { LinkSummary, PreflightFinding } from "@paged-media/client";
 
-type Validation =
+import { usePreflightFindings } from "./preflight-findings";
+
+type RunState =
   | { state: "idle" }
   | { state: "running" }
-  | { state: "done"; diagnostics: string[] }
+  | { state: "done" }
   | { state: "error"; message: string };
 
 export function PreflightPanel() {
   const client = useCanvasClient();
   const meta = useDocumentMeta();
   const links = useCollection<LinkSummary>("links");
-  const [validation, setValidation] = useState<Validation>({ state: "idle" });
+  const { findings, diagnostics, runCount } = usePreflightFindings(client);
+  const [run, setRun] = useState<RunState>({ state: "idle" });
   const loaded = meta != null && meta.pageCount > 0;
 
   const validate = async () => {
-    setValidation({ state: "running" });
+    setRun({ state: "running" });
     try {
-      // A REAL dry export: same session wire the dialog drives;
-      // the bytes are discarded, the diagnostics are the point.
-      const { diagnostics } = await client.exportPdf({ standard: "pdf17" });
-      setValidation({ state: "done", diagnostics });
+      // A REAL dry export: same session wire the dialog drives; the
+      // bytes are discarded, the findings are the point. The
+      // structured findings ride the `pdfExported` reply and land in
+      // the shared store via its broadcast subscription.
+      await client.exportPdf({ standard: "pdf17" });
+      setRun({ state: "done" });
     } catch (err) {
-      setValidation({
+      setRun({
         state: "error",
         message: err instanceof Error ? err.message : String(err),
       });
     }
   };
+
+  // Structured findings win; fall back to the legacy flat strings only
+  // when the engine returned none (older wasm / no structured data).
+  const structured = findings ?? [];
+  const errors = structured.filter((f) => f.severity === "error");
+  const warnings = structured.filter((f) => f.severity !== "error");
+  const total = structured.length || diagnostics.length;
+  const hasRun = run.state === "done" || runCount > 0;
 
   return (
     <div data-preflight-panel style={{ overflowY: "auto", height: "100%" }}>
@@ -52,14 +72,12 @@ export function PreflightPanel() {
       <CockpitSection
         title="Output check"
         right={
-          validation.state === "done" ? (
+          hasRun && run.state !== "error" ? (
             <StatusPill
-              tone={validation.diagnostics.length === 0 ? "ok" : "warn"}
+              tone={total === 0 ? "ok" : errors.length > 0 ? "error" : "warn"}
               testId="validation-state"
             >
-              {validation.diagnostics.length === 0
-                ? "No findings"
-                : `${validation.diagnostics.length} finding(s)`}
+              {total === 0 ? "No findings" : `${total} finding(s)`}
             </StatusPill>
           ) : undefined
         }
@@ -69,48 +87,52 @@ export function PreflightPanel() {
             sm
             primary
             full
-            disabled={!loaded || validation.state === "running"}
+            disabled={!loaded || run.state === "running"}
             testId="run-validation"
             onClick={() => void validate()}
           >
-            {validation.state === "running" ? "Validating…" : "Validate output"}
+            {run.state === "running" ? "Validating…" : "Validate output"}
           </CockpitBtn>
           <span className="pg-ui-xs">
             Runs the real PDF pipeline and reports its findings — the same
             checks the export performs.
           </span>
-          {validation.state === "error" && (
-            <StatusPill tone="error">{validation.message}</StatusPill>
+          {run.state === "error" && (
+            <StatusPill tone="error">{run.message}</StatusPill>
           )}
-          {validation.state === "done" && validation.diagnostics.length > 0 && (
+
+          {hasRun && structured.length > 0 && (
             <>
-              {/* The gallery's grouped findings header. The
-                  exporter's diagnostics are flat strings today —
-                  the CRITICAL/WARNINGS split lands when the engine
-                  ships structured preflight findings (severity +
-                  page refs); until then one honest WARNINGS group. */}
-              <div
-                className="pg-label"
-                data-preflight-group="warnings"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  color: "var(--status-review)",
-                  marginTop: 2,
-                }}
-              >
-                <span
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: "var(--status-review)",
-                  }}
+              {errors.length > 0 && (
+                <FindingGroup
+                  groupKey="errors"
+                  label="Errors"
+                  tone="var(--status-error)"
+                  findings={errors}
                 />
-                Warnings · {validation.diagnostics.length}
-              </div>
-              {validation.diagnostics.map((d, i) => (
+              )}
+              {warnings.length > 0 && (
+                <FindingGroup
+                  groupKey="warnings"
+                  label="Warnings"
+                  tone="var(--status-review)"
+                  findings={warnings}
+                />
+              )}
+            </>
+          )}
+
+          {/* Older wasm with no structured findings: keep the honest
+              flat-string cards under one Warnings group. */}
+          {hasRun && structured.length === 0 && diagnostics.length > 0 && (
+            <>
+              <GroupKicker
+                groupKey="warnings"
+                label="Warnings"
+                count={diagnostics.length}
+                tone="var(--status-review)"
+              />
+              {diagnostics.map((d, i) => (
                 <div
                   key={i}
                   data-preflight-finding
@@ -127,6 +149,12 @@ export function PreflightPanel() {
                 </div>
               ))}
             </>
+          )}
+
+          {hasRun && total === 0 && run.state !== "error" && (
+            <span className="pg-ui-xs" data-preflight-clean>
+              No findings — the document exports cleanly.
+            </span>
           )}
         </div>
       </CockpitSection>
@@ -180,5 +208,106 @@ export function PreflightPanel() {
         </span>
       </CockpitSection>
     </div>
+  );
+}
+
+function GroupKicker({
+  groupKey,
+  label,
+  count,
+  tone,
+}: {
+  groupKey: string;
+  label: string;
+  count: number;
+  tone: string;
+}) {
+  return (
+    <div
+      className="pg-label"
+      data-preflight-group={groupKey}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        color: tone,
+        marginTop: 2,
+      }}
+    >
+      <span
+        style={{
+          width: 7,
+          height: 7,
+          borderRadius: "50%",
+          background: tone,
+        }}
+      />
+      {label} · {count}
+    </div>
+  );
+}
+
+/** A severity group with its kicker + jump-on-click finding cards. */
+function FindingGroup({
+  groupKey,
+  label,
+  tone,
+  findings,
+}: {
+  groupKey: string;
+  label: string;
+  tone: string;
+  findings: PreflightFinding[];
+}) {
+  return (
+    <>
+      <GroupKicker
+        groupKey={groupKey}
+        label={label}
+        count={findings.length}
+        tone={tone}
+      />
+      {findings.map((f, i) => {
+        const hasPage = f.pageIndex != null;
+        return (
+          <button
+            key={`${f.code}-${i}`}
+            type="button"
+            data-preflight-finding
+            data-finding-code={f.code}
+            data-finding-page={hasPage ? f.pageIndex : undefined}
+            disabled={!hasPage}
+            title={hasPage ? `Go to page ${f.pageIndex! + 1}` : f.code}
+            onClick={
+              hasPage ? () => navigateToPages([f.pageIndex!]) : undefined
+            }
+            className="pg-ui-xs"
+            style={{
+              display: "block",
+              width: "100%",
+              textAlign: "left",
+              border: "1px solid var(--pg-border)",
+              borderLeft: `3px solid ${tone}`,
+              borderRadius: "var(--radius-sm)",
+              padding: "6px 8px",
+              lineHeight: 1.35,
+              background: "transparent",
+              color: "var(--pg-fg)",
+              cursor: hasPage ? "pointer" : "default",
+              font: "inherit",
+            }}
+          >
+            <span style={{ display: "block" }}>{f.message}</span>
+            <span
+              className="pg-mono-meta"
+              style={{ display: "flex", gap: 6, marginTop: 2 }}
+            >
+              <span>{f.code}</span>
+              {hasPage && <span>· page {f.pageIndex! + 1}</span>}
+            </span>
+          </button>
+        );
+      })}
+    </>
   );
 }

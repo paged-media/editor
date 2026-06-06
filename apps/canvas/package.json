@@ -21,6 +21,7 @@
     "@paged-media/catalog": "workspace:*",
     "@paged-media/client": "workspace:*",
     "@paged-media/draw-bundle": "link:../../../plugin-draw/packages/draw-bundle",
+    "@paged-media/plugin-api": "link:../../../plugin-sdk/packages/plugin-api",
     "@paged-media/plugin-sdk": "link:../../../plugin-sdk/packages/plugin-sdk",
     "@paged-media/web-bundle": "link:../../../plugin-web/packages/web-bundle",
     "@paged-media/shell": "workspace:*",

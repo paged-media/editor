@@ -8,7 +8,7 @@
 // real client methods through `page.evaluate(...)` so we exercise
 // the same code path the React UI uses.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { basename } from "node:path";
 import type { Page } from "@playwright/test";
 

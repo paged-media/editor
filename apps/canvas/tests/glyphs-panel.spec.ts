@@ -92,3 +92,20 @@ test("AC-GLYPHS-1 — caret + glyph click inserts via insertText", async ({
     root.locator('[data-glyph-grid="recent"] [data-glyph="©"]'),
   ).toBeVisible();
 });
+
+test("AC-GLYPHS-2 — Font select is fed real families from the fonts collection", async ({
+  page,
+}) => {
+  await openCanvas(page);
+  await loadIdml(page, FIXTURE);
+  await openPanel(page, "paged.glyphs");
+  const root = page.locator('[data-glyphs-panel="ready"]');
+  // W2.12 — the family select is a real (enabled) KitSelect listing the
+  // document's fonts-in-use (the fixture references Open Sans).
+  const select = root.locator("[data-glyphs-font]");
+  await expect(select).toBeEnabled();
+  await expect(select.locator("option")).not.toHaveCount(0);
+  await expect(select.locator("option", { hasText: "Open Sans" })).toHaveCount(
+    1,
+  );
+});

@@ -8,34 +8,10 @@ import {
   ComingSoon,
   CockpitSection,
   StatusPill,
-  useDocumentStats,
 } from "@paged-media/shell";
 
-/** Content mode — per-story list. The engine HAS stories (the live
- * count below is real); the per-story summaries need the `stories`
- * collection accessor on the wire (core follow-up). */
-export function StoriesPanel() {
-  const stats = useDocumentStats();
-  return (
-    <div data-stories-panel style={{ overflowY: "auto", height: "100%" }}>
-      <CockpitPanelHeader
-        title="Stories"
-        action={
-          stats ? (
-            <span className="pg-mono-meta">{stats.stories}</span>
-          ) : undefined
-        }
-      />
-      <ComingSoon icon="panel-character" title="Story list coming soon">
-        {stats
-          ? `This document carries ${stats.stories} stories. The per-story
-             list (words, overset, approval state) lands with the engine's
-             stories collection.`
-          : "Open a document — the per-story list lands with the engine's stories collection."}
-      </ComingSoon>
-    </div>
-  );
-}
+// StoriesPanel moved to `./stories-panel` (W2.12 — now a real story
+// list off `paged.stories()`).
 
 /** Review mode — threaded comments. Needs the collaboration
  * backend. */
@@ -44,8 +20,8 @@ export function CommentsPanel() {
     <div data-comments-panel style={{ overflowY: "auto", height: "100%" }}>
       <CockpitPanelHeader title="Comments" />
       <ComingSoon icon="ui-comment" title="No comments yet">
-        Threaded review comments, approvals and version compare land
-        with the collaboration backend.
+        Threaded review comments, approvals and version compare land with the
+        collaboration backend.
       </ComingSoon>
     </div>
   );
@@ -61,13 +37,13 @@ export function DataMappingPanel() {
         right={<StatusPill tone="draft">not connected</StatusPill>}
       >
         <span className="pg-ui-xs">
-          Connect a structured source (PIM, CSV, API) and map its fields
-          to layout slots — repeatable data-driven pages.
+          Connect a structured source (PIM, CSV, API) and map its fields to
+          layout slots — repeatable data-driven pages.
         </span>
       </CockpitSection>
       <ComingSoon icon="ui-database" title="Field mapping coming soon">
-        Field→slot mapping, record filters and generation rules land
-        with the data-publishing engine.
+        Field→slot mapping, record filters and generation rules land with the
+        data-publishing engine.
       </ComingSoon>
     </div>
   );
@@ -82,8 +58,8 @@ export function ComponentLibraryPanel() {
     >
       <CockpitPanelHeader title="Library" />
       <ComingSoon icon="ui-component" title="Component library coming soon">
-        Browse, drag and configure reusable components — slots bound to
-        data, variants, and usage rules.
+        Browse, drag and configure reusable components — slots bound to data,
+        variants, and usage rules.
       </ComingSoon>
     </div>
   );

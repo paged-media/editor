@@ -14,6 +14,7 @@
 
 import {
   PROTOCOL_VERSION,
+  type CaretDirection,
   type CaretGeometry,
   type CollectionName,
   type ColorPreview,
@@ -30,6 +31,7 @@ import {
   type GestureType,
   type GradientDetail,
   type LayerSummary,
+  type LineBounds,
   type LodTier,
   type SceneTreeNode,
   type MainToWorker,
@@ -699,6 +701,46 @@ export class CanvasClient {
       payload: { selection },
     });
     if (reply.kind === "selectionGeometry") return reply.payload.rects;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
+   * W2.11 — vertical caret navigation. The engine owns line metrics
+   * (and the InDesign desired-x "goal column" so repeated Up/Down keep
+   * the visual column); we hand it the current story + offset + a
+   * direction and apply the returned offset. Resolves to `null` when
+   * the move is a no-op (already at the first/last line) so callers can
+   * leave the caret put.
+   */
+  async caretNav(
+    storyId: string,
+    offset: number,
+    direction: CaretDirection,
+  ): Promise<number | null> {
+    const reply = await this.send({
+      kind: "requestCaretNav",
+      payload: { storyId, offset, direction },
+    });
+    if (reply.kind === "caretNavResult") return reply.payload.offset ?? null;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
+   * W2.11 — line extent for the line containing `offset`: the story
+   * offsets of the line's first character and one-past its last. Home /
+   * End map the caret to `lineStart` / `lineEnd`; triple-click selects
+   * `[lineStart, lineEnd)`. Resolves to `null` when the offset has no
+   * resolvable line (empty / unbuilt story).
+   */
+  async lineBounds(
+    storyId: string,
+    offset: number,
+  ): Promise<LineBounds | null> {
+    const reply = await this.send({
+      kind: "requestLineBounds",
+      payload: { storyId, offset },
+    });
+    if (reply.kind === "lineBoundsResult") return reply.payload.bounds ?? null;
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 

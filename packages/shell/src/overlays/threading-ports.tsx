@@ -30,7 +30,7 @@
 import { useCallback } from "react";
 
 // eslint-disable-next-line import/no-relative-parent-imports
-import type { ElementGeometryItem, Mutation } from "@paged-media/client";
+import type { Mutation } from "@paged-media/client";
 
 import type { OverlayContribution, OverlayProps } from "../registries/overlay";
 import { useCanvasClient } from "../state/canvas-client-context";

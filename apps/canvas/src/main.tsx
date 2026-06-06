@@ -99,8 +99,8 @@ import {
   CommentsPanel,
   ComponentLibraryPanel,
   DataMappingPanel,
-  StoriesPanel,
 } from "./panels/cockpit/stub-panels";
+import { StoriesPanel } from "./panels/cockpit/stories-panel";
 import { DocumentMapPanel } from "./panels/cockpit/document-map-panel";
 import {
   ExportInspectorPanel,

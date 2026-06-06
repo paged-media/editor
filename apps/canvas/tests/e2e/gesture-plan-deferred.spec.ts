@@ -9,38 +9,23 @@
 import { test } from "@playwright/test";
 
 test.describe("gestures.md — deferred E2E scenarios", () => {
-  test.fixme(
-    "E2E-02 — gridify: arrow keys mid-drag split the draw into N×M frames (DR-05/06/07)",
-    async () => {
-      // Not implemented: the draw handlers (packages/tools/src/
-      // handlers/rectangle-tool.ts) have no arrow-key listener and
-      // insertFrame lands a single frame per commit.
-    },
-  );
-
-  test.fixme(
-    "E2E-03 — pen tool: 5-point path, one Alt-broken handle, close path (DR-08…11)",
-    async () => {
-      // Not implemented: the Pen tool is registered (group "pen" in
-      // packages/tools/src/built-in-tools.ts) but carries no gesture
-      // handler — only pathEdit on EXISTING paths is wired.
-    },
-  );
+  // E2E-02 (gridify) is now LIVE in gesture-gridify.spec.ts (W2.7).
+  // E2E-03 (pen tool) is now LIVE in gesture-pen.spec.ts (W2.5).
+  // E2E-06 (ruler guides) is now LIVE in gesture-guides.spec.ts (W2.8).
+  // Their deferral stubs were removed when the real suites landed.
 
   test.fixme(
     "E2E-05 — thread two text frames; verify reflow indicator (TH-01…04)",
     async () => {
-      // Not implemented: no threading mutation exists on the wire
-      // (packages/client/src/protocol.ts) and ports are not hittable.
-    },
-  );
-
-  test.fixme(
-    "E2E-06 — drag guide from ruler; snap a frame to it; drag it back to delete (GD-01…03)",
-    async () => {
-      // Partially implemented: ruler guides parse from IDML and act
-      // as snap targets (tests/ruler-guides.spec.ts), but there is no
-      // create/move/delete guide gesture or mutation.
+      // SUPERSEDED by gesture-threading.spec.ts (W2.9): TH-01 (out-port
+      // → link an empty text frame), TH-02 (out-port → draw+link a new
+      // frame), and TH-03 (Esc clears the loaded cursor) are now the
+      // real implementation. TH-04's overset BADGE leg is fixme'd there
+      // on the overset read-surface gap (no overset fixture +
+      // unverified incremental-rebuild overset). This E2E-05 stub stays
+      // until the visual "reflow indicator" (VR-08 chain arrows between
+      // linked frames) is wired — TH-01…03 assert the link at the
+      // channel + port-glyph level, not the inter-frame reflow line.
     },
   );
 

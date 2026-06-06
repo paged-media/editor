@@ -23,10 +23,12 @@
 //      WIRE GAP note at the bottom.
 //
 //   3. The set of frame ids the UI should badge as OVERSET. Overset IS
-//      live-readable (`StorySummary.overset` via the `stories`
-//      collection / `DocumentStats.overset_stories`); the controller
-//      maps that per-frame and publishes the set here so the out-port
-//      can paint the red "+" badge.
+//      live-readable (`StorySummary.overset` via the `paged.stories()`
+//      script surface; `DocumentStats.overset_stories` is the matching
+//      count). The controller maps that per-frame (frame → story via a
+//      centre hit-test, story → overset via the script) and publishes
+//      the resolved frame-id set here so the out-port can paint the
+//      red "+" badge.
 //
 // Writers: the ports (loadCursor on out-port click), the controller
 // (linkMade / linkRemoved + setOverset). Readers: the ports overlay +

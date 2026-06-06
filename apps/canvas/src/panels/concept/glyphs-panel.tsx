@@ -3,13 +3,23 @@
 // active text caret inserts the character through the real
 // `insertText` mutation (undoable, same op the keyboard rides);
 // without a caret the grid renders inert (you can't insert into
-// nothing). Recently-used is panel-local state. The font scope
-// selects, OpenType-feature filter and alternates flyout wait on
-// the engine's font registry (Show = Entire Font only).
+// nothing). Recently-used is panel-local state.
+//
+// W2.12 — the Font family select is now fed REAL families from the
+// `fonts` collection (the document's fonts-in-use, deduped). It scopes
+// the grid's preview font so the inserted/previewed glyph renders in
+// the chosen family. The Show scope + style select remain seams (no
+// per-style registry on the wire); insert stays via insertText.
 
 import { useState } from "react";
 
-import { useCanvasClient, useContentSelection } from "@paged-media/shell";
+import {
+  useCanvasClient,
+  useCollection,
+  useContentSelection,
+} from "@paged-media/shell";
+import { KitSelect } from "@paged-media/ui";
+import type { FontSummary } from "@paged-media/client";
 
 import { ConceptShell, Row, SeamSelect } from "./concept-kit";
 
@@ -53,8 +63,15 @@ const GLYPHS = [
 export function GlyphsPanel() {
   const client = useCanvasClient();
   const { contentSelection } = useContentSelection();
+  const fonts = useCollection<FontSummary>("fonts");
   const [recent, setRecent] = useState<string[]>([]);
+  const [family, setFamily] = useState<string>("");
   const caret = contentSelection != null;
+  // The grid previews glyphs in the chosen family (real fonts-in-use);
+  // empty selection falls back to the serif preview font.
+  const previewFont = family
+    ? `"${family}", var(--font-serif, serif)`
+    : "var(--font-serif, serif)";
 
   const insert = (glyph: string) => {
     if (!contentSelection) return;
@@ -90,7 +107,7 @@ export function GlyphsPanel() {
           title={caret ? `Insert ${g}` : "Place a text caret to insert glyphs"}
           onClick={() => insert(g)}
           className="aspect-square rounded-[5px] border border-input bg-background text-[15px] leading-none flex items-center justify-center cursor-pointer disabled:cursor-default disabled:opacity-45 hover:bg-muted/60"
-          style={{ fontFamily: "var(--font-serif, serif)" }}
+          style={{ fontFamily: previewFont }}
         >
           {g}
         </button>
@@ -109,8 +126,26 @@ export function GlyphsPanel() {
       </Row>
       <Row label="Font">
         <div className="grid grid-cols-[1fr_84px] gap-1">
-          <SeamSelect value="—" />
-          <SeamSelect value="—" />
+          {fonts && fonts.length > 0 ? (
+            <KitSelect
+              soft={family === ""}
+              value={family}
+              data-glyphs-font
+              onChange={(e) => setFamily(e.target.value)}
+            >
+              <option value="">Document font</option>
+              {fonts.map((f) => (
+                <option key={f.family} value={f.family}>
+                  {f.family}
+                </option>
+              ))}
+            </KitSelect>
+          ) : (
+            <SeamSelect value="—" />
+          )}
+          {/* Per-style faces aren't on the wire (FontSummary is
+              family-only) — the style select stays a seam. */}
+          <SeamSelect value="Regular" />
         </div>
       </Row>
       {!caret && (

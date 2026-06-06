@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
   OverlayHost,
+  useContentSelection,
   useOverlaySignals,
   type MarqueeRectPageLocal,
   type SelectionState,
@@ -182,6 +183,21 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
   const setMarqueeRect = overlaySignals.setMarqueeRect;
   const setSnapLines = overlaySignals.setSnapLines;
   const marqueeRect = overlaySignals.marqueeRect;
+
+  // W2.11 — text-tool click granularity. The text caret/range is owned
+  // by ContentSelectionContext (the round-tripping setter refreshes
+  // caret + selection geometry); ViewportCanvas drives it directly for
+  // double-/triple-click word/line selection so the granularity logic
+  // stays out of the panel wiring (single-click → caret still flows
+  // through `onHit` → the panel).
+  const { setContentSelection } = useContentSelection();
+
+  // Native `detail` on pointerup is unreliable across browsers for the
+  // 3rd click, so we track the click run ourselves: same screen point
+  // (within slop) within the multi-click window bumps the count.
+  const clickRunRef = useRef<{ t: number; x: number; y: number; count: number }>(
+    { t: 0, x: 0, y: 0, count: 0 },
+  );
 
   // Document-space layout — only used to compute initial fit-to-document.
   const rects = useMemo(
@@ -362,10 +378,12 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
                 [docX - containing[1].x, docY - containing[1].y],
               )
             : null;
-        // Phase F — Cmd-drag on the body of a single-selected
-        // image-bearing frame triggers `TranslateContent` (content
-        // grabber). Plain body-drag stays Translate; Cmd-drag on a
-        // resize handle stays Scale (Phase D).
+        // Phase F / W2.10 — Cmd-drag on the body of a single-selected
+        // image-bearing frame drives the content grabber: plain Cmd
+        // translates the placed image, Cmd+Alt scales it, Cmd+Shift
+        // rotates it (see the gestureSpec branch below). Plain
+        // body-drag stays Translate; Cmd-drag on a resize handle stays
+        // Scale (Phase D).
         const bodyHitIsImage =
           !handleAttr &&
           selectedGeom?.id.kind === "rectangle" &&
@@ -396,7 +414,31 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
             gestureSpec = { kind: "translate" };
             targets = selection.slice();
           } else if (modifiers.cmd && bodyHitIsImage) {
-            gestureSpec = { kind: "translateContent" };
+            // W2.10 — content-transform gestures ride the SAME content
+            // grabber the Phase F TranslateContent uses. Cmd+drag on an
+            // image body translates the placed image; layering a
+            // modifier promotes it to a rotate/scale of the content,
+            // about the frame centroid (the engine's RotateContent /
+            // ScaleContent arms, which commit SetProperty{
+            // ImageContentTransform} without touching the frame's own
+            // bounds or ItemTransform):
+            //   Cmd + Alt   → scaleContent
+            //   Cmd + Shift → rotateContent (Shift also flows to
+            //                 update_gesture, so the rotation snaps to
+            //                 15° — the same Shift-constrain the frame
+            //                 Rotate uses; an unconstrained content
+            //                 rotate is a later affordance).
+            // Alt wins over Shift when both are held so the choice is
+            // deterministic. Shift stays the live constraint modifier
+            // (never consumed here for translate), so plain Cmd+drag is
+            // still a free TranslateContent.
+            if (e.altKey) {
+              gestureSpec = { kind: "scaleContent" };
+            } else if (modifiers.shift) {
+              gestureSpec = { kind: "rotateContent" };
+            } else {
+              gestureSpec = { kind: "translateContent" };
+            }
             targets = [bodyHitElement];
           } else {
             gestureSpec = { kind: "translate" };
@@ -666,6 +708,12 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         const rect = e.currentTarget.getBoundingClientRect();
         const cx = e.clientX - rect.left;
         const cy = e.clientY - rect.top;
+        // W2.11 — multi-click granularity (SEL-05). Track the click
+        // run so the 2nd consecutive click on the same point selects a
+        // word and the 3rd selects the line. Native `detail` is
+        // unreliable for the 3rd click, so we count ourselves.
+        const clickCount = bumpClickRun(clickRunRef.current, cx, cy, e.timeStamp);
+        const isText = (props.activeTool ?? "select") === "text";
         const [docX, docY] = viewportToDoc(props.camera, cx, cy);
         const containing = findContainingPage(rects, props.pageIds, docX, docY);
         if (containing) {
@@ -674,20 +722,33 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
             docX - pageRect.x,
             docY - pageRect.y,
           ];
-          const filter =
-            (props.activeTool ?? "select") === "text" ? "text" : "any";
+          const filter = isText ? "text" : "any";
           void (async () => {
             try {
               const reply = await props.client.send({
                 kind: "hitTest",
                 payload: { pageId, docPoint, filter },
               });
-              if (reply.kind === "hitResult") {
-                props.onHit?.(
-                  { pageId, docPoint, hit: reply.payload },
-                  modifiers,
+              if (reply.kind !== "hitResult") return;
+              const hit = reply.payload;
+              // Text tool, 2nd/3rd click on a story offset → granular
+              // selection (word / line) instead of placing a caret.
+              if (
+                isText &&
+                clickCount >= 2 &&
+                hit.storyId &&
+                hit.offsetWithinStory != null
+              ) {
+                await applyTextGranularity(
+                  props.client,
+                  hit.storyId,
+                  hit.offsetWithinStory,
+                  clickCount,
+                  setContentSelection,
                 );
+                return;
               }
+              props.onHit?.({ pageId, docPoint, hit }, modifiers);
             } catch (err) {
               console.warn("hitTest failed:", err);
             }
@@ -720,7 +781,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         }
       }
     },
-    [props, rects, marqueeRect],
+    [props, rects, marqueeRect, setContentSelection],
   );
 
   // Phase B — Escape cancels the active gesture. Listen at document
@@ -879,6 +940,10 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       // Phase H — double-click on a frame nested inside a group →
       // select the whole outermost containing group as a unit.
       if (!props.onDoubleClickGroup) return;
+      // W2.11 — with the Type tool, double-/triple-click is text
+      // granularity (handled in onPointerUp's click branch); skip the
+      // group-descent path so the two don't fight over the same click.
+      if ((props.activeTool ?? "select") === "text") return;
       const rect = e.currentTarget.getBoundingClientRect();
       const cx = e.clientX - rect.left;
       const cy = e.clientY - rect.top;
@@ -950,6 +1015,75 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       />
     </div>
   );
+}
+
+const MULTI_CLICK_MS = 500;
+const MULTI_CLICK_SLOP_PX = 4;
+
+/** Advance the consecutive-click counter for SEL-05 granularity. A
+ *  click within `MULTI_CLICK_MS` of, and `MULTI_CLICK_SLOP_PX` from,
+ *  the previous one bumps the count (capped at 3 — triple-click is the
+ *  coarsest granularity); otherwise it restarts at 1. Mutates and
+ *  returns the new count. */
+function bumpClickRun(
+  run: { t: number; x: number; y: number; count: number },
+  x: number,
+  y: number,
+  now: number,
+): number {
+  const near =
+    Math.abs(x - run.x) <= MULTI_CLICK_SLOP_PX &&
+    Math.abs(y - run.y) <= MULTI_CLICK_SLOP_PX;
+  const inTime = now - run.t <= MULTI_CLICK_MS;
+  run.count = near && inTime ? Math.min(3, run.count + 1) : 1;
+  run.t = now;
+  run.x = x;
+  run.y = y;
+  return run.count;
+}
+
+/**
+ * W2.11 / SEL-05 — set a word (double-click) or line (triple-click)
+ * range selection on a story.
+ *
+ * WIRE GAP (honest note): protocol v28 exposes `requestLineBounds`
+ * (line start/end) but NO word-bounds query, and this client has no
+ * access to the story's plain text (StorySummary carries only a
+ * character count), so true word granularity can't be computed
+ * main-thread. Until a `requestWordBounds` wire (or story-text read)
+ * lands, BOTH double- and triple-click resolve to the LINE via
+ * `requestLineBounds`. Double-click therefore over-selects to the line;
+ * the granularity branch is kept separate so only it changes when the
+ * word wire arrives. The line range is still a useful, non-empty
+ * selection (replace-on-type works), which is what callers depend on.
+ */
+async function applyTextGranularity(
+  client: CanvasClient,
+  storyId: string,
+  offset: number,
+  clickCount: number,
+  setContentSelection: (s: {
+    storyId: string;
+    start: number;
+    end: number;
+    affinity?: boolean;
+  } | null) => void,
+): Promise<void> {
+  // clickCount 2 (word, line-approximated) and 3 (line) both use line
+  // bounds today — see the WIRE GAP note above.
+  void clickCount;
+  try {
+    const bounds = await client.lineBounds(storyId, offset);
+    if (!bounds) return;
+    setContentSelection({
+      storyId,
+      start: bounds.lineStart,
+      end: bounds.lineEnd,
+      affinity: false,
+    });
+  } catch {
+    /* worker reload / disconnect — leave the selection put */
+  }
 }
 
 function ViewportHud(props: {

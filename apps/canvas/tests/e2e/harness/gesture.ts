@@ -23,7 +23,9 @@ export type GestureSpec =
   | { kind: "rotate" }
   | { kind: "scale" }
   | { kind: "shear" }
-  | { kind: "translateContent" };
+  | { kind: "translateContent" }
+  | { kind: "rotateContent" }
+  | { kind: "scaleContent" };
 
 export interface GestureAnchor {
   pageId: string;

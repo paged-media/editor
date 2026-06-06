@@ -261,15 +261,19 @@ Live: Wrap glyph segments → `frameTextWrapMode`; Offset row4 →
 three share one `Option<TextWrap>` field — the apply layer preserves the unset
 members (mode / offsets / invert). Applies to every wrap-capable kind
 (TextFrame / Rectangle / Oval / Polygon / GraphicLine). Seams: Wrap-to (side)
-+ Contour-source selects — no PropertyPath on the v28 wire.
-**End state** — contour-source options, wrap-to-side, master-only flag.
 
-### Fonts — `paged.fonts` ✓ (gallery card)
+- Contour-source selects — no PropertyPath on the v28 wire.
+  **End state** — contour-source options, wrap-to-side, master-only flag.
+
+### Fonts — `paged.fonts` ✓ (gallery card) — W2.12 2026-06-06
 
 All / In use / Missing filter tabs over the families-in-use rows
-(`fonts` collection; All ≡ In use today). Missing tab = honest seam note.
-**End state** — missing/embedded status (gap 4), replace-font action; feeds
-the prepress "missing font" finding.
+(`fonts` collection; All ≡ In use today). Each row carries a **status
+dot** (green resolved / red substituted) + a `missing` badge; the
+**Missing tab filters on `FontSummary.isMissing`** (gap 4) with a live
+count, falling back to the "no missing fonts" state when all resolve.
+**End state** — replace-font action; the panel already feeds the
+prepress "missing font" finding + Health's "Missing fonts" count.
 
 ### Cell Styles / Table Styles — `paged.cell-styles` / `paged.table-styles` ✓ read-only
 
@@ -345,16 +349,18 @@ paper-white (`setProofSetup`).
 
 ## 4 · Structure & navigation
 
-### Document Map — `paged.document-map` ◐ _(kit: design/review LEFT panel)_
+### Document Map — `paged.document-map` ◐ _(kit: design/review LEFT panel)_ — W2.12 2026-06-06
 
 Search filter · real spread tree (`spreads` collection walked in document
-order) with live page-snapshot thumbnails · click → fit camera ·
-"Add section" (disabled seam) · **Publication Health footer** (real
-pages/stories/frames/links + PDF/X-4 pill; risk counts = seam).
-**End state** — kit screenshot exactly: named **sections** with ranges
-(gap 10), per-section **status chips** (Approved/In Review/Comments/Overset
-— collaboration + gap 1), drag-reorder sections, real red risk counts
-(gaps 1–4).
+order) with live page-snapshot thumbnails + per-page margin/column readout
+(`PageSummary` gap 10) · click → fit camera · **named section chips**
+(`sections` collection — prefix/range/numbering, click → jump) · **"Add
+section"** rides the real v28 `insertSection` Operation (undoable) ·
+**Publication Health footer** with real metrics + live risk counts
+(overset stories / missing links / missing fonts) + PDF/X-4 pill.
+**End state** — kit screenshot exactly: per-section **status chips**
+(Approved/In Review/Comments — collaboration), drag-reorder sections,
+section prefix/numbering editing (`editSection`).
 
 ### Pages (Navigator) — `paged.pages` ✓
 
@@ -373,12 +379,15 @@ rows (label + page count); per-master Apply = seam.
 membership (gap 7) and become the true grouping source; masters gain
 "apply to page" (`ApplyMasterToPage`) + master editing entry.
 
-### Links — `paged.links` ✓ (gallery ListRows)
+### Links — `paged.links` ✓ (gallery ListRows) — W2.12 2026-06-06
 
-Glyph rows (filename + mono host line, filter at >8 rows) + a seam toolbar
-(update/relink/go-to).
-**End state** — present/missing status badges, effective PPI, colourspace
-(gaps 2–3), relocate/update/break actions; feeds Health "Missing Links".
+Glyph rows (filename, filter at >8 rows) with the W0.6 wire summaries:
+**status dot** (`LinkSummary.status` ok/missing) + `missing` badge,
+**colourspace + effective PPI** on the mono secondary line, and a
+`lo-res` badge below the 150-ppi convention (gaps 2–3). Seam toolbar
+(update/relink/go-to) until those Operations ship.
+**End state** — relocate/update/break actions; the panel already feeds
+Health's "Missing links" + "Low-res images" counts.
 
 ### Conditions — `paged.conditions` ✓ · Condition Sets — `paged.condition-sets` ✓
 
@@ -424,23 +433,30 @@ DocTitleBar/Health.
 
 ## 5 · Cockpit mode surfaces
 
-### Publication Health — `paged.publication-health` ◐
+### Publication Health — `paged.publication-health` ◐ — W2.12 2026-06-06
 
 Real metric tiles (pages/stories/frames/glyphs/links/colour mode) + X-4
-readiness pill; the Risks section renders the kit's risk ROWS (em-dash
-counts + inert chevrons — never invented numbers).
-**End state** — all kit counts real: overset frames, missing links, low-res
-images, font warnings (gaps 1–4) + accessible-PDF issues; each row jumps to
-its findings.
+readiness pill; the Risks section now renders **live counts** (gaps 1–4):
+overset stories (`DocumentStats.overset_stories`), missing links
+(`LinkSummary.status`), low-res images (`effectivePpi` < 150), missing
+fonts (`FontSummary.isMissing`), and last-export preflight findings by
+severity (the shared findings store). A clean count shows 0 + an OK
+check; the preflight row stays a seam until Validate output runs.
+**End state** — each non-zero row jumps to its findings; accessible-PDF
+issues join once tagged-PDF preflight lands.
 
-### Preflight — `paged.preflight` ◐
+### Preflight — `paged.preflight` ◐ — W2.12 2026-06-06
 
-"Validate output" runs a **real dry PDF export** → findings as gallery
-issue cards under the dotted "Warnings · N" group kicker; real links
-inventory; PPI/bleed checks = seam.
-**End state** — kit prepress panel: Critical/Warnings groups with per-finding
-page jump + fix actions, output profile selector, live re-validation, canvas
-issue markers (error/warn/a11y pins).
+"Validate output" runs a **real dry PDF export**; the structured
+`PreflightFinding{code,severity,page_index}` (gap 20) ride the
+`pdfExported` reply into the shared findings store and render as
+**Errors / Warnings groups**, each finding a **jump target** (click →
+`navigateToPages([pageIndex])`, the Document-Map/filmstrip hand-off).
+Clean docs show the "no findings" affordance; real links inventory;
+PPI/bleed checks = seam. Older wasm with no structured findings falls
+back to the flat-string Warnings cards.
+**End state** — output profile selector, live re-validation, canvas
+issue markers (error/warn/a11y pins), per-finding fix actions.
 
 ### Output readiness — `paged.output-readiness` ◐
 
@@ -466,12 +482,16 @@ PDF (PDF/X-4)" button → live dialog).
 **End state** — inline per-target settings (preset/profile/bleed/marks per
 kit) as each pipeline lands.
 
-### Stories — `paged.stories` ◐ · Story inspector — `paged.story-inspector` ◐
+### Stories — `paged.stories` ◐ · Story inspector — `paged.story-inspector` ◐ — W2.12 2026-06-06
 
-Real story **count** (DocumentStats); list/fields = seam.
-**End state** — kit Content mode: story rows (name, words, status dot) with
-click-to-select; inspector with words, overset risk, language-expansion
-risk, comments, approval. Gaps 1, 10 + collaboration.
+Real **story list** off the `paged.stories()` script host (there is no
+`"stories"` document collection on the wire — `StorySummary` is
+script-host-only): one row per story with character + paragraph counts,
+an **overset badge** (`StorySummary.overset`, gap 1), and click →
+content selection at the story head. Words/approval = seam.
+**End state** — kit Content mode inspector (words, language-expansion
+risk, comments, approval). Needs a `stories` collection accessor +
+collaboration; word count on the wire.
 
 ### Comments — `paged.comments` ○ · Review inspector — `paged.review-inspector` ○
 
@@ -541,11 +561,14 @@ Content-scope; the apply layer rounds the StoryRange to whole
 paragraphs.
 **Target** — repeat-tab + drag-on-ruler authoring polish.
 
-### Glyphs — `paged.glyphs` ◐ _(partially live)_
+### Glyphs — `paged.glyphs` ◐ _(partially live)_ — W2.12 2026-06-06
 
 With an active text caret the glyph grid **inserts via the real
 `insertText` mutation** (undoable); recently-used grid is panel-local.
-Seams: Show scope + font selects (await the font registry).
+The **Font family select is fed real families** from the `fonts`
+collection and scopes the grid's preview font. Seams: Show scope +
+per-style face select (no style faces on the wire — `FontSummary` is
+family-only).
 **Target** — full character map, OpenType-feature filter, alternates
 flyout, glyph sets.
 
@@ -581,10 +604,19 @@ EPUB/HTML + tagged PDF.
 ## Engine roadmap gaps (what flips ◐/○ → ✓)
 
 1. **Overset signal** on the wire (stats + per-frame/story) — health count,
-   inspector banner, AI problem line, canvas marker.
+   inspector banner, AI problem line, canvas marker. _(W0.6/W2.12: wire-
+   side DONE — `DocumentStats.overset_stories` + `StorySummary.overset`
+   drive Health's "Overset stories", the Stories overset badge; residual =
+   per-frame canvas marker + inspector banner.)_
 2. **`LinkSummary` status + colourspace** — missing links, image inspector.
+   _(W0.6/W2.12: `status` + `colorspace` consumed by the Links panel
+   (status dot, missing badge, colourspace line) + Health "Missing links".)_
 3. **Effective PPI** for placed images — low-res findings, image inspector.
-4. **`FontSummary` missing/embedded flag** — font warnings.
+   _(W0.6/W2.12: `LinkSummary.effectivePpi` drives the Links `lo-res`
+   badge + Health "Low-res images" (< 150 ppi); fixtures omit the attr.)_
+4. **`FontSummary` missing/embedded flag** — font warnings. _(W0.6/W2.12:
+   `isMissing` consumed — Fonts Missing tab/dot/badge + Health "Missing
+   fonts". `embedded` intentionally not on the wire.)_
 5. **`characterFontFamily/Style/Kerning` property paths** — text inspector
    font selects.
 6. **Rotation/scale decompose primitive** — typed transform dials.
@@ -592,8 +624,12 @@ EPUB/HTML + tagged PDF.
 8. **Table selection + table/cell ops** — table toolbar, Table Composer,
    cell/table style apply.
 9. **`stories` / `sections` collections** — story list, Document Map
-   sections.
-10. **Page margin/bleed/column reads** — page inspector geometry.
+   sections. _(W2.12: `sections` collection consumed by the Document-Map
+   chips + `insertSection`; the story list reads the `paged.stories()`
+   script host — a true `stories` collection accessor is still pending.)_
+10. **Page margin/bleed/column reads** — page inspector geometry. _(W0.6/
+    W2.12: `PageSummary` margins/columns surfaced in the Document-Map
+    spread-row meta; bleed still pending in the page inspector.)_
 
 Panel-gallery pass additions (consolidated from `INDESIGN_PARITY.md` + the
 gallery seams; several extend gaps above):
@@ -620,9 +656,17 @@ gallery seams; several extend gaps above):
     feather per-field editors live; residual = per-target selector, isolate/
     knockout, global light, shadow spread.)_
 19. **Page sections & numbering** — section marker/prefix/style, start
-    number, shuffle toggles (extends 9's sections).
+    number, shuffle toggles (extends 9's sections). \_(W2.12: `insertSection`
+    wired from the Document Map's Add-section button; section chips show
+    prefix/range/numbering. Residual = `editSection` prefix/start authoring
+    - shuffle toggles.)\_
 20. **Structured preflight findings** — severity + page refs on export
-    diagnostics (drives the Critical/Warnings groups + jump-to).
+    diagnostics (drives the Errors/Warnings groups + jump-to). _(W2.12:
+    `PreflightFinding{code,severity,pageIndex}` consumed by the Preflight
+    panel (severity groups + page jump) + Health's preflight count. NOTE:
+    `client.exportPdf` surfaces only `diagnostics`; the structured
+    `findings` are captured off the `pdfExported` broadcast — a typed
+    `findings` return on the client helper is the clean follow-up.)_
 21. **Tab stops** — per-paragraph stop table (the Tabs panel). _(W2.4:
     DONE — `paragraphTabStops` whole-list read/write; the Tabs panel is
     a live ruler-style stop editor.)_

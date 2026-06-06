@@ -17,10 +17,16 @@
 //     publishing the set of frame ids whose story overflows so the
 //     out-port can paint the red "+" badge.
 //
-// One undo step per thread action: linkFrames is one mutation;
-// insertTextFrame+linkFrames is a single `batch` (verified: the wire
-// `batch` op takes `Mutation[]` and both ops are members, dispatching
-// to Operation::Batch — one undoable unit). On the same Operation
+// Undo granularity (verified against the wire `batch` op): TH-01's
+// link is ONE linkFrames mutation = one undo step. TH-02's
+// draw-then-link is TWO SEQUENTIAL mutations (insertTextFrame, then
+// linkFrames), NOT a single batch. The wire `batch` op takes a
+// pre-serialised `Mutation[]`; a batched linkFrames would have to name
+// the new frame as its `to`, but the new frame's id isn't known until
+// insertTextFrame applies (it comes back on `mutationApplied`'s
+// `createdId`), and there is no placeholder/forward-reference in the
+// batch payload to carry it. So the draw-flow is two undo steps, and
+// the spec asserts the two-op sequence. All on the same Operation
 // channel as every other edit.
 
 import { useCallback, useEffect, useRef } from "react";
@@ -160,9 +166,9 @@ export function ThreadingController() {
   );
 
   /** Resolve a loaded-cursor drop. EITHER link an existing empty text
-   *  frame (TH-01) OR draw+link a new frame on empty canvas (TH-02).
-   *  Exactly one Operation either way (linkFrames, or the
-   *  insertTextFrame+linkFrames batch). */
+   *  frame (TH-01, one linkFrames) OR draw+link a new frame on empty
+   *  canvas (TH-02, insertTextFrame then linkFrames — two undo steps;
+   *  see the file header for why this can't be one batch). */
   const settleDrop = useCallback(
     async (src: LoadedCursor, clientX: number, clientY: number) => {
       const doc = clientToDoc(clientX, clientY);
@@ -171,10 +177,16 @@ export function ThreadingController() {
       const pageIds = handleRef.current?.pageIds ?? [];
       const hit = pageForDoc(rects, pageIds, doc[0], doc[1]);
 
-      // TH-01 — drop on an existing empty text frame: link into it.
+      // TH-01 — drop on an existing text frame: link into it. (EMPTY is
+      // the engine's own precondition; a non-empty target rejects on
+      // the channel and surfaces here as a no-op.)
       if (hit) {
         const frame = await hitFrame(hit.pageId, doc[0], doc[1], hit.rect);
-        if (frame && frame.kind === "textFrame" && frame.id !== src.sourceFrameId) {
+        if (
+          frame &&
+          frame.kind === "textFrame" &&
+          frame.id !== src.sourceFrameId
+        ) {
           const ok = await dispatch({
             op: "linkFrames",
             args: { from: src.sourceFrameId, to: frame.id },
@@ -185,32 +197,24 @@ export function ThreadingController() {
       }
 
       // TH-02 — drop on empty canvas: insert a new text frame at a
-      // default bounds centred on the drop, then link into it. ONE
-      // batch = one undo step. (A dragged bounds would replace the
-      // default; the click path centres the default box on the drop.)
-      const page = hit ?? pageForDoc(rects, pageIds, doc[0], doc[1]);
-      const landingPage =
-        page?.pageId ?? src.sourcePageId ?? pageIds[0] ?? null;
+      // default box centred on the drop, then link into it. (A dragged
+      // bounds would replace the default; the click path centres the
+      // default box on the drop point.)
+      const landingPage = hit?.pageId ?? src.sourcePageId ?? pageIds[0] ?? null;
       const landingRect =
-        page?.rect ?? rects[pageIds.indexOf(landingPage as PageId)] ?? rects[0];
+        hit?.rect ?? rects[pageIds.indexOf(landingPage as PageId)] ?? rects[0];
       if (!landingPage || !landingRect) return;
       // Page-local bounds [top, left, bottom, right], centred on drop.
-      const localX = doc[0] - landingRect.x;
-      const localY = doc[1] - landingRect.y;
-      const left = localX - DEFAULT_FRAME_W / 2;
-      const top = localY - DEFAULT_FRAME_H / 2;
+      const left = doc[0] - landingRect.x - DEFAULT_FRAME_W / 2;
+      const top = doc[1] - landingRect.y - DEFAULT_FRAME_H / 2;
       const bounds: [number, number, number, number] = [
         top,
         left,
         top + DEFAULT_FRAME_H,
         left + DEFAULT_FRAME_W,
       ];
-      // Batch insertTextFrame → linkFrames. The new frame's id is not
-      // known until the insert applies, so the batch can't name it as
-      // linkFrames' `to` directly. Fall back to two sequential
-      // mutations (one undo each) UNLESS the engine resolves the batch
-      // internally. We keep it two-step + record the chain; see the
-      // SUMMARY note. (insertTextFrame returns createdId; we use it.)
+      // insertTextFrame returns the new frame's id on `mutationApplied`;
+      // use it as linkFrames' `to`. Two sequential mutations.
       const created = await dispatch({
         op: "insertTextFrame",
         args: { pageId: landingPage, bounds },
@@ -276,7 +280,11 @@ export function ThreadingController() {
 
   const refreshOverset = useCallback(async () => {
     try {
-      const stories = await client.collection<StorySummary>("stories");
+      // `stories` is NOT a `client.collection` name; the StorySummary
+      // (with its live `overset` flag) is the `paged.stories()` script
+      // surface. Parse the JSON the script prints.
+      const res = await client.executeScript("paged.stories()");
+      const stories = JSON.parse(res.output[0] ?? "[]") as StorySummary[];
       const oversetStoryIds = new Set(
         stories.filter((s) => s.overset).map((s) => s.selfId),
       );

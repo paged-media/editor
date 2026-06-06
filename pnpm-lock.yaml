@@ -19,6 +19,9 @@ importers:
       '@paged-media/draw-bundle':
         specifier: link:../../../plugin-draw/packages/draw-bundle
         version: link:../../../plugin-draw/packages/draw-bundle
+      '@paged-media/plugin-api':
+        specifier: link:../../../plugin-sdk/packages/plugin-api
+        version: link:../../../plugin-sdk/packages/plugin-api
       '@paged-media/plugin-sdk':
         specifier: link:../../../plugin-sdk/packages/plugin-sdk
         version: link:../../../plugin-sdk/packages/plugin-sdk
