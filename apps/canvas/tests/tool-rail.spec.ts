@@ -116,19 +116,24 @@ test.describe("Concept 1 — tool rail", () => {
     await page.locator('[data-tool-slot="pen"]').click({ button: "right" });
     const flyout = page.locator('[data-tool-flyout="pen"]');
     await expect(flyout).toBeVisible();
+    // The "pen" slot's members: the built-in Pen (group default) plus
+    // the three anchor-editing tools the paged.draw BUNDLE contributes
+    // into the same slot (namespaced `media.paged.draw.tool.*` since the
+    // D-series refactor moved them out of the inline catalog).
+    const addAnchor = "media.paged.draw.tool.addAnchor";
     for (const id of [
       "paged.tool.pen",
-      "paged.tool.addAnchor",
-      "paged.tool.deleteAnchor",
-      "paged.tool.convertAnchor",
+      addAnchor,
+      "media.paged.draw.tool.deleteAnchor",
+      "media.paged.draw.tool.convertAnchor",
     ]) {
       await expect(flyout.locator(`[data-tool="${id}"]`)).toBeVisible();
     }
     // Pick Add Anchor → it becomes the slot face and the active tool.
-    await flyout.locator('[data-tool="paged.tool.addAnchor"]').click();
+    await flyout.locator(`[data-tool="${addAnchor}"]`).click();
     await expect(
       page.locator(
-        '[data-tool-slot="pen"][data-tool="paged.tool.addAnchor"][data-active="true"]',
+        `[data-tool-slot="pen"][data-tool="${addAnchor}"][data-active="true"]`,
       ),
     ).toBeVisible();
   });
