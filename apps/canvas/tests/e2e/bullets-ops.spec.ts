@@ -87,10 +87,10 @@ test.describe("E2E bullets & numbering ops", () => {
       pageWidthPt: pageInfo.widthPt,
       region,
       containment: false,
-      // A leading bullet marker repositions the line, but on the
-      // minimal `text` fixture the single short paragraph may not
-      // show a visible delta — assert the model, relax the render.
-      noRenderChange: true,
+      // The engine DOES composite the leading bullet marker (verified:
+      // ~3.2k px change on the `text` fixture), so the render gate is
+      // live — the glyph paints, undo (×2: glyph then list-type) clears
+      // it byte-identically.
       undoSteps: 2,
       dumpModel: () => dumpElement(page, range),
       apply: async () => {

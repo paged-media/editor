@@ -93,12 +93,12 @@ import {
   PALETTE_TOGGLE_KEYBINDING,
   PALETTE_TOGGLE_KEYBINDING_CTRL,
   PAGED_PALETTE_TOGGLE,
-  buildPanelToggleCommands,
 } from "./state/commands/built-in-commands";
 import {
   buildToolbarContributions,
   contentSelectionInactive,
 } from "./state/commands/tool-commands";
+import { installRegistryDerivedContributions } from "./state/commands/registry-derived";
 import { useSpringLoadedTools } from "./tools/use-spring-loaded-tools";
 import type { PagedEditor } from "./state/paged-editor";
 import type { OverlayContribution } from "./registries/overlay";
@@ -287,21 +287,15 @@ function ShellChrome({
     setFps(fps);
   }, [fps, setFps]);
 
-  // Register the supplied panels + auto-generate show/hide
-  // commands for each. The ref guards against the StrictMode
-  // double-mount cycle.
+  // Register the supplied panels. Show/hide command pairs are NOT
+  // built here anymore — the registry-derived installer (B-15 fix,
+  // below with the tool shortcuts) generates them for EVERY panel
+  // registration path, props and bundles alike.
   const panelsRegistered = useRef(false);
   useEffect(() => {
     if (panelsRegistered.current) return;
     panelsRegistered.current = true;
-    const disposables = panels.flatMap((p) => {
-      const [show, hide] = buildPanelToggleCommands(p);
-      return [
-        registries.panels.register(p),
-        registries.commands.register(show),
-        registries.commands.register(hide),
-      ];
-    });
+    const disposables = panels.map((p) => registries.panels.register(p));
     return () => {
       for (const d of disposables) d.dispose();
       panelsRegistered.current = false;
@@ -443,23 +437,27 @@ function ShellChrome({
     };
   }, [registries]);
 
-  // Register tool single-key shortcuts (as a class, with the
-  // contentSelection==null guard) + the W screen-preview toggle.
-  const toolKeysRegistered = useRef(false);
+  // B-15 host-side fix (2026-06-06): tool activation commands +
+  // guarded single-key shortcuts and panel show/hide pairs derive
+  // from the REGISTRIES (live, via onChange) — props-seeded and
+  // bundle-registered contributions get identical treatment. The W
+  // screen-preview toggle is the one prop-independent leftover of
+  // the old props-once path.
+  const derivedRegistered = useRef(false);
   useEffect(() => {
-    if (toolKeysRegistered.current) return;
-    if (!tools || tools.length === 0) return;
-    toolKeysRegistered.current = true;
-    const { commands, keybindings } = buildToolbarContributions(tools);
+    if (derivedRegistered.current) return;
+    derivedRegistered.current = true;
+    const wToggle = buildToolbarContributions([]);
     const disposables = [
-      ...commands.map((c) => registries.commands.register(c)),
-      ...keybindings.map((k) => registries.keybindings.register(k)),
+      installRegistryDerivedContributions(registries),
+      ...wToggle.commands.map((c) => registries.commands.register(c)),
+      ...wToggle.keybindings.map((k) => registries.keybindings.register(k)),
     ];
     return () => {
       for (const d of disposables) d.dispose();
-      toolKeysRegistered.current = false;
+      derivedRegistered.current = false;
     };
-  }, [registries, tools]);
+  }, [registries]);
 
   // Cockpit — register the app's workflow modes (ref-guarded; the
   // registry throws on duplicate ids and HMR re-runs effects).

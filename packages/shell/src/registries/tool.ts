@@ -51,6 +51,12 @@ export interface ToolContribution {
   section: ToolSectionId;
   /** Ordering within the group's flyout (and of slots within a section). */
   order?: number;
+  /** B-14 (2026-06-06) — SLOT position hint within the section: the
+   *  rail orders slots by the minimum `slotOrder` across a group's
+   *  members, falling back to first-seen registration order. Lets a
+   *  late-registered bundle place its slot among the built-ins
+   *  instead of trailing the section. */
+  slotOrder?: number;
   /** Marks the group's default tool (the filled-square tools in the
    *  image) — shown on the slot face at rest. */
   isGroupDefault?: boolean;

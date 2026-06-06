@@ -147,12 +147,14 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
     // Persistence: wait out the save debounce, close + reopen the
     // panel, the edit survives (storage-backed source of truth).
     await page.waitForTimeout(500);
+    // B-15: the hide command is HOST-derived from the registry
+    // (`paged.panel.hide.<panelId>`), not bundle-registered.
     await page.evaluate((id) => {
       (
         globalThis as unknown as {
           __canvas: { registries: { commands: { invoke: (i: string) => Promise<unknown> } } };
         }
-      ).__canvas.registries.commands.invoke(`${id}.hide`);
+      ).__canvas.registries.commands.invoke(`paged.panel.hide.${id}`);
     }, PANEL_ID);
     await expect(html).toBeHidden({ timeout: 5_000 });
     await openPanel(page, PANEL_ID);

@@ -54,20 +54,36 @@ interface SectionModel {
 function deriveSections(
   groups: Map<ToolGroupId, ToolContribution[]>,
 ): SectionModel[] {
-  const bySection = new Map<ToolSectionId, SlotModel[]>();
+  // B-14 — slots order by the minimum `slotOrder` across a group's
+  // members; groups without a hint keep first-seen registration
+  // order (seq makes the sort stable AND places unhinted slots after
+  // hinted ones only when their seq exceeds the hint values used).
+  const bySection = new Map<
+    ToolSectionId,
+    Array<{ slot: SlotModel; key: number }>
+  >();
+  let seq = 0;
   for (const [group, members] of groups) {
     if (members.length === 0) continue;
     const section = members[0].section;
     const defaultTool =
       members.find((m) => m.isGroupDefault) ?? members[0];
     const slot: SlotModel = { group, members, defaultTool };
+    const hinted = members
+      .map((m) => m.slotOrder)
+      .filter((o): o is number => o !== undefined);
+    const key = hinted.length > 0 ? Math.min(...hinted) : 1000 + seq;
+    seq += 1;
     const arr = bySection.get(section);
-    if (arr) arr.push(slot);
-    else bySection.set(section, [slot]);
+    if (arr) arr.push({ slot, key });
+    else bySection.set(section, [{ slot, key }]);
   }
   return SECTION_ORDER.filter((s) => bySection.has(s)).map((section) => ({
     section,
-    slots: bySection.get(section)!,
+    slots: bySection
+      .get(section)!
+      .sort((a, b) => a.key - b.key)
+      .map((e) => e.slot),
   }));
 }
 
