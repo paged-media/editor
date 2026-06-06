@@ -97,6 +97,7 @@ rides the translate gesture); the other 55 wire ops are live.
 | `layer-ops`           | layer insert / set-name / visible / locked / printable       |
 | `path-pathfinder-ops` | pathfinderBoolean union; pathPointRemove                     |
 | `transform-gestures`  | translate gesture render diff amid transforms                |
+| `tools-ui`            | a REAL mouse drag of the Rectangle tool creates a frame      |
 | `undo-stack`          | a 5-op stack → byte-identical undo/redo + replay determinism |
 | `export-verification` | an edit changes the EXPORTED PDF (pdftoppm raster)           |
 | `real-doc-smoke`      | the curated op pass on real docs (sample, line-sheet)        |

@@ -491,6 +491,13 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       props.elementGeometry,
       props.elementSelection,
       props.pageIds,
+      // A draw tool's gesture handler arrives AFTER the tool is
+      // activated; without this dep the callback keeps the stale
+      // `toolGesture` (null, from when Select was active) and the
+      // first drag silently falls through to the legacy select path
+      // — the Rectangle/Line/Pen tools never draw until some other
+      // dep (a pan, a selection) happens to rebuild the callback.
+      props.toolGesture,
       rects,
     ],
   );

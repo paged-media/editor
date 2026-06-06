@@ -86,6 +86,22 @@ origin instead of its original position.
 
 **Suite anchor.** `proving.spec.ts` AC-E2E-PROVE-3 (`test.fail`).
 
+## 5. EDITOR bug (fixed here): draw tools never drew on first use
+
+Not an engine bug — an **editor** one the `tools-ui` suite surfaced and
+this repo fixes. `ViewportCanvas.onPointerDown`'s `useCallback` omitted
+`props.toolGesture` from its dependency array. A draw tool's gesture
+handler arrives only _after_ the tool is activated, so the callback
+kept the stale `toolGesture` (null, captured while Select was active)
+and the first drag fell through to the legacy select path — the
+Rectangle / Line / Pen tools silently never drew until some unrelated
+dep (a pan, a selection change) happened to rebuild the callback.
+
+**Fix.** Add `props.toolGesture` to the `onPointerDown` deps
+(`apps/canvas/src/ui/ViewportCanvas.tsx`). `onPointerMove` / `onPointerUp`
+already depend on the whole `props` and were unaffected. `tools-ui`
+AC-E2E-TOOLS-1 (a real mouse drag → a frame) is the regression guard.
+
 ---
 
 ### What works (verified byte-clean)
