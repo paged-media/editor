@@ -1,5 +1,15 @@
 # Panel reference — current state & target end-state
 
+> **Status moved to paged-media/state.** The ✓/◐/○ glyphs below are the
+> 2026-06-05 audit snapshot and are NO LONGER maintained here — the
+> canonical per-panel status lives in the registry
+> (`state/registry/features/editor-panels.yaml`, ids `editor.panels.*`)
+> and on the dashboard: https://state.paged.media (Matrix → area
+> `editor`). Status changes are registry PRs, never edits to this file
+> (CLAUDE-state-block rule 3). This document remains the panel
+> ARCHITECTURE + end-state reference: composition/binding mechanics,
+> per-panel end-state targets, and the engine-gap analysis.
+
 > Compiled from source on 2026-06-05 (cockpit series, post dockview removal);
 > revised the same day after the **panel-gallery pass** (gallery series) —
 > every panel now carries the Panel Gallery's field layout
