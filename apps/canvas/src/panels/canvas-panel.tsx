@@ -17,11 +17,14 @@ import {
   useInstrumentation,
   useOverlaySignals,
   useSelection,
+  useOptionalTableSelection,
+  tableCellElementId,
   type PanelProps,
   type SelectionState,
+  type TableCellSelection,
 } from "@paged-media/shell";
 
-import type { SelectionMode } from "@paged-media/client";
+import type { ElementId, SelectionMode } from "@paged-media/client";
 import { ViewportCanvas } from "../ui/ViewportCanvas";
 import { useGestureSpine } from "../ui/useGestureSpine";
 
@@ -47,8 +50,80 @@ export function CanvasPanel(_props: PanelProps) {
     setActiveGroup,
   } = useSelection();
   const { setContentSelection } = useContentSelection();
+  const tableSelection = useOptionalTableSelection();
   const { fps, gpuActive, layoutCacheStats } = useInstrumentation();
   const { hitSelection, setHitSelection } = useOverlaySignals();
+
+  // W3.A2 — resolve a table cell selection from a hit's tableContext.
+  // The hit carries `{tableId,row,col}` + the owning `storyId` + the
+  // page-local frame AABB; try to refine the outline to the precise
+  // per-cell rect via elementGeometry(cellElementId), falling back to
+  // the frame AABB. A non-table hit clears any prior cell selection.
+  const resolveTableCell = useCallback(
+    (s: SelectionState | null) => {
+      if (!tableSelection) return;
+      const tc = s?.hit.tableContext ?? null;
+      const storyId = s?.hit.storyId ?? null;
+      if (!s || !tc || !storyId) {
+        tableSelection.clearCell();
+        return;
+      }
+      const base: TableCellSelection = {
+        storyId,
+        tableId: tc.tableId,
+        row: tc.row,
+        col: tc.col,
+        pageId: s.pageId,
+        frameBounds: s.hit.frameBounds
+          ? [
+              s.hit.frameBounds.top,
+              s.hit.frameBounds.left,
+              s.hit.frameBounds.bottom,
+              s.hit.frameBounds.right,
+            ]
+          : null,
+        cellRect: null,
+      };
+      // Optimistically select with the frame-AABB outline, then refine
+      // to a precise cell rect when the engine resolves geometry for
+      // the TableCell ElementId (page-space AABB via item transform).
+      tableSelection.selectCell(base);
+      const cellId: ElementId = tableCellElementId(base);
+      void client
+        .elementGeometry([cellId])
+        .then((items) => {
+          const item = items[0];
+          if (!item) return;
+          const [top, left, bottom, right] = item.bounds;
+          const t = item.itemTransform ?? [1, 0, 0, 1, 0, 0];
+          const corners: Array<[number, number]> = [
+            [left, top],
+            [right, top],
+            [left, bottom],
+            [right, bottom],
+          ].map(([x, y]) => [
+            t[0] * x + t[2] * y + t[4],
+            t[1] * x + t[3] * y + t[5],
+          ]);
+          const xs = corners.map((p) => p[0]);
+          const ys = corners.map((p) => p[1]);
+          tableSelection.selectCell({
+            ...base,
+            cellRect: [
+              Math.min(...ys),
+              Math.min(...xs),
+              Math.max(...ys),
+              Math.max(...xs),
+            ],
+          });
+        })
+        .catch(() => {
+          /* engine can't resolve per-cell geometry yet — frame AABB
+             outline stays. */
+        });
+    },
+    [client, tableSelection],
+  );
 
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -104,6 +179,10 @@ export function CanvasPanel(_props: PanelProps) {
       modifiers?: { shift?: boolean; cmd?: boolean },
     ) => {
       setHitSelection(s);
+      // W3.A2 — track table cell selection off the hit's tableContext
+      // (independent of tool: a select click on a cell outlines it, a
+      // text click into a cell keeps it addressed for the Table panel).
+      resolveTableCell(s);
       if (activeTool === "select") {
         const mode: SelectionMode = modifiers?.shift
           ? "add"
@@ -186,6 +265,7 @@ export function CanvasPanel(_props: PanelProps) {
     [
       activeTool,
       client,
+      resolveTableCell,
       setContentSelection,
       setElementGeometry,
       setElementSelection,

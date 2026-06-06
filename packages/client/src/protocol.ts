@@ -67,6 +67,7 @@ export type {
   FontSummary,
   HyperlinkSummary,
   IndexTopicSummary,
+  GuideSummary,
   LineBounds,
   LinkSummary,
   MasterPageSummary,

@@ -11,16 +11,17 @@
 //      empty canvas (TH-02). Esc clears it (TH-03). This is the
 //      threading analogue of InDesign's loaded text cursor.
 //
-//   2. An OPTIMISTIC mirror of the thread links MADE THIS SESSION
-//      (`from → to` pairs). The engine supports linkFrames /
-//      unlinkFrames (protocol v28) but — exactly like W2.8's guides —
-//      there is NO in-session, id-keyed READ of a frame's thread chain:
-//      `nextTextFrame` / `previousTextFrame` are not in the
-//      `PropertyPath` enum and `elementProperties` does not surface the
-//      chain. So the ports derive their "continues a chain" / "has a
-//      next frame" glyph from this client-side mirror, which the
-//      controller rewrites as it dispatches each link/unlink. See the
-//      WIRE GAP note at the bottom.
+//   2. ENGINE-TRUTH chain state for the SELECTED frame(s). W3.A2:
+//      `nextTextFrame` / `previousTextFrame` are now in the
+//      `PropertyPath` enum and `elementProperties(textFrame)` surfaces
+//      them (a non-empty text value = the linked frame's id). So the
+//      ports derive their "continues a chain" (has a previous frame) /
+//      "has a next frame" glyph from a live, id-keyed READ — the
+//      controller resolves the selected frame(s) on each Operation
+//      push and publishes the two id sets here. This is engine truth,
+//      not a session mirror, so LOAD-TIME chains render with the
+//      correct ports (the old optimistic `links` mirror only reflected
+//      links made this session). See the WIRE NOTE at the bottom.
 //
 //   3. The set of frame ids the UI should badge as OVERSET. Overset IS
 //      live-readable (`StorySummary.overset` via the `paged.stories()`
@@ -31,8 +32,8 @@
 //      red "+" badge.
 //
 // Writers: the ports (loadCursor on out-port click), the controller
-// (linkMade / linkRemoved + setOverset). Readers: the ports overlay +
-// the controller.
+// (setChainState + setOverset). Readers: the ports overlay + the
+// controller.
 
 import {
   createContext,
@@ -60,15 +61,16 @@ export interface LoadedCursor {
 }
 
 /**
- * One optimistic thread link made this session: `from`'s out-port was
- * threaded into the empty `to` frame. The ports read this mirror to
- * decide a frame's glyph: a frame that is some link's `to` "continues
- * a chain" (in-port filled); a frame that is some link's `from` "has a
- * next frame" (out-port filled, not the loadable arrow).
+ * Engine-truth chain state for the frames the controller has resolved
+ * (the current selection). `withNext` = frames whose `nextTextFrame`
+ * is non-empty (they have a next frame → out-port shows ▸); `withPrev`
+ * = frames whose `previousTextFrame` is non-empty (they continue a
+ * chain → in-port shows ▸). Both are id sets read straight off
+ * `elementProperties`.
  */
-export interface ThreadLink {
-  from: string;
-  to: string;
+export interface ChainState {
+  withNext: Set<string>;
+  withPrev: Set<string>;
 }
 
 interface ThreadingContextValue {
@@ -79,27 +81,23 @@ interface ThreadingContextValue {
   /** Drop the loaded cursor (Esc, or after a link commits). */
   clearCursor(): void;
 
-  /** Optimistic links made this session (see file header / WIRE GAP). */
-  links: ReadonlyArray<ThreadLink>;
-  /** Record an applied link (controller, after linkFrames lands). */
-  linkMade(link: ThreadLink): void;
-  /** Drop links touching `frame` (controller, after unlinkFrames). */
-  linkRemoved(frame: string): void;
+  /** Engine-truth chain id sets (controller, resolved from
+   *  `elementProperties` per Operation push). */
+  chain: ChainState;
+  setChainState: React.Dispatch<React.SetStateAction<ChainState>>;
 
   /** Frame ids whose owning story is overset (controller, resolved
-   *  from the live `stories` collection). Engine-truth — not the
-   *  optimistic mirror. */
+   *  from the live `stories` overset). Engine-truth. */
   oversetFrames: ReadonlySet<string>;
   setOversetFrames: React.Dispatch<React.SetStateAction<Set<string>>>;
   /** True when this frame's story overflows (out-port red "+" badge). */
   isOverset(frameId: string): boolean;
 
-  /** True when a frame is the `to` of a session link (continues a
-   *  chain → its in-port shows the ▸ glyph). */
+  /** True when the frame has a PREVIOUS frame (engine `previousTextFrame`
+   *  non-empty → continues a chain, in-port shows ▸). */
   continuesChain(frameId: string): boolean;
-  /** True when a frame is the `from` of a session link (already has a
-   *  next frame → out-port shows ▸ rather than the empty loadable
-   *  arrow). */
+  /** True when the frame has a NEXT frame (engine `nextTextFrame`
+   *  non-empty → out-port shows ▸ rather than the loadable arrow). */
   hasNext(frameId: string): boolean;
 }
 
@@ -107,7 +105,10 @@ const Context = createContext<ThreadingContextValue | null>(null);
 
 export function ThreadingProvider({ children }: PropsWithChildren) {
   const [loaded, setLoaded] = useState<LoadedCursor | null>(null);
-  const [links, setLinks] = useState<ThreadLink[]>([]);
+  const [chain, setChainState] = useState<ChainState>({
+    withNext: new Set(),
+    withPrev: new Set(),
+  });
   const [oversetFrames, setOversetFrames] = useState<Set<string>>(new Set());
 
   // Mirror the loaded cursor in a ref so the controller's window
@@ -126,21 +127,13 @@ export function ThreadingProvider({ children }: PropsWithChildren) {
     setLoaded(null);
   }, []);
 
-  const linkMade = useCallback((link: ThreadLink) => {
-    setLinks((prev) => [...prev, link]);
-  }, []);
-
-  const linkRemoved = useCallback((frame: string) => {
-    setLinks((prev) => prev.filter((l) => l.from !== frame && l.to !== frame));
-  }, []);
-
   const continuesChain = useCallback(
-    (frameId: string) => links.some((l) => l.to === frameId),
-    [links],
+    (frameId: string) => chain.withPrev.has(frameId),
+    [chain],
   );
   const hasNext = useCallback(
-    (frameId: string) => links.some((l) => l.from === frameId),
-    [links],
+    (frameId: string) => chain.withNext.has(frameId),
+    [chain],
   );
   const isOverset = useCallback(
     (frameId: string) => oversetFrames.has(frameId),
@@ -152,9 +145,8 @@ export function ThreadingProvider({ children }: PropsWithChildren) {
       loaded,
       loadCursor,
       clearCursor,
-      links,
-      linkMade,
-      linkRemoved,
+      chain,
+      setChainState,
       oversetFrames,
       setOversetFrames,
       isOverset,
@@ -165,9 +157,7 @@ export function ThreadingProvider({ children }: PropsWithChildren) {
       loaded,
       loadCursor,
       clearCursor,
-      links,
-      linkMade,
-      linkRemoved,
+      chain,
       oversetFrames,
       isOverset,
       continuesChain,
@@ -193,22 +183,20 @@ export function useOptionalThreading(): ThreadingContextValue | null {
   return useContext(Context);
 }
 
-// ── WIRE GAP (capability matrix) ──────────────────────────────────
+// ── WIRE NOTE (W3.A2 — gap closed) ────────────────────────────────
 // The engine ops linkFrames / unlinkFrames are capability-verified
 // supported (protocol v28; capability-matrix.spec.ts proves each
-// applies + undoes at the channel level). What is NOT surfaced is an
-// in-session READ of a frame's thread chain: `nextTextFrame` /
-// `previousTextFrame` are absent from the `PropertyPath` enum and
-// `elementProperties` carries no chain entry, so there is no way to
-// ask "what is this frame's next/previous frame" after a mutation
-// (and load-time chains aren't readable either). The optimistic
-// `links` mirror here bridges that gap for the IN/OUT-port glyphs —
-// it reflects only links MADE THIS SESSION; load-time threaded chains
-// render with idle ports until core surfaces a chain read. OVERSET is
-// the exception: it IS live-readable (StorySummary.overset), so the
-// badge is engine-truth, not a mirror. The cross-boundary truth that
-// linkFrames/unlinkFrames actually mutated the chain is observable by
-// the channel (mutationApplied + undo) — which is how the TH specs
-// assert the engine, exactly as the GD specs do for guides. When core
-// surfaces a live, id-keyed chain read, the controller can replace the
-// `links` mirror with a `mutationApplied`-driven refresh.
+// applies + undoes at the channel level). As of W3.A2 there IS a live,
+// id-keyed READ of a frame's thread chain: `nextTextFrame` /
+// `previousTextFrame` are in the `PropertyPath` enum and
+// `elementProperties(textFrame)` surfaces them (a non-empty text value
+// = the linked frame's id). So the controller resolves the selected
+// frame(s) on every Operation push and publishes the `chain` id sets
+// here — engine truth, not a session mirror. This means LOAD-TIME
+// threaded chains render with the correct ports (the old optimistic
+// `links` mirror only knew about links made this session), and undo /
+// redo re-sync the ports automatically (the post-undo
+// `elementProperties` read reflects the reverted chain). OVERSET stays
+// engine-truth too (StorySummary.overset). The controller scopes the
+// chain read to the SELECTION (the only frames whose ports render) so
+// it never walks the whole document.

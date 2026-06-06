@@ -22,6 +22,7 @@ import type {
 
 export const PAGED_EDITOR_UNDO = "paged.editor.undo";
 export const PAGED_EDITOR_REDO = "paged.editor.redo";
+export const PAGED_FILE_SAVE_AS_IDML = "paged.file.saveAsIdml";
 export const PAGED_VIEW_ZOOM_IN = "paged.view.zoomIn";
 export const PAGED_VIEW_ZOOM_OUT = "paged.view.zoomOut";
 export const PAGED_VIEW_ZOOM_100 = "paged.view.zoom100";
@@ -30,6 +31,9 @@ export const PAGED_VIEW_ZOOM_FIT = "paged.view.zoomFit";
 export interface AppCommandHandlers {
   undo: () => void | Promise<void>;
   redo: () => void | Promise<void>;
+  /** W3.B2 — serialise the loaded document to an `.idml` package and
+   *  trigger a browser download (mirrors Export PDF's download). */
+  saveAsIdml: () => void | Promise<void>;
   zoomIn: () => void;
   zoomOut: () => void;
   zoom100: () => void;
@@ -55,6 +59,12 @@ export function buildAppCommands(
       title: "Redo",
       category: "Edit",
       handler: () => handlers.redo(),
+    },
+    {
+      id: PAGED_FILE_SAVE_AS_IDML,
+      title: "Save As IDML…",
+      category: "File",
+      handler: () => handlers.saveAsIdml(),
     },
     {
       id: PAGED_VIEW_ZOOM_IN,
@@ -96,6 +106,14 @@ export const APP_MENU_ITEMS: Array<{
   order?: number;
   group?: string;
 }> = [
+  // File menu — real "Save As IDML…" (W3.B2). Sits in the "save"
+  // group just below the disabled "Save as…" kit seam.
+  {
+    path: "File/Save As IDML…",
+    command: PAGED_FILE_SAVE_AS_IDML,
+    order: 33,
+    group: "save",
+  },
   // Edit menu
   { path: "Edit/Undo", command: PAGED_EDITOR_UNDO, order: 10, group: "undo" },
   { path: "Edit/Redo", command: PAGED_EDITOR_REDO, order: 20, group: "undo" },

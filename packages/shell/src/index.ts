@@ -113,8 +113,18 @@ export {
   useThreading,
   useOptionalThreading,
   type LoadedCursor,
-  type ThreadLink,
+  type ChainState,
 } from "./state/threading-context";
+
+// W3.A2 — table cell selection state (hit handler + Table panel +
+// cell overlay).
+export {
+  TableSelectionProvider,
+  useTableSelection,
+  useOptionalTableSelection,
+  tableCellElementId,
+  type TableCellSelection,
+} from "./state/table-selection-context";
 
 // Concept 2 — the gradient ramp (pure; reused by the editor panel
 // and the FillStrokeCluster chips).
@@ -299,6 +309,7 @@ export {
   guideOverlayContribution,
   selectionChromeContribution,
   threadingPortsContribution,
+  tableCellOverlayContribution,
   snapLinesContribution,
   applyAffine,
   type IdmlAffine,

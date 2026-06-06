@@ -10,9 +10,12 @@
 //     an existing EMPTY text frame (→ linkFrames, TH-01) or empty
 //     canvas (→ insertTextFrame + linkFrames as ONE batch, TH-02);
 //   - Escape → clear the loaded cursor, zero mutation (TH-03);
-//   - the optimistic link mirror sync (linkMade / linkRemoved) so the
-//     ports' glyphs follow the links we dispatch;
-//   - the OVERSET frame set: it watches the live `stories` collection
+//   - the ENGINE-TRUTH chain state (W3.A2): on every Operation push it
+//     reads `nextTextFrame` / `previousTextFrame` off the SELECTED
+//     frame(s) via `elementProperties` and publishes the two id sets
+//     so the ports' glyphs reflect the real chain (load-time chains
+//     included; undo/redo re-sync automatically);
+//   - the OVERSET frame set: it watches the live `stories` overset
 //     (StorySummary.overset is engine-truth) and the document handle,
 //     publishing the set of frame ids whose story overflows so the
 //     out-port can paint the red "+" badge.
@@ -82,7 +85,8 @@ export function ThreadingController() {
   const { camera } = useCamera();
   const { handle } = useDocument();
   const { elementGeometry } = useSelection();
-  const { loaded, clearCursor, linkMade, setOversetFrames } = useThreading();
+  const { loaded, clearCursor, setChainState, setOversetFrames } =
+    useThreading();
 
   // Live refs so the once-per-load window listeners read fresh values
   // without re-subscribing every render.
@@ -187,11 +191,12 @@ export function ThreadingController() {
           frame.kind === "textFrame" &&
           frame.id !== src.sourceFrameId
         ) {
-          const ok = await dispatch({
+          // The chain-state effect re-reads on the mutationApplied
+          // push, so the ports follow without a manual mirror update.
+          await dispatch({
             op: "linkFrames",
             args: { from: src.sourceFrameId, to: frame.id },
           });
-          if (ok) linkMade({ from: src.sourceFrameId, to: frame.id });
           return;
         }
       }
@@ -220,13 +225,12 @@ export function ThreadingController() {
         args: { pageId: landingPage, bounds },
       });
       if (typeof created !== "string") return;
-      const linked = await dispatch({
+      await dispatch({
         op: "linkFrames",
         args: { from: src.sourceFrameId, to: created },
       });
-      if (linked) linkMade({ from: src.sourceFrameId, to: created });
     },
-    [clientToDoc, hitFrame, dispatch, linkMade],
+    [clientToDoc, hitFrame, dispatch],
   );
   const settleRef = useRef(settleDrop);
   settleRef.current = settleDrop;
@@ -319,8 +323,52 @@ export function ThreadingController() {
     }
   }, [client, hitFrame, setOversetFrames]);
 
+  // ── engine-truth chain state (W3.A2) ─────────────────────────────
+  // Read `nextTextFrame` / `previousTextFrame` off the SELECTED text
+  // frame(s) and publish the two id sets the ports read. Scoped to the
+  // selection (the only frames whose ports render) so we never walk the
+  // whole document. Re-runs on selection change + every Operation push,
+  // so load-time chains AND undo/redo are reflected directly from the
+  // engine — no session mirror.
+  const refreshChain = useCallback(async () => {
+    try {
+      const frames = geomRef.current.filter((g) => g.id.kind === "textFrame");
+      if (frames.length === 0) {
+        setChainState({ withNext: new Set(), withPrev: new Set() });
+        return;
+      }
+      // A real linked frame is a `u…` element id; the IDML "no link"
+      // sentinel is the literal `"n"` (InDesign's `NextTextFrame="n"` /
+      // `PreviousTextFrame="n"`), and an absent/empty value is also no
+      // link. Treat both as "no chain".
+      const isLinked = (v: string): boolean => v !== "" && v !== "n";
+      const withNext = new Set<string>();
+      const withPrev = new Set<string>();
+      for (const g of frames) {
+        // `g.id.kind === "textFrame"` here (filtered above), so the
+        // ElementId's `id` is the bare frame-id string.
+        if (g.id.kind !== "textFrame") continue;
+        const frameId = g.id.id;
+        const props = await client.elementProperties(g.id);
+        if (!props) continue;
+        const next = props.entries.find((e) => e.path === "nextTextFrame");
+        const prev = props.entries.find((e) => e.path === "previousTextFrame");
+        if (next?.value && next.value.type === "text" && isLinked(next.value.value)) {
+          withNext.add(frameId);
+        }
+        if (prev?.value && prev.value.type === "text" && isLinked(prev.value.value)) {
+          withPrev.add(frameId);
+        }
+      }
+      setChainState({ withNext, withPrev });
+    } catch {
+      setChainState({ withNext: new Set(), withPrev: new Set() });
+    }
+  }, [client, setChainState]);
+
   useEffect(() => {
     void refreshOverset();
+    void refreshChain();
     const off = client.subscribe((msg) => {
       if (
         msg.kind === "mutationApplied" ||
@@ -330,13 +378,14 @@ export function ThreadingController() {
         msg.kind === "stats"
       ) {
         void refreshOverset();
+        void refreshChain();
       }
     });
     return off;
     // `elementGeometry` is read through `geomRef`; list it so a
     // selection change re-runs the resolve.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client, refreshOverset, elementGeometry]);
+  }, [client, refreshOverset, refreshChain, elementGeometry]);
 
   return null;
 }

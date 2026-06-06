@@ -37,10 +37,19 @@
 //      AFTER the mutation's `mutationApplied`, so a "chained" glyph is
 //      also proof the engine mutation landed.
 //
-// OVERSET is the exception: it IS live-readable (`StorySummary.overset`
-// via `paged.stories()`), so the badge is engine-truth. TH-04's badge
-// leg induces overset by stuffing a small frame's story, then asserts
-// the out-port paints the red "+" (`data-thread-state="overset"`).
+// W3.A2 — chain state is now ENGINE TRUTH, not a session mirror. The
+// ThreadingController reads `nextTextFrame` / `previousTextFrame` off
+// the SELECTED frame(s) via `elementProperties` on every Operation
+// push, so the port glyphs reflect the real chain: load-time chains
+// render correctly, and undo / unlink re-sync the ports directly from
+// the engine (no manual mirror update). TH-01 now also asserts the
+// in-port flips back to "empty" after an unlinkFrames — engine-truth
+// round-trip, not a mirror rewrite.
+//
+// OVERSET is also live-readable (`StorySummary.overset` via
+// `paged.stories()`), so the badge is engine-truth. TH-04's badge leg
+// induces overset by stuffing a small frame's story, then asserts the
+// out-port paints the red "+" (`data-thread-state="overset"`).
 //
 // The gesture-plan-deferred.spec.ts E2E-05 stub stays until the sweep
 // flips it; this file is the real TH-01…04 implementation it points at.
@@ -195,20 +204,27 @@ test.describe("gestures.md TH — text-frame threading ports", () => {
     await page.mouse.click(targetCentre.x, targetCentre.y);
 
     // CHANNEL + UI: the link landed. Re-selecting the target shows its
-    // in-port "chained" (it continues a chain — engine-mutated, mirror-
-    // reflected). The loaded cursor cleared on the drop.
+    // in-port "chained" from ENGINE TRUTH (the target's
+    // `previousTextFrame` is now the source's id). The loaded cursor
+    // cleared on the drop. The SOURCE's out-port likewise reads
+    // "chained" (its `nextTextFrame` is the target).
     await selectElements(page, [{ kind: "textFrame", id: targetId as string }]);
     await expect.poll(() => portState(page, "in")).toBe("chained");
+    await selectElements(page, [source]);
+    await expect.poll(() => portState(page, "out")).toBe("chained");
 
-    // INV-4 undo: unlinkFrames the target restores the unlinked state.
-    // (The link is undoable on the channel — capability-matrix proves
-    // it; here we drive the symmetric unlinkFrames + assert the mirror
-    // and channel agree the chain is broken.)
+    // INV-4: break the chain. `unlinkFrames(frame)` clears the frame's
+    // OUTGOING link, so unlinking the SOURCE breaks src→target. W3.A2 —
+    // the controller re-reads the chain off `elementProperties` on the
+    // mutationApplied push, so the source's out-port flips back to
+    // "empty" from ENGINE TRUTH (not a mirror rewrite). With the source
+    // still selected, poll the port back to empty after the unlink.
     const unlinked = await mutate(page, {
       op: "unlinkFrames",
-      args: { frame: targetId },
+      args: { frame: source.id },
     });
     expect(unlinked.kind).toBe("mutationApplied");
+    await expect.poll(() => portState(page, "out")).toBe("empty");
   });
 
   test("TH-02: out-port click then click on empty canvas draws a new frame and links into it (2 ops)", async ({

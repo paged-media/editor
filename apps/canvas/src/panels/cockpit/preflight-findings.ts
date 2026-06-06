@@ -1,14 +1,18 @@
 // Cockpit — shared last-export preflight findings store (app-local).
 //
-// W2.12: the worker's `pdfExported` reply now carries structured
+// The worker's `pdfExported` reply carries structured
 // `PreflightFinding[]` (code/severity/message/pageIndex) alongside the
-// legacy flat `diagnostics: string[]`. The client's typed `exportPdf`
-// helper only surfaces `diagnostics` today (packages/client gap — see
-// the note in this PR), but `client.subscribe(...)` fans out EVERY
-// worker reply, so we capture the structured findings off that
-// broadcast. A module-level store lets the Preflight panel (which runs
-// the export) and the Publication-health panel (which reflects the
-// last run's counts) read the SAME findings without re-exporting.
+// legacy flat `diagnostics: string[]`.
+//
+// W3.A2: `client.exportPdf(...)` now surfaces BOTH off its typed return
+// (the packages/client gap is closed), so the Preflight panel feeds
+// this store directly from the export's resolved value via
+// `recordFindings(...)` — the W2.12 broadcast-capture workaround is
+// gone. A module-level store still lets the Preflight panel (which runs
+// the export) and the Publication-health panel (which reflects the last
+// run's counts) read the SAME findings without re-exporting; only the
+// `documentLoaded` RESET still rides the broadcast (it has no typed
+// return to hang off).
 //
 // One CanvasClient exists per app, so a singleton store is sufficient;
 // it resets on `documentLoaded` so stale findings never bleed across
@@ -44,19 +48,31 @@ function emit(next: PreflightFindingsState): void {
   for (const l of listeners) l();
 }
 
-/** Subscribe a client's broadcast once so its `pdfExported` /
- *  `documentLoaded` replies feed the store. Idempotent per client. */
+/** Record the findings from an export's TYPED return. The Preflight
+ *  panel calls this with the resolved value of `client.exportPdf(...)`
+ *  — the structured findings + legacy diagnostics in one shot, no
+ *  broadcast capture. Bumps `runCount` so consumers tell "ran but
+ *  found nothing" from "never ran". */
+export function recordFindings(result: {
+  findings: PreflightFinding[];
+  diagnostics: string[];
+}): void {
+  emit({
+    findings: result.findings ?? [],
+    diagnostics: result.diagnostics ?? [],
+    runCount: state.runCount + 1,
+  });
+}
+
+/** Subscribe a client's broadcast once so its `documentLoaded` reply
+ *  resets the store across documents. Idempotent per client. (The
+ *  findings themselves now arrive via `recordFindings` off the typed
+ *  export return, not the broadcast.) */
 function ensureWired(client: CanvasClient): void {
   if (wired.has(client)) return;
   wired.add(client);
   client.subscribe((msg) => {
-    if (msg.kind === "pdfExported") {
-      emit({
-        findings: msg.payload.findings ?? [],
-        diagnostics: msg.payload.diagnostics ?? [],
-        runCount: state.runCount + 1,
-      });
-    } else if (msg.kind === "documentLoaded") {
+    if (msg.kind === "documentLoaded") {
       emit(EMPTY);
     }
   });

@@ -4,15 +4,15 @@
 // HRuler / VRulerStrip), the headless GuideDragController, and the
 // guide overlay. Holds two things:
 //
-//   1. An OPTIMISTIC mirror of the document's guides. The engine
-//      supports insertGuide / moveGuide / deleteGuide (protocol v28)
-//      but the read surface — `DocumentHandle.rulerGuides` — is a
-//      load-time snapshot with no per-guide id, and there is no
-//      in-session re-query after a mutation. So the controller keeps
-//      a client-side mirror it updates as it dispatches each
-//      mutation, and the overlay renders it on top of the (still
-//      authoritative for load-time guides) handle guides. See the
-//      WIRE GAP note at the bottom of this file.
+//   1. A mirror of the document's guides. W3.A2: the engine now
+//      surfaces a live, id-keyed READ — `collection("spreads")` carries
+//      each spread's `<Guide>` set (`SpreadSummary.guides`: id +
+//      orientation + position + pageIndex), refreshed on every request.
+//      So the controller RE-QUERIES the collection on load and after
+//      every guide mutation / undo / redo to rebuild this mirror from
+//      engine truth (it still applies an optimistic update right after
+//      its own mutation for instant feedback). See the WIRE NOTE at the
+//      bottom of this file.
 //
 //   2. The LIVE drag (preview line + what a release will do). A drag
 //      is either a creation (dragged out of a ruler) or a move of an
@@ -196,16 +196,15 @@ export function useOptionalGuideDrag(): GuideDragContextValue | null {
   return useContext(Context);
 }
 
-// ── WIRE GAP (capability matrix) ──────────────────────────────────
+// ── WIRE NOTE (W3.A2 — gap closed) ────────────────────────────────
 // The engine ops insertGuide / moveGuide / deleteGuide are supported
-// (capability-matrix: protocol v28). What is NOT surfaced is an
-// in-session READ of guides keyed by id: `DocumentHandle.rulerGuides`
-// is a load-time snapshot carrying only { pageId, orientation,
-// location } (no guide id), and there is no re-query after a
-// mutation. The optimistic mirror in this context bridges that gap
-// for the UI. The cross-boundary truth is still observable by
-// RELOADING the document (loadDocument re-reads rulerGuides from the
-// post-mutation model) — which is how the GD specs assert the engine
-// actually persisted the guide. When core surfaces a live, id-keyed
-// guides collection, the controller can replace the mirror with a
-// `mutationApplied`-driven refresh and the reload step drops out.
+// (capability-matrix: protocol v28). As of W3.A2 there IS a live,
+// id-keyed READ of guides: `collection("spreads")` carries each
+// spread's `<Guide>` set (`SpreadSummary.guides`: id + orientation +
+// position + pageIndex), refreshed on every request (vs the load-time
+// `DocumentHandle.rulerGuides` snapshot, which had no ids and didn't
+// pick up mutations). The GuideDragController re-queries that
+// collection on load and on every `mutationApplied` / `undoApplied` /
+// `redoApplied` push to rebuild this mirror from engine truth — so
+// undo/redo re-sync the overlay directly, with no document reload, and
+// a created guide's real positional id comes back from the collection.

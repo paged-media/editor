@@ -46,6 +46,7 @@ import {
 import { OverlaySignalsProvider } from "./state/overlay-signals-context";
 import { GuideDragProvider } from "./state/guide-drag-context";
 import { ThreadingProvider } from "./state/threading-context";
+import { TableSelectionProvider } from "./state/table-selection-context";
 import { SelectionProvider, useSelection } from "./state/selection-context";
 import { ToolProvider } from "./state/tool-context";
 import { ScreenModeProvider } from "./state/screen-mode-context";
@@ -177,7 +178,12 @@ export function PagedShell({
                                 {/* W2.9 — text-frame threading state
                                     (ports + loaded cursor + controller). */}
                                 <ThreadingProvider>
-                                  <InstrumentationProvider>
+                                  {/* W3.A2 — table cell selection,
+                                      shared by the canvas hit handler,
+                                      the Table panel, and the cell
+                                      overlay. */}
+                                  <TableSelectionProvider>
+                                    <InstrumentationProvider>
                                     <PagedEditorProvider>
                                       <ShellChrome
                                         panels={panels}
@@ -191,7 +197,8 @@ export function PagedShell({
                                         {children}
                                       </ShellChrome>
                                     </PagedEditorProvider>
-                                  </InstrumentationProvider>
+                                    </InstrumentationProvider>
+                                  </TableSelectionProvider>
                                 </ThreadingProvider>
                               </GuideDragProvider>
                             </OverlaySignalsProvider>

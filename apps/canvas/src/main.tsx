@@ -15,6 +15,7 @@ import {
   selectionChromeContribution,
   setCockpitPageNavigator,
   snapLinesContribution,
+  tableCellOverlayContribution,
   threadingPortsContribution,
   useCamera,
   useCanvasClient,
@@ -69,7 +70,7 @@ import { CellStylesPanel } from "./panels/cell-styles-panel";
 import { ColorPanel } from "./panels/color-panel";
 import { ColorWheelPanel } from "./panels/color-wheel-panel";
 import { FontsPanel } from "./panels/fonts-panel";
-import { TablePanel } from "./panels/concept/table-panel";
+import { TablePanel } from "./panels/table-panel";
 import { TabsPanel } from "./panels/concept/tabs-panel";
 import { GlyphsPanel } from "./panels/concept/glyphs-panel";
 import { BulletsPanel } from "./panels/concept/bullets-panel";
@@ -135,6 +136,8 @@ const BUILT_IN_OVERLAYS: OverlayContribution[] = [
   rotateHandleContribution,
   // W2.9 — text-frame threading ports on the selection chrome.
   threadingPortsContribution,
+  // W3.A2 — selected table cell outline.
+  tableCellOverlayContribution,
   contentGrabberContribution,
   pathEditContribution,
   marqueeContribution,
@@ -692,7 +695,10 @@ const BUILT_IN_PANELS: PanelContribution[] = [
   //    badges + Target footnotes so the roadmap reads honestly.
   //    Window-menu reachable like every registered panel. ────────
   {
-    // Live Table panel awaits the Table NodeId surface (gap 8).
+    // W3.A2 — LIVE Table panel: cell fill/insets/vert-justify/applied
+    // styles + table style + row-height/col-width + insert/delete
+    // row/column, driven by the table cell selection. Cell text edit
+    // and row/col counts remain engine-v1 gaps (noted in-panel).
     id: "paged.table",
     title: "Table",
     component: TablePanel,
@@ -849,6 +855,36 @@ function CanvasAppIntegration() {
       },
       redo: () => {
         void client.redo();
+      },
+      // W3.B2 — Save As IDML: serialise the loaded document to an
+      // `.idml` package and trigger a browser download (mirrors the
+      // PDF export's Blob → object-URL → anchor-click pattern). The
+      // filename comes from the document meta; bail quietly when no
+      // document is open.
+      saveAsIdml: async () => {
+        if (!handle || handle.pageCount === 0) return;
+        try {
+          const bytes = await client.exportIdml();
+          let baseName = "document";
+          try {
+            const meta = await client.documentMeta();
+            if (meta.documentName) baseName = meta.documentName;
+          } catch {
+            /* meta unavailable — keep the default name */
+          }
+          const blob = new Blob([bytes.slice()], {
+            type: "application/vnd.adobe.indesign-idml-package",
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${baseName.replace(/\.idml$/i, "")}.idml`;
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error("Save As IDML failed:", err);
+        }
       },
       zoomIn: () => {
         const cx = vw / 2;

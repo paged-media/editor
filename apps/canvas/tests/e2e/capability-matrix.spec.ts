@@ -341,6 +341,69 @@ async function newPath(
   }, pageId);
 }
 
+/** Sweep the loaded fixture's first page for a table cell, returning
+ *  `{ storyId, tableId, row, col }` from `HitResult.tableContext` — the
+ *  table ops address the cell by story + table id + index. Null when no
+ *  cell is found (the fixture carries no table). */
+async function firstTableCell(
+  page: Page,
+  pageId: string,
+  widthPt: number,
+  heightPt: number,
+): Promise<{
+  storyId: string;
+  tableId: string;
+  row: number;
+  col: number;
+} | null> {
+  return page.evaluate(
+    async ({ pageId, widthPt, heightPt }) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              send: (m: unknown) => Promise<{
+                kind: string;
+                payload?: {
+                  storyId?: string | null;
+                  tableContext?: {
+                    tableId: string;
+                    row: number;
+                    col: number;
+                  } | null;
+                };
+              }>;
+            };
+          };
+        }
+      ).__canvas;
+      for (let gy = 0.04; gy < 0.97; gy += 0.04) {
+        for (let gx = 0.04; gx < 0.97; gx += 0.04) {
+          const reply = await c.client.send({
+            kind: "hitTest",
+            payload: {
+              pageId,
+              docPoint: [widthPt * gx, heightPt * gy],
+              filter: "any",
+            },
+          });
+          const p = reply.payload;
+          if (reply.kind === "hitResult" && p?.tableContext && p.storyId) {
+            return {
+              storyId: p.storyId,
+              tableId: p.tableContext.tableId,
+              row: p.tableContext.row,
+              col: p.tableContext.col,
+            };
+          }
+        }
+      }
+      return null;
+    },
+    { pageId, widthPt, heightPt },
+  );
+}
+
 /** A probe: build the mutation (null = prerequisites missing → skip).
  *  setupUndo = undo steps to ALWAYS apply afterward (cleans up
  *  whatever build() created); undo = ADDITIONAL steps on success (the
@@ -928,6 +991,51 @@ const GEOMETRY_PROBES: Probe[] = [
     },
     setupUndo: 1,
   },
+  // ── v30 kernel path ops (outline / offset / simplify) ───────────
+  // Each targets a scratch path created per probe (setupUndo undoes
+  // the insert on both paths) so the classification is the engine's.
+  {
+    op: "outlineStroke",
+    build: async ({ page, fx }) => {
+      const t = await newPath(page, fx.pages[0].pageId);
+      return t
+        ? {
+            op: "outlineStroke",
+            args: {
+              elementId: t,
+              width: 2,
+              cap: "butt",
+              join: "miter",
+              miterLimit: 4,
+            },
+          }
+        : null;
+    },
+    setupUndo: 1,
+  },
+  {
+    op: "offsetPath",
+    build: async ({ page, fx }) => {
+      const t = await newPath(page, fx.pages[0].pageId);
+      return t
+        ? {
+            op: "offsetPath",
+            args: { elementId: t, delta: 3, join: "miter", miterLimit: 4 },
+          }
+        : null;
+    },
+    setupUndo: 1,
+  },
+  {
+    op: "simplifyPath",
+    build: async ({ page, fx }) => {
+      const t = await newPath(page, fx.pages[0].pageId);
+      return t
+        ? { op: "simplifyPath", args: { elementId: t, tolerance: 1.5 } }
+        : null;
+    },
+    setupUndo: 1,
+  },
   {
     op: "pathfinderBoolean",
     build: async ({ page, fx }) => {
@@ -1091,6 +1199,133 @@ const GEOMETRY_PROBES: Probe[] = [
   },
 ];
 
+// ── probes on the `tables` fixture (v30 table ops) ──────────────
+// Each addresses the FIRST table cell (resolved via a hit-test sweep
+// in the test body and passed through `ctx.fx`'s page geometry). The
+// six ops target the cell's story + table id + row/col index; insert/
+// delete are reversible (one undo). Row height / column width set an
+// absolute value (reversible). The cell is resolved once and stashed
+// on a module-level ref the build()s read.
+let TABLE_CELL: {
+  storyId: string;
+  tableId: string;
+  row: number;
+  col: number;
+} | null = null;
+
+const TABLE_PROBES: Probe[] = [
+  {
+    op: "setRowHeight",
+    build: async () =>
+      TABLE_CELL
+        ? {
+            op: "setRowHeight",
+            args: {
+              storyId: TABLE_CELL.storyId,
+              tableId: TABLE_CELL.tableId,
+              row: TABLE_CELL.row,
+              height: 36,
+            },
+          }
+        : null,
+  },
+  {
+    op: "setColumnWidth",
+    build: async () =>
+      TABLE_CELL
+        ? {
+            op: "setColumnWidth",
+            args: {
+              storyId: TABLE_CELL.storyId,
+              tableId: TABLE_CELL.tableId,
+              col: TABLE_CELL.col,
+              width: 80,
+            },
+          }
+        : null,
+  },
+  {
+    op: "insertTableRow",
+    build: async () =>
+      TABLE_CELL
+        ? {
+            op: "insertTableRow",
+            args: {
+              storyId: TABLE_CELL.storyId,
+              tableId: TABLE_CELL.tableId,
+              at: TABLE_CELL.row,
+            },
+          }
+        : null,
+  },
+  {
+    op: "deleteTableRow",
+    build: async ({ page }) => {
+      if (!TABLE_CELL) return null;
+      // Insert a scratch row first so the delete is always legal +
+      // reversible (deleting the last row would empty the table).
+      const made = await tryMutate(page, {
+        op: "insertTableRow",
+        args: {
+          storyId: TABLE_CELL.storyId,
+          tableId: TABLE_CELL.tableId,
+          at: TABLE_CELL.row,
+        },
+      });
+      return made.ok
+        ? {
+            op: "deleteTableRow",
+            args: {
+              storyId: TABLE_CELL.storyId,
+              tableId: TABLE_CELL.tableId,
+              at: TABLE_CELL.row,
+            },
+          }
+        : null;
+    },
+    setupUndo: 1,
+  },
+  {
+    op: "insertTableColumn",
+    build: async () =>
+      TABLE_CELL
+        ? {
+            op: "insertTableColumn",
+            args: {
+              storyId: TABLE_CELL.storyId,
+              tableId: TABLE_CELL.tableId,
+              at: TABLE_CELL.col,
+            },
+          }
+        : null,
+  },
+  {
+    op: "deleteTableColumn",
+    build: async ({ page }) => {
+      if (!TABLE_CELL) return null;
+      const made = await tryMutate(page, {
+        op: "insertTableColumn",
+        args: {
+          storyId: TABLE_CELL.storyId,
+          tableId: TABLE_CELL.tableId,
+          at: TABLE_CELL.col,
+        },
+      });
+      return made.ok
+        ? {
+            op: "deleteTableColumn",
+            args: {
+              storyId: TABLE_CELL.storyId,
+              tableId: TABLE_CELL.tableId,
+              at: TABLE_CELL.col,
+            },
+          }
+        : null;
+    },
+    setupUndo: 1,
+  },
+];
+
 async function runProbes(
   page: Page,
   probes: Probe[],
@@ -1156,6 +1391,15 @@ test("AC-E2E-CAPS — every wire op's engine support matches the table", async (
 
   const geoFx = await loadFixture(page, "geometry");
   await runProbes(page, GEOMETRY_PROBES, geoFx, results);
+
+  // ── v30 table ops on the `tables` fixture ──────────────────────
+  const tableFx = await loadFixture(page, "tables");
+  const p0 = tableFx.pages[0];
+  TABLE_CELL = await firstTableCell(page, p0.pageId, p0.widthPt, p0.heightPt);
+  if (CAPTURE) {
+    process.stdout.write(`[tables] firstCell=${JSON.stringify(TABLE_CELL)}\n`);
+  }
+  await runProbes(page, TABLE_PROBES, tableFx, results);
 
   // ── report ────────────────────────────────────────────────────
   const table = results

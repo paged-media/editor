@@ -13,8 +13,12 @@
 // re-captured 2026-06-06 against protocol v28 (the W0/W1 wave:
 // applyStyle/insertField/linkFrames/unlinkFrames went live, plus
 // insertTextFrame/insertOval, guide CRUD, masters/sections ops and
-// conditional-text ops). Update via the same run when core lands
-// new ops.
+// conditional-text ops), then again 2026-06-06 against protocol v30
+// (W3.A2: the 6 table ops — setRowHeight/setColumnWidth/insertTableRow
+// /deleteTableRow/insertTableColumn/deleteTableColumn, probed against
+// the tables fixture's first cell — plus the 3 kernel path ops
+// outlineStroke/offsetPath/simplifyPath). Update via the same run when
+// core lands new ops.
 
 export type CapabilityStatus = "supported" | "unsupported";
 
@@ -70,6 +74,17 @@ export const CAPABILITIES: Capability[] = [
   { op: "pathPointCurveType", status: "supported" },
   { op: "pathPointSet", status: "supported" },
   { op: "batch", status: "supported" },
+  // ── kernel path ops (v30) ─────────────────────────────────────────
+  { op: "outlineStroke", status: "supported" },
+  { op: "offsetPath", status: "supported" },
+  { op: "simplifyPath", status: "supported" },
+  // ── table ops (v30) ───────────────────────────────────────────────
+  { op: "setRowHeight", status: "supported" },
+  { op: "setColumnWidth", status: "supported" },
+  { op: "insertTableRow", status: "supported" },
+  { op: "deleteTableRow", status: "supported" },
+  { op: "insertTableColumn", status: "supported" },
+  { op: "deleteTableColumn", status: "supported" },
   // ── layers ────────────────────────────────────────────────────────
   { op: "layerSetVisible", status: "supported" },
   { op: "layerSetLocked", status: "supported" },

@@ -7,12 +7,16 @@
 // resize/rotate handles: positioned at the oriented bbox corners then
 // scaled by `1/camera.scale` so the glyph stays a fixed screen size.
 //
-// Port states (the glyph each port shows):
-//   - in-port  ▸  when the frame CONTINUES a chain (it is some
-//                 session link's `to`); empty otherwise.
-//   - out-port ▸  when the frame already HAS a next frame; a hollow
-//                 arrow (the loadable affordance) otherwise; a red "+"
-//                 OVERSET badge when the frame's story overflows.
+// Port states (the glyph each port shows). W3.A2: chain state is
+// ENGINE TRUTH — read from `nextTextFrame` / `previousTextFrame` via
+// `elementProperties`, so LOAD-TIME chains render correctly and undo /
+// redo re-sync the ports:
+//   - in-port  ▸  when the frame CONTINUES a chain (engine
+//                 `previousTextFrame` non-empty); empty otherwise.
+//   - out-port ▸  when the frame already HAS a next frame (engine
+//                 `nextTextFrame` non-empty); a hollow arrow (the
+//                 loadable affordance) otherwise; a red "+" OVERSET
+//                 badge when the frame's story overflows.
 //
 // Interaction:
 //   - out-port pointerdown → load the threading cursor (TH start). The
@@ -53,12 +57,13 @@ function ThreadingPortsRender(props: OverlayProps) {
 
   const unlink = useCallback(
     (frameId: string) => {
+      // The controller re-reads the selection's chain state off
+      // `elementProperties` on the mutationApplied push, so the port
+      // glyphs follow the unlink without a manual mirror update.
       const m: Mutation = { op: "unlinkFrames", args: { frame: frameId } };
-      void client.mutate(m).then((reply) => {
-        if (reply.kind === "mutationApplied") threading?.linkRemoved(frameId);
-      });
+      void client.mutate(m);
     },
-    [client, threading],
+    [client],
   );
 
   // Threading is single-frame; skip multi-select and non-text kinds.

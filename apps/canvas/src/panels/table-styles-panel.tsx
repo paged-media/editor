@@ -104,7 +104,7 @@ export function TableStylesPanel() {
             className="mt-2 text-[10.5px] italic"
             style={{ color: "var(--pg-muted-fg)" }}
           >
-            Apply available once table selection lands.
+            Apply a table style from the Table panel (select a cell first).
           </div>
         </>
       )}

@@ -16,16 +16,31 @@
 //     (GD-03). We never mutate until release, so a cancel is just
 //     dropping the live preview.
 //
-// It also seeds + maintains the optimistic guide mirror (see
-// guide-drag-context.tsx for why a client mirror exists): seeded from
-// `DocumentHandle.rulerGuides` on load, rewritten after each guide
-// mutation it dispatches. Single undo per placement/move/delete — one
-// mutation each, on the same Operation channel as every other edit.
+// It also seeds + maintains the guide mirror. W3.A2: the mirror is now
+// engine-truth — `collection("spreads")` carries each spread's live
+// `<Guide>` set (`SpreadSummary.guides`: id + orientation + position +
+// pageIndex), refreshed on every request, so the controller RE-QUERIES
+// the collection on load AND on every Operation push (mutationApplied /
+// undoApplied / redoApplied) to rebuild the mirror. This replaces the
+// old optimistic-only mirror that `DocumentHandle.rulerGuides`
+// (load-time snapshot, no ids) forced: undo/redo now re-sync the
+// overlay from the post-mutation model, and a created guide's real
+// positional id comes back from the collection. The controller still
+// applies an OPTIMISTIC update right after its own mutation for
+// instant feedback; the collection re-query confirms / corrects it.
+// Single undo per placement/move/delete — one mutation each, on the
+// same Operation channel as every other edit. The re-query is skipped
+// while a drag is live so it never clobbers an in-flight preview.
 
 import { useCallback, useEffect, useRef } from "react";
 
 // eslint-disable-next-line import/no-relative-parent-imports
-import type { Mutation, PageId } from "@paged-media/client";
+import type {
+  GuideSummary,
+  Mutation,
+  PageId,
+  SpreadSummary,
+} from "@paged-media/client";
 
 import { useCamera } from "../../state/camera-context";
 import { useCanvasClient } from "../../state/canvas-client-context";
@@ -88,9 +103,6 @@ export function GuideDragController() {
   handleRef.current = handle;
   const dragRef = useRef<GuideDragState | null>(drag);
   dragRef.current = drag;
-  // The live optimistic mirror, so the async seed below can tell
-  // whether the session has already populated it (a create/move) by
-  // the time the spreads collection resolves.
   const guidesRef = useRef(guides);
   guidesRef.current = guides;
 
@@ -113,44 +125,69 @@ export function GuideDragController() {
     return ids[Math.min(pageIdx, ids.length - 1)];
   }, []);
 
-  // Seed the optimistic mirror from the load-time handle guides. The
-  // handle exposes { pageId, orientation, location } with no id; we
-  // assign positional ids per spread. Re-seeds only when a NEW
-  // document loads (pageIds signature change), never on our own
-  // mutations.
+  // ── engine-truth re-sync from `collection("spreads")` (W3.A2) ─────
+  // Rebuild the mirror from each spread's live `guides` set. `pageIndex`
+  // is spread-local; map it to a document page id via each spread's
+  // running page offset (spreads carry their pageCount). The
+  // GuideSummary already carries the engine's positional id, so we use
+  // it directly (no reindex needed). Skipped while a drag is live so a
+  // mid-drag Operation push never clobbers the preview.
+  const resyncFromSpreads = useCallback(async () => {
+    if (dragRef.current) return;
+    try {
+      const spreads = await client.collection<SpreadSummary>("spreads");
+      spreadIdsRef.current = spreads.map((s) => s.selfId);
+      const pages = handleRef.current?.pageIds ?? [];
+      const mirror: OptimisticGuide[] = [];
+      let pageOffset = 0;
+      for (const sp of spreads) {
+        for (const g of (sp.guides ?? []) as GuideSummary[]) {
+          const pageId = pages[pageOffset + (g.pageIndex ?? 0)] ?? pages[0];
+          if (!pageId) continue;
+          mirror.push({
+            id: g.id,
+            spreadId: sp.selfId,
+            orientation: g.orientation,
+            pageId,
+            position: g.position,
+          });
+        }
+        pageOffset += sp.pageCount;
+      }
+      setGuides(mirror);
+    } catch {
+      /* worker reload / disconnect — keep the current mirror */
+    }
+  }, [client, setGuides]);
+  const resyncRef = useRef(resyncFromSpreads);
+  resyncRef.current = resyncFromSpreads;
+
+  // Seed on load + re-sync on every Operation push (mutationApplied /
+  // undoApplied / redoApplied). Load is detected by a pageIds signature
+  // change; the subscription catches our own guide mutations AND
+  // undo/redo so the overlay follows engine truth.
   const seededSigRef = useRef<string>("");
   useEffect(() => {
     if (!handle) return;
     const sig = handle.pageIds.join("|");
-    if (sig === seededSigRef.current) return;
-    seededSigRef.current = sig;
-    void client
-      .collection<{ selfId: string }>("spreads")
-      .then((spreads) => {
-        spreadIdsRef.current = spreads.map((s) => s.selfId);
-        // The spreads collection resolves asynchronously. If the user
-        // created or moved a guide WHILE it was in flight, the optimistic
-        // mirror is now authoritative for this session — replacing it
-        // with the (stale, load-time) `rulerGuides` snapshot would wipe
-        // that edit (the AC-GD-02 move snapped straight back to its
-        // create position). Only seed an untouched mirror.
-        if (guidesRef.current.length > 0) return;
-        const seeded: OptimisticGuide[] = (handle.rulerGuides ?? []).map(
-          (g) => ({
-            id: "",
-            spreadId: spreadForPageId(g.pageId) ?? spreadIdsRef.current[0] ?? "",
-            orientation: g.orientation,
-            pageId: g.pageId,
-            position: g.location,
-          }),
-        );
-        setGuides(reindex(seeded));
-      })
-      .catch(() => {
-        spreadIdsRef.current = [];
-        if (guidesRef.current.length === 0) setGuides([]);
-      });
-  }, [handle, client, setGuides, spreadForPageId]);
+    if (sig !== seededSigRef.current) {
+      seededSigRef.current = sig;
+      void resyncFromSpreads();
+    }
+  }, [handle, resyncFromSpreads]);
+
+  useEffect(() => {
+    const off = client.subscribe((msg) => {
+      if (
+        msg.kind === "mutationApplied" ||
+        msg.kind === "undoApplied" ||
+        msg.kind === "redoApplied"
+      ) {
+        void resyncRef.current();
+      }
+    });
+    return off;
+  }, [client]);
 
   /** Convert a client (viewport) pointer position to a document-space
    *  point through the live camera + the viewport wrapper rect. The

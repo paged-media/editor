@@ -39,6 +39,7 @@ import {
   type Mutation,
   type PageId,
   type PathAnchorsResult,
+  type PreflightFinding,
   type SelectionMode,
   type SelectionRect,
   type SnapLine,
@@ -415,6 +416,26 @@ export class CanvasClient {
   }
 
   /**
+   * W3.B2 — serialise the loaded document back to an `.idml` package
+   * ("Save As IDML"). One-shot, like `exportSwatchLibrary`: the worker
+   * re-emits the parsed designmap + stories + resources as a ZIP and
+   * replies `idmlExported` with the bytes (`exportIdmlFailed` on
+   * error). The returned `Uint8Array` is a complete IDML package
+   * (starts with the `PK` zip magic) the caller hands to a browser
+   * download, or feeds straight back into `loadDocument` to round-trip.
+   */
+  async exportIdml(): Promise<Uint8Array> {
+    const reply = await this.send({ kind: "exportIdml", payload: {} });
+    if (reply.kind === "idmlExported") {
+      return new Uint8Array(reply.payload.idmlBytes);
+    }
+    if (reply.kind === "exportIdmlFailed") {
+      throw new Error(reply.payload.error);
+    }
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
    * Concept 3 — open a PDF export session. The worker re-builds the
    * scene one-shot (text-as-text side-channel on) and parks the
    * writer state; drive it with `exportPdfPage` one page at a time.
@@ -453,10 +474,18 @@ export class CanvasClient {
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
-  /** Concept 3 — serialise the finished PDF and drop the session. */
+  /** Concept 3 — serialise the finished PDF and drop the session.
+   *  W3.A2 — the `pdfExported` reply also carries STRUCTURED preflight
+   *  `findings` (code/severity/message/pageIndex) alongside the legacy
+   *  flat `diagnostics`; surface both off the typed return so callers
+   *  no longer have to capture findings off the `subscribe` broadcast. */
   async finishPdfExport(
     session: number,
-  ): Promise<{ bytes: Uint8Array; diagnostics: string[] }> {
+  ): Promise<{
+    bytes: Uint8Array;
+    diagnostics: string[];
+    findings: PreflightFinding[];
+  }> {
     const reply = await this.send({
       kind: "exportPdfFinish",
       payload: { session },
@@ -465,6 +494,7 @@ export class CanvasClient {
       return {
         bytes: new Uint8Array(reply.payload.pdfBytes),
         diagnostics: reply.payload.diagnostics,
+        findings: reply.payload.findings ?? [],
       };
     }
     if (reply.kind === "exportPdfFailed") {
@@ -498,7 +528,11 @@ export class CanvasClient {
       onProgress?: (done: number, total: number) => void;
       signal?: AbortSignal;
     },
-  ): Promise<{ bytes: Uint8Array; diagnostics: string[] }> {
+  ): Promise<{
+    bytes: Uint8Array;
+    diagnostics: string[];
+    findings: PreflightFinding[];
+  }> {
     const { session, pageCount } = await this.beginPdfExport(options);
     try {
       hooks?.onProgress?.(0, pageCount);

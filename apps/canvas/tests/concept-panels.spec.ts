@@ -12,6 +12,12 @@
 // went PARTIAL — list type + bullet glyph + numbering format are live
 // over the v28 text paths, with the list-definition rows still seamed
 // (badge flips concept→partial, the Glyphs precedent).
+//
+// W3.A2 (2026-06-06): the Table panel flipped fully LIVE against the
+// v30 table surface (cell fill/insets/vert-justify/applied styles +
+// table style + row-height/col-width + insert/delete row/column,
+// driven by the table cell selection). It left this list and gained
+// its own op-sandwich coverage (e2e/table-ops.spec.ts).
 
 import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
@@ -25,7 +31,6 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
 
 const CONCEPTS = [
-  { id: "paged.table", ready: "table-panel", badge: "concept" },
   { id: "paged.glyphs", ready: "glyphs-panel", badge: "partial" },
   {
     id: "paged.bullets-numbering",

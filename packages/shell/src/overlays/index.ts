@@ -14,6 +14,7 @@ export { rulerGuidesContribution } from "./ruler-guides";
 export { guideOverlayContribution } from "./guide-overlay";
 export { selectionChromeContribution } from "./selection-chrome";
 export { threadingPortsContribution } from "./threading-ports";
+export { tableCellOverlayContribution } from "./table-cell-overlay";
 export { snapLinesContribution } from "./snap-lines";
 
 export { OverlayHost, type OverlayHostProps } from "./overlay-host";

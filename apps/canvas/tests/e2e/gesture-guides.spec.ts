@@ -10,26 +10,20 @@
 //     → ONE insertGuide / moveGuide / deleteGuide Mutation on release
 //     → optimistic guide overlay (data-guide-overlay / -preview lines)
 //
-// READ SURFACE + WIRE GAP. The engine ops are capability-verified
-// supported (capabilities.ts: insertGuide/moveGuide/deleteGuide,
-// protocol v28), and capability-matrix.spec.ts already proves each
-// applies + undoes at the channel level. What the engine does NOT
-// surface is an in-session, id-keyed READ of guides:
-// `DocumentHandle.rulerGuides` is a load-time snapshot (no guide id,
-// no re-query after a mutation). So the controller keeps a CLIENT-SIDE
-// optimistic mirror synced by its own mutations, and these specs
-// assert the GESTURE through that mirror's rendered overlay lines —
-// the only in-session read surface. The optimistic line only appears
-// AFTER the mutation's `mutationApplied`, so a visible overlay line is
-// also proof the engine mutation landed.
-//
-// Two legs are test.fixme'd against that same gap: undo/redo overlay
-// re-sync (the controller has no live guide read to rebuild the mirror
-// from on undoApplied), and the channel-level "undo restores the
-// document" assertion (owned by capability-matrix.spec.ts). The
-// gesture-plan-deferred.spec.ts E2E-06 stub stays until the sweep
-// flips it; this file is the real GD-01…03 implementation it points
-// at.
+// READ SURFACE (W3.A2 — gap closed). The engine ops are capability-
+// verified supported (capabilities.ts: insertGuide/moveGuide/
+// deleteGuide, protocol v28), and capability-matrix.spec.ts proves each
+// applies + undoes at the channel level. As of W3.A2 the engine ALSO
+// surfaces a live, id-keyed READ of guides: `collection("spreads")`
+// carries each spread's `<Guide>` set (`SpreadSummary.guides`),
+// refreshed on every request. The GuideDragController re-queries that
+// collection on load and on every Operation push (mutationApplied /
+// undoApplied / redoApplied) to rebuild its overlay mirror from engine
+// truth. These specs assert the GESTURE through the rendered overlay
+// lines (the optimistic line appears after `mutationApplied`, so a
+// visible line is proof the mutation landed) AND — for the two legs
+// below — through the live spreads collection (engine truth) + the
+// undo-driven overlay re-sync the collection re-query now enables.
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -53,6 +47,38 @@ async function guideLineCount(
  *  page). */
 async function previewCount(page: Page): Promise<number> {
   return page.locator("[data-guide-preview]").count();
+}
+
+/** Total live guide count across all spreads, read from the engine via
+ *  `collection("spreads")` (`SpreadSummary.guides`) — engine truth,
+ *  independent of the overlay mirror. */
+async function engineGuideCount(page: Page): Promise<number> {
+  return page.evaluate(async () => {
+    const c = (
+      globalThis as unknown as {
+        __canvas: {
+          client: {
+            collection: (
+              n: string,
+            ) => Promise<Array<{ guides?: unknown[] }>>;
+          };
+        };
+      }
+    ).__canvas;
+    const spreads = await c.client.collection("spreads");
+    return spreads.reduce((n, s) => n + (s.guides?.length ?? 0), 0);
+  });
+}
+
+async function undo(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const c = (
+      globalThis as unknown as {
+        __canvas: { client: { undo: () => Promise<unknown> } };
+      }
+    ).__canvas;
+    await c.client.undo();
+  });
 }
 
 /** Bounding-box centre of a ruler strip, in client px. */
@@ -311,34 +337,72 @@ test.describe("gestures.md GD-03 — Escape mid-drag", () => {
   });
 });
 
-// ── Deferred legs — blocked on the read-surface wire gap ────────────
+// ── W3.A2 — formerly-deferred legs, now live on the spreads read ────
 
-test.fixme(
-  "GD-01 undo — Ctrl+Z removes the placed guide from the OVERLAY (INV-4)",
-  async () => {
-    // The insertGuide IS undoable on the channel (capability-matrix
-    // proves it). What is NOT wired is the OVERLAY re-syncing on undo:
-    // the GuideDragController keeps an optimistic client mirror and has
-    // no live, id-keyed guide READ to rebuild it from on `undoApplied`
-    // / `redoApplied` (DocumentHandle.rulerGuides is load-time only).
-    // So after Ctrl+Z the engine guide is gone but the overlay line
-    // lingers. Wire this leg when core surfaces a live guides
-    // collection (or a guides-changed notification) the controller can
-    // resubscribe to — then the mirror follows undo/redo and this
-    // assertion (overlay line count returns to `before`) flips green.
-  },
-);
+test.describe("gestures.md GD-01 — undo + engine-truth read", () => {
+  test("AC-GD-01-UNDO: Ctrl+Z removes the placed guide from the OVERLAY (INV-4)", async ({
+    page,
+  }) => {
+    // The insertGuide is undoable on the channel; W3.A2 wires the
+    // OVERLAY re-sync — the GuideDragController re-queries
+    // `collection("spreads")` on undoApplied, so the optimistic line is
+    // removed after Ctrl+Z. This leg was test.fixme'd against the old
+    // read-surface gap (no live guide read); it now flips green.
+    test.setTimeout(120_000);
+    await openCanvas(page);
+    const fx = await loadViaReactPath(page, "geometry");
+    const p0 = fx.pages[0];
 
-test.fixme(
-  "GD-01 channel round-trip — reload the MUTATED document re-reads the guide (engine truth)",
-  async () => {
+    const before = await guideLineCount(page, "horizontal");
+    const drop = await screenPoint(page, p0.widthPt * 0.5, p0.heightPt * 0.4);
+    const ruler = await rulerPoint(page, "h");
+
+    await page.mouse.move(ruler.x, ruler.y);
+    await page.mouse.down();
+    await page.mouse.move(drop.x, drop.y, { steps: 6 });
+    await page.mouse.up();
+    await expect
+      .poll(() => guideLineCount(page, "horizontal"), { timeout: 5_000 })
+      .toBe(before + 1);
+
+    // Undo → the overlay re-syncs from the spreads collection: the line
+    // count returns to baseline.
+    await undo(page);
+    await expect
+      .poll(() => guideLineCount(page, "horizontal"), { timeout: 5_000 })
+      .toBe(before);
+  });
+
+  test("AC-GD-01-ENGINE: the placed guide is engine truth (collection(\"spreads\").guides) and undo removes it", async ({
+    page,
+  }) => {
     // The cross-boundary truth (the engine actually persisted the
-    // guide) is read by RELOADING the mutated document so loadDocument
-    // re-reads DocumentHandle.rulerGuides. The canvas app has no
-    // in-session document serialize/reload path (only a fresh
-    // loadDocument that discards session mutations), so this engine-
-    // truth assertion can't run here yet; capability-matrix.spec.ts
-    // covers the channel apply+undo in the meantime. Wire this once a
-    // session-preserving reload (or a live guides read) exists.
-  },
-);
+    // guide) is now readable IN-SESSION via `collection("spreads")`
+    // (`SpreadSummary.guides`), no document reload needed. This leg was
+    // test.fixme'd against the missing live read; it now flips green.
+    test.setTimeout(120_000);
+    await openCanvas(page);
+    const fx = await loadViaReactPath(page, "geometry");
+    const p0 = fx.pages[0];
+
+    const before = await engineGuideCount(page);
+    const drop = await screenPoint(page, p0.widthPt * 0.5, p0.heightPt * 0.45);
+    const ruler = await rulerPoint(page, "h");
+
+    await page.mouse.move(ruler.x, ruler.y);
+    await page.mouse.down();
+    await page.mouse.move(drop.x, drop.y, { steps: 6 });
+    await page.mouse.up();
+
+    // Engine truth: the spreads collection now reports one more guide.
+    await expect
+      .poll(() => engineGuideCount(page), { timeout: 5_000 })
+      .toBe(before + 1);
+
+    // Undo removes it from the engine model too.
+    await undo(page);
+    await expect
+      .poll(() => engineGuideCount(page), { timeout: 5_000 })
+      .toBe(before);
+  });
+});

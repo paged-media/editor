@@ -24,7 +24,7 @@ import {
 } from "@paged-media/shell";
 import type { LinkSummary, PreflightFinding } from "@paged-media/client";
 
-import { usePreflightFindings } from "./preflight-findings";
+import { recordFindings, usePreflightFindings } from "./preflight-findings";
 
 type RunState =
   | { state: "idle" }
@@ -44,10 +44,11 @@ export function PreflightPanel() {
     setRun({ state: "running" });
     try {
       // A REAL dry export: same session wire the dialog drives; the
-      // bytes are discarded, the findings are the point. The
-      // structured findings ride the `pdfExported` reply and land in
-      // the shared store via its broadcast subscription.
-      await client.exportPdf({ standard: "pdf17" });
+      // bytes are discarded, the findings are the point. W3.A2 — the
+      // typed export return now carries the structured findings, so we
+      // feed the shared store directly (no broadcast capture).
+      const result = await client.exportPdf({ standard: "pdf17" });
+      recordFindings(result);
       setRun({ state: "done" });
     } catch (err) {
       setRun({
