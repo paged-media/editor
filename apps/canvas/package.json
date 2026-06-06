@@ -22,6 +22,7 @@
     "@paged-media/client": "workspace:*",
     "@paged-media/draw-bundle": "link:../../../plugin-draw/packages/draw-bundle",
     "@paged-media/plugin-sdk": "link:../../../sdk/packages/plugin-sdk",
+    "@paged-media/web-bundle": "link:../../../plugin-web/packages/web-bundle",
     "@paged-media/shell": "workspace:*",
     "@paged-media/ui": "workspace:*",
     "react": "^18.3.1",

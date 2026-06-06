@@ -30,6 +30,8 @@ import { CanvasClient } from "@paged-media/client";
 import { BUILT_IN_TOOLS } from "@paged-media/tools";
 import { loadBundle } from "@paged-media/plugin-sdk";
 import { drawBundle } from "@paged-media/draw-bundle";
+import { webBundle } from "@paged-media/web-bundle";
+import { cockpitActions } from "@paged-media/shell";
 import {
   APP_KEYBINDINGS,
   APP_MENU_ITEMS,
@@ -757,8 +759,20 @@ function PluginBundles() {
   const pagedRef = useRef(paged);
   pagedRef.current = paged;
   useEffect(() => {
-    const loaded = loadBundle(() => pagedRef.current, drawBundle);
-    return () => loaded.dispose();
+    // Shell actions the host APP owns (the cockpit's panel
+    // placement) — injected so the SDK's adapter stays a pure
+    // function over the editor handle.
+    const shell = {
+      openPanel: (id: string) => cockpitActions.openPanel?.(id),
+      closePanel: (id: string) => cockpitActions.closeTab?.(id),
+    };
+    const loaded = [
+      loadBundle(() => pagedRef.current, drawBundle, { shell }),
+      loadBundle(() => pagedRef.current, webBundle, { shell }),
+    ];
+    return () => {
+      for (const l of loaded) l.dispose();
+    };
     // Mount-once by design; the ref keeps the handle live.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
