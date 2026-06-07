@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint src vite.config.ts",
     "test:fidelity": "playwright test --config=playwright.config.ts",
     "test:fidelity:capture": "FIDELITY_MODE=capture playwright test --config=playwright.config.ts",
     "test:fidelity:ui": "playwright test --config=playwright.config.ts --ui",

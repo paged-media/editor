@@ -1,0 +1,29 @@
+# Cross-origin isolation for SharedArrayBuffer (W0.17).
+#
+# The render worker allocates a SharedArrayBuffer for the camera + gesture
+# transforms. `new SharedArrayBuffer(...)` throws SecurityError unless the
+# page is cross-origin isolated, which requires BOTH of these response
+# headers on the top-level document (and COEP on every subresource —
+# require-corp makes the browser refuse any resource that doesn't opt in).
+#
+# Format: Netlify / Cloudflare Pages `_headers`. Vite copies files under
+# `public/` verbatim to the dist root, so this ships as `dist/_headers`.
+# The dev server sets the same two headers via the `crossOriginIsolation`
+# plugin in vite.config.ts; keep them in lock-step.
+#
+# nginx equivalent (for a self-hosted static deploy) — add inside the
+# `server { ... }` (or the SPA `location / { ... }`) block:
+#
+#     add_header Cross-Origin-Opener-Policy   "same-origin"   always;
+#     add_header Cross-Origin-Embedder-Policy "require-corp"  always;
+#     # the .wasm asset must be served with the right type so the
+#     # streaming-compile path (WebAssembly.instantiateStreaming) works:
+#     types { application/wasm wasm; }
+#
+# Apache equivalent (.htaccess):
+#     Header always set Cross-Origin-Opener-Policy   "same-origin"
+#     Header always set Cross-Origin-Embedder-Policy "require-corp"
+
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp

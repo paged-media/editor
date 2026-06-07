@@ -14,7 +14,8 @@
     "./styles/theme.css": "./src/styles/theme.css"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint src"
   },
   "peerDependencies": {
     "react": "^18.3.0",

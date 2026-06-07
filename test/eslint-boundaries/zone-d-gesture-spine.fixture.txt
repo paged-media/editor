@@ -1,0 +1,6 @@
+// FIXTURE (zone d) — a disallowed package deep-importing the gesture spine.
+// MUST be flagged everywhere EXCEPT packages/tools + packages/client.
+// Lints under the synthetic path apps/canvas/src/__fixture__.ts.
+import { GestureSpine } from "@paged-media/shell/tools/gesture-spine";
+
+export const boom = GestureSpine;

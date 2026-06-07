@@ -1,0 +1,6 @@
+// FIXTURE (zone b) — packages/client importing React.
+// MUST be flagged: client is the wasm/SAB boundary and must stay React-free.
+// Lints under the synthetic path packages/client/src/__fixture__.ts.
+import { useEffect } from "react";
+
+export const boom = useEffect;

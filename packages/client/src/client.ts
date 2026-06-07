@@ -53,16 +53,40 @@ import { GestureBuffer } from "./sab/gesture";
 type PendingReply = (msg: WorkerToMain) => void;
 
 /**
- * Construction options for `CanvasClient`. `workerUrl` must point at
- * the consumer's worker module — the canvas app builds it via
- * `new URL("./worker/worker.ts", import.meta.url)` so the resolution
- * happens in the *app's* module graph. Bundlers (Vite) walk these
- * URL constructors statically and emit the worker chunk; resolving
- * the URL here in `@paged-media/client` would point at a path inside the
- * package that doesn't have the worker code.
+ * Construction options for `CanvasClient`. The consumer supplies the
+ * Worker — `@paged-media/client` only drives it.
+ *
+ * Prefer `workerFactory`: a zero-arg function that returns a freshly
+ * constructed `Worker`, built in the CONSUMER's module graph. The canvas
+ * app uses Vite's `?worker` import (`import CanvasWorker from
+ * "./worker/worker.ts?worker"; workerFactory: () => new CanvasWorker()`),
+ * which makes Vite treat the worker as a real module-graph entry: it emits
+ * the worker chunk AND follows the worker's transitive `?url` wasm import,
+ * emitting the `.wasm` asset too.
+ *
+ * WHY a factory and not a `URL` here (the D6/E8 prod-build bug):
+ *   Vite's worker plugin only recognises a worker when it sees
+ *   `new Worker(new URL(...), ...)` with the `new URL` LITERALLY adjacent,
+ *   or an explicit `?worker` import. The old shape built `new URL(...)` in
+ *   the app but passed it as a variable into THIS module, where
+ *   `new Worker(thatVariable)` is opaque to static analysis. Vite then
+ *   treated the `new URL(...)` as a plain asset, copied the RAW `.ts`
+ *   verbatim into dist (a browser can't run un-transpiled TS), and never
+ *   followed the worker's wasm import — so prod dist shipped a dead worker
+ *   and no `.wasm`. Constructing the worker in the consumer fixes it at the
+ *   only place Vite can see the whole worker module graph.
+ *
+ * `workerUrl` is kept for back-compat / non-Vite bundlers that DO statically
+ * resolve `new Worker(url)`. With Vite, use `workerFactory`.
  */
 export interface CanvasClientOptions {
-  workerUrl: URL;
+  /** Preferred: returns a freshly-constructed module Worker (e.g. from a
+   *  Vite `?worker` import). Takes precedence over `workerUrl`. */
+  workerFactory?: () => Worker;
+  /** Back-compat: a URL to the worker module. Vite cannot fully bundle the
+   *  worker from a URL passed across the package boundary — use
+   *  `workerFactory` under Vite. */
+  workerUrl?: URL;
 }
 
 export class CanvasClient {
@@ -74,7 +98,15 @@ export class CanvasClient {
   readonly gestureSab: GestureBuffer;
 
   constructor(options: CanvasClientOptions) {
-    this.worker = new Worker(options.workerUrl, { type: "module" });
+    if (options.workerFactory) {
+      this.worker = options.workerFactory();
+    } else if (options.workerUrl) {
+      this.worker = new Worker(options.workerUrl, { type: "module" });
+    } else {
+      throw new Error(
+        "CanvasClient: provide workerFactory (preferred, Vite `?worker`) or workerUrl.",
+      );
+    }
     this.worker.addEventListener("message", this.onMessage);
     this.camera = CameraBuffer.allocate();
     this.worker.postMessage({ kind: "cameraSab", buffer: this.camera.buffer });

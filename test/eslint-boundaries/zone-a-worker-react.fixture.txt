@@ -1,0 +1,6 @@
+// FIXTURE (zone a) — worker code importing React.
+// MUST be flagged: a worker that loads React hangs at startup.
+// Lints under the synthetic path apps/canvas/src/worker/__fixture__.ts.
+import { useState } from "react";
+
+export const boom = useState;

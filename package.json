@@ -6,6 +6,16 @@
   "scripts": {
     "typecheck": "pnpm -r --filter=./apps/* run typecheck",
     "build": "pnpm -r --filter=./apps/* run build",
-    "wasm": "pnpm -r --filter=./apps/* run wasm"
+    "wasm": "pnpm -r --filter=./apps/* run wasm",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:boundaries-selftest": "node scripts/eslint-boundaries-selftest.mjs",
+    "test:boot-coi": "node --experimental-strip-types scripts/cross-origin-isolation-check.test.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.4",
+    "eslint": "9.39.4",
+    "globals": "15.15.0",
+    "typescript-eslint": "8.60.1"
   }
 }

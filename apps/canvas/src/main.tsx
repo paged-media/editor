@@ -29,11 +29,19 @@ import {
 import "@paged-media/shell/styles/globals.css";
 
 import { CanvasClient } from "@paged-media/client";
+// Vite `?worker` import — constructs the render worker in THIS (app) module
+// graph so Vite emits the worker chunk AND follows its transitive `?url` wasm
+// import into a real `.wasm` asset. Passing only a worker URL across the
+// @paged-media/client package boundary defeated Vite's static worker analysis:
+// prod dist shipped a raw un-transpiled `worker.ts` and no wasm (audit D6/E8).
+// See CanvasClientOptions for the full rationale.
+import CanvasRenderWorker from "./worker/worker.ts?worker";
 import { BUILT_IN_TOOLS } from "@paged-media/tools";
 import { loadBundle } from "@paged-media/plugin-sdk";
 import { drawBundle } from "@paged-media/draw-bundle";
 import { webBundle } from "@paged-media/web-bundle";
 import { cockpitActions } from "@paged-media/shell";
+import { assertCrossOriginIsolated } from "./boot/cross-origin-isolation-check";
 import {
   APP_KEYBINDINGS,
   APP_MENU_ITEMS,
@@ -947,11 +955,13 @@ function CanvasAppRoot() {
 
   useEffect(() => {
     // SDK Phase 1 — `@paged-media/client` is framework-agnostic, so the
-    // worker URL is constructed in the app's module graph (where
-    // `import.meta.url` resolves correctly + Vite's static worker
-    // chunking can pick it up).
+    // Worker is constructed HERE in the app's module graph. We hand the
+    // client a `workerFactory` backed by Vite's `?worker` import (see the
+    // top-of-file import): Vite then fully bundles the worker chunk and its
+    // `?url` wasm asset, instead of opaquely copying a raw `.ts` URL across
+    // the package boundary (the D6/E8 prod-dist bug).
     const c = new CanvasClient({
-      workerUrl: new URL("./worker/worker.ts", import.meta.url),
+      workerFactory: () => new CanvasRenderWorker(),
     });
     setClient(c);
     return () => {
@@ -990,6 +1000,11 @@ function CanvasAppRoot() {
     </PagedShell>
   );
 }
+
+// Fail fast + loud if the static host didn't ship the COOP/COEP headers the
+// worker's SharedArrayBuffer needs — otherwise the app dies deep in the worker
+// with an opaque SecurityError far from the real cause (W0.17).
+assertCrossOriginIsolated();
 
 const root = document.getElementById("root");
 if (!root) {

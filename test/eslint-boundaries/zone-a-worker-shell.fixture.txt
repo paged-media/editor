@@ -1,0 +1,6 @@
+// FIXTURE (zone a) — worker code importing the shell barrel.
+// MUST be flagged by `no-restricted-imports` (worker-hang bug class).
+// Lints under the synthetic path apps/canvas/src/worker/__fixture__.ts.
+import { PagedShell } from "@paged-media/shell";
+
+export const boom = PagedShell;

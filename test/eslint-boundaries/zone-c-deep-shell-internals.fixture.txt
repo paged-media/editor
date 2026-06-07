@@ -1,0 +1,6 @@
+// FIXTURE (zone c) — a non-shell app file deep-importing shell internals.
+// MUST be flagged: consume the @paged-media/shell barrel, not components/ui/*.
+// Lints under the synthetic path apps/canvas/src/__fixture__.ts.
+import { Button } from "@paged-media/shell/components/ui/button";
+
+export const boom = Button;
