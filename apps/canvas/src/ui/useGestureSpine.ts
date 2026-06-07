@@ -21,6 +21,11 @@ export interface ToolGestureDispatch {
   onDown: (e: CanvasPointerEvent) => void;
   onMove: (e: CanvasPointerEvent) => void;
   onUp: (e: CanvasPointerEvent) => void;
+  /** Abort an in-flight tool gesture WITHOUT committing (pointer
+   *  capture loss / window blur). The pointer-up path commits; this
+   *  one rolls back. Delivered as the handler's Escape, the uniform
+   *  zero-mutation cancel every draw handler implements (INV-8). */
+  onCancel: () => void;
   /** Per-position cursor from the handler's `cursorAt`, resolved to a
    *  CSS string; undefined falls back to the tool's base cursor. */
   hoverCursor?: (e: CanvasPointerEvent) => string | undefined;
@@ -93,6 +98,10 @@ export function useGestureSpine(): {
             onDown: (e: CanvasPointerEvent) => spine.pointerDown(e),
             onMove: (e: CanvasPointerEvent) => spine.pointerMove(e),
             onUp: (e: CanvasPointerEvent) => spine.pointerUp(e),
+            onCancel: () =>
+              spine.key(
+                new KeyboardEvent("keydown", { key: "Escape" }),
+              ),
             hoverCursor: hasCursorAt
               ? (e: CanvasPointerEvent) => {
                   const spec = spine.cursorAt(e);

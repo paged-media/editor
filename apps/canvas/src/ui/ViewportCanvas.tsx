@@ -113,6 +113,10 @@ export interface ViewportCanvasProps {
     onDown: (e: CanvasPointerEvent) => void;
     onMove: (e: CanvasPointerEvent) => void;
     onUp: (e: CanvasPointerEvent) => void;
+    /** Abort the in-flight tool gesture WITHOUT committing — pointer-
+     *  capture loss / window blur (INV-8). `onUp` commits; this rolls
+     *  back. */
+    onCancel: () => void;
     /** Per-position cursor refinement from the handler's `cursorAt`. */
     hoverCursor?: (e: CanvasPointerEvent) => string | undefined;
   } | null;
@@ -784,6 +788,42 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
     [props, rects, marqueeRect, setContentSelection],
   );
 
+  // GSM-07 / INV-8 — abort the in-flight drag WITHOUT committing.
+  // Pointer-capture loss (`pointercancel`) and window blur both land
+  // here: the plan requires every begin to reach commit OR abort, and
+  // an interrupted gesture must roll back (zero mutation), never commit
+  // a phantom op. The pointer-UP path commits; this is the abort twin.
+  // Covers all three drag owners: a handler-bearing tool drag (the
+  // spine — cancelled via its Escape-equivalent), the legacy worker
+  // gesture (cancel the handle), and a marquee (drop the rect). A pan
+  // has nothing to roll back.
+  const abortActiveDrag = useCallback(() => {
+    // Tool-spine draw drag (Rectangle/Pen/…): cancel, don't commit.
+    if (toolDragRef.current && props.toolGesture) {
+      toolDragRef.current = null;
+      props.toolGesture.onCancel();
+    }
+    const drag = dragStateRef.current;
+    if (!drag) return;
+    dragStateRef.current = null;
+    if (drag.mode === "gesture" && drag.gestureState) {
+      const handle = drag.gestureState.handle;
+      if (handle !== null) {
+        void props.client
+          .cancelGesture(handle)
+          .then(() => {
+            setSnapLines([]);
+            props.onGestureCommitted?.();
+          })
+          .catch(() => {});
+      }
+      // handle === null: begin hasn't resolved; the resolver sees the
+      // dragState gone and cancels the handle itself.
+    } else if (drag.mode === "marquee") {
+      setMarqueeRect(null);
+    }
+  }, [props, setSnapLines, setMarqueeRect]);
+
   // Phase B — Escape cancels the active gesture. Listen at document
   // level so it works while pointer capture is in flight on the
   // wrapper.
@@ -808,6 +848,28 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [props]);
+
+  // INV-8 — a window blur (Cmd/Alt-Tab away, devtools focus) while a
+  // drag is in flight must abort it. Without this the gesture stays
+  // open until the next pointer event, which then commits a stale
+  // delta — the classic "alt-tab mid-drag leaves a stuck gesture" bug
+  // (gestures.md E2E-11). pointercancel covers capture *theft*; blur
+  // covers the case where the pointer never sends a cancel.
+  useEffect(() => {
+    const onBlur = () => abortActiveDrag();
+    window.addEventListener("blur", onBlur);
+    return () => window.removeEventListener("blur", onBlur);
+  }, [abortActiveDrag]);
+
+  // GSM-07 / INV-8 — pointer-capture loss (`pointercancel`: capture
+  // stolen, touch cancelled, element removed mid-drag). The browser has
+  // already released capture, so unlike pointer-up we don't release it
+  // here; we just roll the gesture back. Previously this aliased
+  // `onPointerUp`, which COMMITTED the interrupted gesture — a phantom
+  // mutation. Now it aborts (the plan's pointercancel → abort).
+  const onPointerCancel = useCallback(() => {
+    abortActiveDrag();
+  }, [abortActiveDrag]);
 
   function clamp(v: number, lo: number, hi: number): number {
     return v < lo ? lo : v > hi ? hi : v;
@@ -986,7 +1048,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
+      onPointerCancel={onPointerCancel}
       onWheel={onWheel}
       onDoubleClick={onDoubleClick}
     >

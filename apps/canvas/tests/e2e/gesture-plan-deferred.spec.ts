@@ -12,7 +12,11 @@ test.describe("gestures.md — deferred E2E scenarios", () => {
   // E2E-02 (gridify) is now LIVE in gesture-gridify.spec.ts (W2.7).
   // E2E-03 (pen tool) is now LIVE in gesture-pen.spec.ts (W2.5).
   // E2E-06 (ruler guides) is now LIVE in gesture-guides.spec.ts (W2.8).
-  // Their deferral stubs were removed when the real suites landed.
+  // E2E-08 (pan/zoom mid-gesture), E2E-09 (floating pane), E2E-10 (DPR
+  // variation), and E2E-11 (pointer-capture loss / blur) are now LIVE
+  // in gesture-cross-cutting.spec.ts (W2.3 — E2E-11 fixed a real abort
+  // bug in ViewportCanvas). Their deferral stubs were removed when the
+  // real suites landed.
 
   test.fixme(
     "E2E-05 — thread two text frames; verify reflow indicator (TH-01…04)",
@@ -26,43 +30,6 @@ test.describe("gestures.md — deferred E2E scenarios", () => {
       // until the visual "reflow indicator" (VR-08 chain arrows between
       // linked frames) is wired — TH-01…03 assert the link at the
       // channel + port-glyph level, not the inter-frame reflow line.
-    },
-  );
-
-  test.fixme(
-    "E2E-08 — spacebar pan + ctrl-wheel zoom DURING an active move gesture (PZ-01/04)",
-    async () => {
-      // Not implemented: the Hand tool pans via forcePan but there is
-      // no spring-loaded Space pan, and mid-gesture camera changes
-      // don't re-derive the document-space delta (the plan's classic
-      // bug source, PZ-04).
-    },
-  );
-
-  test.fixme(
-    "E2E-09 — floating/split-pane torture: run E2E-01 inside a floated canvas pane",
-    async () => {
-      // The plan names Dockview; the shell has since moved to the
-      // cockpit layout (no floating canvas pane yet). Re-spec against
-      // the cockpit's pane model when float/split ships (plan IN-08).
-    },
-  );
-
-  test.fixme(
-    "E2E-10 — browser zoom 80%/125% + DPR variation (IN-06)",
-    async () => {
-      // Needs a deviceScaleFactor/page-zoom Playwright project matrix
-      // — deliberately not bolted onto the single-config suite yet
-      // (playwright.config.ts is pinned for the fidelity gate).
-    },
-  );
-
-  test.fixme(
-    "E2E-11 — window blur / pointer-capture loss mid-drag aborts the gesture (GSM-07, INV-8)",
-    async () => {
-      // Not implemented: ViewportCanvas wires pointercancel to the
-      // pointer-up path but has no window blur listener; a blurred
-      // mid-drag session currently stays open until the next event.
     },
   );
 
