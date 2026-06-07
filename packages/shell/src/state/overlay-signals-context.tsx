@@ -1,6 +1,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type PropsWithChildren,
@@ -60,11 +61,34 @@ export interface ToolPreviewGrid {
   cells: ReadonlyArray<[number, number, number, number]>;
 }
 
+/**
+ * B-07 — a path/cubic tool preview (in-progress pen). Carries the true
+ * anchor/handle run so the overlay renders ONE real <path> of `C`
+ * commands instead of a flattened polyline (exact at any zoom, no
+ * per-pointermove sampling). `anchors` is the engine's `PathAnchorSpec`
+ * form — page-local pt, the SAME run `insertPath` commits. Mirrors the
+ * plugin-api `ToolPreviewPath` variant; the editor's union must stay a
+ * superset of the contract so the handle assigns (plugin-api-compat).
+ */
+export interface ToolPreviewPath {
+  pageId: PageId;
+  anchors: ReadonlyArray<{
+    anchor: [number, number];
+    left: [number, number];
+    right: [number, number];
+  }>;
+  /** Close the contour (draw the cubic from the last anchor back to 0). */
+  close?: boolean;
+  /** Dashed stroke instead of the default solid (preview vocabulary). */
+  dashed?: boolean;
+}
+
 /** What a tool handler can publish as its in-progress preview. */
 export type ToolPreviewShape =
   | MarqueeRectPageLocal
   | ToolPreviewPolyline
-  | ToolPreviewGrid;
+  | ToolPreviewGrid
+  | ToolPreviewPath;
 
 interface OverlaySignalsValue {
   /** Last click hit-result. Cleared when the user clicks empty space. */
@@ -120,6 +144,25 @@ export function OverlaySignalsProvider({ children }: PropsWithChildren) {
     }),
     [hitSelection, marqueeRect, snapLines, toolPreview],
   );
+
+  // Dev hook. PagedShell builds `__canvas` ABOVE this provider, so it
+  // can't reach the overlay signals; tests that drive a preview straight
+  // into the overlay (B-07 path/cubic preview spec) read the writer here
+  // off `__overlaySignals`. Stripped from production via Vite's PROD
+  // constant; typed loosely so shell's tsconfig (no Vite ambient types)
+  // still passes.
+  useEffect(() => {
+    const isProd =
+      (import.meta as unknown as { env?: { PROD?: boolean } }).env?.PROD ===
+      true;
+    if (isProd) return;
+    (globalThis as unknown as { __overlaySignals?: unknown }).__overlaySignals =
+      value;
+    return () => {
+      delete (globalThis as unknown as { __overlaySignals?: unknown })
+        .__overlaySignals;
+    };
+  }, [value]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

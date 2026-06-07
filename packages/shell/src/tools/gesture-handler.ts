@@ -47,6 +47,24 @@ export interface CanvasPointerEvent {
   button: number;
   /** Underlying DOM target — handlers may read `data-handle` etc. */
   target: EventTarget | null;
+  /**
+   * Pointer-Events normalized pressure, 0..1 (B-08). Read straight
+   * from the DOM `PointerEvent.pressure`, so browser semantics carry
+   * through: a pen reports physical pressure; a mouse reports `0`
+   * with no button held and `0.5` while a button is held. Gates
+   * variable-width stylus strokes (§13.12, Tier B). Defaults to
+   * `0.5` on synthetic events that omit it.
+   */
+  pressure: number;
+  /** Pen tilt around the X axis, −90..90 deg. `0` for mouse/touch and
+   *  pens without tilt support. */
+  tiltX: number;
+  /** Pen tilt around the Y axis, −90..90 deg. `0` for mouse/touch and
+   *  pens without tilt support. */
+  tiltY: number;
+  /** Originating device class (`PointerEvent.pointerType`). Defaults
+   *  to `"mouse"`. */
+  pointerType: "mouse" | "pen" | "touch";
 }
 
 /**

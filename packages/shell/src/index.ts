@@ -92,6 +92,7 @@ export {
   type MarqueeRectPageLocal,
   type SelectionState,
   type ToolPreviewGrid,
+  type ToolPreviewPath,
   type ToolPreviewPolyline,
   type ToolPreviewShape,
 } from "./state/overlay-signals-context";

@@ -309,7 +309,20 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       const pagePoint: [number, number] | null = containing
         ? [docX - containing[1].x, docY - containing[1].y]
         : null;
-      return {
+      // B-08 — carry Pointer-Events pressure/tilt/pointerType straight
+      // off the DOM event onto the tool pointer so stylus input reaches
+      // draw tools (variable-width strokes, §13.12 Tier B). We read the
+      // browser's values verbatim to preserve its semantics (mouse:
+      // pressure 0 with no button, 0.5 while held; pen: physical
+      // pressure). `??` guards only the synthetic-event case where a
+      // field is absent — never overrides a real 0. NOTE: these ride
+      // the event OBJECT, not the gesture SAB, which is a wasm-coupled
+      // fixed-layout contract (see sab/gesture.ts + B-08 closure).
+      const pointerType: "mouse" | "pen" | "touch" =
+        e.pointerType === "pen" || e.pointerType === "touch"
+          ? e.pointerType
+          : "mouse";
+      const built: CanvasPointerEvent = {
         pageId: containing ? containing[0] : null,
         pagePoint,
         docPoint: [docX, docY],
@@ -322,7 +335,22 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         maxDelta,
         button: e.button,
         target: e.target,
+        pressure: e.pressure ?? 0.5,
+        tiltX: e.tiltX ?? 0,
+        tiltY: e.tiltY ?? 0,
+        pointerType,
       };
+      // Dev/test hook (B-08 spec). Headless Chromium can't synthesize a
+      // physical-stylus pressure, so the Playwright spec asserts the
+      // PLUMBING: it reads the last tool pointer the canvas built and
+      // checks the new fields are present + typed. Stripped from prod
+      // builds; mirrors the `window.__canvas` convention.
+      if (!import.meta.env.PROD) {
+        (
+          globalThis as unknown as { __canvasPointer?: CanvasPointerEvent }
+        ).__canvasPointer = built;
+      }
+      return built;
     },
     [props.camera, props.pageIds, rects],
   );
@@ -1057,6 +1085,10 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
   return (
     <div
       ref={wrapperRef}
+      // B-08 — the Playwright pressure/tilt plumbing spec targets this
+      // host to dispatch a synthetic stylus pointer event and read
+      // `__canvasPointer`.
+      data-testid="viewport-canvas-host"
       // Phase 3 — the active tool's base cursor overrides the default
       // pan affordance; the gesture handler may refine it per position.
       style={

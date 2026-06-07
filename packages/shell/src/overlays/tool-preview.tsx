@@ -36,6 +36,40 @@ function ToolPreviewRender(props: OverlayProps) {
       </g>
     );
   }
+  // B-07 — path/cubic variant (in-progress pen). The signal carries
+  // the true anchor/handle run, so we emit ONE real <path> of `C`
+  // commands rather than a flattened polyline — exact at any zoom, no
+  // per-pointermove sampling. Same snap-teal stroke as the rest of the
+  // tool-preview family; `dashed` opts into the dashed vocabulary.
+  if ("anchors" in p) {
+    const a = p.anchors;
+    if (a.length < 2) return null;
+    // M to anchor 0, then a cubic per segment using the outgoing handle
+    // of the start anchor (`right`) and the incoming handle of the end
+    // anchor (`left`) as the two control points — IDML PathPointType
+    // semantics, identical to how the engine reads the committed path.
+    const seg = (
+      from: (typeof a)[number],
+      to: (typeof a)[number],
+    ): string =>
+      `C ${pr.x + from.right[0]},${pr.y + from.right[1]} ` +
+      `${pr.x + to.left[0]},${pr.y + to.left[1]} ` +
+      `${pr.x + to.anchor[0]},${pr.y + to.anchor[1]}`;
+    let d = `M ${pr.x + a[0].anchor[0]},${pr.y + a[0].anchor[1]}`;
+    for (let i = 0; i < a.length - 1; i++) d += ` ${seg(a[i], a[i + 1])}`;
+    if (p.close) d += ` ${seg(a[a.length - 1], a[0])} Z`;
+    return (
+      <path
+        d={d}
+        fill="none"
+        stroke="var(--overlay-snap)"
+        strokeWidth={1.25}
+        {...(p.dashed ? { strokeDasharray: "4 3" } : {})}
+        vectorEffect="non-scaling-stroke"
+        pointerEvents="none"
+      />
+    );
+  }
   // Editor-ops — polyline variant (Line drag, Pencil stroke,
   // Gradient axis). Same stroke as the rect rubber-band so every
   // tool preview reads as one visual family.
