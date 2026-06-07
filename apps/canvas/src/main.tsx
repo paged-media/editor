@@ -40,6 +40,7 @@ import { BUILT_IN_TOOLS } from "@paged-media/tools";
 import { loadBundle } from "@paged-media/plugin-sdk";
 import { drawBundle } from "@paged-media/draw-bundle";
 import { webBundle } from "@paged-media/web-bundle";
+import { CodeEditor } from "@paged-media/ui";
 import { cockpitActions } from "@paged-media/shell";
 import { assertCrossOriginIsolated } from "./boot/cross-origin-isolation-check";
 import {
@@ -100,6 +101,8 @@ import { NavigatorPanel } from "./panels/navigator-panel";
 import { OutlinePanel } from "./panels/outline-panel";
 import { ReplPanel } from "./panels/repl-panel";
 import { ScriptEditorPanel } from "./panels/script-editor";
+import { ProblemsPanel } from "./panels/problems-panel";
+import { problemsSink } from "./panels/problems-store";
 import { TreePanel } from "./panels/tree-panel";
 import { ExportCenterPanel } from "./panels/cockpit/export-center-panel";
 import { PreflightPanel } from "./panels/cockpit/preflight-panel";
@@ -697,6 +700,16 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultDock: "bottom",
     defaultGroup: "console",
   },
+  {
+    // paged.web W-05 — the host problems panel: consumes
+    // `host.diagnostics` from EVERY loaded bundle via the injected
+    // sink (problems-store), not just inline in a plugin's own panel.
+    id: "paged.problems",
+    title: "Problems",
+    component: ProblemsPanel,
+    defaultDock: "bottom",
+    defaultGroup: "console",
+  },
   // ── Panel-gallery pass — CONCEPT panels (INDESIGN_PARITY.md).
   //    The four ●●● parity surfaces + the two in-scope output/a11y
   //    surfaces, shipped as kit-shaped honest seams with Concept
@@ -790,9 +803,14 @@ function PluginBundles() {
       openPanel: (id: string) => cockpitActions.openPanel?.(id),
       closePanel: (id: string) => cockpitActions.closeTab?.(id),
     };
+    // W-04: the host owns the code-editor widget (one editor across
+    // every scripting-adjacent plugin). W-05: diagnostics fan out to
+    // the Problems panel's store.
+    const widgets = { CodeEditor };
+    const hostOptions = { shell, widgets, diagnosticsSink: problemsSink };
     const loaded = [
-      loadBundle(() => pagedRef.current, drawBundle, { shell }),
-      loadBundle(() => pagedRef.current, webBundle, { shell }),
+      loadBundle(() => pagedRef.current, drawBundle, hostOptions),
+      loadBundle(() => pagedRef.current, webBundle, hostOptions),
     ];
     return () => {
       for (const l of loaded) l.dispose();

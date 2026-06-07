@@ -37,3 +37,13 @@ export { useColorCompute } from "./color/use-color-compute";
 // Panel-gallery pass — the colour wheel + harmonies.
 export { ColorWheel, type ColorWheelProps } from "./color/ColorWheel";
 export { HARMONY_NAMES, harmonySet, type HarmonyName } from "./color/harmonies";
+
+// paged.web W-04 — the host code-editor widget (line numbers, light
+// HTML/CSS highlighting, diagnostics gutter) injected into bundles via
+// `host.widgets.CodeEditor`.
+export {
+  CodeEditor,
+  type CodeEditorProps,
+  type CodeEditorDiagnostic,
+} from "./code/CodeEditor";
+export { highlight, escapeHtml, type CodeLanguage } from "./code/highlight";

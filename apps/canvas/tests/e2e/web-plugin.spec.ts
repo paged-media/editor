@@ -113,8 +113,9 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
       .toBe(before + beforeRect + 1);
 
     // The source panel opened, showing the default source for the
-    // (selected) new frame.
-    const html = page.locator("[data-web-html]");
+    // (selected) new frame. W-04: the HTML lane is the host CodeEditor
+    // widget — its textarea is the inner `[data-code-input]`.
+    const html = page.locator("[data-web-html] [data-code-input]");
     await expect(html).toBeVisible({ timeout: 5_000 });
     await expect(html).toHaveValue(/Web frame/);
 
@@ -132,7 +133,7 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
     page,
   }) => {
     await invokeCommand(page, INSERT_COMMAND);
-    const html = page.locator("[data-web-html]");
+    const html = page.locator("[data-web-html] [data-code-input]");
     await expect(html).toBeVisible({ timeout: 5_000 });
 
     await html.fill("<h1>Price list</h1>");
@@ -158,17 +159,16 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
     }, PANEL_ID);
     await expect(html).toBeHidden({ timeout: 5_000 });
     await openPanel(page, PANEL_ID);
-    await expect(page.locator("[data-web-html]")).toHaveValue(
-      "<h1>Price list</h1>",
-      { timeout: 5_000 },
-    );
+    await expect(
+      page.locator("[data-web-html] [data-code-input]"),
+    ).toHaveValue("<h1>Price list</h1>", { timeout: 5_000 });
   });
 
   test("AC-WEB-3 — <script> surfaces the policy error; removing it clears diagnostics", async ({
     page,
   }) => {
     await invokeCommand(page, INSERT_COMMAND);
-    const html = page.locator("[data-web-html]");
+    const html = page.locator("[data-web-html] [data-code-input]");
     await expect(html).toBeVisible({ timeout: 5_000 });
 
     await html.fill("<p>ok</p>\n<script>alert(1)</script>");
@@ -179,5 +179,78 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
 
     await html.fill("<p>ok</p>");
     await expect(diagnostics).toBeHidden({ timeout: 5_000 });
+  });
+
+  test("AC-WEB-4 — the host codeEditor widget renders: line numbers, highlighting, gutter markers", async ({
+    page,
+  }) => {
+    await invokeCommand(page, INSERT_COMMAND);
+    const editor = page.locator("[data-web-html] [data-code-editor]");
+    await expect(editor).toBeVisible({ timeout: 5_000 });
+
+    // Line numbers: the default source spans 2 lines → the gutter
+    // renders 1 and 2.
+    const lineGutter = editor.locator("[data-code-gutter-lines]");
+    await expect(lineGutter).toContainText("1");
+    await expect(lineGutter).toContainText("2");
+
+    // Syntax highlighting: the underlay tokenizes tags into spans.
+    await expect(
+      editor.locator("[data-code-underlay] .code-tag").first(),
+    ).toBeVisible();
+
+    // Diagnostics gutter markers: a <script> lights an error dot on
+    // the offending line.
+    const html = page.locator("[data-web-html] [data-code-input]");
+    await html.fill("<p>ok</p>\n<script>x</script>");
+    await expect(
+      editor.locator('[data-code-gutter-marks] [data-code-mark="error"]'),
+    ).toHaveCount(1, { timeout: 5_000 });
+    // …and an inline squiggle on that line.
+    await expect(
+      editor.locator("[data-code-underlay] .code-squiggle"),
+    ).toBeVisible({ timeout: 5_000 });
+  });
+
+  test("AC-WEB-5 — the Problems panel lists a published diagnostic and click focuses the source panel", async ({
+    page,
+  }) => {
+    await invokeCommand(page, INSERT_COMMAND);
+    const html = page.locator("[data-web-html] [data-code-input]");
+    await expect(html).toBeVisible({ timeout: 5_000 });
+
+    // Publish a policy error through host.diagnostics (the panel's
+    // debounced commit fans out to the host Problems store) — wait out
+    // the 300ms save debounce so the diagnostic is published.
+    await html.fill("<p>ok</p>\n<script>boom()</script>");
+    await page.waitForTimeout(500);
+
+    // Open the host Problems panel — it consumes host.diagnostics from
+    // every loaded bundle, not just the plugin's own inline list.
+    await openPanel(page, "paged.problems");
+    const problems = page.locator("[data-problems-panel]");
+    await expect(problems).toBeVisible({ timeout: 5_000 });
+    const problem = problems.locator(
+      '[data-problem][data-problem-bundle="media.paged.web"]',
+    );
+    await expect(problem.first()).toContainText("never executes", {
+      timeout: 5_000,
+    });
+
+    // Hide the source panel, then click the problem — click-to-focus
+    // reopens the owning bundle's panel.
+    await page.evaluate((id) => {
+      (
+        globalThis as unknown as {
+          __canvas: {
+            registries: { commands: { invoke: (i: string) => Promise<unknown> } };
+          };
+        }
+      ).__canvas.registries.commands.invoke(`paged.panel.hide.${id}`);
+    }, PANEL_ID);
+    await expect(html).toBeHidden({ timeout: 5_000 });
+
+    await problem.first().click();
+    await expect(html).toBeVisible({ timeout: 5_000 });
   });
 });
