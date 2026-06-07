@@ -4,7 +4,6 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "wasm": "bash build-wasm.sh",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
@@ -18,7 +17,7 @@
     "fonts:resolve": "tsx scripts/fonts-resolve.ts"
   },
   "dependencies": {
-    "@paged-media/canvas-wasm": "0.33.0-dry.0",
+    "@paged-media/canvas-wasm": "0.33.0",
     "@paged-media/catalog": "workspace:*",
     "@paged-media/client": "workspace:*",
     "@paged-media/draw-bundle": "link:../../../plugin-draw/packages/draw-bundle",
