@@ -17,8 +17,9 @@
 // (W3.A2: the 6 table ops — setRowHeight/setColumnWidth/insertTableRow
 // /deleteTableRow/insertTableColumn/deleteTableColumn, probed against
 // the tables fixture's first cell — plus the 3 kernel path ops
-// outlineStroke/offsetPath/simplifyPath). Update via the same run when
-// core lands new ops.
+// outlineStroke/offsetPath/simplifyPath), then 2026-06-07 against
+// protocol v34 (createGroup/dissolveGroup, setPluginMetadata). Update
+// via the same run when core lands new ops.
 
 export type CapabilityStatus = "supported" | "unsupported";
 
@@ -78,6 +79,12 @@ export const CAPABILITIES: Capability[] = [
   { op: "outlineStroke", status: "supported" },
   { op: "offsetPath", status: "supported" },
   { op: "simplifyPath", status: "supported" },
+  // ── group ops (v32) ───────────────────────────────────────────────
+  { op: "createGroup", status: "supported" },
+  { op: "dissolveGroup", status: "supported" },
+  // ── plugin-metadata carrier (v33; v34 adds the batch $created
+  //    sentinel — probed through the batch op) ──────────────────────
+  { op: "setPluginMetadata", status: "supported" },
   // ── table ops (v30) ───────────────────────────────────────────────
   { op: "setRowHeight", status: "supported" },
   { op: "setColumnWidth", status: "supported" },

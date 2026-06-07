@@ -1036,6 +1036,96 @@ const GEOMETRY_PROBES: Probe[] = [
     },
     setupUndo: 1,
   },
+  // ── group ops (v32) ───────────────────────────────────────────
+  {
+    op: "createGroup",
+    build: async ({ page, fx }) => {
+      const ids = await page.evaluate(async (pageId) => {
+        const c = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                mutate: (m: unknown) => Promise<{
+                  kind: string;
+                  payload?: {
+                    createdId?: { kind: string; id: string } | null;
+                  };
+                }>;
+              };
+            };
+          }
+        ).__canvas;
+        const a = await c.client.mutate({
+          op: "insertFrame",
+          args: { pageId, bounds: [10, 10, 60, 60] },
+        });
+        const b = await c.client.mutate({
+          op: "insertFrame",
+          args: { pageId, bounds: [70, 70, 120, 120] },
+        });
+        return { a: a.payload?.createdId, b: b.payload?.createdId };
+      }, fx.pages[0].pageId);
+      if (!ids.a || !ids.b) return null;
+      return { op: "createGroup", args: { memberIds: [ids.a, ids.b] } };
+    },
+    setupUndo: 2, // the two scratch insertFrame ops
+  },
+  {
+    op: "dissolveGroup",
+    build: async ({ page, fx }) => {
+      const groupId = await page.evaluate(async (pageId) => {
+        const c = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                mutate: (m: unknown) => Promise<{
+                  kind: string;
+                  payload?: {
+                    createdId?: { kind: string; id: string } | null;
+                  };
+                }>;
+              };
+            };
+          }
+        ).__canvas;
+        const a = await c.client.mutate({
+          op: "insertFrame",
+          args: { pageId, bounds: [10, 10, 60, 60] },
+        });
+        const b = await c.client.mutate({
+          op: "insertFrame",
+          args: { pageId, bounds: [70, 70, 120, 120] },
+        });
+        if (!a.payload?.createdId || !b.payload?.createdId) return null;
+        const g = await c.client.mutate({
+          op: "createGroup",
+          args: { memberIds: [a.payload.createdId, b.payload.createdId] },
+        });
+        return g.payload?.createdId?.id ?? null;
+      }, fx.pages[0].pageId);
+      if (!groupId) return null;
+      return { op: "dissolveGroup", args: { groupId } };
+    },
+    setupUndo: 3, // two inserts + the createGroup
+  },
+  // ── plugin-metadata carrier (v33) ─────────────────────────────
+  {
+    op: "setPluginMetadata",
+    build: async ({ page, fx }) => {
+      const t = await newPath(page, fx.pages[0].pageId);
+      return t
+        ? {
+            op: "setPluginMetadata",
+            args: {
+              elementId: t,
+              key: "x-paged:probe",
+              value: '{"v":1,"data":{}}',
+            },
+          }
+        : null;
+    },
+    setupUndo: 1,
+  },
   {
     op: "pathfinderBoolean",
     build: async ({ page, fx }) => {
