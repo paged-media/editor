@@ -335,6 +335,19 @@ export {
 
 // ── SDK Phase 3 — declarative catalog renderer + primitive leaves
 export { CompositionRenderer, CatalogRegistryProvider } from "./catalog/render";
+// ── W3.1 — the plugin SCHEMA-PANEL renderer (closes plugin-draw B-01):
+//    renders a bundle's declarative `PanelSchema` from the catalog and
+//    gates rows/sections on the bundle's published bindings.
+export { SchemaPanelRenderer } from "./catalog/schema-panel-renderer";
+export { resolveGate as resolveSchemaGate } from "./catalog/schema-gate";
+export type {
+  PanelSchema as ShellPanelSchema,
+  PanelSchemaSection as ShellPanelSchemaSection,
+  PanelSchemaRow as ShellPanelSchemaRow,
+  SchemaGate as ShellSchemaGate,
+  BindingsSurface as ShellBindingsSurface,
+  SchemaPanelRendererProps as ShellSchemaPanelRendererProps,
+} from "./catalog/schema-panel-types";
 export { TogglePill, displayName } from "./catalog/leaves";
 export { useBindings, type ResolvedBinding } from "./catalog/binding-hook";
 export {

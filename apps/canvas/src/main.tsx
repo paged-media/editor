@@ -23,8 +23,11 @@ import {
   useDocument,
   usePaged,
   useRegistries,
+  SchemaPanelRenderer,
+  CatalogRegistryProvider,
   type OverlayContribution,
   type PanelContribution,
+  type ShellSchemaPanelRendererProps,
 } from "@paged-media/shell";
 import "@paged-media/shell/styles/globals.css";
 
@@ -38,8 +41,33 @@ import { CanvasClient } from "@paged-media/client";
 import CanvasRenderWorker from "./worker/worker.ts?worker";
 import { BUILT_IN_TOOLS } from "@paged-media/tools";
 import { loadBundle } from "@paged-media/plugin-sdk";
+import type { SchemaPanelRenderer as SchemaPanelRendererType } from "@paged-media/plugin-api";
 import { drawBundle } from "@paged-media/draw-bundle";
 import { webBundle } from "@paged-media/web-bundle";
+
+// W3.1 — the schema-panel renderer the host injects. The shell renderer
+// walks a `PanelSchema` through the catalog's `CompositionRenderer`,
+// which needs the app's `CatalogRegistryProvider` in scope (the same
+// provider the editor's own composition panels mount). Wrap it here at
+// the app boundary (apps/canvas owns `appCatalogRegistry`).
+function HostSchemaPanelRenderer(props: ShellSchemaPanelRendererProps) {
+  return (
+    <CatalogRegistryProvider registry={appCatalogRegistry()}>
+      <SchemaPanelRenderer {...props} />
+    </CatalogRegistryProvider>
+  );
+}
+
+// Compat assertion (same discipline as plugin-api-compat.ts): the
+// injected renderer must satisfy the plugin-api contract type. A drift
+// on either side fails THIS typecheck at the injection seam, never a
+// plugin author's build.
+type _AssertSchemaRenderer =
+  typeof HostSchemaPanelRenderer extends SchemaPanelRendererType
+    ? true
+    : never;
+const _schemaRendererCompat: _AssertSchemaRenderer = true;
+void _schemaRendererCompat;
 import { CodeEditor } from "@paged-media/ui";
 import { cockpitActions } from "@paged-media/shell";
 import { assertCrossOriginIsolated } from "./boot/cross-origin-isolation-check";
@@ -50,6 +78,7 @@ import {
 } from "./app-commands";
 import { COCKPIT_MODES, PANEL_RAIL } from "./cockpit-modes";
 import { COCKPIT_MENU_SEAMS } from "./cockpit-menus";
+import { appCatalogRegistry } from "./panels/catalog-registry";
 import { CanvasPanel } from "./panels/canvas-panel";
 import { CharacterPanel } from "./panels/character-panel";
 import { ArticlesPanel } from "./panels/articles-panel";
@@ -805,9 +834,18 @@ function PluginBundles() {
     };
     // W-04: the host owns the code-editor widget (one editor across
     // every scripting-adjacent plugin). W-05: diagnostics fan out to
-    // the Problems panel's store.
+    // the Problems panel's store. W3.1: the host owns the SCHEMA-PANEL
+    // renderer (a bundle's declarative `PanelSchema` renders from the
+    // catalog with visibility/enablement driven by the bundle's
+    // published bindings — closes plugin-draw B-01; the renderer
+    // satisfies plugin-api's `SchemaPanelRenderer` — asserted below).
     const widgets = { CodeEditor };
-    const hostOptions = { shell, widgets, diagnosticsSink: problemsSink };
+    const hostOptions = {
+      shell,
+      widgets,
+      diagnosticsSink: problemsSink,
+      schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
+    };
     const loaded = [
       loadBundle(() => pagedRef.current, drawBundle, hostOptions),
       loadBundle(() => pagedRef.current, webBundle, hostOptions),
