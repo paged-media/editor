@@ -18,8 +18,19 @@ if (!process.env.NODE_OPTIONS) {
   process.env.NODE_OPTIONS = "--max-old-space-size=8192";
 }
 
+// Lean CI surface (tests.yml): the published-wasm CI runs the behaviour
+// surface without the Envato fidelity gate, which needs the 4.4 GB
+// `corpus/envato` LFS packs + their InDesign reference PDFs + the
+// `paged-diff` Rust binary (built from a `core` checkout) + poppler's
+// `pdftoppm` — none of which the package-boundary runner has. Those two
+// specs read `corpus/envato/manifest.json` at import time, so set
+// `PAGED_CI_LEAN=1` to drop them from collection entirely rather than
+// let the import throw. Local runs (no flag) keep the full surface.
+const LEAN_CI = process.env.PAGED_CI_LEAN === "1";
+
 export default defineConfig({
   testDir: "./tests",
+  testIgnore: LEAN_CI ? ["fidelity.spec.ts", "e2e/extensive-corpus.spec.ts"] : [],
   // Single worker keeps the snapshot tier deterministic (worker pool
   // contention can race the layout cache across packs). Re-enable
   // parallelism once we've confirmed perf isn't bottlenecked by it.

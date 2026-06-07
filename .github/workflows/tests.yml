@@ -1,0 +1,186 @@
+name: tests
+
+# Editor Playwright surface → state-matrix evidence (W0.5).
+#
+# Decision-B model: the engine wasm ships in the published
+# `@paged-media/canvas-wasm` package, so `pnpm install` is the whole
+# engine setup — no `core` checkout, no build-from-source bridge. The
+# vite dev server (spawned by playwright.config's `webServer`) sets the
+# COOP/COEP headers SharedArrayBuffer needs; that middleware runs in the
+# server process and works headless, so the chromium runner gets a
+# cross-origin-isolated context with no extra flags.
+#
+# Scope: the behaviour surface (panels + gesture + e2e op-sandwiches),
+# NOT the Envato fidelity gate. That gate needs the 4.4 GB
+# `corpus/envato` LFS packs, their InDesign reference PDFs, poppler's
+# `pdftoppm`, and the `paged-diff` Rust binary built from a `core`
+# checkout — none of which the package-boundary runner carries. It stays
+# a local / core-CI concern; `PAGED_CI_LEAN=1` drops `fidelity.spec.ts`
+# + `extensive-corpus.spec.ts` from collection (both read the envato
+# manifest at import time). The lean surface (~412 tests) still needs the
+# small license-clear `corpus/generated` fixtures + `corpus/fonts`, which
+# the harness loads — those come from a sparse LFS checkout of the
+# private `paged-media/corpus` repo (≈25 MB, not the 4.4 GB envato tier).
+#
+# Sharding: playwright.config pins workers:1 (snapshot determinism), so
+# the ~20-25 min surface is split across 3 shards (~7-9 min each + setup)
+# via `--shard`, each emitting a `blob` report. A final job merges the
+# blobs into one Playwright JSON and hands it to the shared
+# `paged-media/state/actions/publish-results` action, which converts to
+# contract-v1, applies `ingest/test-map.yaml` (the editor specs carry no
+# @feat: tags yet), gates feature ids against the registry, and
+# repository_dispatches `results-published` at the state repo.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "apps/canvas/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".github/workflows/tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SHARDS: 3
+
+jobs:
+  playwright:
+    name: playwright (shard ${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - name: checkout editor
+        uses: actions/checkout@v4
+
+      # License-clear fixtures the harness loads (corpus/generated/*.idml
+      # + corpus/fonts). Sparse + LFS so we pull ~25 MB, not the 4.4 GB
+      # envato tier. The editor's vite config + tests resolve the corpus
+      # as a sibling of the repo root (`editor/corpus`), so check it out
+      # there. `STATE_DISPATCH_TOKEN` already has read scope on the
+      # private paged-media siblings (used by plugin-draw for the sdk
+      # checkout); fall back to github.token for same-org runs.
+      - name: checkout corpus fixtures (sparse + LFS)
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/corpus
+          path: corpus
+          token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
+          lfs: false
+          sparse-checkout: |
+            generated
+            samples
+            fonts
+          sparse-checkout-cone-mode: true
+
+      - name: pull LFS for the lean fixture tiers
+        working-directory: corpus
+        run: |
+          git lfs install --local
+          git lfs pull --include="generated/**,samples/**,fonts/**"
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: install (engine wasm resolves from the npm package)
+        run: pnpm install --frozen-lockfile
+
+      # The Playwright surface runs against the vite DEV server
+      # (playwright.config `webServer: npx vite`), so no production build
+      # is needed — but typecheck the canvas app so a wire/type break
+      # fails fast here rather than as an opaque runtime error mid-suite.
+      # (`pnpm -r build` is avoided: the `packages/*` have no build step
+      # — they're consumed as workspace TS source — and `apps/devtools`
+      # would pull in the unrelated introspect-wasm build.)
+      - name: typecheck canvas app
+        run: pnpm --filter ./apps/canvas run typecheck
+
+      - name: install chromium + system deps
+        run: pnpm --filter ./apps/canvas exec playwright install --with-deps chromium
+
+      - name: playwright (lean surface, shard ${{ matrix.shard }})
+        working-directory: apps/canvas
+        env:
+          CI: "1"
+          PAGED_CI_LEAN: "1"
+        run: |
+          npx playwright test \
+            --shard=${{ matrix.shard }}/${{ env.SHARDS }} \
+            --reporter=blob
+
+      - name: upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: apps/canvas/blob-report
+          retention-days: 7
+
+  publish:
+    name: merge reports + publish evidence
+    needs: playwright
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout editor
+        uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # Only the canvas app's @playwright/test is needed for merge-reports.
+      - name: install (apps/canvas only)
+        run: pnpm install --frozen-lockfile --filter ./apps/canvas
+
+      - name: download shard blobs
+        uses: actions/download-artifact@v4
+        with:
+          path: all-blobs
+          pattern: blob-report-*
+          merge-multiple: true
+
+      - name: merge shards → single Playwright JSON
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ github.workspace }}/playwright-results.json
+        run: |
+          pnpm --filter ./apps/canvas exec \
+            playwright merge-reports --reporter=json all-blobs \
+            > /dev/null
+          test -s "${{ github.workspace }}/playwright-results.json"
+
+      # Convert → contract-v1, apply ingest/test-map.yaml (no @feat: tags
+      # in the editor yet), gate feature ids against the registry snapshot,
+      # upload the normalized artifact, and dispatch results-published.
+      # The editor surface registers as suite `playwright-e2e`
+      # (ingest/suites.yaml; per-result stages from test-map override the
+      # editor.canvas default so panel rows land on editor.panel etc.).
+      - name: publish results to paged-media/state
+        uses: paged-media/state/actions/publish-results@main
+        with:
+          source: editor
+          suite: playwright-e2e
+          format: playwright-json
+          path: playwright-results.json
+          map: "true"
+          dispatch-token: ${{ secrets.STATE_DISPATCH_TOKEN }}
