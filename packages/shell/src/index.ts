@@ -200,6 +200,34 @@ export {
   createToolRegistry,
 } from "./registries";
 
+// ── W3.2 — edit-context + object-type registries (B-02 / W-03) ──
+export {
+  createEditContextRegistry,
+  createObjectTypeRegistry,
+  resolveDoubleClick,
+  type EditContextContribution,
+  type ObjectTypeContribution,
+  type EditContextCandidate,
+  type EnteredEditContext,
+  type EditContextRegistry,
+  type ObjectTypeRegistry,
+  type EditContextRegistryEvent,
+  type ObjectTypeRegistryEvent,
+  type DoubleClickResolution,
+} from "./registries/edit-context";
+export {
+  EditContextStackProvider,
+  useEditContextStack,
+  useOptionalEditContextStack,
+  type EditContextFrame,
+  type EditContextStackValue,
+} from "./state/edit-context-stack";
+export { EditContextBreadcrumb } from "./chrome/EditContextBreadcrumb";
+export {
+  useEditContextEntry,
+  type DoubleClickHit,
+} from "./state/use-edit-context-entry";
+
 // ── Built-in commands ──────────────────────────────────────────
 export {
   buildOpenIdmlCommand,

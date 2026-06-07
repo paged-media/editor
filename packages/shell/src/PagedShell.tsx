@@ -54,6 +54,7 @@ import { ThemeProvider, useTheme } from "./state/theme-context";
 import { useOptionalPaged } from "./state/paged-editor";
 import { Header } from "./chrome/Header";
 import { ContextToolbar } from "./chrome/ContextToolbar";
+import { EditContextBreadcrumb } from "./chrome/EditContextBreadcrumb";
 import { ModeSwitcher } from "./chrome/ModeSwitcher";
 import { PanelRail, type PanelRailItem } from "./chrome/PanelRail";
 import {
@@ -63,6 +64,8 @@ import {
 import type { ModeContribution } from "./registries/mode";
 import { ToolSettingsProvider } from "./state/tool-settings-context";
 import { FormattingAffectsProvider } from "./state/formatting-affects-context";
+import { EditContextStackProvider } from "./state/edit-context-stack";
+import { EditContextController } from "./state/edit-context-controller";
 import { PagedEditorProvider } from "./state/paged-editor";
 import { useRegistries } from "./state/registries-context";
 import { CommandPalette } from "./chrome/CommandPalette";
@@ -184,6 +187,13 @@ export function PagedShell({
                                       overlay. */}
                                   <TableSelectionProvider>
                                     <InstrumentationProvider>
+                                    {/* W3.2 — the edit-context stack
+                                        (B-02/W-03): the active scoped-
+                                        editing-mode stack + breadcrumb +
+                                        write-scope. Above PagedEditor so
+                                        chrome + canvas integration can
+                                        read it. */}
+                                    <EditContextStackProvider>
                                     <PagedEditorProvider>
                                       <ShellChrome
                                         panels={panels}
@@ -197,6 +207,7 @@ export function PagedShell({
                                         {children}
                                       </ShellChrome>
                                     </PagedEditorProvider>
+                                    </EditContextStackProvider>
                                     </InstrumentationProvider>
                                   </TableSelectionProvider>
                                 </ThreadingProvider>
@@ -755,6 +766,13 @@ function ShellChrome({
           ))}
         </ul>
       )}
+
+      {/* W3.2 — the edit-context breadcrumb (B-02/W-03). Renders only
+       *   while a context is active; the default surface is unchanged.
+       *   The controller (side-effect-only) wires Esc-pop, panel
+       *   emphasis, tool focus, and selection-driven auto-exit. */}
+      <EditContextController />
+      <EditContextBreadcrumb />
 
       {/* Body row: the left tool rail (shell chrome, OUTSIDE the
        *   dockview substrate) + the work area — either the fixed

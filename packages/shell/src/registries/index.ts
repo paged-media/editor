@@ -61,3 +61,19 @@ export {
   type ModeRegistryEvent,
   type ModeToolbarProps,
 } from "./mode";
+
+// W3.2 — edit-context + object-type registries (B-02 / W-03).
+export {
+  createEditContextRegistry,
+  createObjectTypeRegistry,
+  resolveDoubleClick,
+  type EditContextContribution,
+  type ObjectTypeContribution,
+  type EditContextCandidate,
+  type EnteredEditContext,
+  type EditContextRegistry,
+  type ObjectTypeRegistry,
+  type EditContextRegistryEvent,
+  type ObjectTypeRegistryEvent,
+  type DoubleClickResolution,
+} from "./edit-context";

@@ -20,8 +20,10 @@ import type * as Api from "@paged-media/plugin-api";
 import type {
   CanvasPointerEvent as RealCanvasPointerEvent,
   CommandContribution as RealCommandContribution,
+  EditContextContribution as RealEditContextContribution,
   GestureHandler as RealGestureHandler,
   KeybindingContribution as RealKeybindingContribution,
+  ObjectTypeContribution as RealObjectTypeContribution,
   OverlayContribution as RealOverlayContribution,
   PagedEditor as RealPagedEditor,
   PanelContribution as RealPanelContribution,
@@ -52,6 +54,16 @@ export type _KeybindingContributionRegistrable = Assert<
 >;
 export type _OverlayContributionRegistrable = Assert<
   Extends<Api.OverlayContribution, RealOverlayContribution>
+>;
+
+// W3.2 — the un-reserved doors: contract-authored edit-context /
+// object-type contributions must register against the shell's
+// registries (the matcher + hooks survive the boundary).
+export type _EditContextContributionRegistrable = Assert<
+  Extends<Api.EditContextContribution, RealEditContextContribution>
+>;
+export type _ObjectTypeContributionRegistrable = Assert<
+  Extends<Api.ObjectTypeContribution, RealObjectTypeContribution>
 >;
 
 // Gesture seam, both ways: the spine feeds real events/handles to

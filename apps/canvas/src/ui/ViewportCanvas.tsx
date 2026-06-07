@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   OverlayHost,
   useContentSelection,
+  useEditContextEntry,
   useOverlaySignals,
   type MarqueeRectPageLocal,
   type SelectionState,
@@ -196,6 +197,11 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
   // stays out of the panel wiring (single-click → caret still flows
   // through `onHit` → the panel).
   const { setContentSelection } = useContentSelection();
+
+  // W3.2 — the edit-context entry resolver (B-02/W-03). A double-click
+  // consults this BEFORE group descent: a polygon enters the
+  // vectorGraphic context, a webFrame enters its source context.
+  const { tryEnterEditContext } = useEditContextEntry();
 
   // Native `detail` on pointerup is unreliable across browsers for the
   // 3rd click, so we track the click run ourselves: same screen point
@@ -1026,8 +1032,18 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
           });
           if (reply.kind !== "hitResult") return;
           const chain = reply.payload.groupChain ?? [];
+          const element = reply.payload.element ?? null;
+          // W3.2 — consult the edit-context / object-type registries
+          // FIRST: a webFrame (object type) opens its source context, a
+          // polygon (edit context by kind) enters vectorGraphic. Only
+          // when nothing claims the double-click do we descend the group.
+          const claimed = await tryEnterEditContext({
+            element,
+            groupChain: chain,
+          });
+          if (claimed) return;
           if (chain.length > 0) {
-            props.onDoubleClickGroup?.(chain[0], reply.payload.element ?? null);
+            props.onDoubleClickGroup?.(chain[0], element);
           }
         } catch (err) {
           // Same fail-quiet approach as the click hitTest.
@@ -1035,7 +1051,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         }
       })();
     },
-    [props, rects],
+    [props, rects, tryEnterEditContext],
   );
 
   return (

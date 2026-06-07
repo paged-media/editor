@@ -9,17 +9,21 @@ import {
 
 import {
   createCommandRegistry,
+  createEditContextRegistry,
   createKeybindingRegistry,
   createMenuRegistry,
+  createObjectTypeRegistry,
   createOverlayRegistry,
   createModeRegistry,
   createPanelRegistry,
   createSemanticGroupRegistry,
   createToolRegistry,
   type CommandRegistry,
+  type EditContextRegistry,
   type KeybindingRegistry,
   type MenuRegistry,
   type ModeRegistry,
+  type ObjectTypeRegistry,
   type OverlayRegistry,
   type PanelRegistry,
   type SemanticGroupRegistry,
@@ -40,6 +44,12 @@ export interface ShellRegistries {
   menus: MenuRegistry;
   overlays: OverlayRegistry;
   tools: ToolRegistry;
+  /** W3.2 — edit contexts (B-02): the registration door for a plugin's
+   *  double-click-entered scoped editing modes. */
+  editContexts: EditContextRegistry;
+  /** W3.2 — object types (W-03): plugin-defined objects (a webFrame)
+   *  whose double-click routes to an edit context. */
+  objectTypes: ObjectTypeRegistry;
 }
 
 const Context = createContext<ShellRegistries | null>(null);
@@ -78,6 +88,8 @@ export function RegistriesProvider({
       menus: createMenuRegistry(),
       overlays: createOverlayRegistry(),
       tools,
+      editContexts: createEditContextRegistry(),
+      objectTypes: createObjectTypeRegistry(),
     };
   }
 

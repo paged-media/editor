@@ -112,6 +112,7 @@ import { TablePanel } from "./panels/table-panel";
 import { TabsPanel } from "./panels/concept/tabs-panel";
 import { GlyphsPanel } from "./panels/concept/glyphs-panel";
 import { BulletsPanel } from "./panels/concept/bullets-panel";
+import { AnchoredPanel } from "./panels/concept/anchored-panel";
 import { ObjectExportPanel } from "./panels/concept/object-export-panel";
 import { ExportTaggingPanel } from "./panels/concept/export-tagging-panel";
 import { MasterPagesPanel } from "./panels/master-pages-panel";
@@ -786,6 +787,17 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultDock: "right",
     defaultGroup: "text",
     icon: "ui-rows",
+  },
+  {
+    // W2.12 — LIVE: anchored-object position controls for a frame
+    // anchored into a text story (the W1.16 AnchoredObjectSetting
+    // surface). Non-anchored selection states it honestly.
+    id: "paged.anchored",
+    title: "Anchored Object",
+    component: AnchoredPanel,
+    defaultDock: "right",
+    defaultGroup: "object",
+    icon: "ui-pin",
   },
   {
     // Per-object alt text / tagged-PDF role / EPUB conversion —
