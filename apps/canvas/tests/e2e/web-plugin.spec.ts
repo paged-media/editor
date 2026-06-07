@@ -260,4 +260,45 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
     await problem.first().click();
     await expect(html).toBeVisible({ timeout: 5_000 });
   });
+
+  // W-06 — the asset-store door is WIRED in the editor (main.tsx injects
+  // createEditorAssetSource → `host.assets.getFontFace` + the capability
+  // gate + the budget are LIVE, and `supports("assets.fonts@1")` is
+  // true), but the editor's v1 provider serves NULL: document face bytes
+  // are not reachable on the main thread (DESIGN.md §13.4 — the engine
+  // has no font-bytes read-back yet). So the preview stays HONEST — the
+  // substitution badge shows in its `substituting` state and NEVER flips
+  // to "document fonts shown". This is the honest null-path spec the
+  // task calls for (the real-bytes path is unreachable today).
+  test("AC-WEB-6 — asset door is wired but serves null: the font badge stays HONEST (never flips to 'shown')", async ({
+    page,
+  }) => {
+    await invokeCommand(page, INSERT_COMMAND);
+    const css = page.locator("[data-web-css] [data-code-input]");
+    await expect(css).toBeVisible({ timeout: 5_000 });
+
+    // Use a family name in the CSS so the substitution badge appears.
+    // (The door + gate are LIVE — main.tsx injects the asset source, so
+    // the bundle's `supports("assets.fonts@1")` is true and the gate
+    // passes — but the v1 provider serves null, which the badge proves
+    // below: it never flips to "shown".)
+    await css.fill('p { font-family: "Helvetica Neue", sans-serif; }');
+
+    const badge = page.locator("[data-web-font-badge]");
+    await expect(badge).toBeVisible({ timeout: 5_000 });
+    // HONEST: substituting, NEVER the W-06 "shown" flip (no bytes served).
+    await expect(badge).toHaveAttribute("data-badge-state", "substituting", {
+      timeout: 5_000,
+    });
+    await expect(badge).toContainText("substituted in preview");
+
+    // And the sandboxed preview carries NO injected `@font-face`
+    // (no object-URL face was composed — the null-path proof). The
+    // iframe keeps sandbox="" regardless.
+    const previewHandle = page.locator("[data-web-preview]");
+    await expect(previewHandle).toHaveAttribute("sandbox", "");
+    const srcdoc = await previewHandle.getAttribute("srcdoc");
+    expect(srcdoc ?? "").not.toContain("@font-face");
+    expect(srcdoc ?? "").not.toContain("blob:");
+  });
 });

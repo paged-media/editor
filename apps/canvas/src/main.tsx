@@ -44,6 +44,7 @@ import { loadBundle } from "@paged-media/plugin-sdk";
 import type { SchemaPanelRenderer as SchemaPanelRendererType } from "@paged-media/plugin-api";
 import { drawBundle } from "@paged-media/draw-bundle";
 import { webBundle } from "@paged-media/web-bundle";
+import { createEditorAssetSource } from "./plugin-asset-source";
 
 // W3.1 — the schema-panel renderer the host injects. The shell renderer
 // walks a `PanelSchema` through the catalog's `CompositionRenderer`,
@@ -852,9 +853,18 @@ function PluginBundles() {
     // published bindings — closes plugin-draw B-01; the renderer
     // satisfies plugin-api's `SchemaPanelRenderer` — asserted below).
     const widgets = { CodeEditor };
+    // W-06: the host injects the ASSET SOURCE that backs
+    // `host.assets.getFontFace`. v1 is the honest null-path door
+    // (document face bytes are not reachable on the main thread — see
+    // plugin-asset-source.ts for the verdict + the core/client read that
+    // would expose them). Wiring it makes the door + gate + budget LIVE
+    // and `supports("assets.fonts@1")` true; paged.web degrades honestly
+    // (the substitution badge) until real bytes are served.
+    const assetSource = createEditorAssetSource();
     const hostOptions = {
       shell,
       widgets,
+      assetSource,
       diagnosticsSink: problemsSink,
       schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
     };
