@@ -1,24 +1,25 @@
 // Wire-format types for the main↔worker message channel.
 //
 // Every type in this file is a re-export of a tsify-generated type
-// from Rust. To add a new type, derive `Tsify` in
-// `crates/paged-canvas/src/channel.rs` (or the appropriate crate),
-// rebuild via `bash apps/canvas/build-wasm.sh`, then re-export here.
-// Do not hand-write types in this file. The generated
-// `packages/client/src/wasm/paged_canvas_wasm.d.ts` (emitted by
-// tsify-next + wasm-bindgen) is the source of truth; this barrel
-// exists so consumers don't have to learn the wasm import path.
+// from Rust, surfaced through the published `@paged-media/canvas-wasm`
+// package (Decision-B package boundary). To add a new type, derive
+// `Tsify` in `crates/paged-canvas/src/channel.rs` (or the appropriate
+// crate) in `paged-media/core`, cut a new `@paged-media/canvas-wasm`
+// release, bump the dependency pin in `packages/client/package.json`,
+// then re-export the new symbol here. Do not hand-write types in this
+// file — the package's `paged_canvas_wasm.d.ts` is the source of truth;
+// this barrel exists so consumers don't have to learn the wasm import
+// path.
 //
-// CI enforces this contract: `.github/workflows/protocol-version.yml`
-// rebuilds the wasm, then `git diff --exit-code packages/client/src/wasm/`
-// fails the run if the committed `.d.ts` is out of date relative to
-// the current Rust source.
+// CI enforces the version contract: `scripts/check-protocol-version.sh`
+// compares `PROTOCOL_VERSION` below against the `ProtocolVersion` tuple
+// baked into the installed package's `.d.ts` and fails on drift (see
+// `.github/workflows/protocol-version.yml`).
 //
 // `PROTOCOL_VERSION` stays a TS constant because the canvas
 // outgoing messages need a value (not a type) at runtime; the
 // matching Rust constant is in `paged-canvas/src/channel.rs` and
-// must update in lockstep — `scripts/check-protocol-version.sh`
-// catches drift on PRs that change the `.d.ts` structurally.
+// the published package must update in lockstep.
 
 export const PROTOCOL_VERSION = 34 as const;
 
@@ -127,4 +128,4 @@ export type {
   WorkerError,
   WorkerToMain,
   WorkerToMainKind,
-} from "./wasm/paged_canvas_wasm";
+} from "@paged-media/canvas-wasm";

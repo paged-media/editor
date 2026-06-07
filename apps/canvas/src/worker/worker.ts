@@ -36,6 +36,17 @@ import {
   GESTURE_SAB_OFFSETS,
 } from "@paged-media/client";
 import { WorkerRenderer, type RendererWasm } from "./render";
+// Decision-B package boundary: the engine wasm now ships in the
+// published `@paged-media/canvas-wasm` package. The wasm-bindgen
+// `--target web` loader's `default()` would, with no argument, fetch
+// `new URL('paged_canvas_wasm_bg.wasm', import.meta.url)` relative to
+// the loader JS *inside node_modules* — which Vite does not rewrite to
+// a served/hashed asset URL for worker chunks. So we hand Vite the
+// asset explicitly with a `?url` import: in dev it resolves to a
+// `/@fs/.../node_modules/...` URL, and in `vite build` it is emitted as
+// a fingerprinted asset and the URL is inlined. We pass that URL to
+// `default(wasmUrl)` below.
+import canvasWasmUrl from "@paged-media/canvas-wasm/paged_canvas_wasm_bg.wasm?url";
 
 interface CanvasWorkerInstance {
   protocolVersion: number;
@@ -172,15 +183,18 @@ function assertSabContract(mod: CanvasWasmModule): string | null {
 }
 
 async function init() {
-  // SDK Phase 1 — the wasm-bindgen output lives in `@paged-media/client`
-  // (see `apps/canvas/build-wasm.sh` OUT_DIR). Deep relative path
-  // here so the dynamic import resolves through Vite's module graph
-  // without going through any package barrel — the wasm loader
-  // pulls itself in lazily and we don't want anything pre-evaluated.
+  // Decision-B package boundary — the wasm-bindgen loader is the
+  // published `@paged-media/canvas-wasm` package (no longer the
+  // vendored `packages/client/src/wasm` dir). Dynamic-import the loader
+  // so nothing is pre-evaluated, then drive `default()` with the
+  // explicit `?url`-resolved wasm asset (see the top-of-file import) so
+  // the fetch works in both `vite dev` and `vite build` worker chunks.
   const mod = (await import(
-    "../../../../packages/client/src/wasm/paged_canvas_wasm.js"
+    "@paged-media/canvas-wasm"
   )) as unknown as CanvasWasmModule;
-  await mod.default();
+  // Object form (`{ module_or_path }`) — the bare-URL positional form is
+  // deprecated by current wasm-bindgen loaders and logs a warning.
+  await mod.default({ module_or_path: canvasWasmUrl });
   worker = new mod.CanvasWorker();
   if (worker.protocolVersion !== PROTOCOL_VERSION) {
     postBack({

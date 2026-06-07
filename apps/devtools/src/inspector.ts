@@ -6,14 +6,25 @@
 //   crates/paged-introspect/src/{tree,descriptor}.rs
 //   crates/paged-introspect-wasm/src/lib.rs
 
-let modulePromise: Promise<typeof import("./wasm/paged_introspect_wasm")> | null = null;
+// Decision-B package boundary: the introspect wasm now ships in the
+// published `@paged-media/introspect-wasm` package. As in the canvas
+// worker, hand Vite the wasm asset explicitly via `?url` so `default()`
+// fetches a served/fingerprinted URL rather than one relative to the
+// loader JS inside node_modules (which Vite does not rewrite).
+import introspectWasmUrl from "@paged-media/introspect-wasm/paged_introspect_wasm_bg.wasm?url";
+
+let modulePromise: Promise<typeof import("@paged-media/introspect-wasm")> | null = null;
 
 async function loadModule() {
   if (!modulePromise) {
     modulePromise = (async () => {
-      const mod = await import("./wasm/paged_introspect_wasm");
-      const init = mod.default as (url?: string | URL) => Promise<unknown>;
-      await init();
+      const mod = await import("@paged-media/introspect-wasm");
+      // Object form (`{ module_or_path }`) — the bare-URL positional
+      // form is deprecated by current wasm-bindgen loaders.
+      const init = mod.default as (
+        opts?: { module_or_path?: string | URL },
+      ) => Promise<unknown>;
+      await init({ module_or_path: introspectWasmUrl });
       return mod;
     })();
   }
@@ -92,7 +103,7 @@ export interface MutationResult {
 }
 
 export class InspectorClient {
-  private constructor(private inner: import("./wasm/paged_introspect_wasm").Inspector) {}
+  private constructor(private inner: import("@paged-media/introspect-wasm").Inspector) {}
 
   static async open(bytes: Uint8Array): Promise<InspectorClient> {
     const mod = await loadModule();

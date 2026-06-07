@@ -244,7 +244,10 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ["paged_canvas_wasm"],
+    // Decision-B: the wasm loader ships in @paged-media/canvas-wasm.
+    // Keep it out of the dep pre-bundle so the worker's dynamic import
+    // + `?url` wasm asset resolve through Vite's module graph intact.
+    exclude: ["@paged-media/canvas-wasm"],
   },
   worker: {
     format: "es",

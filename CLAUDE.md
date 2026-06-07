@@ -53,27 +53,31 @@ protocol / primitive symbols directly from `@paged-media/client` (its
 barrel is React-free by lint), or deep-import the specific module —
 **never** route worker imports through `@paged-media/shell`.
 
-### wasm / SDK boundary + build prerequisite
+### wasm / SDK boundary (Decision B — LIVE since v0.33.0)
 
-`packages/client` owns the wasm. Only the tsify
-`paged_canvas_wasm.d.ts` is tracked (vendored so PR diffs show
-protocol changes); the `.wasm` binary + `.js` loader are gitignored
-build output.
+The engine arrives as **published npm packages**: `packages/client`
+depends on `@paged-media/canvas-wasm`, `apps/devtools` on
+`@paged-media/introspect-wasm` (apps/canvas also direct-depends on
+canvas-wasm — the worker DEEP-IMPORTS it). `pnpm install` suffices;
+there is no build-from-core step and no vendored `.d.ts` (types come
+from the package).
 
-- A fresh clone **cannot build/run** until the wasm exists in
-  `packages/client/src/wasm/`.
-- **Today:** build it from a `paged-media/core` checkout —
-  `pnpm --filter paged-canvas wasm` (runs `apps/canvas/build-wasm.sh`,
-  needs `rustup` wasm32 target + `wasm-bindgen-cli` matching core's
-  `Cargo.lock`).
-- **End state (decision B):** once core publishes
-  `@paged-media/canvas-wasm` (+ `@paged-media/introspect-wasm`) to npm
-  and `packages/client` is repointed at it, `pnpm install` suffices.
-  **Not yet wired** — until then, local dev needs the core-checkout
-  build.
-- `PROTOCOL_VERSION` + the SAB layout are reconciled Rust↔TS at worker
-  startup; drift fires a `protocolMismatch` warning. Don't paper over
-  it — regenerate the `.d.ts` and bump the version in the same change.
+- **Version convention**: package `0.<protocol>.<patch>` — the minor
+  IS the wire protocol. `scripts/check-protocol-version.sh` (CI:
+  protocol-version.yml) asserts `protocol.ts PROTOCOL_VERSION ==`
+  installed package minor; the worker handshake still catches runtime
+  drift (`protocolMismatch`).
+- **Engine bumps**: core tags `v0.<protocol>.<patch>` → its
+  publish-wasm workflow ships the packages → bump the three pins +
+  `PROTOCOL_VERSION` here in one change.
+- **Local dev against UNPUBLISHED core changes**: build the package
+  dirs locally (`~/paged/sync-wasm.sh` — rewritten as the local
+  override tool) and point the deps at them via `file:` overrides;
+  never commit the override.
+- The wasm asset loads in vite via explicit `?url` imports passed to
+  the loader's `default({ module_or_path })` — don't revert to the
+  bare loader default (it resolves relative to node_modules and
+  breaks worker chunks).
 
 ### `paged.*` scripting global
 

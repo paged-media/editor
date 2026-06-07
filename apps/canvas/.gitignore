@@ -1,10 +1,9 @@
 node_modules/
 dist/
-# The wasm-bindgen output (.js loader + .wasm binary + bg.wasm.d.ts)
-# lives in this directory during `bash build-wasm.sh` and is consumed
-# by the worker; nothing in here is tracked. The tsify-generated
-# protocol `.d.ts` moved to `packages/client/src/wasm/` so the
-# `@paged-media/client` package is self-contained.
+# Decision-B: the engine wasm is consumed from the published
+# `@paged-media/canvas-wasm` package, not built into `src/wasm/`.
+# Kept as a defensive ignore in case a stray `build-wasm.sh` run
+# (legacy bridge) drops output here on a dev machine.
 src/wasm/
 *.local
 tsconfig.tsbuildinfo
