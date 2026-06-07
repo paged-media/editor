@@ -1414,6 +1414,94 @@ const TABLE_PROBES: Probe[] = [
     },
     setupUndo: 1,
   },
+  // ── v35 table ops (header/footer rows + cell span) ──────────────
+  // Header/footer ops take only story+table id; span addresses the
+  // cell. All reversible by the engine (one undo on success).
+  {
+    op: "insertHeaderRow",
+    build: async () =>
+      TABLE_CELL
+        ? {
+            op: "insertHeaderRow",
+            args: {
+              storyId: TABLE_CELL.storyId,
+              tableId: TABLE_CELL.tableId,
+            },
+          }
+        : null,
+  },
+  {
+    op: "removeHeaderRow",
+    build: async ({ page }) => {
+      if (!TABLE_CELL) return null;
+      // Add a header row first so the removal is always legal +
+      // reversible (no header to remove on a fresh body table).
+      const made = await tryMutate(page, {
+        op: "insertHeaderRow",
+        args: { storyId: TABLE_CELL.storyId, tableId: TABLE_CELL.tableId },
+      });
+      return made.ok
+        ? {
+            op: "removeHeaderRow",
+            args: {
+              storyId: TABLE_CELL.storyId,
+              tableId: TABLE_CELL.tableId,
+            },
+          }
+        : null;
+    },
+    setupUndo: 1,
+  },
+  {
+    op: "insertFooterRow",
+    build: async () =>
+      TABLE_CELL
+        ? {
+            op: "insertFooterRow",
+            args: {
+              storyId: TABLE_CELL.storyId,
+              tableId: TABLE_CELL.tableId,
+            },
+          }
+        : null,
+  },
+  {
+    op: "removeFooterRow",
+    build: async ({ page }) => {
+      if (!TABLE_CELL) return null;
+      const made = await tryMutate(page, {
+        op: "insertFooterRow",
+        args: { storyId: TABLE_CELL.storyId, tableId: TABLE_CELL.tableId },
+      });
+      return made.ok
+        ? {
+            op: "removeFooterRow",
+            args: {
+              storyId: TABLE_CELL.storyId,
+              tableId: TABLE_CELL.tableId,
+            },
+          }
+        : null;
+    },
+    setupUndo: 1,
+  },
+  {
+    op: "setCellSpan",
+    build: async () =>
+      TABLE_CELL
+        ? {
+            op: "setCellSpan",
+            args: {
+              storyId: TABLE_CELL.storyId,
+              tableId: TABLE_CELL.tableId,
+              row: TABLE_CELL.row,
+              col: TABLE_CELL.col,
+              rowSpan: 2,
+              columnSpan: 2,
+            },
+          }
+        : null,
+  },
 ];
 
 async function runProbes(

@@ -1,9 +1,9 @@
-// W3.A2 — the LIVE Table panel.
+// W3.A2 / W2.11 — the LIVE Table panel (v35 surface).
 //
-// Brings the panel-gallery Table concept live against the v30 table
-// surface (6 table ops + the cell PropertyPaths). Drives the SELECTED
-// table cell (the `TableSelectionContext`, set by the canvas hit
-// handler off `HitResult.tableContext`):
+// Brings the panel-gallery Table concept live against the table surface
+// (table ops + the cell PropertyPaths). Drives the SELECTED table cell
+// (the `TableSelectionContext`, set by the canvas hit handler off
+// `HitResult.tableContext`):
 //
 //   - cell fill colour      → setElementProperty(cellFillColor)
 //   - cell insets ×4        → setElementProperty(cellInset{Top,Left,
@@ -17,15 +17,45 @@
 //   - insert / delete row   → insertTableRow / deleteTableRow at row
 //   - insert / delete column→ insertTableColumn / deleteTableColumn at col
 //
-// All cell + applied-style values READ BACK via
-// elementProperties(cell|table) and re-fetch on every Operation push,
-// so the inputs reflect engine truth. Aftercare-C: elementProperties on
-// the Table ElementId now carries tableRowCount / tableColumnCount
-// (integer-as-Length convention), so the panel shows the table's real
-// row/column TOTALS alongside the selected cell's (row, col) address. A
-// cell's row HEIGHT / column WIDTH are still write-forward (no read
-// entry). CELL TEXT editing is not possible in engine v1 (note in the
-// panel).
+// W2.11 (tables v2) adds, all against the freshly published protocol-v35
+// surface:
+//   - cell SPANS            → setCellSpan {rowSpan, columnSpan} (merge);
+//                             span 1×1 splits back to single cells.
+//                             Span has NO read-back path on the cell
+//                             properties surface (probed empirically), so
+//                             the inputs are write-forward — they seed
+//                             from 1×1 on each fresh cell selection and
+//                             reflect the last applied span. Undo restores
+//                             the prior geometry over the wire.
+//   - header / footer rows  → insertHeaderRow / removeHeaderRow /
+//                             insertFooterRow / removeFooterRow. Header /
+//                             footer rows count toward `tableRowCount`
+//                             (probed: insertHeaderRow bumps it), and the
+//                             engine exposes NO separate header/footer
+//                             count read, so the panel shows the live
+//                             `tableRowCount` total and tracks the panel-
+//                             applied header/footer deltas as an honest
+//                             write-forward count (a true count read is
+//                             the documented seam).
+//   - per-cell edge strokes → cell{Top,Bottom,Left,Right}EdgeStroke{Color,
+//                             Weight,Tint} PropertyPaths, with full read-
+//                             back (these paths DO read on the cell
+//                             properties surface — probed).
+//
+// All cell + applied-style + edge-stroke values READ BACK via
+// elementProperties(cell|table) and re-fetch on every Operation push, so
+// the inputs reflect engine truth. The Table ElementId carries
+// tableRowCount / tableColumnCount (integer-as-Length convention), so the
+// panel shows the table's real row/column TOTALS alongside the selected
+// cell's (row, col) address. A cell's row HEIGHT / column WIDTH are still
+// write-forward (no read entry).
+//
+// CELL TEXT editing is live (v35 cell qualifier): with the Type tool, a
+// click into a cell enters in-cell editing — the caret renders in the
+// cell and typing inserts into the cell's stream — routed through the
+// SAME caret/typing path body text uses (canvas-panel onHit →
+// ContentSelection.cell → useTextEditing). This panel edits cell
+// STRUCTURE; the in-canvas caret edits cell TEXT.
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -61,6 +91,16 @@ const VJUSTIFY: Array<{ value: string; label: string }> = [
   { value: "JustifyAlign", label: "Justify" },
 ];
 
+/** One cell edge's stroke read-back. `color` is a swatch ref (or null
+ *  ⇒ inherit/none); `weight`/`tint` are lengths (null ⇒ unset). */
+interface EdgeStroke {
+  color: string | null;
+  weight: number | null;
+  tint: number | null;
+}
+
+const EMPTY_EDGE: EdgeStroke = { color: null, weight: null, tint: null };
+
 interface CellReadback {
   fillColor: string | null;
   insetTop: number;
@@ -69,6 +109,11 @@ interface CellReadback {
   insetRight: number;
   verticalJustification: string;
   appliedCellStyle: string;
+  /** Per-edge stroke read-back (v35 cell edge-stroke paths). */
+  edgeTop: EdgeStroke;
+  edgeBottom: EdgeStroke;
+  edgeLeft: EdgeStroke;
+  edgeRight: EdgeStroke;
 }
 
 interface TableReadback {
@@ -126,6 +171,21 @@ function useTableReadback(
             const v = entryValue(ce, p);
             return v && v.type === "length" ? (v.value ?? 0) : 0;
           };
+          // Nullable length (edge weight / tint — null ⇒ unset, distinct
+          // from 0). Nullable colour ref (edge colour — null ⇒ inherit).
+          const lenOrNull = (p: string): number | null => {
+            const v = entryValue(ce, p);
+            return v && v.type === "length" ? (v.value ?? null) : null;
+          };
+          const colorOrNull = (p: string): string | null => {
+            const v = entryValue(ce, p);
+            return v && v.type === "colorRef" ? v.value : null;
+          };
+          const edge = (side: string): EdgeStroke => ({
+            color: colorOrNull(`cell${side}EdgeStrokeColor`),
+            weight: lenOrNull(`cell${side}EdgeStrokeWeight`),
+            tint: lenOrNull(`cell${side}EdgeStrokeTint`),
+          });
           // tableRowCount / tableColumnCount ride the integer-as-Length
           // convention on the Table NodeId; absent ⇒ null (honest gap).
           const intLen = (p: string): number | null => {
@@ -147,6 +207,10 @@ function useTableReadback(
               verticalJustification:
                 vj && vj.type === "text" ? vj.value : "",
               appliedCellStyle: acs && acs.type === "text" ? acs.value : "",
+              edgeTop: edge("Top"),
+              edgeBottom: edge("Bottom"),
+              edgeLeft: edge("Left"),
+              edgeRight: edge("Right"),
             },
             table: {
               appliedTableStyle: ats && ats.type === "text" ? ats.value : "",
@@ -271,6 +335,101 @@ export function TablePanel() {
     [client, cell],
   );
 
+  // ── Spans (v35 setCellSpan). No read-back path on the cell surface
+  //    (probed), so the inputs are write-forward: seed 1×1 on each fresh
+  //    cell selection, reflect the last applied span. Undo restores the
+  //    prior geometry over the wire. ─────────────────────────────────
+  const [rowSpan, setRowSpan] = useState(1);
+  const [columnSpan, setColumnSpan] = useState(1);
+  // Reset the span draft when the selected cell changes (a fresh cell is
+  // 1×1 from the panel's perspective until the user merges it).
+  useEffect(() => {
+    setRowSpan(1);
+    setColumnSpan(1);
+  }, [cell?.storyId, cell?.tableId, cell?.row, cell?.col]);
+
+  const applySpan = useCallback(
+    (nextRowSpan: number, nextColumnSpan: number) => {
+      if (!cell) return;
+      const rs = Math.max(1, Math.round(nextRowSpan));
+      const cs = Math.max(1, Math.round(nextColumnSpan));
+      setRowSpan(rs);
+      setColumnSpan(cs);
+      void client.mutate({
+        op: "setCellSpan",
+        args: {
+          storyId: cell.storyId,
+          tableId: cell.tableId,
+          row: cell.row,
+          col: cell.col,
+          rowSpan: rs,
+          columnSpan: cs,
+        },
+      });
+    },
+    [client, cell],
+  );
+
+  // ── Header / footer rows (v35). Header/footer rows count toward
+  //    tableRowCount (probed); no separate count read exists, so we track
+  //    the panel-applied delta as an honest write-forward count. Reset on
+  //    cell/table change. ────────────────────────────────────────────
+  const [headerApplied, setHeaderApplied] = useState(0);
+  const [footerApplied, setFooterApplied] = useState(0);
+  useEffect(() => {
+    setHeaderApplied(0);
+    setFooterApplied(0);
+  }, [cell?.tableId]);
+
+  const headerFooterOp = useCallback(
+    (
+      op:
+        | "insertHeaderRow"
+        | "removeHeaderRow"
+        | "insertFooterRow"
+        | "removeFooterRow",
+    ) => {
+      if (!cell) return;
+      void client.mutate({
+        op,
+        args: { storyId: cell.storyId, tableId: cell.tableId },
+      } as never);
+      if (op === "insertHeaderRow") setHeaderApplied((n) => n + 1);
+      else if (op === "removeHeaderRow")
+        setHeaderApplied((n) => Math.max(0, n - 1));
+      else if (op === "insertFooterRow") setFooterApplied((n) => n + 1);
+      else setFooterApplied((n) => Math.max(0, n - 1));
+    },
+    [client, cell],
+  );
+
+  // ── Per-cell edge strokes (v35 cell edge-stroke paths). One commit
+  //    per channel; read-back drives the inputs. ────────────────────
+  const setEdgeColor = useCallback(
+    (side: string, swatchId: string) => {
+      setCellProp(`cell${side}EdgeStrokeColor`, {
+        type: "colorRef",
+        value: swatchId === "" ? null : swatchId,
+      });
+    },
+    [setCellProp],
+  );
+  const setEdgeWeight = useCallback(
+    (side: string, weight: number) => {
+      setCellProp(`cell${side}EdgeStrokeWeight`, {
+        type: "length",
+        value: weight,
+      });
+    },
+    [setCellProp],
+  );
+  const setEdgeTint = useCallback(
+    (side: string, tint: number) => {
+      setCellProp(`cell${side}EdgeStrokeTint`, { type: "length", value: tint });
+    },
+    [setCellProp],
+  );
+
   if (!cell) {
     return (
       <div className="p-3" data-table-panel="empty">
@@ -359,6 +518,93 @@ export function TablePanel() {
           >
             − Col
           </CockpitBtn>
+        </div>
+      </CockpitSection>
+
+      <CockpitSection title="Header & footer">
+        <CockpitRow label="Header rows">
+          <div className="flex items-center gap-[5px]">
+            <CockpitBtn
+              sm
+              testId="insert-header-row"
+              onClick={() => headerFooterOp("insertHeaderRow")}
+            >
+              + Header
+            </CockpitBtn>
+            <CockpitBtn
+              sm
+              testId="remove-header-row"
+              onClick={() => headerFooterOp("removeHeaderRow")}
+            >
+              − Header
+            </CockpitBtn>
+            <span className="pg-mono-meta" data-header-count>
+              {headerApplied}
+            </span>
+          </div>
+        </CockpitRow>
+        <CockpitRow label="Footer rows">
+          <div className="flex items-center gap-[5px]">
+            <CockpitBtn
+              sm
+              testId="insert-footer-row"
+              onClick={() => headerFooterOp("insertFooterRow")}
+            >
+              + Footer
+            </CockpitBtn>
+            <CockpitBtn
+              sm
+              testId="remove-footer-row"
+              onClick={() => headerFooterOp("removeFooterRow")}
+            >
+              − Footer
+            </CockpitBtn>
+            <span className="pg-mono-meta" data-footer-count>
+              {footerApplied}
+            </span>
+          </div>
+        </CockpitRow>
+        {/* Header / footer rows count toward the table's total row count;
+            the engine exposes no separate header/footer read, so the
+            count beside each control is the panel-applied delta. */}
+        <CockpitRow label="Total rows">
+          <span className="pg-mono-meta" data-table-total-rows>
+            {tableRead?.rowCount != null ? tableRead.rowCount : "—"}
+          </span>
+        </CockpitRow>
+      </CockpitSection>
+
+      <CockpitSection title="Merge & split">
+        <CockpitRow label="Row span">
+          <NumberCommit
+            testId="row-span"
+            value={rowSpan}
+            onCommit={(v) => applySpan(v, columnSpan)}
+          />
+        </CockpitRow>
+        <CockpitRow label="Column span">
+          <NumberCommit
+            testId="column-span"
+            value={columnSpan}
+            onCommit={(v) => applySpan(rowSpan, v)}
+          />
+        </CockpitRow>
+        <div className="flex gap-[5px] px-3 pb-1 pt-1">
+          <CockpitBtn
+            sm
+            testId="merge-cells"
+            onClick={() => applySpan(Math.max(2, rowSpan), Math.max(2, columnSpan))}
+          >
+            Merge 2×2
+          </CockpitBtn>
+          <CockpitBtn sm testId="split-cells" onClick={() => applySpan(1, 1)}>
+            Split
+          </CockpitBtn>
+        </div>
+        <div className="px-3">
+          <span className="pg-mono-meta" data-cell-span>
+            {rowSpan} × {columnSpan}
+          </span>
         </div>
       </CockpitSection>
 
@@ -454,6 +700,58 @@ export function TablePanel() {
         </CockpitRow>
       </CockpitSection>
 
+      <CockpitSection title="Cell strokes">
+        {/* v35 per-cell edge strokes — colour / weight / tint per edge,
+            all read back from the cell properties surface. */}
+        {(
+          [
+            ["Top", cellRead?.edgeTop ?? EMPTY_EDGE],
+            ["Bottom", cellRead?.edgeBottom ?? EMPTY_EDGE],
+            ["Left", cellRead?.edgeLeft ?? EMPTY_EDGE],
+            ["Right", cellRead?.edgeRight ?? EMPTY_EDGE],
+          ] as Array<[string, EdgeStroke]>
+        ).map(([side, edge]) => (
+          <CockpitRow key={side} label={side}>
+            <div className="grid grid-cols-[1fr_56px_56px] gap-1">
+              <span className="relative inline-flex w-full">
+                <select
+                  data-edge-color-select={side.toLowerCase()}
+                  value={edge.color ?? ""}
+                  onChange={(e) => setEdgeColor(side, e.target.value)}
+                  className="h-[28px] w-full appearance-none rounded-[6px] border border-input bg-background pl-2.5 pr-7 text-[12px]"
+                  style={{ color: "var(--pg-fg)" }}
+                >
+                  <option value="">[None]</option>
+                  {(swatches ?? []).map((s) => (
+                    <option key={s.selfId} value={s.selfId}>
+                      {displayName(s.name)}
+                    </option>
+                  ))}
+                </select>
+                <Icon
+                  name="ui-chevron-down"
+                  size={13}
+                  className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2"
+                  style={{ color: "var(--pg-muted-fg)" }}
+                />
+              </span>
+              <NumberCommit
+                testId={`edge-weight-${side.toLowerCase()}`}
+                placeholder="Wt"
+                value={edge.weight ?? undefined}
+                onCommit={(v) => setEdgeWeight(side, v)}
+              />
+              <NumberCommit
+                testId={`edge-tint-${side.toLowerCase()}`}
+                placeholder="Tint"
+                value={edge.tint ?? undefined}
+                onCommit={(v) => setEdgeTint(side, v)}
+              />
+            </div>
+          </CockpitRow>
+        ))}
+      </CockpitSection>
+
       <CockpitSection title="Applied styles">
         <CockpitRow label="Cell style">
           <StyleSelect
@@ -482,8 +780,9 @@ export function TablePanel() {
         data-table-text-note
         style={{ padding: "4px 14px 14px", lineHeight: 1.45, color: "var(--pg-muted-fg)" }}
       >
-        Cell text editing isn’t available yet (engine v1) — edit cell
-        structure, fills, insets, and styles here.
+        Cell text: pick the Type tool and click into a cell to edit its
+        text in place. This panel edits cell structure, fills, strokes,
+        insets, spans, and styles.
       </div>
     </div>
   );

@@ -18,8 +18,11 @@
 // /deleteTableRow/insertTableColumn/deleteTableColumn, probed against
 // the tables fixture's first cell — plus the 3 kernel path ops
 // outlineStroke/offsetPath/simplifyPath), then 2026-06-07 against
-// protocol v34 (createGroup/dissolveGroup, setPluginMetadata). Update
-// via the same run when core lands new ops.
+// protocol v34 (createGroup/dissolveGroup, setPluginMetadata), then
+// again 2026-06-07 against protocol v35 (W2.11 tables v2: the
+// header/footer row ops insertHeaderRow/removeHeaderRow/insertFooterRow
+// /removeFooterRow + setCellSpan, probed against the tables fixture's
+// first cell). Update via the same run when core lands new ops.
 
 export type CapabilityStatus = "supported" | "unsupported";
 
@@ -36,7 +39,7 @@ export const CAPABILITIES: Capability[] = [
   { op: "applyStyle", status: "supported" },
   { op: "insertField", status: "supported" },
   // ── frame / page structure ────────────────────────────────────────
-  { op: "moveFrame", status: "unsupported", note: "notImplemented stub — use translate gesture" },
+  { op: "moveFrame", status: "supported", note: "live as of the v35 wasm bump (was a notImplemented stub); frame moves also ride the translate gesture, proven in proving.spec AC-E2E-PROVE-2" },
   { op: "resizeFrame", status: "supported" },
   { op: "linkFrames", status: "supported" },
   { op: "unlinkFrames", status: "supported" },
@@ -92,6 +95,12 @@ export const CAPABILITIES: Capability[] = [
   { op: "deleteTableRow", status: "supported" },
   { op: "insertTableColumn", status: "supported" },
   { op: "deleteTableColumn", status: "supported" },
+  // ── table ops (v35: header/footer rows + cell span) ───────────────
+  { op: "insertHeaderRow", status: "supported" },
+  { op: "removeHeaderRow", status: "supported" },
+  { op: "insertFooterRow", status: "supported" },
+  { op: "removeFooterRow", status: "supported" },
+  { op: "setCellSpan", status: "supported" },
   // ── layers ────────────────────────────────────────────────────────
   { op: "layerSetVisible", status: "supported" },
   { op: "layerSetLocked", status: "supported" },

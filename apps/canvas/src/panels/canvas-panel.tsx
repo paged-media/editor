@@ -24,7 +24,11 @@ import {
   type TableCellSelection,
 } from "@paged-media/shell";
 
-import type { ElementId, SelectionMode } from "@paged-media/client";
+import type {
+  ElementId,
+  SelectionMode,
+  TextCellAddr,
+} from "@paged-media/client";
 import { ViewportCanvas } from "../ui/ViewportCanvas";
 import { useGestureSpine } from "../ui/useGestureSpine";
 
@@ -252,11 +256,25 @@ export function CanvasPanel(_props: PanelProps) {
         s.hit.offsetWithinStory !== null &&
         s.hit.offsetWithinStory !== undefined
       ) {
+        // W2.11 (tables v2) — a Type-tool click that lands inside a
+        // table cell carries the hit's `tableContext`; the engine
+        // already reports `offsetWithinStory` CELL-LOCAL for an in-cell
+        // hit (proven by the cell-text probe), so we ride the v35 `cell`
+        // qualifier on the selection. The round-tripping setter posts it
+        // to the worker (caret + selection geometry resolve IN the cell)
+        // and `useTextEditing` forwards it onto every insert/delete, so
+        // typing edits the cell's stream. A non-table hit leaves `cell`
+        // undefined — body addressing, byte-identical to before.
+        const tc = s.hit.tableContext ?? null;
+        const cell: TextCellAddr | undefined = tc
+          ? { tableId: tc.tableId, row: tc.row, col: tc.col }
+          : undefined;
         setContentSelection({
           storyId: s.hit.storyId,
           start: s.hit.offsetWithinStory,
           end: s.hit.offsetWithinStory,
           affinity: false,
+          cell,
         });
       } else {
         setContentSelection(null);

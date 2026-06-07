@@ -23,6 +23,15 @@
 // guaranteed. Capturing here lets us consume the key and
 // `stopPropagation()` before the bubble-phase page-nav listener runs
 // whenever a content selection is active.
+//
+// W2.11 (tables v2) — the selection's `cell` qualifier (v35) rides
+// straight through. When `sel.cell` is set, `start`/`end` are
+// cell-local offsets into that table cell's paragraph stream, and the
+// `insertText` / `deleteRange` mutations must carry the SAME qualifier
+// so the edit lands in the cell, not the body story. The qualifier is
+// additive: body selections leave it `undefined` and the wire shape is
+// byte-identical to before. Undo is correct because the engine's
+// inverse op carries the same `cell` (proven by the cell-text probe).
 
 import { useEffect, useRef } from "react";
 import type { CanvasClient } from "@paged-media/client";
@@ -48,6 +57,10 @@ export function useTextEditing(ctx: TextEditingContext) {
       if (!client) return;
 
       const cmd = e.metaKey || e.ctrlKey;
+      // v35 cell qualifier — forwarded verbatim onto every text mutation
+      // / nav query so a caret inside a table cell edits THAT cell's
+      // stream. `undefined` (body selection) keeps the legacy wire shape.
+      const cell = sel?.cell ?? undefined;
 
       // Cmd+Z / Cmd+Shift+Z. Always handled when client exists,
       // regardless of selection state.
@@ -74,7 +87,7 @@ export function useTextEditing(ctx: TextEditingContext) {
           const end = sel.start;
           void client.mutate({
             op: "deleteRange",
-            args: { storyId: sel.storyId, start, end },
+            args: { storyId: sel.storyId, start, end, cell },
           });
           ctx.setSelection({
             ...sel,
@@ -85,7 +98,7 @@ export function useTextEditing(ctx: TextEditingContext) {
         } else {
           void client.mutate({
             op: "deleteRange",
-            args: { storyId: sel.storyId, start: sel.start, end: sel.end },
+            args: { storyId: sel.storyId, start: sel.start, end: sel.end, cell },
           });
           ctx.setSelection({ ...sel, end: sel.start, affinity: false });
         }
@@ -104,12 +117,13 @@ export function useTextEditing(ctx: TextEditingContext) {
               storyId: sel.storyId,
               start: sel.start,
               end: sel.start + 1,
+              cell,
             },
           });
         } else {
           void client.mutate({
             op: "deleteRange",
-            args: { storyId: sel.storyId, start: sel.start, end: sel.end },
+            args: { storyId: sel.storyId, start: sel.start, end: sel.end, cell },
           });
           ctx.setSelection({ ...sel, end: sel.start, affinity: false });
         }
@@ -126,7 +140,7 @@ export function useTextEditing(ctx: TextEditingContext) {
         if (sel.start === sel.end) {
           void client.mutate({
             op: "insertText",
-            args: { storyId: sel.storyId, offset: sel.start, text },
+            args: { storyId: sel.storyId, offset: sel.start, text, cell },
           });
           ctx.setSelection({
             ...sel,
@@ -139,11 +153,11 @@ export function useTextEditing(ctx: TextEditingContext) {
           // ops; the worker applies them in order.
           void client.mutate({
             op: "deleteRange",
-            args: { storyId: sel.storyId, start: sel.start, end: sel.end },
+            args: { storyId: sel.storyId, start: sel.start, end: sel.end, cell },
           });
           void client.mutate({
             op: "insertText",
-            args: { storyId: sel.storyId, offset: sel.start, text },
+            args: { storyId: sel.storyId, offset: sel.start, text, cell },
           });
           ctx.setSelection({
             ...sel,
@@ -195,7 +209,7 @@ export function useTextEditing(ctx: TextEditingContext) {
         e.stopPropagation();
         const direction: CaretDirection = e.key === "ArrowUp" ? "up" : "down";
         void client
-          .caretNav(sel.storyId, caretFocus, direction)
+          .caretNav(sel.storyId, caretFocus, direction, cell ?? null)
           .then((offset) => {
             // null = no-op (already at first/last line): keep the caret.
             if (offset === null) return;
@@ -293,7 +307,7 @@ async function applyLineEdge(
   setSelection: (s: ContentSelection | null) => void,
 ): Promise<void> {
   try {
-    const bounds = await client.lineBounds(sel.storyId, caretFocus);
+    const bounds = await client.lineBounds(sel.storyId, caretFocus, sel.cell ?? null);
     if (!bounds) return;
     const target = edge === "start" ? bounds.lineStart : bounds.lineEnd;
     applyMove(sel, target, shift, anchorRef, caretFocus, setSelection);

@@ -561,11 +561,56 @@ visibly disabled (shared `concept-kit.tsx`). Interactive/rich-media panels
 (Buttons, Object States, Animation, Media) are **out of scope** per the
 parity doc — not built, by decision.
 
-### Table — `paged.table` ○
+### Table — `paged.table` ✓ — W3.A2 live 2026-06-06; v2 (W2.11) 2026-06-07
 
-Rows/cols, row height (at-least), col width, alternating fills/strokes,
-header/footer pills, cell inset, vert. justify — all seams.
-**Target** — live with the Table NodeId surface (gap 8).
+LIVE against the protocol-v35 table surface. A click into a table cell
+sets the selection (`HitResult.tableContext` → `TableSelectionContext`);
+the panel drives the **selected cell**. All values read back via
+`elementProperties(cell|table)` and re-fetch on every Operation push.
+
+- **selected cell** — row/column index + `tableRowCount × tableColumnCount`
+  totals (the Table NodeId carries them as integer-as-Length).
+- **row & column** — `setRowHeight` / `setColumnWidth` (write-forward, no
+  read entry); `insertTableRow` / `deleteTableRow` / `insertTableColumn` /
+  `deleteTableColumn` at the selected index.
+- **header & footer (v35)** — `insertHeaderRow` / `removeHeaderRow` /
+  `insertFooterRow` / `removeFooterRow`. Header/footer rows count toward
+  `tableRowCount`, so the panel shows the live **Total rows** read; the
+  per-control header/footer counts beside the buttons are the panel-applied
+  delta (the engine exposes **no** separate header/footer count read —
+  seam). Hooks: `data-header-count`, `data-footer-count`,
+  `data-table-total-rows`.
+- **merge & split (v35)** — `setCellSpan {rowSpan, columnSpan}`: Merge 2×2,
+  Split (1×1), and per-axis span inputs. Span has **no** read-back path on
+  the cell properties surface, so the span inputs are write-forward (seed
+  1×1 on each fresh cell selection, reflect the last applied span); the
+  rendered cell geometry grows over the wire and undo restores it. Hook:
+  `data-cell-span`.
+- **cell** — fill colour (`cellFillColor`), insets ×4
+  (`cellInset{Top,Left,Bottom,Right}`), vertical justify
+  (`cellVerticalJustification`).
+- **cell strokes (v35)** — per-edge colour / weight / tint for top / bottom
+  / left / right (`cell{Top,Bottom,Left,Right}EdgeStroke{Color,Weight,Tint}`),
+  with full read-back. Hooks: `data-edge-color-select`,
+  `data-num-input="edge-weight-*"`, `data-num-input="edge-tint-*"`.
+- **applied styles** — `appliedCellStyle` (on the cell) / `appliedTableStyle`
+  (on the Table NodeId), each over its real *Styles collection.
+
+**Cell text (v35)** — live: with the Type tool, a click into a cell carries
+the hit's `tableContext`; the selection rides the v35 `ContentSelection.cell`
+qualifier (cell-local offsets), the caret renders **in** the cell, and
+typing/Backspace/Delete edit the cell's stream — routed through the SAME
+caret/typing path body text uses (`canvas-panel` onHit → `ContentSelection.cell`
+→ `useTextEditing`, which forwards the qualifier onto every `insertText` /
+`deleteRange` and the caret-nav queries). Undo restores. Specs:
+`table-ops.spec.ts` (v1) + `tables-v2.spec.ts` (spans / header rows /
+edge strokes / cell-text).
+
+Hooks: `data-table-panel`, `data-table-cell-address`, `data-table-dims`,
+`data-cell-fill-select`, `data-cell-vjustify-select`, `data-cell-span`.
+**Target** — visual span-drag merge gesture; a table descriptor read
+exposing header/footer counts + cell span read-back (the two write-forward
+seams above).
 
 ### Tabs — `paged.tabs` ✓ — W2.4 live 2026-06-06
 
@@ -642,7 +687,11 @@ EPUB/HTML + tagged PDF.
 6. **Rotation/scale decompose primitive** — typed transform dials.
 7. **`SpreadSummary` page membership** — true spread grouping.
 8. **Table selection + table/cell ops** — table toolbar, Table Composer,
-   cell/table style apply.
+   cell/table style apply. _(W3.A2/W2.11: LIVE — table-cell selection +
+   the v30 line ops + the v35 header/footer/span ops + per-cell edge
+   strokes + in-cell text editing all ship in the Table panel; residual
+   seams = header/footer count read + cell-span read-back + a visual
+   span-drag merge gesture.)_
 9. **`stories` / `sections` collections** — story list, Document Map
    sections. _(W2.12: `sections` collection consumed by the Document-Map
    chips + `insertSection`; the story list reads the `paged.stories()`

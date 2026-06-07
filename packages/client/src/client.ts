@@ -44,6 +44,7 @@ import {
   type SelectionRect,
   type SnapLine,
   type SnapshotPng,
+  type TextCellAddr,
   type WordBounds,
   type WorkerToMain,
 } from "./protocol";
@@ -783,10 +784,11 @@ export class CanvasClient {
     storyId: string,
     offset: number,
     direction: CaretDirection,
+    cell: TextCellAddr | null = null,
   ): Promise<number | null> {
     const reply = await this.send({
       kind: "requestCaretNav",
-      payload: { storyId, offset, direction },
+      payload: { storyId, offset, direction, cell },
     });
     if (reply.kind === "caretNavResult") return reply.payload.offset ?? null;
     throw new Error(`unexpected reply: ${reply.kind}`);
@@ -802,10 +804,11 @@ export class CanvasClient {
   async lineBounds(
     storyId: string,
     offset: number,
+    cell: TextCellAddr | null = null,
   ): Promise<LineBounds | null> {
     const reply = await this.send({
       kind: "requestLineBounds",
-      payload: { storyId, offset },
+      payload: { storyId, offset, cell },
     });
     if (reply.kind === "lineBoundsResult") return reply.payload.bounds ?? null;
     throw new Error(`unexpected reply: ${reply.kind}`);
@@ -823,10 +826,11 @@ export class CanvasClient {
   async wordBounds(
     storyId: string,
     offset: number,
+    cell: TextCellAddr | null = null,
   ): Promise<WordBounds | null> {
     const reply = await this.send({
       kind: "requestWordBounds",
-      payload: { storyId, offset },
+      payload: { storyId, offset, cell },
     });
     if (reply.kind === "wordBoundsResult") return reply.payload.bounds ?? null;
     throw new Error(`unexpected reply: ${reply.kind}`);
