@@ -45,6 +45,17 @@ const REFERENCE_POINT_BINDING = {
   },
 };
 
+// W2.4 — the "Fill frame proportionally" action writes the existing
+// `frameFittingType` enum to `"FillProportionally"` (a real persisted
+// model property — not a client-side scale hack and not a new op).
+const FITTING_TYPE_BINDING = {
+  value: {
+    kind: "selectionProperty" as const,
+    scope: "element" as const,
+    path: "frameFittingType" as const,
+  },
+};
+
 /** Resolve the bound anchor string to a grid index, or null when the
  *  value is absent / mixed / an unrecognised anchor (→ inert grid). */
 function anchorToIndex(v: Value | null): number | null {
@@ -53,10 +64,21 @@ function anchorToIndex(v: Value | null): number | null {
   return i >= 0 ? i : null;
 }
 
+/** Resolve `frameFittingType` to its current enum string, or null when
+ *  absent / mixed. */
+function fittingType(v: Value | null): string | null {
+  if (!v || v.type !== "text") return null;
+  return (v.value as string) ?? "";
+}
+
 export function FrameFittingPanel() {
   const resolved = useBindings(REFERENCE_POINT_BINDING);
   const refPoint = resolved.value;
   const index = anchorToIndex(refPoint.value);
+
+  const fitting = useBindings(FITTING_TYPE_BINDING).value;
+  const fittingDisabled = fitting.onCommit == null;
+  const isFillProp = fittingType(fitting.value) === "FillProportionally";
 
   return (
     <CatalogRegistryProvider registry={appCatalogRegistry()}>
@@ -84,6 +106,31 @@ export function FrameFittingPanel() {
           </span>
         </div>
         <CompositionRenderer composition={frameFittingCropComposition} />
+        {/* W2.4 — fill-frame-proportionally action. Writes the real
+            `frameFittingType` enum; reflects the current type so the
+            button reads pressed when already FillProportionally. */}
+        <button
+          type="button"
+          disabled={fittingDisabled}
+          aria-pressed={isFillProp}
+          data-fill-proportionally
+          data-active={isFillProp ? "" : undefined}
+          className="h-[28px] rounded-[6px] border px-[10px] text-[11px]"
+          style={{
+            borderColor: isFillProp ? "var(--pg-accent)" : "var(--input)",
+            background: isFillProp ? "var(--pg-accent)" : "var(--background)",
+            color: isFillProp ? "var(--pg-accent-fg)" : "var(--pg-fg)",
+            opacity: fittingDisabled ? 0.55 : 1,
+          }}
+          onClick={() => {
+            fitting.onCommit?.({
+              type: "text",
+              value: "FillProportionally",
+            } as Value);
+          }}
+        >
+          Fill frame proportionally
+        </button>
       </div>
     </CatalogRegistryProvider>
   );

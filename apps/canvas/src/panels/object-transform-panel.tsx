@@ -4,7 +4,7 @@
 // `frameBounds` value (a projection the §11.5 composition ceiling
 // can't express).
 //
-//   [ref grid] Reference point         seam (no engine convention)
+//   [ref grid] Reference point         LIVE  (W2.4, client-side anchor)
 //   [X …  | Y … ]   2-up prefixes      LIVE (translate)
 //   [W …  | H … ] 🔒 2-up + lock        LIVE (resize) · lock = seam
 //   Rotate & scale (open disclosure)
@@ -20,6 +20,13 @@
 // `frameFlipV` is WRITE-only on the v28 wire — the read-side reflects
 // `frameFlipH` only — so the Flip V button stays a seam (it would
 // em-dash on read). All five apply to every path kind + Group.
+//
+// W2.4 (2026-06-07) — the 3×3 reference-point grid is now LIVE. The
+// anchor is UI state, NOT model state (InDesign keeps it as a panel
+// affordance too): the chosen 9-point anchor selects which corner /
+// edge / centre of the frame stays FIXED when the user edits W/H (or
+// scale). The math is pure client-side over the existing `frameBounds`
+// path — no new op, no new PropertyPath.
 
 import { Icon, ReferencePointGrid, useBindings } from "@paged-media/shell";
 import { LengthInput, NumberInput, SmartDialMicro } from "@paged-media/ui";
@@ -76,12 +83,23 @@ function unwrapBool(v: Value | null): boolean | null {
   return v.value === true;
 }
 
+// W2.4 — the 9-point anchor as (col, row), col/row ∈ {0,1,2}. Index 0
+// = top-left, 4 = centre, 8 = bottom-right (row-major, matching
+// ReferencePointGrid + the IDML 9-point vocabulary).
+function anchorFractions(index: number): { fx: number; fy: number } {
+  const col = index % 3;
+  const row = Math.floor(index / 3);
+  return { fx: col / 2, fy: row / 2 };
+}
+
 export function ObjectTransformPanel() {
   const resolved = useBindings(BINDINGS);
   const bounds = unwrapBounds(resolved.bounds.value);
   const opacity = unwrapLength(resolved.opacity.value);
   const canWrite = resolved.bounds.onCommit != null;
   const [rsOpen, setRsOpen] = useState(true);
+  // W2.4 — reference-point anchor (UI state). Default top-left (0).
+  const [anchorIdx, setAnchorIdx] = useState(0);
 
   // W2.3 transform-decompose reads (deg / multiplier / bool).
   const rotation = unwrapLength(resolved.rotation.value);
@@ -104,16 +122,45 @@ export function ObjectTransformPanel() {
     resolved.bounds.onCommit?.({ type: "bounds", value: next } as Value);
   };
 
+  // W2.4 — resize keeping the chosen anchor point fixed. `nw`/`nh` are
+  // the new width / height; the anchor's absolute position (a fraction
+  // of the old box) is preserved by shifting the opposite edges. With
+  // anchor = top-left (default) this collapses to the legacy
+  // grow-right / grow-down behaviour.
+  const commitWidth = (nw: number) => {
+    if (x === null || y === null || w === null || h === null) return;
+    const { fx } = anchorFractions(anchorIdx);
+    const anchorX = x + fx * w;
+    const left = anchorX - fx * nw;
+    commitBounds([y, left, y + h, left + nw]);
+  };
+  const commitHeight = (nh: number) => {
+    if (x === null || y === null || w === null || h === null) return;
+    const { fy } = anchorFractions(anchorIdx);
+    const anchorY = y + fy * h;
+    const top = anchorY - fy * nh;
+    commitBounds([top, x, top + nh, x + w]);
+  };
+
   return (
     <div
       className="p-3 flex flex-col gap-[9px]"
       data-object-transform-panel="ready"
     >
       <div className="flex flex-col gap-[9px]" data-section="Object">
-        {/* Reference point — inert until the engine grows a
-            reference-point convention (transforms anchor top-left). */}
-        <div className="mb-[3px] flex items-center gap-[14px]">
-          <ReferencePointGrid value={0} disabled />
+        {/* W2.4 — reference point (UI state). Selects which 9-point
+            anchor of the frame stays fixed when W/H is edited. Pure
+            client-side math over frameBounds — no engine convention
+            needed (InDesign also keeps this as a panel affordance). */}
+        <div
+          className="mb-[3px] flex items-center gap-[14px]"
+          data-reference-point-anchor={anchorIdx}
+        >
+          <ReferencePointGrid
+            value={anchorIdx}
+            disabled={!canWrite}
+            onChange={(i) => setAnchorIdx(i)}
+          />
           <span
             className="text-[10.5px]"
             style={{ color: "var(--pg-muted-fg)" }}
@@ -153,10 +200,7 @@ export function ObjectTransformPanel() {
               min={0}
               disabled={!canWrite}
               onChangePt={() => {}}
-              onCommitPt={(nw) => {
-                if (x === null || y === null || h === null) return;
-                commitBounds([y, x, y + h, x + nw]);
-              }}
+              onCommitPt={(nw) => commitWidth(nw)}
               aria-label="width"
             />
             <LengthInput
@@ -165,10 +209,7 @@ export function ObjectTransformPanel() {
               min={0}
               disabled={!canWrite}
               onChangePt={() => {}}
-              onCommitPt={(nh) => {
-                if (x === null || y === null || w === null) return;
-                commitBounds([y, x, y + nh, x + w]);
-              }}
+              onCommitPt={(nh) => commitHeight(nh)}
               aria-label="height"
             />
           </div>

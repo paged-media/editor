@@ -94,12 +94,13 @@ export const frameFittingCropComposition: CompositionNode = {
         },
       },
     },
-    {
-      // Engine gap — fill-frame-proportionally is a place-time
-      // behaviour, not a persisted PropertyPath.
-      catalogId: PAGED_INPUT_TOGGLE_SWITCH,
-      props: { label: "Fill frame proportionally", seam: true },
-      bindings: {},
-    },
+    // W2.4 — "Fill frame proportionally" is rendered as a bound action
+    // BUTTON in the panel (frame-fitting-panel.tsx), not a composition
+    // leaf: it writes the existing real model property
+    // `frameFittingType = "FillProportionally"` (no new op, no
+    // client-side scale hack — the fitting type IS InDesign's persisted
+    // representation of the fill-proportionally choice). The crop
+    // computation that physically reseats the image is the renderer's
+    // job against that type; the editor only authors the choice.
   ],
 };

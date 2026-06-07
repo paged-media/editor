@@ -199,4 +199,110 @@ test.describe("Phase 5 — Text Wrap panel", () => {
     expect(result.after.mode).toBe("BoundingBoxTextWrap");
     expect(result.restoredInvert).toBe(result.invertBefore);
   });
+
+  test("AC-TW-4 — contour options sandwich: set contour type + include-inside (preserving mode) → assert → undo", async ({
+    page,
+  }) => {
+    // W2.4 — `frameTextWrapContourType` (Text enum) +
+    // `frameTextWrapContourIncludeInside` (Bool) share the
+    // Option<TextWrap> field; the apply arms preserve mode/offsets.
+    const result = await page.evaluate(async () => {
+      type DebugCanvas = {
+        client?: {
+          executeScript(src: string): Promise<{
+            output: string[];
+            error: string | null;
+          }>;
+          elementProperties(id: unknown): Promise<{
+            entries: Array<{
+              path: string;
+              value: { type: string; value: unknown } | null;
+            }>;
+          } | null>;
+          mutate(op: unknown): Promise<unknown>;
+          undo(): Promise<unknown>;
+        };
+      };
+      const dbg = (window as unknown as { __canvas?: DebugCanvas }).__canvas;
+      if (!dbg?.client) throw new Error("__canvas client not available");
+
+      const treeJson = await dbg.client
+        .executeScript("paged.tree()")
+        .then((r) => r.output[0] ?? "[]");
+      type Node = {
+        id?: { kind: string; id: string } | null;
+        children?: Node[];
+      };
+      const walk = (nodes: Node[] | undefined): Node["id"] => {
+        if (!nodes) return null;
+        for (const n of nodes) {
+          if (n.id && n.id.kind === "textFrame") return n.id;
+          const f = walk(n.children);
+          if (f) return f;
+        }
+        return null;
+      };
+      const target = walk(JSON.parse(treeJson) as Node[]);
+      if (!target) throw new Error("fixture has no TextFrame");
+
+      const read = async (path: string) => {
+        const props = await dbg.client!.elementProperties(target);
+        return props?.entries.find((e) => e.path === path)?.value?.value ?? null;
+      };
+
+      // Establish ContourTextWrap so the contour options are meaningful.
+      await dbg.client.mutate({
+        op: "setElementProperty",
+        args: {
+          elementId: target,
+          path: "frameTextWrapMode",
+          value: { type: "text", value: "ContourTextWrap" },
+        },
+      });
+      await new Promise((r) => setTimeout(r, 30));
+      const contourBefore = await read("frameTextWrapContourType");
+
+      await dbg.client.mutate({
+        op: "setElementProperty",
+        args: {
+          elementId: target,
+          path: "frameTextWrapContourType",
+          value: { type: "text", value: "DetectEdges" },
+        },
+      });
+      await dbg.client.mutate({
+        op: "setElementProperty",
+        args: {
+          elementId: target,
+          path: "frameTextWrapContourIncludeInside",
+          value: { type: "bool", value: true },
+        },
+      });
+      await new Promise((r) => setTimeout(r, 30));
+      const after = {
+        contour: await read("frameTextWrapContourType"),
+        includeInside: await read("frameTextWrapContourIncludeInside"),
+        mode: await read("frameTextWrapMode"),
+      };
+
+      // Undo the include-inside write → restores the prior value; the
+      // contour type + mode persist.
+      await dbg.client.undo();
+      await new Promise((r) => setTimeout(r, 30));
+      const afterUndo = {
+        contour: await read("frameTextWrapContourType"),
+        mode: await read("frameTextWrapMode"),
+      };
+
+      return { contourBefore, after, afterUndo };
+    });
+
+    expect(result.after.contour).toBe("DetectEdges");
+    expect(result.after.includeInside).toBe(true);
+    // Contour options preserve the wrap mode.
+    expect(result.after.mode).toBe("ContourTextWrap");
+    // Undo of include-inside keeps the contour type + mode.
+    expect(result.afterUndo.contour).toBe("DetectEdges");
+    expect(result.afterUndo.mode).toBe("ContourTextWrap");
+  });
 });

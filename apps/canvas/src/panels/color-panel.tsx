@@ -9,6 +9,13 @@
 // mixed-selection sentinel + multi-select fan-out come from the
 // binding layer for free. "+ Add to Swatches" promotes the same
 // channels to a named entry via `createSwatch`.
+//
+// W2.5 (2026-06-07) — document-default write. With NOTHING selected
+// (`frameFillColor` has no commit path), Apply writes the created
+// swatch as the DOCUMENT DEFAULT fill via `setDocumentDefaults`
+// (whole-triple, not undoable) — matching InDesign's "set the default
+// fill when no object is selected" behaviour. The panel reads the
+// current default off `documentMeta()` so the readout reflects it.
 
 import { useEffect, useState } from "react";
 
@@ -18,6 +25,7 @@ import {
   cockpitActions,
   useBindings,
   useCanvasClient,
+  useDocumentMeta,
 } from "@paged-media/shell";
 import { ColorMixer, type MixerValue } from "@paged-media/ui";
 import type { ColorPreview, SwatchSpec, Value } from "@paged-media/client";
@@ -42,7 +50,16 @@ function unwrapColorRef(v: Value | null): string | null {
 export function ColorPanel() {
   const client = useCanvasClient();
   const resolved = useBindings(FILL_BINDING);
-  const fillRef = unwrapColorRef(resolved.value.value);
+  const meta = useDocumentMeta();
+  // W2.5 — with nothing selected the binding has no commit path; the
+  // panel then targets the document-default fill instead.
+  const hasSelection = resolved.value.onCommit != null;
+  const docDefaultFill = meta?.defaultFillColor ?? null;
+  // The readout reflects the selection's fill when one exists, else the
+  // document default.
+  const fillRef = hasSelection
+    ? unwrapColorRef(resolved.value.value)
+    : docDefaultFill;
   const [preview, setPreview] = useState<ColorPreview | null>(null);
   // Mixer state — local channel values being authored. Seeds from
   // a neutral default; deliberately NOT slaved to the selection's
@@ -55,7 +72,11 @@ export function ColorPanel() {
   });
 
   // Ephemeral apply: create an unnamed swatch from the channels and
-  // apply its ref through the SAME commit path a swatch pick takes.
+  // apply its ref. With a selection it commits through the SAME
+  // `frameFillColor` path a swatch pick takes; with NOTHING selected
+  // (W2.5) it writes the swatch as the document-default fill via
+  // `setDocumentDefaults` (whole-triple — the other two members are
+  // preserved from the current meta).
   const applyMix = (v: MixerValue) => {
     const spec: SwatchSpec = {
       selfId: null,
@@ -78,8 +99,22 @@ export function ColorPanel() {
           "swatches",
         );
         const last = swatches[swatches.length - 1];
-        if (last && resolved.value.onCommit) {
-          resolved.value.onCommit({ type: "colorRef", value: last.selfId });
+        if (!last) return;
+        if (hasSelection) {
+          resolved.value.onCommit?.({ type: "colorRef", value: last.selfId });
+        } else {
+          // W2.5 — no selection: write the document-default fill,
+          // preserving the existing stroke/weight defaults.
+          await client
+            .mutate({
+              op: "setDocumentDefaults",
+              args: {
+                fillColor: last.selfId,
+                strokeColor: meta?.defaultStrokeColor ?? null,
+                strokeWeight: meta?.defaultStrokeWeight ?? null,
+              },
+            })
+            .catch(() => {});
         }
       })
       .catch(() => {});
@@ -125,7 +160,20 @@ export function ColorPanel() {
 
   return (
     <CatalogRegistryProvider registry={appCatalogRegistry()}>
-      <div className="p-3 flex flex-col gap-3" data-color-panel="ready">
+      <div
+        className="p-3 flex flex-col gap-3"
+        data-color-panel="ready"
+        data-target={hasSelection ? "selection" : "document-default"}
+      >
+        {!hasSelection ? (
+          <div
+            className="text-[11px]"
+            style={{ color: "var(--pg-muted-fg)" }}
+            data-doc-default-hint
+          >
+            No selection — Apply sets the document default fill.
+          </div>
+        ) : null}
         <CompositionRenderer composition={colorComposition} />
         {/* Concept 2 — the mixer (expert child; hybrid pattern). */}
         <div className="border-t border-input pt-3">

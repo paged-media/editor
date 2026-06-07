@@ -146,4 +146,54 @@ test.describe("Phase 5 — Color panel", () => {
 
     expect(applied).toBe(42);
   });
+
+  test("AC-COLOR-4 — no-selection Apply writes the document-default fill (W2.5)", async ({
+    page,
+  }) => {
+    // W2.5 — with nothing selected the Color panel routes the applied
+    // colour to the document default via `setDocumentDefaults`; the
+    // panel reads it back off `documentMeta()`. Drive the mechanism
+    // directly: write a known swatch as the default and assert the meta
+    // reflects it.
+    const result = await page.evaluate(async () => {
+      type DebugCanvas = {
+        client?: {
+          executeScript(src: string): Promise<{
+            output: string[];
+            error: string | null;
+          }>;
+          collection<T>(name: string): Promise<T[]>;
+          documentMeta(): Promise<{ defaultFillColor?: string | null }>;
+          mutate(op: unknown): Promise<unknown>;
+        };
+      };
+      const dbg = (window as unknown as { __canvas?: DebugCanvas }).__canvas;
+      if (!dbg?.client) throw new Error("no client");
+
+      // Pick an existing swatch from the document.
+      const swatches = await dbg.client.collection<{ selfId: string }>(
+        "swatches",
+      );
+      const swatch = swatches.find((s) => s.selfId && s.selfId !== "Swatch/None");
+      if (!swatch) throw new Error("no usable swatch in fixture");
+
+      const before = (await dbg.client.documentMeta()).defaultFillColor ?? null;
+
+      await dbg.client.mutate({
+        op: "setDocumentDefaults",
+        args: {
+          fillColor: swatch.selfId,
+          strokeColor: null,
+          strokeWeight: null,
+        },
+      });
+      await new Promise((r) => setTimeout(r, 40));
+      const after = (await dbg.client.documentMeta()).defaultFillColor ?? null;
+
+      return { before, after, expected: swatch.selfId };
+    });
+
+    expect(result.after).toBe(result.expected);
+    expect(result.after).not.toBe(result.before);
+  });
 });

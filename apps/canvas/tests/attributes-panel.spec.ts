@@ -175,4 +175,98 @@ test.describe("Phase 5 — Attributes panel", () => {
     expect(result.after.stroke).toBe(true);
     expect(result.restored).toEqual(result.before);
   });
+
+  test("AC-ATTR-4 — element visible/locked sandwich: hide + lock → assert → undo", async ({
+    page,
+  }) => {
+    // W2.5 — element-level `elementVisible` / `elementLocked` (Bool).
+    // Defaults visible=true, locked=false. set → assert → undo.
+    const result = await page.evaluate(async () => {
+      type DebugCanvas = {
+        client?: {
+          executeScript(src: string): Promise<{
+            output: string[];
+            error: string | null;
+          }>;
+          elementProperties(id: unknown): Promise<{
+            entries: Array<{
+              path: string;
+              value: { type: string; value: boolean } | null;
+            }>;
+          } | null>;
+          mutate(op: unknown): Promise<unknown>;
+          undo(): Promise<unknown>;
+        };
+      };
+      const dbg = (window as unknown as { __canvas?: DebugCanvas }).__canvas;
+      if (!dbg?.client) throw new Error("no client");
+      const treeJson = await dbg.client
+        .executeScript("paged.tree()")
+        .then((r) => r.output[0] ?? "[]");
+      type Node = {
+        id?: { kind: string; id: string } | null;
+        children?: Node[];
+      };
+      const walk = (nodes: Node[] | undefined): Node["id"] => {
+        if (!nodes) return null;
+        for (const n of nodes) {
+          if (n.id && n.id.kind === "textFrame") return n.id;
+          const f = walk(n.children);
+          if (f) return f;
+        }
+        return null;
+      };
+      const target = walk(JSON.parse(treeJson) as Node[]);
+      if (!target) throw new Error("no TextFrame");
+
+      const read = async (path: string) => {
+        const props = await dbg.client!.elementProperties(target);
+        return props?.entries.find((e) => e.path === path)?.value?.value ?? null;
+      };
+
+      const before = {
+        visible: await read("elementVisible"),
+        locked: await read("elementLocked"),
+      };
+
+      await dbg.client.mutate({
+        op: "setElementProperty",
+        args: {
+          elementId: target,
+          path: "elementVisible",
+          value: { type: "bool", value: false },
+        },
+      });
+      await dbg.client.mutate({
+        op: "setElementProperty",
+        args: {
+          elementId: target,
+          path: "elementLocked",
+          value: { type: "bool", value: true },
+        },
+      });
+      await new Promise((r) => setTimeout(r, 40));
+      const after = {
+        visible: await read("elementVisible"),
+        locked: await read("elementLocked"),
+      };
+
+      await dbg.client.undo();
+      await dbg.client.undo();
+      await new Promise((r) => setTimeout(r, 40));
+      const restored = {
+        visible: await read("elementVisible"),
+        locked: await read("elementLocked"),
+      };
+
+      return { before, after, restored };
+    });
+
+    // Default visible=true, locked=false.
+    expect(result.before.visible).toBe(true);
+    expect(result.before.locked).toBe(false);
+    expect(result.after.visible).toBe(false);
+    expect(result.after.locked).toBe(true);
+    expect(result.restored).toEqual(result.before);
+  });
 });

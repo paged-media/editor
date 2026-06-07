@@ -40,10 +40,10 @@ test.describe("Phase 3 — Character panel (declarative composition)", () => {
       page.locator('[data-character-panel="ready"] [data-section="Character"]'),
     ).toBeVisible();
     // W2.1 (2026-06-06): every character formatting field flipped
-    // seam→live on protocol v28. The only remaining honest seam is
-    // the bespoke OPENTYPE chip row (the opaque `characterOtfFeatures`
-    // tag string has no per-chip mapping) — the composition itself
-    // now carries ZERO `data-seam` nodes.
+    // seam→live on protocol v28. W2.4 (2026-06-07): the OPENTYPE chip
+    // row also went live — each chip now WRITES its OT feature tag into
+    // `characterOtfFeatures`. The composition carries ZERO `data-seam`
+    // nodes.
     const seams = page.locator('[data-character-panel="ready"] [data-seam]');
     await expect(seams).toHaveCount(0);
     // The live family select is bespoke (reads the `fonts` collection).
@@ -53,6 +53,8 @@ test.describe("Phase 3 — Character panel (declarative composition)", () => {
     await expect(
       page.locator('[data-character-panel="ready"] [data-opentype-chip]'),
     ).toHaveCount(4);
+    // Without a content selection the chips have no commit path → still
+    // disabled (the mixed-state contract).
     await expect(
       page
         .locator('[data-character-panel="ready"] [data-opentype-chip]')
@@ -169,5 +171,89 @@ test.describe("Phase 3 — Character panel (declarative composition)", () => {
       return true;
     });
     expect(ok).toBe(true);
+  });
+
+  test("AC-CHAR-5 — OpenType chips write characterOtfFeatures over a story range; round-trips", async ({
+    page,
+  }) => {
+    // W2.4 — the OTF chip row writes the opaque `characterOtfFeatures`
+    // tag string. Drive the underlying path over a homogeneous story
+    // range via `paged.set`; read back via `paged.inspect`; undo.
+    const result = await page.evaluate(async () => {
+      type DebugCanvas = {
+        client?: {
+          executeScript(src: string): Promise<{
+            output: string[];
+            error: string | null;
+          }>;
+          mutate(op: unknown): Promise<unknown>;
+          undo(): Promise<unknown>;
+        };
+        setContentSelection?: (
+          sel: { storyId: string; start: number; end: number } | null,
+        ) => void;
+      };
+      const dbg = (window as unknown as { __canvas?: DebugCanvas }).__canvas;
+      if (!dbg?.client) throw new Error("no client");
+      const stories = await dbg.client
+        .executeScript("paged.stories()")
+        .then((r) => JSON.parse(r.output[0] ?? "[]"));
+      if (!stories.length) return null;
+      const story = stories[0] as {
+        selfId: string;
+        characterCount: number;
+      };
+      if (!story || story.characterCount === 0) return null;
+      const start = 0;
+      const end = Math.max(1, Math.min(story.characterCount, 4));
+      const addr = `storyRange:${story.selfId}@${start}..${end}`;
+      // ElementId::StoryRange wire shape: { kind, id: { story_id,
+      // start, end } } — the same the content-scope binding emits.
+      const elementId = {
+        kind: "storyRange",
+        id: { story_id: story.selfId, start, end },
+      };
+
+      const readOtf = async () => {
+        const json = await dbg.client!.executeScript(
+          `paged.inspect(${JSON.stringify(addr)});`,
+        ).then((r) => r.output[0] ?? "");
+        const inspect = JSON.parse(json) as {
+          entries: Array<{
+            path: string;
+            value: { type: string; value: unknown } | null;
+          }>;
+        };
+        return (
+          inspect.entries.find((e) => e.path === "characterOtfFeatures")?.value
+            ?.value ?? null
+        );
+      };
+
+      const before = await readOtf();
+      // Write the tag string the chip row produces (Frac + Ordn →
+      // "frac ordn") through the same setElementProperty op the chip's
+      // onCommit takes.
+      await dbg.client.mutate({
+        op: "setElementProperty",
+        args: {
+          elementId,
+          path: "characterOtfFeatures",
+          value: { type: "text", value: "frac ordn" },
+        },
+      });
+      await new Promise((r) => setTimeout(r, 30));
+      const after = await readOtf();
+
+      await dbg.client.undo();
+      await new Promise((r) => setTimeout(r, 30));
+      const restored = await readOtf();
+
+      return { before, after, restored };
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.after).toBe("frac ordn");
+    expect(result!.restored).toBe(result!.before);
   });
 });

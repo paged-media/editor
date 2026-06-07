@@ -10,10 +10,11 @@
 //     expects, and the wire value is `Value::Text(family)`; so the
 //     select is hand-wired here, committing `characterFontFamily`
 //     (W2.1, 2026-06-06).
-//   • OpenType — the deep1 card's OPENTYPE chip row, an honest seam:
-//     `characterOtfFeatures` is an OPAQUE feature-tag string with no
-//     per-chip mapping, so the chips stay disabled until a tag-string
-//     editor exists.
+//   • OpenType — the deep1 card's OPENTYPE chip row. W2.4
+//     (2026-06-07): each chip now WRITES the run's
+//     `characterOtfFeatures` — an opaque space-separated tag string
+//     owned by the mutate API. A chip toggles the presence of its tag
+//     (e.g. Frac ⇒ `frac`) in that string, preserving any other tags.
 
 import {
   CatalogRegistryProvider,
@@ -27,7 +28,86 @@ import type { FontSummary, Value } from "@paged-media/client";
 import { appCatalogRegistry } from "./catalog-registry";
 import { characterComposition } from "./character.composition";
 
-const OPENTYPE_CHIPS = ["Liga", "Frac", "Ordn", "OldS"];
+// W2.4 — UI chip label → the OpenType feature tag it toggles in the
+// `characterOtfFeatures` string. Standard 4-char OT feature tags:
+//   Liga = standard ligatures, Frac = fractions, Ordn = ordinals,
+//   OldS = oldstyle figures (`onum`).
+const OPENTYPE_CHIPS: ReadonlyArray<{ label: string; tag: string }> = [
+  { label: "Liga", tag: "liga" },
+  { label: "Frac", tag: "frac" },
+  { label: "Ordn", tag: "ordn" },
+  { label: "OldS", tag: "onum" },
+];
+
+const OTF_BINDING = {
+  otf: {
+    kind: "selectionProperty" as const,
+    scope: "content" as const,
+    path: "characterOtfFeatures" as const,
+  },
+};
+
+/** Parse the opaque space-separated tag string into a tag set. */
+function parseTags(v: Value | null): Set<string> {
+  if (!v || v.type !== "text") return new Set();
+  const s = (v.value as string) ?? "";
+  return new Set(s.split(/\s+/).filter(Boolean));
+}
+
+/** OpenType feature chips — each toggles its tag in the run's
+ *  `characterOtfFeatures` string, preserving the other tags (W2.4). */
+function OpenTypeChips() {
+  const { otf } = useBindings(OTF_BINDING);
+  const active = parseTags(otf.value);
+  const disabled = otf.onCommit == null;
+  const commit = (tag: string) => {
+    if (disabled) return;
+    const next = new Set(active);
+    if (next.has(tag)) next.delete(tag);
+    else next.add(tag);
+    // Stable order: emit in the chip-row order so round-trips read
+    // deterministically.
+    const ordered = OPENTYPE_CHIPS.map((c) => c.tag).filter((t) =>
+      next.has(t),
+    );
+    // Preserve any tags the chip row doesn't surface (forward-compat).
+    for (const t of next) if (!ordered.includes(t)) ordered.push(t);
+    otf.onCommit?.({ type: "text", value: ordered.join(" ") } as Value);
+  };
+  return (
+    <div className="-mx-3 border-t border-input px-3 pt-2" data-opentype-seam>
+      <div className="pg-label mb-2">Opentype</div>
+      <div className="flex gap-[6px]">
+        {OPENTYPE_CHIPS.map(({ label, tag }) => {
+          const on = active.has(tag);
+          return (
+            <button
+              key={tag}
+              type="button"
+              disabled={disabled}
+              aria-pressed={on}
+              data-opentype-chip={label}
+              data-otf-tag={tag}
+              data-active={on ? "" : undefined}
+              title={`OpenType feature ${tag}`}
+              className="h-[26px] rounded-[6px] border px-[9px] text-[11px]"
+              style={{
+                fontFamily: "var(--font-mono)",
+                borderColor: on ? "var(--pg-accent)" : "var(--input)",
+                background: on ? "var(--pg-accent)" : "var(--background)",
+                color: on ? "var(--pg-accent-fg)" : "var(--pg-muted-fg)",
+                opacity: disabled ? 0.55 : 1,
+              }}
+              onClick={() => commit(tag)}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 const FAMILY_BINDING = {
   family: {
@@ -94,30 +174,7 @@ export function CharacterPanel() {
       <div className="p-3 flex flex-col gap-[9px]" data-character-panel="ready">
         <FamilySelect />
         <CompositionRenderer composition={characterComposition} />
-        <div
-          className="-mx-3 border-t border-input px-3 pt-2"
-          data-opentype-seam
-        >
-          <div className="pg-label mb-2">Opentype</div>
-          <div className="flex gap-[6px]">
-            {OPENTYPE_CHIPS.map((chip) => (
-              <button
-                key={chip}
-                type="button"
-                disabled
-                data-opentype-chip={chip}
-                title="OpenType features — characterOtfFeatures is an opaque tag string; per-chip mapping pending"
-                className="h-[26px] rounded-[6px] border border-input bg-background px-[9px] text-[11px] opacity-55"
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  color: "var(--pg-muted-fg)",
-                }}
-              >
-                {chip}
-              </button>
-            ))}
-          </div>
-        </div>
+        <OpenTypeChips />
       </div>
     </CatalogRegistryProvider>
   );

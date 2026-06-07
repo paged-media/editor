@@ -69,16 +69,56 @@ export const textWrapComposition: CompositionNode = {
       ],
     },
     {
-      // Engine gap — no wrap-to-side option yet.
+      // DEFER (2026-06-07) — InDesign's "Wrap to" SIDE knob
+      // (left / right / both / largest-area / toward-or-away-spine) is a
+      // distinct `TextWrapSide`-style property that core does NOT model
+      // (the wrap MODE above — bounding-box / contour / jump — is the
+      // "wrap-to" the W2.4 seam list conflated). Routing it needs a NEW
+      // PropertyPath (not a path over an existing field), which would be
+      // additive but the parse/render side carries no side field yet.
+      // Kept as a visible seam, not a new op, per protocol governance.
       catalogId: PAGED_INPUT_SELECT,
       props: { label: "Wrap to", seam: true, placeholder: "Both edges" },
       bindings: {},
     },
     {
-      // Engine gap — no contour-source option yet.
+      // LIVE (W2.4) — contour source for ContourTextWrap. Bound to the
+      // new `frameTextWrapContourType` path (Value::Text enum string).
+      // Empty value clears the override. Meaningful only when Wrap =
+      // Contour; the apply arm preserves mode/offsets/invert.
       catalogId: PAGED_INPUT_SELECT,
-      props: { label: "Contour", seam: true, placeholder: "Same as clip" },
-      bindings: {},
+      props: {
+        label: "Contour",
+        placeholder: "Same as clip",
+        options: [
+          { value: "", label: "Default" },
+          { value: "SameAsClipping", label: "Same as clip" },
+          { value: "GraphicFrame", label: "Graphic frame" },
+          { value: "DetectEdges", label: "Detect edges" },
+          { value: "AlphaChannel", label: "Alpha channel" },
+          { value: "PhotoshopPath", label: "Photoshop path" },
+        ],
+      },
+      bindings: {
+        value: {
+          kind: "selectionProperty",
+          scope: "element",
+          path: "frameTextWrapContourType",
+        },
+      },
+    },
+    {
+      // LIVE (W2.4) — `IncludeInsideEdges` lets text flow into a
+      // contour's interior holes. Bool path sharing the TextWrap field.
+      catalogId: PAGED_INPUT_TOGGLE_SWITCH,
+      props: { label: "Include inside edges" },
+      bindings: {
+        value: {
+          kind: "selectionProperty",
+          scope: "element",
+          path: "frameTextWrapContourIncludeInside",
+        },
+      },
     },
     {
       // LIVE invert flag (W2.3). Shares the `Option<TextWrap>` field

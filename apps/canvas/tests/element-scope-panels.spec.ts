@@ -324,4 +324,108 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
 
     await expect.poll(readFlip).toBe(before);
   });
+
+  test("AC-OBJECT-6 — reference-point anchor keeps the chosen edge fixed on resize (W2.4)", async ({
+    page,
+  }) => {
+    // W2.4 — the 3×3 reference-point grid is UI state driving
+    // client-side bounds math over `frameBounds`. With the bottom-right
+    // anchor chosen, growing the WIDTH must keep the RIGHT edge fixed
+    // (the LEFT edge moves) — the opposite of the default top-left
+    // anchor's grow-right.
+    const target = { kind: "rectangle", id: "ueccee2" };
+    await selectFrame(page, TEXT_FRAME_ID); // ensure a selection context
+    await page.evaluate(async (id) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              setElementSelection: (
+                ids: { kind: string; id: string }[],
+                mode: string,
+              ) => Promise<{ kind: string; id: string }[]>;
+            };
+            setElementSelection: (ids: { kind: string; id: string }[]) => void;
+          };
+        }
+      ).__canvas;
+      const ids = await c.client.setElementSelection([id], "replace");
+      c.setElementSelection(ids);
+    }, target);
+    await activateTab(page, "paged.object-transform");
+
+    const readBounds = async () =>
+      page.evaluate(async (id) => {
+        const c = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                elementProperties: (
+                  id: unknown,
+                ) => Promise<{
+                  entries: {
+                    path: string;
+                    value?: { value?: [number, number, number, number] };
+                  }[];
+                } | null>;
+              };
+            };
+          }
+        ).__canvas;
+        const props = await c.client.elementProperties(id);
+        return (
+          (props?.entries.find((e) => e.path === "frameBounds")?.value
+            ?.value as [number, number, number, number] | undefined) ?? null
+        );
+      }, target);
+
+    const before = await readBounds();
+    expect(before).not.toBeNull();
+    const [t0, l0, b0, r0] = before!;
+
+    // Choose the bottom-right anchor (index 8).
+    await page
+      .locator(
+        '[data-object-transform-panel="ready"] [data-reference-cell="8"]',
+      )
+      .click();
+    await expect(
+      page.locator(
+        '[data-object-transform-panel="ready"] [data-reference-point-anchor="8"]',
+      ),
+    ).toBeVisible();
+
+    // Grow the width: read the input's displayed value (the panel's
+    // own unit/scale), add 20, commit on blur. (Computing the delta
+    // from raw bounds is wrong — the input may show a different
+    // unit/scale than the spread-space bounds.)
+    const wInput = page.locator(
+      '[data-object-transform-panel="ready"] input[aria-label="width"]',
+    );
+    const shown = Number((await wInput.inputValue()).replace(/[^0-9.-]/g, ""));
+    expect(Number.isFinite(shown)).toBe(true);
+    await wInput.fill(String(shown + 20));
+    await wInput.blur();
+
+    await expect
+      .poll(async () => {
+        const nb = await readBounds();
+        return nb ? Math.round(nb[3]) : null;
+      })
+      // Right edge unchanged (bottom-right anchor pins it).
+      .toBe(Math.round(r0));
+
+    const after = await readBounds();
+    expect(after).not.toBeNull();
+    const [t1, l1, b1] = after!;
+    // Width edit only: top/bottom unchanged; right edge pinned (above);
+    // the LEFT edge moved OUT (decreased) — the bottom-right-anchor
+    // invariant. The exact delta depends on the panel's unit/scale, so
+    // we assert direction + the pinned edges, not a literal magnitude.
+    expect(Math.round(t1)).toBe(Math.round(t0));
+    expect(Math.round(b1)).toBe(Math.round(b0));
+    expect(l1).toBeLessThan(l0);
+    // The box genuinely grew (right − left increased).
+    expect(r0 - l1).toBeGreaterThan(r0 - l0);
+  });
 });
