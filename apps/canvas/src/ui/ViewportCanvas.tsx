@@ -38,6 +38,7 @@ import type {
   ResizeHandle,
   ResolutionResult,
   RunningHeader,
+  TextCellAddr,
 } from "@paged-media/client";
 import {
   documentBounds,
@@ -1105,16 +1106,24 @@ function bumpClickRun(
 }
 
 /**
- * W2.11 / SEL-05 — set a word (double-click) or line (triple-click)
+ * W2.11 / SEL-05 — set a word (double-click) or paragraph (triple-click)
  * range selection on a story.
  *
  * Aftercare-A: protocol v31 added `requestWordBounds`, so double-click
- * now selects the real UAX-29 WORD containing the offset (story-local
- * byte `[start, end)`); a double-click on a whitespace run selects that
- * whole whitespace run (the engine's segmentation contract). Triple-
- * click stays LINE granularity via `requestLineBounds`. Both resolve a
- * non-empty range (replace-on-type works), which is what callers depend
- * on.
+ * selects the real UAX-29 WORD containing the offset (story-local byte
+ * `[start, end)`); a double-click on a whitespace run selects that whole
+ * whitespace run (the engine's segmentation contract).
+ *
+ * W2.9: protocol v35 added `requestParagraphBounds`, so triple-click now
+ * selects the whole PARAGRAPH containing the offset — spanning every
+ * wrapped line — instead of just the visual line. The span is story-local
+ * bytes `[start, end)` (the inter-paragraph `\n` is the boundary and is
+ * excluded), so typing replaces the paragraph. The `cell` qualifier (v35)
+ * flows through so a triple-click inside a table cell selects THAT cell's
+ * paragraph. If the engine can't resolve a paragraph (e.g. an unbuilt
+ * story) we fall back to the line extent so triple-click still yields a
+ * non-empty range. Every branch resolves a non-empty range, which is what
+ * callers depend on (replace-on-type works).
  */
 async function applyTextGranularity(
   client: CanvasClient,
@@ -1125,28 +1134,45 @@ async function applyTextGranularity(
     storyId: string;
     start: number;
     end: number;
+    cell?: TextCellAddr | null;
     affinity?: boolean;
   } | null) => void,
+  cell: TextCellAddr | null = null,
 ): Promise<void> {
   try {
     if (clickCount >= 3) {
-      const bounds = await client.lineBounds(storyId, offset);
+      // Triple-click → paragraph granularity (v35 paragraph-bounds wire).
+      const para = await client.paragraphBounds(storyId, offset, cell);
+      if (para) {
+        setContentSelection({
+          storyId,
+          start: para.start,
+          end: para.end,
+          cell,
+          affinity: false,
+        });
+        return;
+      }
+      // Fallback: paragraph unresolved → line extent (still non-empty).
+      const bounds = await client.lineBounds(storyId, offset, cell);
       if (!bounds) return;
       setContentSelection({
         storyId,
         start: bounds.lineStart,
         end: bounds.lineEnd,
+        cell,
         affinity: false,
       });
       return;
     }
     // Double-click → word granularity (UAX-29 segmentation).
-    const word = await client.wordBounds(storyId, offset);
+    const word = await client.wordBounds(storyId, offset, cell);
     if (!word) return;
     setContentSelection({
       storyId,
       start: word.start,
       end: word.end,
+      cell,
       affinity: false,
     });
   } catch {

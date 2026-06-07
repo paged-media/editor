@@ -11,17 +11,18 @@
 // `__canvas`, so an assertion fails the same way the user would see it
 // (caret on the wrong line).
 //
-// WIRE STATE (protocol v28): the new W0.6 pairs are live —
-//   requestCaretNav  {storyId, offset, direction: "up"|"down"} → {offset?}
-//   requestLineBounds {storyId, offset}                        → {bounds?}
+// WIRE STATE (protocol v35): the caret-nav query family is fully wired —
+//   requestCaretNav       {storyId, offset, direction: "up"|"down"} → {offset?}
+//   requestLineBounds      {storyId, offset}  → {bounds?}  (W0.6)
+//   requestWordBounds      {storyId, offset}  → {bounds?}  (v31, UAX-29)
+//   requestParagraphBounds {storyId, offset}  → {bounds?}  (v35, W1.23)
 // caretNavResult is OFFSET-ONLY: the engine owns the InDesign desired-x
-// "goal column", we just apply the returned offset. There is NO
-// word-bounds query and no story-text read on this client, so true
-// WORD granularity (double-click) cannot be computed main-thread; both
-// double- and triple-click resolve to the LINE via requestLineBounds
-// today (see ViewportCanvas `applyTextGranularity`). The strict
-// single-word assertion is parked as test.fixme below until a
-// requestWordBounds wire (or story-text read) lands.
+// "goal column", we just apply the returned offset. The granularity
+// ladder is now char → word (double-click, requestWordBounds) →
+// paragraph (triple-click, requestParagraphBounds) — see ViewportCanvas
+// `applyTextGranularity`. Triple-click spans every wrapped line of the
+// paragraph (the v35 query is independent of line bounds), so CARET-NAV-7
+// below is a live assertion, not a fixme.
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -155,6 +156,35 @@ async function lineBoundsAt(
         }
       ).__canvas;
       return c.client.lineBounds(storyId, offset);
+    },
+    { storyId, offset },
+  );
+}
+
+/** Engine-authoritative paragraph extent (story-local bytes) for the
+ *  paragraph containing `offset`. Mirrors the wire `requestParagraphBounds`
+ *  (v35). The synthetic inter-paragraph `\n` is the boundary and is NOT
+ *  inside the span. */
+async function paragraphBoundsAt(
+  page: Page,
+  storyId: string,
+  offset: number,
+): Promise<{ start: number; end: number } | null> {
+  return page.evaluate(
+    async ({ storyId, offset }) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              paragraphBounds: (
+                id: string,
+                off: number,
+              ) => Promise<{ start: number; end: number } | null>;
+            };
+          };
+        }
+      ).__canvas;
+      return c.client.paragraphBounds(storyId, offset);
     },
     { storyId, offset },
   );
@@ -338,27 +368,39 @@ test.describe("W2.11 caret navigation", () => {
     // offset (font-substitution changes the wrap point run-to-run),
     // which made the `home < end` assertion flaky.
     const mid = 1;
+    // The line-end offset is engine-authoritative — read it directly so
+    // the End-key poll can wait for the caret to actually REACH it. The
+    // earlier `start >= mid` poll could capture the pre-move caret (it was
+    // already at offset 1, which trivially satisfies `>= 1`), racing the
+    // async lineBounds reply and occasionally reading a stale offset for
+    // both End and Home (the `home < end` flake).
+    const lineEnd = (await lineBoundsAt(page, storyId, mid))!.lineEnd;
+    expect(lineEnd, "line end strictly past the interior offset").toBeGreaterThan(
+      mid,
+    );
+
     await setCaret(page, storyId, mid);
     await blurFocus(page);
 
-    // End → caret at line end (>= mid, never past the story).
+    // End → caret at the engine's line end (poll until it lands there).
     await page.keyboard.press("End");
     await expect
       .poll(async () => (await currentSelection(page))?.start ?? -1, {
         timeout: 5000,
       })
-      .toBeGreaterThanOrEqual(mid);
+      .toBe(lineEnd);
     const endSel = (await currentSelection(page))!;
     expect(endSel.start).toBe(endSel.end);
     expect(endSel.start).toBeLessThanOrEqual(chars);
 
-    // Home → caret at line start (<= the End offset).
+    // Home → caret at line start (strictly before the End offset; poll
+    // until it has moved off the line-end).
     await page.keyboard.press("Home");
     await expect
       .poll(async () => (await currentSelection(page))?.start ?? Infinity, {
         timeout: 5000,
       })
-      .toBeLessThanOrEqual(endSel.start);
+      .toBeLessThan(endSel.start);
     const homeSel = (await currentSelection(page))!;
     expect(homeSel.start).toBe(homeSel.end);
     // Home lands at the line's first character; End is strictly later
@@ -498,16 +540,182 @@ test.describe("W2.11 caret navigation", () => {
     expect(spaceOffset!.start).toBeGreaterThanOrEqual(word!.end);
   });
 
-  // WIRE GAP (still open at protocol v31) — paragraph granularity.
-  // v31 added requestWordBounds (CARET-NAV-6, double-click), but there
-  // is NO requestParagraphBounds wire: triple-click resolves to the
-  // LINE via requestLineBounds, which is not independently observable
-  // from the paragraph until a distinct paragraph-bounds query lands.
-  // The editor's granularity ladder is word (double) → line (triple)
-  // today; re-enable this as a distinct paragraph assertion once the
-  // engine surfaces paragraph extents separately from line.
-  test.fixme(
-    "CARET-NAV-7 — triple-click selects the paragraph (needs paragraph-bounds wire distinct from line)",
-    async () => {},
-  );
+  test("CARET-NAV-6b — double-click on punctuation selects sensibly (UAX-29)", async ({
+    page,
+  }) => {
+    // Word-granularity edge case: a double-click landing on a punctuation
+    // mark or a whitespace run must resolve to a sensible, non-empty range
+    // via the wire (UAX-29 segments punctuation and whitespace as their
+    // own breaks) — never an empty selection and never a crash. We probe
+    // EVERY offset in the story through requestWordBounds and assert the
+    // engine's contract holds at each one (this catches the punctuation /
+    // whitespace edge cases without depending on which glyph the body copy
+    // happens to put where).
+    const chars = await storyChars(page, storyId);
+    expect(chars).toBeGreaterThan(1);
+
+    const probe = await page.evaluate(
+      async ({ storyId, chars }) => {
+        const c = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                wordBounds: (
+                  id: string,
+                  off: number,
+                ) => Promise<{ start: number; end: number } | null>;
+              };
+            };
+          }
+        ).__canvas;
+        const rows: Array<{ off: number; start: number; end: number } | null> =
+          [];
+        for (let off = 0; off < chars; off++) {
+          const w = await c.client.wordBounds(storyId, off);
+          rows.push(w ? { off, start: w.start, end: w.end } : null);
+        }
+        return rows;
+      },
+      { storyId, chars },
+    );
+
+    // Every interior offset resolves to a non-empty, well-formed range
+    // whose span contains the probed offset (the word/punctuation/space
+    // run the click lands in). No empty selections — a double-click always
+    // yields a typeable range.
+    for (const row of probe) {
+      expect(row, "wordBounds resolved at every offset").toBeTruthy();
+      expect(row!.end, `non-empty word at offset ${row!.off}`).toBeGreaterThan(
+        row!.start,
+      );
+      expect(row!.start).toBeLessThanOrEqual(row!.off);
+      expect(row!.end).toBeGreaterThanOrEqual(row!.off);
+    }
+  });
+
+  test("CARET-NAV-7 — triple-click selects the whole paragraph across wrapped lines (requestParagraphBounds)", async ({
+    page,
+  }) => {
+    // W2.9: protocol v35 ships requestParagraphBounds (W1.23). Triple-
+    // click now selects the WHOLE paragraph containing the offset —
+    // spanning every wrapped visual line — strictly wider than the single
+    // line a triple-click used to resolve to. Drives the REAL viewport
+    // pointer path (ViewportCanvas multi-click run → applyTextGranularity).
+    const rfx = await loadViaReactPath(page, "text");
+    const rStory = rfx.firstStory!.selfId;
+    await activateTool(page, "type");
+
+    const chars = await storyChars(page, rStory);
+    const mid = Math.max(1, Math.floor(chars / 2));
+    const geo = await caretGeo(page, { storyId: rStory, start: mid, end: mid });
+    expect(geo, "caret geometry mid-story").toBeTruthy();
+
+    // The engine's authoritative paragraph + line extents at this offset.
+    const para = await paragraphBoundsAt(page, rStory, mid);
+    expect(para, "paragraph bounds at mid offset").toBeTruthy();
+    expect(para!.end).toBeGreaterThan(para!.start); // non-empty paragraph
+    const line = await lineBoundsAt(page, rStory, mid);
+    expect(line, "line bounds at mid offset").toBeTruthy();
+    // The paragraph CONTAINS the line, and (body copy wraps) is strictly
+    // wider than the single line — the multi-line proof.
+    expect(para!.start).toBeLessThanOrEqual(line!.lineStart);
+    expect(para!.end).toBeGreaterThanOrEqual(line!.lineEnd);
+    expect(
+      para!.end - para!.start,
+      "paragraph spans more than one wrapped line",
+    ).toBeGreaterThan(line!.lineEnd - line!.lineStart);
+
+    // The paragraph caret-spans >1 visual line — geometric multi-line
+    // proof independent of the byte extents: the caret at the paragraph
+    // start sits on a higher line than the caret at the paragraph end.
+    const topCaret = await caretGeo(page, {
+      storyId: rStory,
+      start: para!.start,
+      end: para!.start,
+    });
+    const botCaret = await caretGeo(page, {
+      storyId: rStory,
+      start: para!.end,
+      end: para!.end,
+    });
+    expect(topCaret, "paragraph-start caret").toBeTruthy();
+    expect(botCaret, "paragraph-end caret").toBeTruthy();
+    expect(
+      botCaret!.topPt - topCaret!.topPt,
+      "paragraph spans multiple visual lines",
+    ).toBeGreaterThan(0.5);
+
+    // Triple-click on the glyph at `mid` → the selection is EXACTLY the
+    // engine's paragraph range (not the line). Native `detail` is
+    // unreliable for the 3rd click, so issue three discrete clicks at the
+    // same point inside the multi-click window (matches ViewportCanvas's
+    // own click-run tracking).
+    const pt = await screenPoint(
+      page,
+      geo!.xPt + 2,
+      geo!.topPt + geo!.heightPt / 2,
+    );
+    await page.mouse.click(pt.x, pt.y);
+    await page.mouse.click(pt.x, pt.y);
+    await page.mouse.click(pt.x, pt.y);
+
+    await expect
+      .poll(async () => {
+        const s = await currentSelection(page);
+        return s ? `${s.start}:${s.end}` : "";
+      }, { timeout: 6000 })
+      .toBe(`${para!.start}:${para!.end}`);
+  });
+
+  test("CARET-NAV-8 — typing replaces a triple-click paragraph selection", async ({
+    page,
+  }) => {
+    // The paragraph range must behave like any other range selection:
+    // typing one glyph deletes the whole paragraph and inserts the glyph
+    // (count delta = +1 − paragraphLen). Drives the real pointer path for
+    // the triple-click, then the real keyboard handler for the replace.
+    const rfx = await loadViaReactPath(page, "text");
+    const rStory = rfx.firstStory!.selfId;
+    await activateTool(page, "type");
+
+    const chars = await storyChars(page, rStory);
+    const mid = Math.max(1, Math.floor(chars / 2));
+    const geo = await caretGeo(page, { storyId: rStory, start: mid, end: mid });
+    expect(geo, "caret geometry mid-story").toBeTruthy();
+    const para = await paragraphBoundsAt(page, rStory, mid);
+    expect(para, "paragraph bounds at mid offset").toBeTruthy();
+
+    const pt = await screenPoint(
+      page,
+      geo!.xPt + 2,
+      geo!.topPt + geo!.heightPt / 2,
+    );
+    await page.mouse.click(pt.x, pt.y);
+    await page.mouse.click(pt.x, pt.y);
+    await page.mouse.click(pt.x, pt.y);
+
+    // Wait for the paragraph range to materialise on the mirror.
+    await expect
+      .poll(async () => {
+        const s = await currentSelection(page);
+        return s ? s.end - s.start : 0;
+      }, { timeout: 6000 })
+      .toBe(para!.end - para!.start);
+
+    const sel = (await currentSelection(page))!;
+    const rangeLen = sel.end - sel.start;
+    const before = await storyChars(page, rStory);
+
+    // Type a marker glyph — replace-on-type collapses the paragraph to it.
+    await blurFocus(page);
+    await page.keyboard.press("Z");
+    await expect
+      .poll(() => storyChars(page, rStory), { timeout: 5000 })
+      .toBe(before - rangeLen + 1);
+
+    // The caret collapsed to a single offset just past the inserted glyph.
+    const after = (await currentSelection(page))!;
+    expect(after.start).toBe(after.end);
+    expect(after.start).toBe(sel.start + 1);
+  });
 });

@@ -73,6 +73,7 @@ export type {
   LinkSummary,
   MasterPageSummary,
   PageSummary,
+  ParagraphBounds,
   PathfinderKind,
   PreflightFinding,
   SectionSummary,

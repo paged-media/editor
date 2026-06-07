@@ -38,6 +38,7 @@ import {
   type MainToWorkerKind,
   type Mutation,
   type PageId,
+  type ParagraphBounds,
   type PathAnchorsResult,
   type PreflightFinding,
   type SelectionMode,
@@ -833,6 +834,31 @@ export class CanvasClient {
       payload: { storyId, offset, cell },
     });
     if (reply.kind === "wordBoundsResult") return reply.payload.bounds ?? null;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
+   * W2.9 — paragraph extent for the paragraph containing `offset`: the
+   * story-local BYTE offsets `[start, end)` of the paragraph the engine
+   * resolves the offset into (same address space as `wordBounds` /
+   * `lineBounds` / `HitResult.offsetWithinStory`). The synthetic
+   * inter-paragraph `\n` is the boundary and is NOT included in the span.
+   * The span covers every wrapped line of the paragraph, so triple-click
+   * selects `[start, end)` across line wraps. Resolves to `null` when the
+   * offset has no resolvable paragraph (empty / unbuilt story). The
+   * `cell` qualifier (v35) addresses a paragraph inside a table cell's
+   * stream; `null` (the default) targets the body story.
+   */
+  async paragraphBounds(
+    storyId: string,
+    offset: number,
+    cell: TextCellAddr | null = null,
+  ): Promise<ParagraphBounds | null> {
+    const reply = await this.send({
+      kind: "requestParagraphBounds",
+      payload: { storyId, offset, cell },
+    });
+    if (reply.kind === "paragraphBoundsResult") return reply.payload.bounds ?? null;
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
