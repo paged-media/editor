@@ -156,61 +156,57 @@ test.describe("E2E text ops", () => {
   // probe (capability-matrix.spec.ts) owns the support classification;
   // these assert the user-visible domain effect (render + model + undo).
 
-  test("AC-E2E-TEXT-3 — applyStyle attributes a paragraph-style range (wire-accepted, undo round-trips)", async ({
+  test("AC-E2E-TEXT-3 — applyStyle attributes a contrasting paragraph style and REPAINTS the run", async ({
     page,
   }) => {
-    // applyStyle takes a NAMED style ref + scope (v28 shape); range
-    // character attributes go through setElementProperty / the splitters.
-    //
-    // HONEST SEAM (not a full op-sandwich): applyStyle is attribute-only
-    // and changes NO character count, and the generated `text` fixture
-    // doesn't deterministically expose a paragraph style whose VISUAL
-    // properties contrast with the one the body paragraph already carries
-    // — so a render-diff sandwich produces zero changed pixels (the swap
-    // is visually identical). Building a guaranteed-contrasting style
-    // would reach into the paragraph-styles surface (another agent's
-    // ground). What the v35 wire DOES now guarantee (empirically, via the
-    // capability matrix probe — harness/capabilities.ts marks applyStyle
-    // "supported") is that the op APPLIES and undo restores; that is what
-    // this test pins: the mutation is accepted (mutationApplied, not
-    // mutationFailed), the story survives intact, and undo round-trips.
-    // The render-diff proof stays the matrix's job until a contrasting
-    // style is wired into the fixture.
+    // W2.1 — the `text` fixture now ships a deliberately-contrasting
+    // named paragraph style "Emphasis Display" (28pt / RGB cyan /
+    // centred vs the 12pt black left default — see the paged-gen `text`
+    // sample). It is the LAST entry in the paragraphStyles collection, so
+    // `lastCollectionId` resolves to it. Applying it to the page-0 body
+    // paragraph now produces a real render delta, upgrading the former
+    // "honest seam" to a full op-sandwich: the mutation lands, the story
+    // length is unchanged (attribute-only), the frame REPAINTS, and undo
+    // restores the model + pixels byte-identically (verified on 0.35.1).
     const story = fx.firstStory!;
     expect(story, "text fixture has a story").toBeTruthy();
     const styleId = await lastCollectionId(page, "paragraphStyles");
-    expect(styleId, "fixture has at least one paragraph style").toBeTruthy();
+    expect(styleId, "fixture has the contrasting Emphasis style").toBeTruthy();
+    const frame = fx.frames.find((f) => f.ref.kind === "textFrame")!;
+    const pageInfo = fx.pages[frame.pageIndex];
+    const region = (await elementPageRectPt(page, frame.ref))!;
     const before = await storyChars(page, story.selfId);
 
-    const reply = (await mutate(page, {
-      op: "applyStyle",
-      args: {
-        storyId: story.selfId,
-        start: 0,
-        end: 1,
-        style: styleId,
-        scope: "paragraph",
+    await opSandwich(page, {
+      pageId: pageInfo.pageId,
+      pageWidthPt: pageInfo.widthPt,
+      region,
+      // The restyle resizes glyphs (12pt → 28pt) and re-centres them, so
+      // the line reflows inside the frame — relax containment.
+      containment: false,
+      apply: async () => {
+        const reply = (await mutate(page, {
+          op: "applyStyle",
+          args: {
+            storyId: story.selfId,
+            start: 0,
+            end: 1,
+            style: styleId,
+            scope: "paragraph",
+          },
+        })) as { kind: string };
+        expect(reply.kind, "applyStyle accepted by the engine").toBe(
+          "mutationApplied",
+        );
       },
-    })) as { kind: string };
-    // The v35 wire accepts the op (vs. the pre-v35 notImplemented reject).
-    expect(reply.kind, "applyStyle accepted by the engine").toBe(
-      "mutationApplied",
-    );
-    // Attribute-only: the story keeps its length.
-    expect(await storyChars(page, story.selfId)).toBe(before);
-
-    // Undo round-trips at the model level (char count stable across the
-    // undo — applyStyle's inverse restores the prior style attribution).
-    const undo = (await page.evaluate(async () => {
-      const c = (
-        globalThis as unknown as {
-          __canvas: { client: { undo: () => Promise<{ kind: string }> } };
-        }
-      ).__canvas;
-      return c.client.undo();
-    })) as { kind: string };
-    expect(undo.kind, "undo of applyStyle accepted").toBe("undoApplied");
-    expect(await storyChars(page, story.selfId)).toBe(before);
+      expectModel: async () => {
+        // Attribute-only: the story keeps its length.
+        expect(await storyChars(page, story.selfId)).toBe(before);
+      },
+      expectRestored: async () => {
+        expect(await storyChars(page, story.selfId)).toBe(before);
+      },
+    });
   });
 
   test("AC-E2E-TEXT-4 — insertField inserts a page-number field and repaints", async ({

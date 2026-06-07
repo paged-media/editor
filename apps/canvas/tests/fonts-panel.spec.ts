@@ -65,17 +65,22 @@ test.describe("W2.12 — Fonts panel", () => {
     }
   });
 
-  test.fixme("AC-FONTS-3 — a deliberately-missing family shows the missing badge + count", async ({
+  test("AC-FONTS-3 — a deliberately-missing family shows the missing badge", async ({
     page,
   }) => {
-    // Genuinely deferred: this wants a fixture that carries an
-    // unresolved family BY DESIGN (independent of the runner's font
-    // set), to pin the red dot + [data-row-badge="missing"] +
-    // [data-missing-count] deterministically. The harness's fallback-
-    // face substitution (AC-FONTS-2) is incidental, not a fixture.
+    // W2.2 — `preflight.idml` carries a run pinned to "Phantom Display",
+    // a family no corpus font (and no harness registration) provides, so
+    // `FontSummary.isMissing` is true BY DESIGN — independent of the
+    // runner's font set (verified: the fonts collection reports
+    // Phantom Display isMissing on 0.35.1). This pins the missing badge
+    // deterministically (vs the incidental Open Sans substitution that
+    // AC-FONTS-2 tolerates either way).
     await openCanvas(page);
-    await loadIdml(page, FIXTURE);
+    await loadIdml(page, `${REPO_ROOT}/corpus/generated/preflight.idml`);
     await openPanel(page, "paged.fonts");
-    await expect(page.locator('[data-row-badge="missing"]')).toBeVisible();
+    await expect(page.locator('[data-fonts-panel="ready"]')).toBeVisible();
+    await expect(
+      page.locator('[data-row-badge="missing"]').first(),
+    ).toBeVisible();
   });
 });

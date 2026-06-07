@@ -62,6 +62,38 @@ async function readRangeProp(
   );
 }
 
+/** Resolve the story + character-count at a given page index. The
+ *  generated `text` fixture stacks one body story per page in designmap
+ *  (= page) order, so `paged.stories()[i]` is page `i`'s body story.
+ *  The W2.1 typography pages append after the original 13 — see the
+ *  paged-gen `text` sample. */
+async function storyAtPage(
+  page: Page,
+  pageIndex: number,
+): Promise<{ selfId: string; characterCount: number }> {
+  return page.evaluate(async (i) => {
+    const c = (
+      globalThis as unknown as {
+        __canvas: {
+          client: {
+            executeScript: (
+              src: string,
+            ) => Promise<{ output: string[]; error: string | null }>;
+          };
+        };
+      }
+    ).__canvas;
+    const json = await c.client
+      .executeScript("paged.stories()")
+      .then((r) => r.output[0] ?? "[]");
+    const stories = JSON.parse(json) as Array<{
+      selfId: string;
+      characterCount: number;
+    }>;
+    return stories[i];
+  }, pageIndex);
+}
+
 test.describe("E2E character ops", () => {
   let fx: LoadedFixture;
   let range: StoryRangeRef;
@@ -248,18 +280,119 @@ test.describe("E2E character ops", () => {
     });
   });
 
-  // ── render-gate-risky on the minimal `text` fixture ──────────────
-  // These paths round-trip in the MODEL but may not produce a visible
-  // glyph delta on the default fixture text (so the sandwich's
-  // "changed inside" render gate could fail). They flip to live
-  // sandwiches once a fixture with the right content (a font family
-  // with a distinct style/optical-kern table, ligature pairs, an
-  // applied non-default language hyphenation dictionary) exists.
+  // ── W2.1 typography-content flips ────────────────────────────────
+  // The `text` fixture gained dedicated host pages (paged-gen `text`
+  // sample) so these paths produce a render delta a single edit can
+  // prove. Each sandwiches against its own page's story (not the page-0
+  // pangram), addressing the WHOLE story so the kern pair / superscript
+  // digit is in the selection.
 
-  test.fixme("AC-E2E-CHAR-fontFamily — characterFontFamily (needs a 2nd embedded family to repaint)", async () => {});
-  test.fixme("AC-E2E-CHAR-kerning — characterKerningMethod (Optical needs kern-pair content to repaint)", async () => {});
-  test.fixme("AC-E2E-CHAR-position — characterPosition (Superscript needs digit/glyph content to repaint)", async () => {});
-  test.fixme("AC-E2E-CHAR-language — characterLanguage (no visible delta without a hyphenation break)", async () => {});
-  test.fixme("AC-E2E-CHAR-ligatures — characterLigatures (needs a ligature pair like 'fi' in the run)", async () => {});
+  test("AC-E2E-CHAR-kerning — characterKerningMethod (None) shifts kern-pair glyphs", async ({
+    page,
+  }) => {
+    // Page "text · kern · pairs" (idx 13) is "AVATAR To Wave Yes Tom" —
+    // AV / To / Wa / Ye carry large negative kern values in Inter's
+    // GPOS, so flipping KerningMethod=None drops the kern and shifts the
+    // glyphs (verified render delta + byte-identical undo on 0.35.1).
+    const story = await storyAtPage(page, 13);
+    const r = storyRange(story.selfId, 0, story.characterCount);
+    const frame = fx.frames.find((f) => f.pageIndex === 13)!;
+    const pi = fx.pages[13];
+    const region13 = (await elementPageRectPt(page, frame.ref))!;
+    await opSandwich(page, {
+      pageId: pi.pageId,
+      pageWidthPt: pi.widthPt,
+      region: region13,
+      containment: false,
+      dumpModel: () => dumpElement(page, r),
+      apply: async () => {
+        await mutate(page, {
+          op: "setElementProperty",
+          args: {
+            elementId: r,
+            path: "characterKerningMethod",
+            value: { type: "text", value: "None" },
+          },
+        });
+      },
+      expectModel: async () => {
+        expect(
+          (
+            (await readRangeProp(page, r, "characterKerningMethod")) as {
+              value: string;
+            }
+          ).value,
+        ).toBe("None");
+      },
+    });
+  });
+
+  test("AC-E2E-CHAR-position — characterPosition (Superscript) lifts the run", async ({
+    page,
+  }) => {
+    // Page "text · superscript · digit" (idx 14) is "E = mc2 and 1st …".
+    // Superscript lifts + shrinks the selected glyphs in core's compose
+    // (verified render delta + byte-identical undo on 0.35.1 — despite
+    // the scene struct's stale "not yet honoured" comment).
+    const story = await storyAtPage(page, 14);
+    const r = storyRange(story.selfId, 0, story.characterCount);
+    const frame = fx.frames.find((f) => f.pageIndex === 14)!;
+    const pi = fx.pages[14];
+    const region14 = (await elementPageRectPt(page, frame.ref))!;
+    await opSandwich(page, {
+      pageId: pi.pageId,
+      pageWidthPt: pi.widthPt,
+      region: region14,
+      containment: false,
+      dumpModel: () => dumpElement(page, r),
+      apply: async () => {
+        await mutate(page, {
+          op: "setElementProperty",
+          args: {
+            elementId: r,
+            path: "characterPosition",
+            value: { type: "text", value: "Superscript" },
+          },
+        });
+      },
+      expectModel: async () => {
+        expect(
+          (
+            (await readRangeProp(page, r, "characterPosition")) as {
+              value: string;
+            }
+          ).value,
+        ).toBe("Superscript");
+      },
+    });
+  });
+
+  // ── NOT fixture-shaped — engine/harness gaps (W2.1 investigation) ──
+  // Each was probed against the live 0.35.1 wasm with dedicated fixture
+  // content + the right font registered; the blocker is an engine or
+  // harness capability, not missing fixture content. Kept as fixme with
+  // the precise blocker so they flip the day core/the harness closes it.
+
+  // characterFontFamily round-trips in the MODEL (elementProperties
+  // reports the new family) but the renderer does NOT re-resolve the run
+  // to the switched family — it stays on the loadDocument fallback face.
+  // A `text · family · second` page + registering a 2nd face still paints
+  // identically after the switch. ENGINE/HARNESS GAP: the live
+  // font-family mutation isn't consulted by the layout font resolver.
+  test.fixme("AC-E2E-CHAR-fontFamily — characterFontFamily (runtime family switch not re-resolved by the renderer)", async () => {});
+  // characterLigatures DOES flip shaping (a render delta appears when the
+  // doc is loaded with a liga-bearing fallback like Cormorant on the
+  // `text · liga · fi-ffi` page). But (a) the harness default font Inter
+  // has no `liga` table, and (b) elementProperties reports characterLigatures
+  // as false even in the default-ON state, and undo does NOT restore the
+  // ligature render. ENGINE GAP: model read + undo for the ligature toggle.
+  test.fixme("AC-E2E-CHAR-ligatures — characterLigatures (model-read + undo gaps; needs a liga font as the load fallback)", async () => {});
+  // characterLanguage only changes output via a hyphenation break, which
+  // (see paragraph-ops AC-E2E-PARA-hyphenation) produces no render delta
+  // on 0.35.1 even in a narrow column with a long word. ENGINE GAP:
+  // gated on the hyphenation-toggle render gap.
+  test.fixme("AC-E2E-CHAR-language — characterLanguage (gated on the hyphenation-render engine gap)", async () => {});
+  // characterOtfFeatures is an opaque tag string with no panel write
+  // surface — no `setElementProperty` value shape to drive. ENGINE GAP.
   test.fixme("AC-E2E-CHAR-otf — characterOtfFeatures (opaque tag string; no panel write surface yet)", async () => {});
 });

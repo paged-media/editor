@@ -262,21 +262,30 @@ test.describe("E2E stroke op round-trips", () => {
     });
   });
 
-  // Miter limit only re-renders when a sharp join's miter would
-  // overflow the limit; a rectangle's 90° corners at the default
-  // weight/limit don't cross that threshold, so the edit lands in the
-  // model but produces no visible delta on this fixture.
+  // NOT fixture-shaped (W2.2 investigation, 0.35.1). The miter delta
+  // needs a sharp-cornered shape whose miter overflows the limit — but
+  // `frameStrokeMiterLimit` is RECTANGLE-ONLY in both the panel surface
+  // (stroke.composition.ts: "LIVE miter limit (Rectangle-only)") AND the
+  // engine apply layer (paged-mutate apply.rs matches only
+  // `NodeId::Rectangle`; the mutation is REJECTED on a Polygon). A
+  // rectangle's 90° corners never overflow the limit, so even a
+  // generated sharp-star polygon can't be driven through this path.
+  // ENGINE/SURFACE GAP: miter limit isn't authorable on the shapes whose
+  // corners trip it.
   test.fixme(
-    "AC-E2E-STROKE-miter — needs a sharp-cornered (polygon) fixture to show the miter delta",
+    "AC-E2E-STROKE-miter — frameStrokeMiterLimit is Rectangle-only; rects never overflow the limit",
     async () => {},
   );
 
-  // Gap tint only modulates the gap colour; with the gap-colour pass a
-  // tint change is a subtle alpha shift that may fall under the
-  // sandwich's byte threshold. Pending a dedicated gap-tint fixture
-  // with a high-contrast gap colour.
+  // NOT fixture-shaped (W2.2 investigation, 0.35.1). `frameStrokeGapTint`
+  // round-trips on the wire but produces NO render delta — verified on
+  // the working geometry rect with a frame-level high-contrast (magenta)
+  // gap colour under a heavy `$ID/Dashed` stroke: changing the gap tint
+  // repainted nothing. The renderer's gap-colour second pass (shapes.rs)
+  // consumes the gap COLOUR but not the gap TINT. ENGINE GAP: gap tint
+  // not honoured by the gap-colour under-pass.
   test.fixme(
-    "AC-E2E-STROKE-gap-tint — needs a high-contrast gap colour to exceed the diff threshold",
+    "AC-E2E-STROKE-gap-tint — frameStrokeGapTint not consumed by the renderer's gap-colour pass",
     async () => {},
   );
 });

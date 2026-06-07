@@ -58,6 +58,36 @@ async function readRangeProp(
   );
 }
 
+/** Story at a given page index — see character-ops for the rationale
+ *  (`paged.stories()[i]` is page `i`'s body story in the `text`
+ *  fixture). */
+async function storyAtPage(
+  page: Page,
+  pageIndex: number,
+): Promise<{ selfId: string; characterCount: number }> {
+  return page.evaluate(async (i) => {
+    const c = (
+      globalThis as unknown as {
+        __canvas: {
+          client: {
+            executeScript: (
+              src: string,
+            ) => Promise<{ output: string[]; error: string | null }>;
+          };
+        };
+      }
+    ).__canvas;
+    const json = await c.client
+      .executeScript("paged.stories()")
+      .then((r) => r.output[0] ?? "[]");
+    const stories = JSON.parse(json) as Array<{
+      selfId: string;
+      characterCount: number;
+    }>;
+    return stories[i];
+  }, pageIndex);
+}
+
 test.describe("E2E paragraph ops", () => {
   let fx: LoadedFixture;
   let range: StoryRangeRef;
@@ -245,15 +275,71 @@ test.describe("E2E paragraph ops", () => {
     });
   });
 
-  // ── render-gate-risky on the minimal `text` fixture ──────────────
-  // These round-trip in the MODEL but may not change a visible glyph
-  // on the single short default paragraph (no wrap → hyphenation /
-  // keep-options / a rule below the only line produce no delta). They
-  // flip to live sandwiches against a multi-line / multi-paragraph
-  // fixture that exercises the layout.
+  // ── W2.1 multi-paragraph flip ────────────────────────────────────
 
-  test.fixme("AC-E2E-PARA-hyphenation — paragraphHyphenation (needs a wrapping line to break)", async () => {});
-  test.fixme("AC-E2E-PARA-keepLines — paragraphKeepLinesTogether (needs a multi-line column to reflow)", async () => {});
-  test.fixme("AC-E2E-PARA-keepNext — paragraphKeepWithNext (needs adjacent paragraphs across a column break)", async () => {});
-  test.fixme("AC-E2E-PARA-ruleBelow — paragraphRuleBelow (needs trailing space below the last line to show)", async () => {});
+  test("AC-E2E-PARA-ruleBelow — paragraphRuleBelow draws a rule in the inter-paragraph gap", async ({
+    page,
+  }) => {
+    // Page "text · para · multi-trailing" (idx 16) stacks two paragraphs
+    // with SpaceAfter, so a coloured RuleBelow on the first paragraph
+    // paints a visible bar in the gap above the second — the
+    // trailing-space case the single-paragraph fixmes lacked. Targets the
+    // FIRST paragraph (range [0,4]); a coloured + heavier rule clears the
+    // threshold (verified render delta + byte-identical undo on 0.35.1).
+    const story = await storyAtPage(page, 16);
+    const r = storyRange(story.selfId, 0, Math.min(4, story.characterCount));
+    const frame = fx.frames.find((f) => f.pageIndex === 16)!;
+    const pi = fx.pages[16];
+    const region16 = (await elementPageRectPt(page, frame.ref))!;
+    await opSandwich(page, {
+      pageId: pi.pageId,
+      pageWidthPt: pi.widthPt,
+      region: region16,
+      containment: false,
+      dumpModel: () => dumpElement(page, r),
+      apply: async () => {
+        await mutate(page, {
+          op: "setElementProperty",
+          args: {
+            elementId: r,
+            path: "paragraphRuleBelow",
+            value: {
+              type: "paragraphRule",
+              value: { on: true, weight: 4, offset: 2, color: "Color/Black" },
+            },
+          },
+        });
+      },
+      expectModel: async () => {
+        const v = (await readRangeProp(page, r, "paragraphRuleBelow")) as {
+          type: string;
+          value: { on?: boolean; weight?: number } | null;
+        } | null;
+        expect(v?.type).toBe("paragraphRule");
+        expect(v?.value?.on).toBe(true);
+        expect(v?.value?.weight).toBe(4);
+      },
+    });
+  });
+
+  // ── NOT fixture-shaped — engine gaps (W2.1 investigation) ─────────
+  // Each was probed against the live 0.35.1 wasm with dedicated fixture
+  // content; the blocker is an engine capability, not fixture content.
+
+  // paragraphHyphenation sets `para.hyphenation` (model + undo OK) and
+  // the composer reads it, but toggling it produced NO render delta on
+  // 0.35.1 across every content tried: a 130pt narrow column with a long
+  // word ("text · wrap · hyphenation" page), the wide pangram, and a
+  // LeftJustified paragraph. Ragged Knuth-Plass picks equally-good
+  // non-hyphenated breaks, and the narrow column overflows the long word
+  // rather than hyphenating. ENGINE GAP: the hyphenation toggle does not
+  // change the composed line breaks for any fixture-shaped content.
+  test.fixme("AC-E2E-PARA-hyphenation — paragraphHyphenation (toggle produces no composed-break delta on 0.35.1)", async () => {});
+  // keep_lines_together / keep_with_next round-trip through mutate but
+  // are NOT consumed by paged-compose/paged-text for frame-break
+  // decisions (stored on structs, never read in the break logic).
+  // Verified: no render delta even on the threaded/overset fixture.
+  // ENGINE GAP: keep-options not honoured in layout.
+  test.fixme("AC-E2E-PARA-keepLines — paragraphKeepLinesTogether (not consumed by the composer's frame-break logic)", async () => {});
+  test.fixme("AC-E2E-PARA-keepNext — paragraphKeepWithNext (not consumed by the composer's frame-break logic)", async () => {});
 });

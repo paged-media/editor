@@ -35,26 +35,25 @@ test.describe("Phase 5 — Links panel", () => {
     await expect(rows).not.toHaveCount(0);
   });
 
-  test.fixme("AC-LINKS-3 — resolved links carry no missing/lo-res badge", async ({
+  test("AC-LINKS-3 — resolved links carry no missing/lo-res badge", async ({
     page,
   }) => {
-    // STILL deferred (Aftercare-D). The assertion is "NO missing badge
-    // ANYWHERE in the list", which needs an ALL-healthy fixture.
-    // `images.idml`'s placements point at non-existent `file:` URIs so
-    // every row is "missing"; the new `links-broken.idml` DOES ship a
-    // resolved control (`links · ok · embedded`, inline PNG bytes), but
-    // it deliberately also carries the two broken rows + a lo-res row, so
-    // the document-wide "zero badges" assertion can't hold there either.
-    // This positive case needs a dedicated all-ok embedded-image fixture.
+    // W2.2 — `links-ok.idml` is the dedicated all-healthy control: two
+    // inline-embedded placements that both resolve `status === "ok"` with
+    // an effective PPI at/above the 150-ppi floor (300 + 220), so NO
+    // `missing` and NO `lo-res` badge appears anywhere in the list
+    // (verified on 0.35.1). `links-broken.idml` can't host this case — it
+    // deliberately mixes broken + lo-res rows.
     await openCanvas(page);
-    await loadIdml(page, `${REPO_ROOT}/corpus/generated/images.idml`);
+    await loadIdml(page, `${REPO_ROOT}/corpus/generated/links-ok.idml`);
     await openPanel(page, "paged.links");
     await expect(page.locator('[data-links-panel="ready"]')).toBeVisible();
     await expect(
       page.locator("[data-link-list] [data-list-row]"),
     ).not.toHaveCount(0);
-    // Healthy fixture → no `missing` badge anywhere in the list.
+    // All-healthy fixture → no `missing` and no `lo-res` badge anywhere.
     await expect(page.locator('[data-row-badge="missing"]')).toHaveCount(0);
+    await expect(page.locator('[data-row-badge="lo-res"]')).toHaveCount(0);
   });
 
   test("AC-LINKS-4 — a broken link shows the missing badge + error dot", async ({
