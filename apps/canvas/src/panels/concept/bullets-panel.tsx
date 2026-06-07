@@ -4,6 +4,24 @@
 // `paragraphNumberingFormat`) flip the gallery's List type segments
 // and the bullet glyph / numbering format fields seam→live.
 //
+// W2.10 (2026-06-07) — named LIST-DEFINITION management on the W1.22
+// `NumberingList` surface (protocol v35). The document's
+// `<NumberingList>` resources read from the `numberingLists`
+// collection; create / rename / delete ride the CRUD ops
+// (`createNumberingList` / `editNumberingList` / `deleteNumberingList`,
+// each carrying a `NumberingListSpec`); a list assigns to the
+// selected paragraphs through `paragraphAppliedNumberingList`
+// (content scope, `Value::Text` = the list selfId). Continuity is the
+// per-list `continueAcrossStories` flag (a live toggle on the editing
+// row) — the renderer reads it for cross-story numbering continuity.
+//
+// PUBLISHED-TYPES GAP: `paragraphAppliedNumberingList` is WRITE-ONLY
+// on the v35 wire — the paragraph property snapshot carries NO
+// read-back entry, so the panel cannot reflect WHICH list a
+// paragraph currently uses (assign is a forward command, honestly
+// labelled). The applied state lives in the model + survives undo;
+// only the read accessor is missing.
+//
 // List type rides the declarative composition (a ToggleGroupLeaf over
 // `Value::Text`). The bullet glyph + numbering format are free text,
 // which no catalog leaf emits, so they are hand-wired here over the
@@ -12,17 +30,23 @@
 // (Enter / blur), undoable. Content scope; the apply layer rounds the
 // StoryRange to whole paragraphs.
 //
-// The gallery's List definition / Level / numbering style picker /
-// Char style / Restart / Position rows wait on a list-definition
-// surface on the paragraph model (the run carries only the type +
-// glyph + format expression today), so they stay honest seams.
+// Still-seam gallery rows: Level / numbering-style picker / Char
+// style / Restart scope / Position — they await a per-paragraph
+// list-level model (the run carries only the type + glyph + format
+// expression + the applied-list ref today).
+
+import { useState } from "react";
 
 import {
   CatalogRegistryProvider,
   CompositionRenderer,
+  Icon,
   useBindings,
+  useCanvasClient,
+  useCollection,
+  useContentSelection,
 } from "@paged-media/shell";
-import type { Value } from "@paged-media/client";
+import type { NumberingListSummary, Value } from "@paged-media/client";
 
 import { appCatalogRegistry } from "../catalog-registry";
 import { bulletsNumberingComposition } from "../bullets-numbering.composition";
@@ -91,6 +115,247 @@ function TextField({
   );
 }
 
+/** One row in the list-definitions manager. Inline rename on
+ *  double-click / Enter, a continuity (continue-across-stories)
+ *  toggle, an Assign button (active only with a content selection),
+ *  and a delete. */
+function ListDefRow({
+  list,
+  canAssign,
+  onAssign,
+  onRename,
+  onToggleContinuity,
+  onDelete,
+}: {
+  list: NumberingListSummary;
+  canAssign: boolean;
+  onAssign: () => void;
+  onRename: (name: string) => void;
+  onToggleContinuity: (next: boolean) => void;
+  onDelete: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  return (
+    <div
+      data-list-def={list.selfId}
+      className="mb-[6px] flex items-center gap-[6px]"
+    >
+      <Icon
+        name="ui-rows"
+        size={13}
+        style={{ color: "var(--pg-muted-fg)", flexShrink: 0 }}
+      />
+      {editing ? (
+        <input
+          data-list-def-name-input
+          autoFocus
+          defaultValue={list.name}
+          aria-label="list name"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          onBlur={(e) => {
+            setEditing(false);
+            const next = e.target.value.trim();
+            if (next && next !== list.name) onRename(next);
+          }}
+          className="h-[24px] min-w-0 flex-1 rounded-[5px] border border-input bg-background px-2 text-[12px] text-foreground"
+        />
+      ) : (
+        <button
+          type="button"
+          data-list-def-name
+          title="Double-click to rename"
+          onDoubleClick={() => setEditing(true)}
+          className="min-w-0 flex-1 cursor-text truncate border-0 bg-transparent text-left text-[12.5px] font-semibold"
+          style={{ color: "var(--pg-fg)" }}
+        >
+          {list.name}
+        </button>
+      )}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={list.continueAcrossStories}
+        data-list-def-continuity
+        title={
+          list.continueAcrossStories
+            ? "Continue numbers across stories (on)"
+            : "Restart numbers per story (off)"
+        }
+        onClick={() => onToggleContinuity(!list.continueAcrossStories)}
+        className="relative h-[16px] w-[28px] shrink-0 rounded-full border-0"
+        style={{
+          background: list.continueAcrossStories
+            ? "var(--pg-primary)"
+            : "var(--chrome-divider)",
+        }}
+      >
+        <span
+          className="absolute top-[2px] h-[12px] w-[12px] rounded-full bg-white shadow"
+          style={{ left: list.continueAcrossStories ? 14 : 2 }}
+        />
+      </button>
+      <button
+        type="button"
+        data-list-def-assign
+        disabled={!canAssign}
+        title={
+          canAssign
+            ? "Assign to selected paragraphs"
+            : "Place a text caret to assign"
+        }
+        onClick={onAssign}
+        className="shrink-0 cursor-pointer rounded-[5px] border border-input bg-background px-[7px] py-[3px] text-[10.5px] text-foreground disabled:cursor-default disabled:opacity-45"
+      >
+        Assign
+      </button>
+      <button
+        type="button"
+        data-list-def-delete
+        title="Delete list definition"
+        onClick={onDelete}
+        className="flex h-[20px] w-[20px] shrink-0 cursor-pointer items-center justify-center rounded border-0 bg-transparent"
+        style={{ color: "var(--pg-muted-fg)" }}
+      >
+        <Icon name="ui-x" size={11} />
+      </button>
+    </div>
+  );
+}
+
+/** W2.10 — the named list-definitions manager (the W1.22
+ *  `NumberingList` surface). */
+function ListDefinitions() {
+  const client = useCanvasClient();
+  const lists = useCollection<NumberingListSummary>("numberingLists");
+  const { contentSelection } = useContentSelection();
+  const canAssign = contentSelection != null;
+
+  const onNew = () => {
+    void client
+      .mutate({
+        op: "createNumberingList",
+        args: {
+          spec: {
+            selfId: null,
+            name: "New list",
+            continueAcrossStories: false,
+            continueAcrossDocuments: false,
+          },
+        },
+      })
+      .catch(() => {});
+  };
+
+  const onEdit = (list: NumberingListSummary, patch: Partial<NumberingListSummary>) => {
+    void client
+      .mutate({
+        op: "editNumberingList",
+        args: {
+          listId: list.selfId,
+          spec: {
+            selfId: list.selfId,
+            name: patch.name ?? list.name,
+            continueAcrossStories:
+              patch.continueAcrossStories ?? list.continueAcrossStories,
+            continueAcrossDocuments: list.continueAcrossDocuments,
+          },
+        },
+      })
+      .catch(() => {});
+  };
+
+  const onDelete = (listId: string) => {
+    void client
+      .mutate({ op: "deleteNumberingList", args: { listId } })
+      .catch(() => {});
+  };
+
+  // Assign applies the list selfId to the selected paragraphs through
+  // `paragraphAppliedNumberingList` (content scope — the apply layer
+  // rounds to whole paragraphs). Write-only on the wire (no read-back
+  // entry), so this is a forward command.
+  const onAssign = (listId: string) => {
+    if (!contentSelection) return;
+    void client
+      .mutate({
+        op: "setElementProperty",
+        args: {
+          elementId: {
+            kind: "storyRange",
+            id: {
+              story_id: contentSelection.storyId,
+              start: contentSelection.start,
+              end: contentSelection.end,
+            },
+          } as never,
+          path: "paragraphAppliedNumberingList",
+          value: { type: "text", value: listId } as Value,
+        },
+      })
+      .catch(() => {});
+  };
+
+  return (
+    <div data-list-definitions={lists === null ? "loading" : "ready"}>
+      <Kicker>List definitions</Kicker>
+      {lists === null ? (
+        <div className="py-2 text-xs text-muted-foreground">
+          Loading lists…
+        </div>
+      ) : lists.length === 0 ? (
+        <div
+          className="py-1 text-xs text-muted-foreground"
+          data-empty-list-definitions
+        >
+          No named lists in this document.
+        </div>
+      ) : (
+        <div data-list-def-list>
+          {lists.map((list) => (
+            <ListDefRow
+              key={list.selfId}
+              list={list}
+              canAssign={canAssign}
+              onAssign={() => onAssign(list.selfId)}
+              onRename={(name) => onEdit(list, { name })}
+              onToggleContinuity={(next) =>
+                onEdit(list, { continueAcrossStories: next })
+              }
+              onDelete={() => onDelete(list.selfId)}
+            />
+          ))}
+        </div>
+      )}
+      <button
+        type="button"
+        data-toolbar-btn="new-numbering-list"
+        onClick={onNew}
+        className="mt-[2px] flex h-[28px] w-full cursor-pointer items-center justify-center gap-[6px] rounded-[7px] border border-dashed bg-transparent text-xs"
+        style={{
+          borderColor: "var(--chrome-divider)",
+          color: "var(--pg-muted-fg)",
+        }}
+      >
+        <Icon name="ui-plus" size={13} /> New list
+      </button>
+      {/* Honest seam: the applied list cannot be reflected per
+          paragraph — `paragraphAppliedNumberingList` is write-only on
+          the v35 wire (no read-back entry). */}
+      <div
+        data-applied-readback-seam
+        data-seam
+        className="mt-[6px] text-[10.5px] italic opacity-70"
+        style={{ color: "var(--pg-muted-fg)" }}
+      >
+        Applied list per paragraph is write-only on the wire — no read-back.
+      </div>
+    </div>
+  );
+}
+
 export function BulletsPanel() {
   const text = useBindings(TEXT_BINDINGS);
   const bullet = unwrapText(text.bullet.value);
@@ -101,22 +366,22 @@ export function BulletsPanel() {
       <ConceptShell
         testId="bullets-panel"
         live
-        target="List type, bullet glyph and numbering format are live (the v28 list-authoring paths); list definitions / level / restart / position land with a list-definition surface on the paragraph model."
+        target="List type, bullet glyph, numbering format and named list definitions (create / rename / continuity / assign) are live; level / numbering-style picker / restart scope / position land with a per-paragraph list-level model."
       >
+        {/* W2.10 — named list-definition management. */}
+        <ListDefinitions />
+
         {/* LIVE — list type segment (paragraphListType). */}
         <CompositionRenderer composition={bulletsNumberingComposition} />
 
-        {/* List definition + level await a list-definition surface. */}
-        <Row label="List">
-          <SeamSelect value="[Default]" />
-        </Row>
+        {/* Level awaits a per-paragraph list-level model. */}
         <Row label="Level">
           <SeamNum value="1" />
         </Row>
 
         <Kicker>Numbering style</Kicker>
-        {/* Format picker (1,2,3 vs i,ii,iii…) needs the list
-            definition model; the raw expression below is live. */}
+        {/* Format picker (1,2,3 vs i,ii,iii…) needs the list-level
+            model; the raw expression below is live. */}
         <Row label="Style">
           <SeamSelect value="1, 2, 3, 4…" />
         </Row>

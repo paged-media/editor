@@ -18,6 +18,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 const FIXTURE = `${REPO_ROOT}/corpus/generated/text.idml`;
+const NUMBERING_FIXTURE = `${REPO_ROOT}/corpus/generated/numbering.idml`;
 
 async function seedCaret(page: import("@playwright/test").Page): Promise<boolean> {
   return page.evaluate(async () => {
@@ -108,5 +109,112 @@ test.describe("W2.4 — Bullets & Numbering panel (partial-live)", () => {
     await expect(
       root.locator('[data-bullets-field="bullet-character"]'),
     ).toBeEnabled();
+  });
+});
+
+test.describe("W2.10 — Bullets & Numbering list definitions (live CRUD)", () => {
+  test.beforeEach(async ({ page }) => {
+    await openCanvas(page);
+    await loadIdml(page, NUMBERING_FIXTURE);
+    await openPanel(page, "paged.bullets-numbering");
+  });
+
+  test("AC-BN-LD-1 — the list-definitions manager renders the document's named lists", async ({
+    page,
+  }) => {
+    const defs = page.locator('[data-list-definitions="ready"]');
+    await expect(defs).toBeVisible();
+    // The numbering fixture ships one named list (`Shared`).
+    const rows = defs.locator("[data-list-def]");
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first().locator("[data-list-def-name]")).toHaveText(
+      "Shared",
+    );
+    // Continuity toggle reflects the fixture's
+    // ContinueNumbersAcrossStories=true.
+    await expect(
+      rows.first().locator("[data-list-def-continuity]"),
+    ).toHaveAttribute("aria-checked", "true");
+    // The applied-list read-back honest seam is present.
+    await expect(defs.locator("[data-applied-readback-seam]")).toBeVisible();
+  });
+
+  test("AC-BN-LD-2 — New list creates a definition; the list grows", async ({
+    page,
+  }) => {
+    const defs = page.locator('[data-list-definitions="ready"]');
+    await expect(defs.locator("[data-list-def]")).toHaveCount(1);
+    await defs.locator('[data-toolbar-btn="new-numbering-list"]').click();
+    await expect(defs.locator("[data-list-def]")).toHaveCount(2);
+    await expect(
+      defs.locator('[data-list-def] [data-list-def-name]', {
+        hasText: "New list",
+      }),
+    ).toBeVisible();
+  });
+
+  test("AC-BN-LD-3 — continuity toggle flips and re-reads from the model", async ({
+    page,
+  }) => {
+    const row = page.locator('[data-list-definitions="ready"] [data-list-def]').first();
+    const toggle = row.locator("[data-list-def-continuity]");
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+    await toggle.click();
+    // The collection re-fetches after the editNumberingList mutation;
+    // the toggle reflects the new model value.
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+  });
+
+  test("AC-BN-LD-4 — delete removes a created list", async ({ page }) => {
+    const defs = page.locator('[data-list-definitions="ready"]');
+    await defs.locator('[data-toolbar-btn="new-numbering-list"]').click();
+    await expect(defs.locator("[data-list-def]")).toHaveCount(2);
+    // Delete the newly created one (second row).
+    await defs
+      .locator("[data-list-def]")
+      .nth(1)
+      .locator("[data-list-def-delete]")
+      .click();
+    await expect(defs.locator("[data-list-def]")).toHaveCount(1);
+  });
+
+  test("AC-BN-LD-5 — Assign is inert without a caret, active with one", async ({
+    page,
+  }) => {
+    const row = page.locator('[data-list-definitions="ready"] [data-list-def]').first();
+    // No content selection yet → assign disabled.
+    await expect(row.locator("[data-list-def-assign]")).toBeDisabled();
+    // Seed a caret in the first story.
+    const seeded = await page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              executeScript: (s: string) => Promise<{
+                output: string[];
+                error: string | null;
+              }>;
+            };
+            setContentSelection: (
+              sel: { storyId: string; start: number; end: number } | null,
+            ) => void;
+          };
+        }
+      ).__canvas;
+      const result = await c.client.executeScript(
+        `JSON.stringify(JSON.parse(paged.stories())[0] || null)`,
+      );
+      if (result.error) return false;
+      const first = JSON.parse(result.output[0] ?? "null");
+      if (!first || first.characterCount === 0) return false;
+      c.setContentSelection({
+        storyId: first.selfId,
+        start: 0,
+        end: Math.min(3, first.characterCount),
+      });
+      return true;
+    });
+    expect(seeded).toBe(true);
+    await expect(row.locator("[data-list-def-assign]")).toBeEnabled();
   });
 });

@@ -22,7 +22,10 @@
 // again 2026-06-07 against protocol v35 (W2.11 tables v2: the
 // header/footer row ops insertHeaderRow/removeHeaderRow/insertFooterRow
 // /removeFooterRow + setCellSpan, probed against the tables fixture's
-// first cell). Update via the same run when core lands new ops.
+// first cell), then 2026-06-07 (W2.10: the W1.22 NumberingList CRUD ops
+// createNumberingList/editNumberingList/deleteNumberingList — the
+// Bullets & Numbering list-definition surface — probed on the `text`
+// fixture). Update via the same run when core lands new ops.
 
 export type CapabilityStatus = "supported" | "unsupported";
 
@@ -122,6 +125,10 @@ export const CAPABILITIES: Capability[] = [
   { op: "createColorGroup", status: "supported" },
   { op: "editColorGroup", status: "supported" },
   { op: "deleteColorGroup", status: "supported" },
+  // ── numbering lists (W1.22 — the Bullets & Numbering list-definition surface) ──
+  { op: "createNumberingList", status: "supported" },
+  { op: "editNumberingList", status: "supported" },
+  { op: "deleteNumberingList", status: "supported" },
   // ── styles ────────────────────────────────────────────────────────
   { op: "createParagraphStyle", status: "supported" },
   { op: "renameParagraphStyle", status: "supported" },

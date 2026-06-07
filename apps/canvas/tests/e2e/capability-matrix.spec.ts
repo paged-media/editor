@@ -228,6 +228,22 @@ async function newColorGroup(page: Page): Promise<string | null> {
   return r.ok ? lastCollectionId(page, "colorGroups") : null;
 }
 
+// W1.22 — scratch NumberingList for the edit / delete probes.
+async function newNumberingList(page: Page): Promise<string | null> {
+  const r = await tryMutate(page, {
+    op: "createNumberingList",
+    args: {
+      spec: {
+        selfId: null,
+        name: "scratch list",
+        continueAcrossStories: false,
+        continueAcrossDocuments: false,
+      },
+    },
+  });
+  return r.ok ? lastCollectionId(page, "numberingLists") : null;
+}
+
 const STYLE_COLLECTION: Record<string, string> = {
   Paragraph: "paragraphStyles",
   Character: "characterStyles",
@@ -866,6 +882,50 @@ const TEXT_PROBES: Probe[] = [
     build: async ({ page }) => {
       const id = await newColorGroup(page);
       return id ? { op: "deleteColorGroup", args: { groupId: id } } : null;
+    },
+    setupUndo: 1,
+  },
+  // ── numbering lists ×3 (W1.22, create / edit / delete) ──────────
+  {
+    op: "createNumberingList",
+    build: async () => ({
+      op: "createNumberingList",
+      args: {
+        spec: {
+          selfId: null,
+          name: "probe list",
+          continueAcrossStories: false,
+          continueAcrossDocuments: false,
+        },
+      },
+    }),
+  },
+  {
+    op: "editNumberingList",
+    build: async ({ page }) => {
+      const id = await newNumberingList(page);
+      return id
+        ? {
+            op: "editNumberingList",
+            args: {
+              listId: id,
+              spec: {
+                selfId: id,
+                name: "probe list 2",
+                continueAcrossStories: true,
+                continueAcrossDocuments: false,
+              },
+            },
+          }
+        : null;
+    },
+    setupUndo: 1,
+  },
+  {
+    op: "deleteNumberingList",
+    build: async ({ page }) => {
+      const id = await newNumberingList(page);
+      return id ? { op: "deleteNumberingList", args: { listId: id } } : null;
     },
     setupUndo: 1,
   },

@@ -661,18 +661,70 @@ family-only).
 **Target** — full character map, OpenType-feature filter, alternates
 flyout, glyph sets.
 
-### Bullets & Numbering — `paged.bullets-numbering` ◐ _(partially live)_ — W2.4 2026-06-06
+### Bullets & Numbering — `paged.bullets-numbering` ◐ _(partially live)_ — W2.4 2026-06-06; W2.10 list definitions 2026-06-07
 
 List type segments (None/Bullet/Number → `paragraphListType` IDML enum
 `NoList`/`BulletList`/`NumberedList`), the bullet glyph
 (`paragraphBulletCharacter`) and the numbering-format expression
 (`paragraphNumberingFormat`, e.g. `^#.^t`) are **live** over the v28
 list-authoring text paths (content-scope, paragraph-rounded; one mutate
-per commit). Seams: list definition / level / numbering-style picker /
-char style / restart / position + the static preview (await a
-list-definition surface on the paragraph model).
-**Target** — full list definitions (named lists, level nesting, restart
-scope, position) on the paragraph model.
+per commit). **W2.10 (protocol v35, engine gap 22)** adds the named
+**list-definitions manager** on the W1.22 `NumberingList` surface: the
+document's `<NumberingList>` resources read from the `numberingLists`
+collection (one row each); **create** (`createNumberingList`) / inline
+**rename** + **delete** (`editNumberingList` / `deleteNumberingList`,
+each carrying a `NumberingListSpec`); a per-row **continuity toggle**
+binds `continueAcrossStories` (the flag the renderer reads for
+cross-story numbering continuity — restart-per-story when off); and an
+**Assign** button applies the list to the selected paragraphs through
+`paragraphAppliedNumberingList` (content scope, `Value::Text` = the
+list selfId), active only with a content caret. Undo round-trips every
+op. **Honest seam — the applied list cannot be reflected per
+paragraph**: `paragraphAppliedNumberingList` is **write-only** on the
+v35 wire (the paragraph property snapshot carries NO read-back entry),
+so the panel labels Assign as a forward command. Remaining seams: Level
+/ numbering-style picker / char style / restart scope / position + the
+static preview (await a per-paragraph list-LEVEL model).
+**Target** — per-paragraph list level + restart scope + position, the
+numbering-style picker (1,2,3 vs i,ii,iii), and a `paragraphApplied
+NumberingList` READ accessor so the assigned list reflects per paragraph.
+
+### Anchored Object — `paged.anchored` ✓ _(new, live)_ — W2.12 2026-06-07
+
+LIVE on the W1.16 anchored-object surface (protocol v35). A frame
+anchored into a text story carries an `<AnchoredObjectSetting>`, which
+the canvas read-side surfaces as **ten `anchored*` PropertyEntries** on
+the element snapshot. The panel **detects an anchored selection by the
+presence of those entries** (a non-anchored page frame's snapshot
+carries NONE of them — verified on the `anchored.idml` fixture), reads
+back the live values and drives the position. Element-scope
+`setElementProperty` over: **Mode** → `anchoredPosition`
+(`InlinePosition` / `AboveLine` / `Anchored`); **Spine relative** →
+`anchoredSpineRelative` (Bool); **Lock position** →
+`anchoredLockPosition` (Bool); and — enabled only in the custom
+(`Anchored`) mode — **X/Y offset** → `anchoredXOffset` /
+`anchoredYOffset` (Length pt); **Anchor point** → `anchorPoint` (the
+9-cell `{Top,…,Bottom}{Left,Center,Right}Anchor`); **H/V reference** →
+`anchoredHorizontalReference` / `anchoredVerticalReference` (the latter
+including the **W1.16 line-ref metrics** — `LineBaseline` / `LineAscent`
+/ `LineXheight` / `TopOfLeading` / `EmBoxBottom`, which the renderer
+resolves against real line metrics); **H/V align** →
+`anchoredHorizontalAlignment` / `anchoredVerticalAlignment`. The
+enum-string selects carry the RAW IDML strings the read-side returns,
+so they reflect + round-trip; in inline / above-line mode the
+custom-position controls disable honestly (InDesign hides them there).
+Undo round-trips. **For a non-anchored (or empty) selection the panel
+states it honestly** — a status header ("Object is not anchored" /
+"Select a single object") and no fake-enabled controls. NOTE: the
+anchored frame is nested in the text flow, so it has **no page-level
+`elementGeometry`** — its rendered placement is observed through its
+HOST frame's region (the geometry-move spec asserts the host repaints).
+Specs: `anchored-panel.spec.ts` (detection + read-back + honest non-
+anchored state) + `e2e/anchored-ops.spec.ts` (read-back → mode +
+offsets land → host-frame render moves → undo byte-identical).
+**Target** — a visual on-canvas anchor handle/leader; once the wire
+grows a page-level geometry accessor for inline-anchored objects, a
+direct rect read; the InDesign "object anchor" badge on the host line.
 
 ### Object Export Options — `paged.object-export` ○
 
@@ -782,13 +834,28 @@ gallery seams; several extend gaps above):
 22. **List definitions** — bullets & numbering model (the B&N panel).
     _(W2.4: list type + bullet glyph + numbering format live via the
     `paragraphListType`/`paragraphBulletCharacter`/`paragraphNumberingFormat`
-    text paths; residual = named list definitions, level nesting, restart
-    scope, position.)_
+    text paths. W2.10 (protocol v35, W1.22): the **named NumberingList
+    surface** is live — the `numberingLists` collection + the
+    create/edit/delete CRUD ops + `continueAcrossStories` continuity +
+    assign via `paragraphAppliedNumberingList`. Residual: a
+    `paragraphAppliedNumberingList` READ accessor (it is write-only
+    today), per-paragraph list LEVEL nesting, restart scope, and
+    position.)_
 23. **Export metadata** — per-object alt text/role/conversion + per-style
     HTML/CSS/PDF tagging (Object Export Options, Export Tagging).
 24. **Tint swatch children** + mixed-ink swatches (Swatches parity).
 25. **Condition ops** — `SetConditionVisible`, `ActivateConditionSet`;
     **master apply** — `ApplyMasterToPage`; **page duplicate**.
+26. **Anchored objects** — `<AnchoredObjectSetting>` position model (the
+    Anchored Object panel). _(W2.12 (protocol v35, W1.16): LIVE — the ten
+    `anchored*` PropertyPaths (`anchoredPosition`/`anchorPoint`/
+    `anchoredXOffset`/`anchoredYOffset`/`anchored{Horizontal,Vertical}
+    Reference` incl. the line-ref metrics/`anchored{Horizontal,Vertical}
+    Alignment`/`anchoredSpineRelative`/`anchoredLockPosition`) read +
+    write + undo; anchored rendering resolves real line-ref metrics.
+    Residual: inline-anchored frames carry NO page-level `elementGeometry`
+    (observed only through the host frame), and there is no on-canvas
+    anchor handle/leader yet.)_
 
 Also (non-engine): collaboration backend (comments/approvals/presence/share),
 data-publishing engine (Data mode), LLM backend (AI assistant), IDML

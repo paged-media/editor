@@ -93,6 +93,8 @@ export type {
   Mutation,
   NodeId,
   NodeSpec,
+  NumberingListSpec,
+  NumberingListSummary,
   NumberingMap,
   Operation,
   GradientDetail,
