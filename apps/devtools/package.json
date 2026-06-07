@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint src vite.config.ts"
   },
   "dependencies": {
     "@paged-media/introspect-wasm": "0.34.0",

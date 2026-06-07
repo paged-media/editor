@@ -267,7 +267,14 @@ export { CommandPalette } from "./chrome/CommandPalette";
 export { MenuBar } from "./chrome/MenuBar";
 
 // ── Icons (Concept 1 — shared tool + panel glyph resolver) ─────
-export { Icon, hasIcon, type IconProps } from "./icons";
+export {
+  Icon,
+  hasIcon,
+  type IconProps,
+  TOOL_GLYPHS,
+  PANEL_GLYPHS,
+  UI_GLYPHS,
+} from "./icons";
 
 // ── Hooks ──────────────────────────────────────────────────────
 export { useModifierState, type ModifierState } from "./hooks/useModifierState";
