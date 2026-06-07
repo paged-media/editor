@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:boundaries-selftest": "node scripts/eslint-boundaries-selftest.mjs",
-    "test:boot-coi": "node --experimental-strip-types scripts/cross-origin-isolation-check.test.mjs"
+    "test:boot-coi": "node --experimental-strip-types scripts/cross-origin-isolation-check.test.mjs",
+    "test:thresholds": "node scripts/fidelity-thresholds-schema.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.4",
