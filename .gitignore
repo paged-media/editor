@@ -19,6 +19,9 @@ playwright-report/
 /corpus
 /target
 
-# NOTE: wasm-bindgen build output (the gitignored .js / *_bg.wasm; only the
-# .d.ts is tracked) is handled by the per-package .gitignore files under
-# apps/*/ and packages/client/.
+# NOTE: Decision-B package boundary — the engine wasm (loader .js,
+# *_bg.wasm, and tsify .d.ts) ships in the published @paged-media
+# packages and is resolved from node_modules; nothing wasm is vendored
+# or tracked here anymore. The per-package .gitignore files under
+# apps/*/ and packages/client/ keep defensive ignores for legacy
+# build-wasm.sh output only.

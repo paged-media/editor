@@ -1,0 +1,47 @@
+name: protocol-version
+
+# Decision-B package-boundary model.
+#
+# Pre-flip, this workflow rebuilt the engine wasm from a sibling `core`
+# checkout and `git diff --exit-code` on the vendored
+# `packages/client/src/wasm/*.d.ts` to catch wire-format drift. After
+# the package boundary, the wire types + engine wasm ship in the
+# published `@paged-media/canvas-wasm` package, so there is nothing to
+# regenerate. The drift guard is now static and dependency-based: the
+# minor of the installed canvas-wasm version must equal the TS-side
+# `PROTOCOL_VERSION` constant (convention: `0.<protocol>.<patch>`).
+#
+# See `scripts/check-protocol-version.sh` for the full rationale.
+
+on:
+  pull_request:
+    paths:
+      - "packages/client/src/protocol.ts"
+      - "packages/client/package.json"
+      - "pnpm-lock.yaml"
+      - "scripts/check-protocol-version.sh"
+      - ".github/workflows/protocol-version.yml"
+  workflow_dispatch:
+
+jobs:
+  protocol-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          # At real flip time the @paged-media packages are public on
+          # npmjs.org and no extra registry config is needed. (During the
+          # Decision-B dry-run they resolve from a local Verdaccio via the
+          # `@paged-media:registry` line in the branch `.npmrc`.)
+
+      # Only the client workspace + its dep tree is needed to resolve the
+      # installed @paged-media/canvas-wasm version.
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check protocol-version / package agreement
+        run: bash scripts/check-protocol-version.sh
