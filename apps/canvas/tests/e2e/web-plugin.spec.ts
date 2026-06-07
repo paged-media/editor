@@ -178,7 +178,14 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
     });
 
     await html.fill("<p>ok</p>");
-    await expect(diagnostics).toBeHidden({ timeout: 5_000 });
+    // The POLICY error must clear. The diagnostics list itself may stay
+    // visible: W3.12 font-parity diagnostics legitimately persist for any
+    // source whose CSS names a font family (the substitution-badge
+    // contract) — asserting toBeHidden() became over-broad once font
+    // parity landed.
+    await expect(diagnostics).not.toContainText("never executes", {
+      timeout: 5_000,
+    });
   });
 
   test("AC-WEB-4 — the host codeEditor widget renders: line numbers, highlighting, gutter markers", async ({
