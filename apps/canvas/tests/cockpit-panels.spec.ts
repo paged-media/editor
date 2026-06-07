@@ -41,13 +41,15 @@ test.describe("Cockpit — Export Center", () => {
 
     const center = page.locator("[data-export-center]");
     await expect(center).toBeVisible();
-    // Four targets; only the PDF row is live.
-    await expect(page.locator("[data-export-target]")).toHaveCount(4);
+    // W2.6 — six targets; three are LIVE (PDF/image/IDML). The
+    // honest-or-live invariant + per-target detail is covered in
+    // export-family.spec.ts; here we just drive the PDF row through.
+    await expect(page.locator("[data-export-target]")).toHaveCount(6);
     await expect(
-      page.locator('[data-status-pill="pdf-readiness"]'),
+      page.locator('[data-status-pill="readiness-pdf-x4"]'),
     ).toBeVisible();
 
-    await page.locator('[data-cockpit-action="export-center-pdf"]').click();
+    await page.locator('[data-cockpit-action="export-center-pdf-x4"]').click();
     await expect(page.locator("[data-export-dialog]")).toBeVisible();
     // Drive a real PDF 1.7 export through to the download.
     await page.locator("[data-export-standard]").selectOption("pdf17");

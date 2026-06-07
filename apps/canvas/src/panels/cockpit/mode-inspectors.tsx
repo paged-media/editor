@@ -9,10 +9,16 @@ import {
   ComingSoon,
   Icon,
   StatusPill,
+  useCollection,
   useDocumentMeta,
   useDocumentStats,
   type PanelProps,
 } from "@paged-media/shell";
+import type { FontSummary, LinkSummary } from "@paged-media/client";
+
+/** Low-res convention shared with Preflight/Health — placements below
+ *  this effective PPI warn (the editor's "warn, not fail" floor). */
+const LOW_RES_PPI = 150;
 
 /** Content mode — story inspector. The live story count is real;
  *  per-story words/risk/approval await the stories collection +
@@ -40,20 +46,87 @@ export function StoryInspectorPanel(_props: PanelProps) {
   );
 }
 
-/** Prepress mode — output readiness (kit PreflightInspector). The
- *  CMYK working-space check is real; the remaining checklist rows
- *  await the engine's preflight accessors. */
+/** A single output-readiness check. `pass` null = the data source
+ *  isn't wired (honest seam, "soon"); true/false = a real verdict. */
+interface ReadinessCheck {
+  key: string;
+  label: string;
+  pass: boolean | null;
+  /** Mono detail shown on the right when the check has run. */
+  detail?: string;
+}
+
+/** Prepress mode — output readiness (kit PreflightInspector).
+ *
+ *  W2.6 (Full-Green) — every row is honest-or-live. LIVE rows read the
+ *  same W0.6 wire summaries the Health/Preflight panels consume:
+ *  CMYK working space (`meta.cmykProfileActive`), missing fonts
+ *  (`FontSummary.isMissing`), missing links + low-res placements
+ *  (`LinkSummary.status` / `.effectivePpi`). Bleed stays an HONEST
+ *  seam until the engine grows a bleed-coverage accessor. */
 export function OutputReadinessPanel(_props: PanelProps) {
   const meta = useDocumentMeta();
+  const fonts = useCollection<FontSummary>("fonts");
+  const links = useCollection<LinkSummary>("links");
   const loaded = meta != null && meta.pageCount > 0;
   const cmyk = meta?.cmykProfileActive ?? false;
 
-  const seams: string[] = [
-    "All fonts embedded",
-    "Images ≥ 300 PPI",
-    "Links present",
-    "Bleed 3 mm",
+  const missingFonts = fonts ? fonts.filter((f) => f.isMissing).length : null;
+  const missingLinks = links
+    ? links.filter((l) => l.status === "missing").length
+    : null;
+  const lowRes = links
+    ? links.filter(
+        (l) => l.effectivePpi != null && l.effectivePpi < LOW_RES_PPI,
+      ).length
+    : null;
+
+  const checks: ReadinessCheck[] = [
+    {
+      key: "cmyk",
+      label: "CMYK working space active",
+      pass: loaded ? cmyk : null,
+    },
+    {
+      key: "fonts",
+      label: "All fonts available",
+      pass: missingFonts == null ? null : missingFonts === 0,
+      detail:
+        missingFonts == null
+          ? undefined
+          : missingFonts === 0
+            ? "ok"
+            : `${missingFonts} missing`,
+    },
+    {
+      key: "links",
+      label: "All links present",
+      pass: missingLinks == null ? null : missingLinks === 0,
+      detail:
+        missingLinks == null
+          ? undefined
+          : missingLinks === 0
+            ? "ok"
+            : `${missingLinks} missing`,
+    },
+    {
+      key: "ppi",
+      label: `Images ≥ ${LOW_RES_PPI} PPI`,
+      pass: lowRes == null ? null : lowRes === 0,
+      detail:
+        lowRes == null
+          ? undefined
+          : lowRes === 0
+            ? "ok"
+            : `${lowRes} low-res`,
+    },
+    // HONEST seam — no bleed-coverage accessor on the wire yet.
+    { key: "bleed", label: "Bleed 3 mm", pass: null },
   ];
+
+  // The X-4 verdict is the AND of the live checks (seams don't block).
+  const liveChecks = checks.filter((c) => c.pass != null);
+  const allPass = liveChecks.every((c) => c.pass === true);
 
   return (
     <div
@@ -64,61 +137,15 @@ export function OutputReadinessPanel(_props: PanelProps) {
         title="Output readiness"
         action={
           loaded ? (
-            <StatusPill tone={cmyk ? "ready" : "warn"} testId="readiness-x4">
-              {cmyk ? "PDF/X-4 ready" : "Not ready"}
+            <StatusPill tone={allPass ? "ready" : "warn"} testId="readiness-x4">
+              {allPass ? "PDF/X-4 ready" : "Not ready"}
             </StatusPill>
           ) : undefined
         }
       />
       <CockpitSection title="PDF/X-4 checklist">
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 9,
-            padding: "6px 0",
-          }}
-        >
-          <Icon
-            name={cmyk ? "ui-check" : "ui-x"}
-            size={14}
-            style={{
-              color: cmyk ? "var(--status-approved)" : "var(--status-error)",
-            }}
-          />
-          <span style={{ fontSize: 12.5, fontFamily: "var(--font-sans)" }}>
-            CMYK working space active
-          </span>
-        </div>
-        {seams.map((label) => (
-          <div
-            key={label}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 9,
-              padding: "6px 0",
-              opacity: 0.55,
-            }}
-          >
-            <span
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: "50%",
-                background: "var(--status-draft)",
-                marginLeft: 3,
-                marginRight: 4,
-                flexShrink: 0,
-              }}
-            />
-            <span style={{ fontSize: 12.5, fontFamily: "var(--font-sans)" }}>
-              {label}
-            </span>
-            <span className="pg-mono-meta" style={{ marginLeft: "auto" }}>
-              soon
-            </span>
-          </div>
+        {checks.map((c) => (
+          <ReadinessRow key={c.key} check={c} />
         ))}
       </CockpitSection>
       <CockpitSection title="Colour" defaultOpen={false}>
@@ -127,6 +154,55 @@ export function OutputReadinessPanel(_props: PanelProps) {
           colour settings — see the Colour Settings panel.
         </span>
       </CockpitSection>
+    </div>
+  );
+}
+
+function ReadinessRow({ check }: { check: ReadinessCheck }) {
+  const seam = check.pass == null;
+  return (
+    <div
+      data-readiness-row={check.key}
+      data-readiness-pass={seam ? undefined : check.pass ? "true" : "false"}
+      data-seam={seam ? "" : undefined}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 9,
+        padding: "6px 0",
+        opacity: seam ? 0.55 : 1,
+      }}
+    >
+      {seam ? (
+        <span
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: "50%",
+            background: "var(--status-draft)",
+            marginLeft: 3,
+            marginRight: 4,
+            flexShrink: 0,
+          }}
+        />
+      ) : (
+        <Icon
+          name={check.pass ? "ui-check" : "ui-x"}
+          size={14}
+          style={{
+            color: check.pass
+              ? "var(--status-approved)"
+              : "var(--status-error)",
+            flexShrink: 0,
+          }}
+        />
+      )}
+      <span style={{ fontSize: 12.5, fontFamily: "var(--font-sans)" }}>
+        {check.label}
+      </span>
+      <span className="pg-mono-meta" style={{ marginLeft: "auto" }}>
+        {seam ? "soon" : (check.detail ?? "")}
+      </span>
     </div>
   );
 }

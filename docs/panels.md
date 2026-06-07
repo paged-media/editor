@@ -458,29 +458,49 @@ back to the flat-string Warnings cards.
 **End state** — output profile selector, live re-validation, canvas
 issue markers (error/warn/a11y pins), per-finding fix actions.
 
-### Output readiness — `paged.output-readiness` ◐
+### Output readiness — `paged.output-readiness` ◐ — W2.6 2026-06-07
 
-PDF/X-4 checklist: CMYK working-space check real; fonts/PPI/links/bleed rows
-seamed ("soon").
-**End state** — every row real with jump-to-fix; colour section reads live
-profile/intent/ink limit.
+PDF/X-4 checklist, now honest-or-live per row. **LIVE** (the same W0.6 wire
+summaries Preflight/Health read): CMYK working space (`meta.cmykProfileActive`),
+**All fonts available** (`FontSummary.isMissing` count), **All links present**
+(`LinkSummary.status === "missing"` count), **Images ≥ 150 PPI**
+(`LinkSummary.effectivePpi`). Each shows a check/x icon + a mono detail
+(`"ok"` / `"N missing"` / `"N low-res"`); the X-4 pill is the AND of the live
+verdicts. **HONEST seam**: Bleed 3 mm (no bleed-coverage accessor on the wire).
+Hooks: `data-readiness-row`, `data-readiness-pass`, `data-seam`.
+**End state** — jump-to-fix per row; bleed flips live when the engine grows a
+bleed accessor; colour section reads live profile/intent/ink limit.
 
-### Export Center — `paged.export-center` ◐ _(export-mode canvas main)_
+### Export Center — `paged.export-center` ✓ _(export-mode canvas main)_ — W2.6 2026-06-07
 
-Kit centred readiness table: Print PDF/X-4 row REAL (readiness from working
-space; "Export…" opens the live dialog); Web bundle / Social crops / Print
-package dimmed seams; Fix-issues / Save-preset seams; row selection syncs nav
+Kit centred readiness table, now **honest-or-live for every row** (six outputs).
+**LIVE** through the published client surface, each with a real per-row
+"Export…" action: **Print PDF (PDF/X-4)** (readiness from working space; opens
+the live `ExportPdfDialog`), **Page images (PNG)** (`client.requestSnapshot` →
+real PNG bytes per page, downloaded; DPI/scope from the inspector's inline
+settings), **IDML package** (`client.exportIdml` → real `.idml`, downloaded —
+the same bytes as File ▸ Save As IDML). **HONEST seams** ("soon", disabled):
+Web bundle / Social crops / Print package; Fix-issues / Save-preset stay seams.
+Row selection syncs the Outputs nav + Export inspector via the shared store;
+"Export selected" runs the selected LIVE target. Hooks: `data-export-target`,
+`data-export-live`, `data-cockpit-action="export-center-<id>"`,
+`data-status-pill="readiness-<id>"`.
+**End state** — the seam targets become real with the multi-format publishing
+pipeline; checkbox batch export, saved presets, preflight-gated readiness.
 
-- inspector via shared store.
-  **End state** — all targets real with per-target settings, checkbox batch
-  export, saved presets, preflight-gated readiness.
+### Outputs — `paged.outputs` ✓ · Export settings — `paged.export-inspector` ✓ — W2.6 2026-06-07
 
-### Outputs — `paged.outputs` ◐ · Export settings — `paged.export-inspector` ◐
-
-Left target nav (status dots) + right per-target inspector ("Export Print
-PDF (PDF/X-4)" button → live dialog).
-**End state** — inline per-target settings (preset/profile/bleed/marks per
-kit) as each pipeline lands.
+Left target nav (six rows; per-target readiness dot — `data-output-dot`,
+`data-output-live`) + right per-target inspector with **inline per-target
+settings driving the live action**: the **image** target carries a real
+DPI (72/150/300) + scope (all/current page) select, persisted under
+`paged.export.image.v1`, feeding `runImageExport`; the **PDF** target opens the
+dialog (where its richer settings live); the **IDML** target a one-click run.
+HONEST targets show the "Coming soon" pill + concept copy, no run button.
+Hooks: `data-output-nav`, `data-export-inspector-panel`,
+`data-export-image-settings`, `data-cockpit-action="export-inspector-run-*"`.
+**End state** — per-target presets/profiles, batch select, as each remaining
+pipeline lands.
 
 ### Stories — `paged.stories` ◐ · Story inspector — `paged.story-inspector` ◐ — W2.12 2026-06-06
 
