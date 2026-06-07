@@ -85,3 +85,123 @@ test.describe("W2.12 — Stories panel", () => {
     ).toBeVisible();
   });
 });
+
+// W2.7 — per-story FIELD INSPECTOR (matrix gaps 9/10). Selecting a row
+// opens the inspector; its REAL fields (characters / paragraphs /
+// overset) must match the `stories` wire collection exactly, and the
+// richer kit fields are honest seams.
+
+/** Read the live `StorySummary` collection straight off the wire. */
+async function wireStories(
+  page: import("@playwright/test").Page,
+): Promise<Array<{ selfId: string; characterCount: number; paragraphCount: number; overset?: boolean }>> {
+  return page.evaluate(async () => {
+    const c = (
+      globalThis as unknown as {
+        __canvas: {
+          client: {
+            collection: (n: string) => Promise<
+              Array<{
+                selfId: string;
+                characterCount: number;
+                paragraphCount: number;
+                overset?: boolean;
+              }>
+            >;
+          };
+        };
+      }
+    ).__canvas;
+    return c.client.collection("stories");
+  });
+}
+
+test.describe("W2.7 — Stories field inspector", () => {
+  test("AC-STORIES-INSP-1 — inspector counts match the wire StorySummary", async ({
+    page,
+  }) => {
+    // text-overset is a real MULTI-STORY fixture (4 stories).
+    await openCanvas(page);
+    await loadIdml(page, OVERSET_FIXTURE);
+    await openStories(page);
+    await expect(page.locator('[data-stories-panel="ready"]')).toBeVisible();
+
+    const stories = await wireStories(page);
+    expect(stories.length).toBeGreaterThan(1);
+
+    // Click each story row and assert the inspector shows the wire's
+    // exact char + paragraph counts for that story.
+    const rows = page.locator("[data-story-list] [data-list-row]");
+    await expect(rows).toHaveCount(stories.length);
+
+    for (let i = 0; i < stories.length; i++) {
+      await rows.nth(i).click();
+      const inspector = page.locator(
+        `[data-story-inspector="${stories[i].selfId}"]`,
+      );
+      await expect(inspector).toBeVisible();
+      await expect(
+        inspector.locator('[data-story-field-value="story-char-count"]'),
+      ).toHaveText(String(stories[i].characterCount));
+      await expect(
+        inspector.locator('[data-story-field-value="story-para-count"]'),
+      ).toHaveText(String(stories[i].paragraphCount));
+      await expect(
+        inspector.locator('[data-story-field-value="story-self-id"]'),
+      ).toHaveText(stories[i].selfId);
+    }
+  });
+
+  test("AC-STORIES-INSP-2 — an overset story's inspector shows Overset", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    await loadIdml(page, OVERSET_FIXTURE);
+    await openStories(page);
+
+    const stories = await wireStories(page);
+    const oversetIndex = stories.findIndex((s) => s.overset);
+    expect(oversetIndex).toBeGreaterThanOrEqual(0);
+
+    const rows = page.locator("[data-story-list] [data-list-row]");
+    await rows.nth(oversetIndex).click();
+    const inspector = page.locator(
+      `[data-story-inspector="${stories[oversetIndex].selfId}"]`,
+    );
+    await expect(inspector).toBeVisible();
+    // REAL overset field reads "yes" + the StatusPill reads "Overset".
+    await expect(
+      inspector.locator('[data-story-field-value="story-overset"]'),
+    ).toHaveText("yes");
+    await expect(
+      inspector.locator('[data-status-pill="story-overset-status"]'),
+    ).toContainText("Overset");
+  });
+
+  test("AC-STORIES-INSP-3 — frame-chain / words / preview are honest seams", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    await loadIdml(page, OVERSET_FIXTURE);
+    await openStories(page);
+
+    const stories = await wireStories(page);
+    const rows = page.locator("[data-story-list] [data-list-row]");
+    await rows.first().click();
+    const inspector = page.locator(
+      `[data-story-inspector="${stories[0].selfId}"]`,
+    );
+    await expect(inspector).toBeVisible();
+    // The three kit fields with no story-keyed wire read are seams, not
+    // fabricated values.
+    for (const seam of [
+      "story-seam-frame-chain",
+      "story-seam-words",
+      "story-seam-preview",
+    ]) {
+      await expect(
+        inspector.locator(`[data-story-seam="${seam}"]`),
+      ).toContainText("awaits wire read");
+    }
+  });
+});

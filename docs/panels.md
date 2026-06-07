@@ -349,7 +349,7 @@ paper-white (`setProofSetup`).
 
 ## 4 · Structure & navigation
 
-### Document Map — `paged.document-map` ◐ _(kit: design/review LEFT panel)_ — W2.12 2026-06-06
+### Document Map — `paged.document-map` ◐ _(kit: design/review LEFT panel)_ — W2.7 2026-06-07
 
 Search filter · real spread tree (`spreads` collection walked in document
 order) with live page-snapshot thumbnails + per-page margin/column readout
@@ -358,9 +358,22 @@ order) with live page-snapshot thumbnails + per-page margin/column readout
 section"** rides the real v28 `insertSection` Operation (undoable) ·
 **Publication Health footer** with real metrics + live risk counts
 (overset stories / missing links / missing fonts) + PDF/X-4 pill.
-**End state** — kit screenshot exactly: per-section **status chips**
-(Approved/In Review/Comments — collaboration), drag-reorder sections,
-section prefix/numbering editing (`editSection`).
+**Per-page status chips** (gaps 2–4): the **missing-links chip** is REAL
+and per-page — each missing `LinkSummary` (status `"missing"`) names its
+host frame (`hostSelfId`/`hostKind`), which `elementGeometry` resolves to
+a `pageId`, so the count is bucketed per page; clicking the chip jumps to
+that page. **Overset** and **missing-fonts** can't be attributed to a
+page over the current wire (`StorySummary.overset` is per-story with no
+story→page map; `FontSummary` carries no host attribution), so they
+render as a single **honest seam chip** on the first page marking the
+document-level signal ("overset: doc-level" / "fonts: doc-level") with a
+tooltip naming the missing read — not a per-page claim. **Master applied**
+per page is also unattributable (`PageSummary` exposes no `appliedMaster`)
+→ no chip, noted as a follow-up.
+**End state** — once the wire attributes per-page: real overset / missing-
+font / applied-master chips per page; plus per-section **status chips**
+(Approved/In Review — collaboration), drag-reorder sections, section
+prefix/numbering editing (`editSection`).
 
 ### Pages (Navigator) — `paged.pages` ✓
 
@@ -502,16 +515,27 @@ Hooks: `data-output-nav`, `data-export-inspector-panel`,
 **End state** — per-target presets/profiles, batch select, as each remaining
 pipeline lands.
 
-### Stories — `paged.stories` ◐ · Story inspector — `paged.story-inspector` ◐ — W2.12 2026-06-06
+### Stories — `paged.stories` ◐ · Story inspector — `paged.story-inspector` ◐ — W2.7 2026-06-07
 
-Real **story list** off the `paged.stories()` script host (there is no
-`"stories"` document collection on the wire — `StorySummary` is
-script-host-only): one row per story with character + paragraph counts,
-an **overset badge** (`StorySummary.overset`, gap 1), and click →
-content selection at the story head. Words/approval = seam.
+Real **story list** off the live `stories` collection (`StorySummary` —
+`useCollection("stories")`, refetched on every Operation push): one row
+per story with character + paragraph counts, an **overset badge**
+(`StorySummary.overset`, gap 1), and click → content selection at the
+story head. Selecting a row opens the **per-story field inspector**
+(gaps 9/10): the four honest `StorySummary` reads — story id,
+**characters**, **paragraphs**, **overset** (with an Overset/Fits
+StatusPill) — all live (they track edits because the inspector reads the
+same refetched collection). The kit's richer fields are **honest seams**
+that name the missing wire read: **frame chain / threading topology**
+(no story→frame map; `StorySummary` carries no frame ids and
+`nextTextFrame`/`previousTextFrame` are reachable only from a known
+frame), **word count** (no word-count or story-text read), **first-
+paragraph preview** (no story-text read). The inspector is read-only by
+design — a story carries no rename Operation on the wire.
 **End state** — kit Content mode inspector (words, language-expansion
-risk, comments, approval). Needs a `stories` collection accessor +
-collaboration; word count on the wire.
+risk, comments, approval). Needs, on the wire: a `frameChain` accessor
+keyed by story id, a `wordCount` (or story-text read), a story-text /
+paragraph-preview accessor; plus collaboration for approval/comments.
 
 ### Comments — `paged.comments` ○ · Review inspector — `paged.review-inspector` ○
 
@@ -671,17 +695,26 @@ EPUB/HTML + tagged PDF.
 1. **Overset signal** on the wire (stats + per-frame/story) — health count,
    inspector banner, AI problem line, canvas marker. _(W0.6/W2.12: wire-
    side DONE — `DocumentStats.overset_stories` + `StorySummary.overset`
-   drive Health's "Overset stories", the Stories overset badge; residual =
-   per-frame canvas marker + inspector banner.)_
+   drive Health's "Overset stories", the Stories overset badge + the Story
+   inspector's Overset/Fits pill. W2.7 residual: overset is per-story with
+   NO story→page (or story→frame) map, so the Document-Map per-page chip
+   is an honest doc-level seam — a per-story/per-frame PAGE attribution
+   read would flip it to a real per-page chip + canvas marker.)_
 2. **`LinkSummary` status + colourspace** — missing links, image inspector.
    _(W0.6/W2.12: `status` + `colorspace` consumed by the Links panel
-   (status dot, missing badge, colourspace line) + Health "Missing links".)_
+   (status dot, missing badge, colourspace line) + Health "Missing links".
+   W2.7: the Document-Map per-page MISSING-LINKS chip resolves each missing
+   link's host frame to a page via `elementGeometry` — real per-page
+   attribution, click → jump.)_
 3. **Effective PPI** for placed images — low-res findings, image inspector.
    _(W0.6/W2.12: `LinkSummary.effectivePpi` drives the Links `lo-res`
    badge + Health "Low-res images" (< 150 ppi); fixtures omit the attr.)_
 4. **`FontSummary` missing/embedded flag** — font warnings. _(W0.6/W2.12:
    `isMissing` consumed — Fonts Missing tab/dot/badge + Health "Missing
-   fonts". `embedded` intentionally not on the wire.)_
+   fonts". `embedded` intentionally not on the wire. W2.7: `FontSummary`
+   carries NO host/page attribution, so the Document-Map per-page font
+   chip is an honest doc-level seam — per-page font usage on the wire
+   would flip it to a real per-page chip.)_
 5. **`characterFontFamily/Style/Kerning` property paths** — text inspector
    font selects.
 6. **Rotation/scale decompose primitive** — typed transform dials.
@@ -694,11 +727,18 @@ EPUB/HTML + tagged PDF.
    span-drag merge gesture.)_
 9. **`stories` / `sections` collections** — story list, Document Map
    sections. _(W2.12: `sections` collection consumed by the Document-Map
-   chips + `insertSection`; the story list reads the `paged.stories()`
-   script host — a true `stories` collection accessor is still pending.)_
+   chips + `insertSection`. W3.A2/W2.7: the `stories` collection accessor
+   IS live — the Stories panel reads `useCollection("stories")` for the
+   list AND the per-story field inspector. Residual: `StorySummary` is
+   four scalar fields (id/chars/paras/overset); the inspector's frame-
+   chain / word-count / first-paragraph fields are honest seams pending a
+   `frameChain` (story→frames), a `wordCount`, and a story-text /
+   paragraph-preview read keyed by story id.)_
 10. **Page margin/bleed/column reads** — page inspector geometry. _(W0.6/
     W2.12: `PageSummary` margins/columns surfaced in the Document-Map
-    spread-row meta; bleed still pending in the page inspector.)_
+    spread-row meta; bleed still pending in the page inspector. W2.7: the
+    Document-Map APPLIED-MASTER per-page chip is unbacked — `PageSummary`
+    exposes no `appliedMaster`; an `appliedMaster` field would add it.)_
 
 Panel-gallery pass additions (consolidated from `INDESIGN_PARITY.md` + the
 gallery seams; several extend gaps above):

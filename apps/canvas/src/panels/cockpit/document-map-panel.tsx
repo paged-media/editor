@@ -13,13 +13,33 @@
 // Operation (undoable) starting a section at the document's first
 // page. Per-section status chips (Approved/In Review/…) still await
 // the collaboration backend.
+//
+// W2.7 — per-page STATUS CHIPS on each spread row (matrix gaps 2–4).
+// One chip is REAL and one is an honest seam, chosen by what the wire
+// can attribute to a page:
+//   - MISSING LINKS (real): `LinkSummary.status === "missing"` gives a
+//     host FRAME id (`hostSelfId` + `hostKind`); `elementGeometry`
+//     resolves that frame to a `pageId`, so a missing link IS
+//     attributable per-page. The chip counts the page's missing links;
+//     clicking it jumps the camera to that page. See
+//     `useMissingLinksByPage`.
+//   - OVERSET / MISSING FONTS / APPLIED MASTER (honest seams): none of
+//     these can be attributed to a page over the current wire —
+//     `StorySummary.overset` is per-story with no story→page map,
+//     `FontSummary` carries no host attribution at all, and
+//     `PageSummary` exposes no appliedMaster. When the document carries
+//     a document-level signal (overset stories / missing fonts), a
+//     single SEAM chip marks "somewhere in the document" honestly
+//     rather than guessing a page. The missing reads are named in the
+//     chip tooltips and become W2.7 core follow-ups.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
 import {
   Icon,
   StatusPill,
   groupSpreads,
+  statusColor,
   useCamera,
   useCanvasClient,
   useCollection,
@@ -30,16 +50,116 @@ import {
   type SpreadEntry,
 } from "@paged-media/shell";
 import type {
+  CanvasClient,
+  ElementId,
   FontSummary,
   LinkSummary,
   PageId,
   PageSummary,
   SectionSummary,
   SpreadSummary,
+  StorySummary,
 } from "@paged-media/client";
 
 import { documentBounds, layoutPages, fitCamera } from "../../ui/layout";
 import { useAnimatedCamera } from "../../ui/useAnimatedCamera";
+
+/** Map a `LinkSummary.hostKind` (parse-side frame kind: `"Rectangle"`,
+ *  `"Oval"`, `"Polygon"`, `"GraphicLine"`) to the `ElementId` the
+ *  worker's `elementGeometry` resolver addresses. Returns `null` for
+ *  kinds that can't host a placed image / aren't selectable frames. */
+function hostElementId(hostSelfId: string, hostKind: string): ElementId | null {
+  switch (hostKind) {
+    case "Rectangle":
+      return { kind: "rectangle", id: hostSelfId };
+    case "Oval":
+      return { kind: "oval", id: hostSelfId };
+    case "Polygon":
+      return { kind: "polygon", id: hostSelfId };
+    case "GraphicLine":
+      return { kind: "graphicLine", id: hostSelfId };
+    default:
+      return null;
+  }
+}
+
+/** REAL per-page attribution of MISSING links. A missing
+ *  `LinkSummary` names its host FRAME (`hostSelfId` + `hostKind`);
+ *  `elementGeometry` resolves that frame to a `pageId`. We resolve all
+ *  missing-link hosts in one batch and bucket the count by 0-based page
+ *  index. Re-runs on every Operation push (mutation/undo/redo/load) so
+ *  the chips track relocate/relink edits the moment those ops land.
+ *
+ *  Returns `null` until the first resolve completes (so chips don't
+ *  flash absent before the geometry round-trip), then a Map of
+ *  pageIndex → missing-link count (only pages WITH missing links
+ *  appear). */
+function useMissingLinksByPage(
+  client: CanvasClient,
+  links: LinkSummary[] | null,
+  pageIds: ReadonlyArray<PageId>,
+): Map<number, number> | null {
+  const [byPage, setByPage] = useState<Map<number, number> | null>(null);
+
+  // Identity of the missing-link host set — re-resolve only when the
+  // set of missing hosts (or the page order) actually changes.
+  const missingKey = useMemo(() => {
+    if (!links) return null;
+    return links
+      .filter((l) => l.status === "missing")
+      .map((l) => `${l.hostKind}:${l.hostSelfId}`)
+      .sort()
+      .join("|");
+  }, [links]);
+  const pageKey = pageIds.join("|");
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!links) {
+      setByPage(null);
+      return;
+    }
+    const missing = links.filter((l) => l.status === "missing");
+    if (missing.length === 0) {
+      setByPage(new Map());
+      return;
+    }
+    // Build the id→hostKey index so we can bucket each resolved
+    // geometry back to its page.
+    const ids: ElementId[] = [];
+    for (const l of missing) {
+      const id = hostElementId(l.hostSelfId, l.hostKind);
+      if (id) ids.push(id);
+    }
+    const pageIndexOf = new Map<string, number>();
+    pageIds.forEach((pid, i) => pageIndexOf.set(pid, i));
+
+    void client
+      .elementGeometry(ids)
+      .then((geoms) => {
+        if (cancelled) return;
+        const next = new Map<number, number>();
+        for (const g of geoms) {
+          const idx = pageIndexOf.get(g.pageId);
+          if (idx == null) continue;
+          next.set(idx, (next.get(idx) ?? 0) + 1);
+        }
+        setByPage(next);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setByPage(new Map());
+      });
+    return () => {
+      cancelled = true;
+    };
+    // `missingKey`/`pageKey` capture the inputs that change the result;
+    // `links`/`pageIds` themselves are stable-by-content via those keys.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client, missingKey, pageKey]);
+
+  return byPage;
+}
 
 /** Human label for a section's number style. */
 function numberingLabel(style: string): string {
@@ -63,6 +183,9 @@ export function DocumentMapPanel(_props: PanelProps) {
   const spreads = useCollection<SpreadSummary>("spreads");
   const sections = useCollection<SectionSummary>("sections");
   const pages = useCollection<PageSummary>("pages");
+  const links = useCollection<LinkSummary>("links");
+  const fonts = useCollection<FontSummary>("fonts");
+  const stories = useCollection<StorySummary>("stories");
   const { camera, setCamera, viewportSize } = useCamera();
   const animateCamera = useAnimatedCamera(camera, setCamera);
   const [query, setQuery] = useState("");
@@ -77,6 +200,23 @@ export function DocumentMapPanel(_props: PanelProps) {
     () => (handle ? layoutPages(handle.pageSizesPt) : []),
     [handle],
   );
+
+  // REAL per-page missing-link counts (gap 2) — host frame resolved to
+  // its page via elementGeometry.
+  const missingLinksByPage = useMissingLinksByPage(
+    client,
+    links,
+    handle?.pageIds ?? [],
+  );
+
+  // Document-level seam signals (gaps 3–4). These CAN'T be attributed
+  // to a page over the current wire, so a single SEAM chip per page
+  // honestly marks "this risk exists somewhere in the document" when
+  // the document-level count is non-zero — it is NOT a per-page claim.
+  const oversetStories = stories
+    ? stories.filter((s) => s.overset).length
+    : 0;
+  const missingFonts = fonts ? fonts.filter((f) => f.isMissing).length : 0;
 
   // Margin/column readout per page index, keyed for the spread rows.
   const pageByIndex = useMemo(() => {
@@ -247,7 +387,14 @@ export function DocumentMapPanel(_props: PanelProps) {
                 pageIds={handle.pageIds}
                 snapshots={snapshots}
                 pageByIndex={pageByIndex}
+                missingLinksByPage={missingLinksByPage}
+                oversetStories={oversetStories}
+                missingFonts={missingFonts}
                 onClick={() => jumpTo(entry)}
+                onChipJump={(pageIndices) => {
+                  setSelected(entry.key);
+                  jumpToIndices(pageIndices);
+                }}
               />
             ))}
           </>
@@ -317,16 +464,29 @@ function SpreadRow({
   pageIds,
   snapshots,
   pageByIndex,
+  missingLinksByPage,
+  oversetStories,
+  missingFonts,
   onClick,
+  onChipJump,
 }: {
   entry: SpreadEntry;
   selected: boolean;
   pageIds: ReadonlyArray<PageId>;
   snapshots: ReadonlyMap<PageId, string>;
   pageByIndex: ReadonlyMap<number, PageSummary>;
+  missingLinksByPage: ReadonlyMap<number, number> | null;
+  oversetStories: number;
+  missingFonts: number;
   onClick: () => void;
+  onChipJump: (pageIndices: number[]) => void;
 }) {
   const metaLabel = pageMetaLabel(pageByIndex.get(entry.pageIndices[0]));
+  // REAL — missing links attributed to any page in this spread.
+  const missingLinks = entry.pageIndices.reduce(
+    (sum, i) => sum + (missingLinksByPage?.get(i) ?? 0),
+    0,
+  );
   return (
     <div
       data-document-map-spread={entry.key}
@@ -395,10 +555,125 @@ function SpreadRow({
           {entry.range}
           {metaLabel ? ` · ${metaLabel}` : ""}
         </div>
+        <PageChips
+          spreadKey={entry.key}
+          pageIndices={entry.pageIndices}
+          missingLinks={missingLinks}
+          oversetStories={oversetStories}
+          missingFonts={missingFonts}
+          onJump={onChipJump}
+        />
       </div>
-      {/* Per-section status chips await the collaboration backend. */}
     </div>
   );
+}
+
+/** Per-page status chips for a spread row (gaps 2–4).
+ *
+ *  REAL: the MISSING-LINKS chip is shown only when this spread's pages
+ *  actually host one (count from `elementGeometry` page attribution);
+ *  clicking it jumps to the spread.
+ *
+ *  HONEST SEAMS: overset / missing-fonts can't be attributed to a page
+ *  over the current wire, so a single dashed seam chip surfaces the
+ *  document-level signal with a tooltip naming the missing read — it
+ *  marks "somewhere in the document", not "on this page". A master
+ *  applied per-page read doesn't exist either; it's noted in the
+ *  missing-reads but rendered as no chip rather than a fabricated one.
+ *  Seam chips render only on the FIRST page of the document so the same
+ *  document-level signal isn't repeated on every row. */
+function PageChips({
+  spreadKey,
+  pageIndices,
+  missingLinks,
+  oversetStories,
+  missingFonts,
+  onJump,
+}: {
+  spreadKey: string;
+  pageIndices: number[];
+  missingLinks: number;
+  oversetStories: number;
+  missingFonts: number;
+  onJump: (pageIndices: number[]) => void;
+}) {
+  const isFirstRow = pageIndices.includes(0);
+  const showOversetSeam = isFirstRow && oversetStories > 0;
+  const showFontSeam = isFirstRow && missingFonts > 0;
+  if (missingLinks === 0 && !showOversetSeam && !showFontSeam) return null;
+  return (
+    <div
+      data-page-chips={spreadKey}
+      style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}
+    >
+      {missingLinks > 0 && (
+        <button
+          type="button"
+          data-page-chip="missing-links"
+          data-page-chip-spread={spreadKey}
+          title={`${missingLinks} missing link${
+            missingLinks === 1 ? "" : "s"
+          } on this page — go to page`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onJump(pageIndices);
+          }}
+          style={chipStyle(statusColor("error"), false)}
+        >
+          {missingLinks} missing link{missingLinks === 1 ? "" : "s"}
+        </button>
+      )}
+      {showOversetSeam && (
+        <span
+          data-page-chip="overset-seam"
+          title={
+            "Overset can't be attributed to a page over the current wire " +
+            "(StorySummary.overset is per-story with no story→page map). " +
+            `${oversetStories} overset stor${
+              oversetStories === 1 ? "y" : "ies"
+            } in the document. Needs a per-story (or per-frame) page read.`
+          }
+          style={chipStyle("var(--pg-muted-fg)", true)}
+        >
+          overset: doc-level
+        </span>
+      )}
+      {showFontSeam && (
+        <span
+          data-page-chip="fonts-seam"
+          title={
+            "Missing fonts can't be attributed to a page over the current " +
+            "wire (FontSummary carries no host attribution). " +
+            `${missingFonts} missing font${
+              missingFonts === 1 ? "" : "s"
+            } in the document. Needs per-page font usage on the wire.`
+          }
+          style={chipStyle("var(--pg-muted-fg)", true)}
+        >
+          fonts: doc-level
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Shared chip pill style. `seam` chips are dashed + muted to read as
+ *  "awaiting a wire read", not a per-page fact. */
+function chipStyle(color: string, seam: boolean): CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    height: 18,
+    padding: "0 7px",
+    borderRadius: 999,
+    border: `1px ${seam ? "dashed" : "solid"} ${color}`,
+    background: "transparent",
+    color,
+    cursor: seam ? "default" : "pointer",
+    fontSize: 10,
+    fontFamily: "var(--font-sans)",
+    whiteSpace: "nowrap",
+  };
 }
 
 /** Kit Health footer — real document metrics + PDF/X-4 readiness +
