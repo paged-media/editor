@@ -184,3 +184,148 @@ test.describe("Cockpit — per-mode panel sets + toolbars (D3-D4)", () => {
     await page.evaluate(() => window.__canvas.setMode("design"));
   });
 });
+
+// W2.8 — context toolbars carry REAL pills (selection/context-aware
+// quick actions) or HONEST disabled seams, never fake-interactive.
+// Each test proves a pill's real effect via observable UI state (a
+// dock tab activating, a toggle pill flipping `data-on`, a pill's
+// honest-disabled state) — no document load required for the chrome.
+test.describe("Cockpit — per-mode REAL context-toolbar pills (W2.8)", () => {
+  const setMode = (page: Page, m: string) =>
+    page.evaluate((mode) => window.__canvas.setMode(mode), m);
+
+  test("Design — Preview pill reflects the real screen mode", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    const preview = page.locator('[data-cockpit-action="preview-toggle"]');
+    await expect(preview).toBeVisible();
+    await expect(preview).not.toHaveAttribute("data-on", "");
+    // Click toggles the real screen-mode state — the pill fills.
+    await preview.click();
+    await expect(preview).toHaveAttribute("data-on", "");
+    await preview.click();
+    await expect(preview).not.toHaveAttribute("data-on", "");
+  });
+
+  test("Content — formatting raises are honest-disabled with no text selection", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    await setMode(page, "content");
+    const character = page.locator('[data-cockpit-action="content-character"]');
+    await expect(character).toBeVisible();
+    // No caret → honest disabled, with an explanatory tooltip.
+    await expect(character).toBeDisabled();
+    await expect(character).toHaveAttribute(
+      "title",
+      /caret in text to format characters/i,
+    );
+    // The live selection readout reports "No text selection".
+    await expect(
+      page.locator('[data-cockpit-action="content-selection"]'),
+    ).toHaveText(/no text selection/i);
+    await setMode(page, "design");
+  });
+
+  test("Content — a text selection enables + drives the Character raise", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    await setMode(page, "content");
+    // Drive a content selection through the __canvas debug setter
+    // (the same affordance the Character-panel specs use). This flips
+    // the toolbar's caret-awareness without a loaded story.
+    await page.evaluate(() => {
+      const c = globalThis as unknown as {
+        __canvas: {
+          setContentSelection: (sel: {
+            storyId: string;
+            start: number;
+            end: number;
+          }) => void;
+        };
+      };
+      c.__canvas.setContentSelection({ storyId: "story-1", start: 0, end: 4 });
+    });
+    const character = page.locator('[data-cockpit-action="content-character"]');
+    await expect(character).toBeEnabled();
+    await expect(
+      page.locator('[data-cockpit-action="content-selection"]'),
+    ).toHaveText(/text selected/i);
+    // Clicking raises the Character formatting dock — a REAL, observable
+    // effect (the panel joins the right dock as the active tab).
+    await character.click();
+    await expect(
+      page.locator('[data-dock-tab="paged.character"][data-active]'),
+    ).toBeVisible();
+    await setMode(page, "design");
+  });
+
+  test("Prepress — the Bleed pill drives the real screen mode", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    await setMode(page, "prepress");
+    const bleed = page.locator('[data-cockpit-action="prepress-bleed"]');
+    await expect(bleed).toBeVisible();
+    await expect(bleed).not.toHaveAttribute("data-on", "");
+    await bleed.click();
+    await expect(bleed).toHaveAttribute("data-on", "");
+    await bleed.click();
+    await expect(bleed).not.toHaveAttribute("data-on", "");
+    // Validate is honest-disabled until a document is loaded.
+    await expect(
+      page.locator('[data-cockpit-action="prepress-validate"]'),
+    ).toBeDisabled();
+    await setMode(page, "design");
+  });
+
+  test("Data — the Field-mapping pill raises its dock (real focus)", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    await setMode(page, "data");
+    const mapping = page.locator('[data-cockpit-action="data-mapping"]');
+    await expect(mapping).toBeEnabled();
+    // The mapping dock is Data mode's seeded inspector, so the pill
+    // reads as the active panel and its content renders — a REAL,
+    // observable focus state (`data-on` + the panel body present).
+    await mapping.click();
+    await expect(mapping).toHaveAttribute("data-on", "");
+    await expect(page.locator("[data-data-mapping-panel]")).toBeVisible();
+    // The source/generate seams are HONEST — visibly disabled.
+    await expect(page.locator('text="Connect source"')).toBeVisible();
+    await setMode(page, "design");
+  });
+
+  test("Review — the Comments pill raises its dock (real focus)", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    await setMode(page, "review");
+    const comments = page.locator('[data-cockpit-action="review-comments"]');
+    await expect(comments).toBeEnabled();
+    await comments.click();
+    await expect(
+      page.locator('[data-dock-tab="paged.comments"][data-active]'),
+    ).toBeVisible();
+    await expect(comments).toHaveAttribute("data-on", "");
+    await setMode(page, "design");
+  });
+
+  test("Export — image / IDML pills are honest-disabled with no document", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    await setMode(page, "export");
+    // No document open → the LIVE outputs honestly disable.
+    await expect(
+      page.locator('[data-cockpit-action="export-image"]'),
+    ).toBeDisabled();
+    await expect(
+      page.locator('[data-cockpit-action="export-idml"]'),
+    ).toBeDisabled();
+    await setMode(page, "design");
+  });
+});
