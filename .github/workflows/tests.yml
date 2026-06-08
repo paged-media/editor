@@ -151,13 +151,73 @@ jobs:
             envato/overrides
           sparse-checkout-cone-mode: true
 
-      # Guard: the IDML/font fixtures must be real bytes, not LFS
-      # pointers, or the whole canvas surface fails with opaque parse
-      # errors mid-suite. Fail fast here if the smudge didn't land.
-      - name: verify corpus fixtures are materialized (not LFS pointers)
+      # The canvas Playwright surface loads ~33 per-feature IDML fixtures
+      # from `corpus/generated/*.idml` (61 of the lean specs reference
+      # them). Those files are NOT committed to the corpus repo — its
+      # `generated/.gitignore` excludes `*.idml` because they are
+      # reproducible from `cargo run -p paged-gen` (core). So neither a
+      # sparse nor a full corpus checkout carries them, and without a
+      # provisioning step the suite fails ~170/shard with ENOENT (file
+      # absent) or "invalid Zip: Could not find EOCD" (LFS-pointer parse).
+      #
+      # Provision them by building the `paged-gen` fixture generator from
+      # a pinned `core` checkout and emitting every sample into
+      # corpus/generated. This is the same build-from-core pattern the
+      # `viewer`/`docs` repos use (their `core.pin`); it does NOT touch
+      # the Decision-B *wasm* boundary (the engine still arrives as the
+      # published npm package — this only generates test fixtures).
+      - name: checkout core (for the paged-gen fixture generator)
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/core
+          path: core
+          token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
+
+      - name: rust toolchain (for paged-gen)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: cache cargo + paged-gen build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            core/target
+          key: paged-gen-${{ runner.os }}-${{ hashFiles('core/Cargo.lock') }}
+          restore-keys: paged-gen-${{ runner.os }}-
+
+      - name: generate corpus/generated/*.idml from paged-gen
+        working-directory: core
+        run: |
+          cargo build --release -p paged-gen --bin paged-gen
+          GEN="$GITHUB_WORKSPACE/editor/corpus/generated"
+          mkdir -p "$GEN"
+          # The full sample set the lean canvas surface loads (matches the
+          # 33 *.idml the local corpus/generated dir carries; mirrors the
+          # match arm list in core/crates/paged-gen/src/bin/paged-gen.rs).
+          for s in geometry geometry-groups strokes-fills text text-advanced \
+                   text-autosize text-letterspacing text-on-path text-overset \
+                   text-in-shape text-wrap effects footnotes gradients tables \
+                   images image-clipping anchored transparency markers masters \
+                   corners links-broken links-ok preflight numbering variables \
+                   conditions swatches navigation styles-cascade layout \
+                   nested-groups; do
+            ./target/release/paged-gen emit --sample "$s" --out "$GEN"
+          done
+
+      # Guard: the IDML fixtures must now be real bytes on disk, or the
+      # whole canvas surface fails with opaque parse errors mid-suite.
+      # Fail fast here (existence AND not-a-pointer) if provisioning
+      # didn't land.
+      - name: verify corpus fixtures are materialized
         working-directory: editor/corpus
         run: |
-          for f in generated/text.idml generated/text-overset.idml; do
+          for f in generated/text.idml generated/text-overset.idml \
+                   generated/geometry.idml generated/links-broken.idml; do
+            if [ ! -f "$f" ]; then
+              echo "::error::$f is missing — paged-gen provisioning failed"
+              exit 1
+            fi
             if head -c 64 "$f" | grep -q "git-lfs"; then
               echo "::error::$f is still an LFS pointer — smudge failed"
               exit 1
