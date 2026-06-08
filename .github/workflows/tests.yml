@@ -10,6 +10,22 @@ name: tests
 # server process and works headless, so the chromium runner gets a
 # cross-origin-isolated context with no extra flags.
 #
+# Plugin link chain (W3): `apps/canvas/package.json` pulls four bundles
+# in via pnpm `link:` — draw-bundle (../../../plugin-draw/…), plugin-api
+# + plugin-sdk (../../../plugin-sdk/…), and web-bundle
+# (../../../plugin-web/…). Those `../../..` paths are relative to
+# `apps/canvas/`, so they resolve to SIBLINGS of the editor repo root.
+# We mirror the local ~/paged layout: check the editor out under
+# `editor/` and the three plugin repos under their bare names, so e.g.
+# `editor/apps/canvas/../../../plugin-draw` == `$GITHUB_WORKSPACE/plugin-draw`.
+# The plugin repos are private; `STATE_DISPATCH_TOKEN` carries read scope
+# across the paged-media org (same token plugin-draw's vitest.yml uses
+# for its sdk checkout), with a github.token fallback for same-org runs.
+# Install order is the workspace rule (plugin-sdk → plugin-draw →
+# plugin-web → editor): each plugin repo's own internal `link:`s point at
+# plugin-sdk, and the editor's `link:`s need all three sibling dirs
+# present + installed before its own `--frozen-lockfile` install resolves.
+#
 # Scope: the behaviour surface (panels + gesture + e2e op-sandwiches),
 # NOT the Envato fidelity gate. That gate needs the 4.4 GB
 # `corpus/envato` LFS packs, their InDesign reference PDFs, poppler's
@@ -63,8 +79,37 @@ jobs:
       matrix:
         shard: [1, 2, 3]
     steps:
+      # The editor goes under `editor/` so the apps/canvas `link:` paths
+      # (../../../<plugin>) land on siblings under $GITHUB_WORKSPACE.
       - name: checkout editor
         uses: actions/checkout@v4
+        with:
+          path: editor
+
+      # The three plugin sibling repos the apps/canvas link: chain needs.
+      # plugin-sdk first (the others link: at it), then plugin-draw +
+      # plugin-web. Private repos → STATE_DISPATCH_TOKEN (read scope on
+      # the org), github.token fallback for same-org runs.
+      - name: checkout plugin-sdk (link target)
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/plugin-sdk
+          path: plugin-sdk
+          token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
+
+      - name: checkout plugin-draw (link target)
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/plugin-draw
+          path: plugin-draw
+          token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
+
+      - name: checkout plugin-web (link target)
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/plugin-web
+          path: plugin-web
+          token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
 
       # License-clear fixtures the harness loads (corpus/generated/*.idml
       # + corpus/fonts). Sparse + LFS so we pull ~25 MB, not the 4.4 GB
@@ -77,7 +122,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: paged-media/corpus
-          path: corpus
+          path: editor/corpus
           token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
           lfs: false
           sparse-checkout: |
@@ -87,7 +132,7 @@ jobs:
           sparse-checkout-cone-mode: true
 
       - name: pull LFS for the lean fixture tiers
-        working-directory: corpus
+        working-directory: editor/corpus
         run: |
           git lfs install --local
           git lfs pull --include="generated/**,samples/**,fonts/**"
@@ -98,8 +143,31 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          cache-dependency-path: |
+            editor/pnpm-lock.yaml
+            plugin-sdk/pnpm-lock.yaml
+            plugin-draw/pnpm-lock.yaml
+            plugin-web/pnpm-lock.yaml
 
-      - name: install (engine wasm resolves from the npm package)
+      # Install the link chain bottom-up (workspace rule): plugin-sdk,
+      # then plugin-draw + plugin-web (which link: at plugin-sdk), then
+      # the editor (whose link:s need all three present + installed).
+      # Each repo is its own workspace with a committed lockfile-v9, so
+      # all stay --frozen-lockfile.
+      - name: install plugin-sdk (link root)
+        working-directory: plugin-sdk
+        run: pnpm install --frozen-lockfile
+
+      - name: install plugin-draw
+        working-directory: plugin-draw
+        run: pnpm install --frozen-lockfile
+
+      - name: install plugin-web
+        working-directory: plugin-web
+        run: pnpm install --frozen-lockfile
+
+      - name: install editor (engine wasm resolves from the npm package)
+        working-directory: editor
         run: pnpm install --frozen-lockfile
 
       # The Playwright surface runs against the vite DEV server
@@ -110,13 +178,15 @@ jobs:
       # — they're consumed as workspace TS source — and `apps/devtools`
       # would pull in the unrelated introspect-wasm build.)
       - name: typecheck canvas app
+        working-directory: editor
         run: pnpm --filter ./apps/canvas run typecheck
 
       - name: install chromium + system deps
+        working-directory: editor
         run: pnpm --filter ./apps/canvas exec playwright install --with-deps chromium
 
       - name: playwright (lean surface, shard ${{ matrix.shard }})
-        working-directory: apps/canvas
+        working-directory: editor/apps/canvas
         env:
           CI: "1"
           PAGED_CI_LEAN: "1"
@@ -130,7 +200,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: blob-report-${{ matrix.shard }}
-          path: apps/canvas/blob-report
+          path: editor/apps/canvas/blob-report
           retention-days: 7
 
   publish:
@@ -139,8 +209,16 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
+      # merge-reports only needs apps/canvas's @playwright/test (a real
+      # npm dep), not the plugin link targets, so the editor checkout
+      # alone suffices here. Keep it under `editor/` for path parity with
+      # the playwright job. The apps/canvas `link:` deps resolve to
+      # absent siblings as dangling symlinks (pnpm install does not fail
+      # on that), and merge-reports never imports plugin code.
       - name: checkout editor
         uses: actions/checkout@v4
+        with:
+          path: editor
 
       - uses: pnpm/action-setup@v4
 
@@ -148,9 +226,11 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          cache-dependency-path: editor/pnpm-lock.yaml
 
       # Only the canvas app's @playwright/test is needed for merge-reports.
       - name: install (apps/canvas only)
+        working-directory: editor
         run: pnpm install --frozen-lockfile --filter ./apps/canvas
 
       - name: download shard blobs
@@ -161,11 +241,12 @@ jobs:
           merge-multiple: true
 
       - name: merge shards → single Playwright JSON
+        working-directory: editor
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ github.workspace }}/playwright-results.json
         run: |
           pnpm --filter ./apps/canvas exec \
-            playwright merge-reports --reporter=json all-blobs \
+            playwright merge-reports --reporter=json ${{ github.workspace }}/all-blobs \
             > /dev/null
           test -s "${{ github.workspace }}/playwright-results.json"
 
