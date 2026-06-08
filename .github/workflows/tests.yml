@@ -137,7 +137,13 @@ jobs:
           git lfs install --local
           git lfs pull --include="generated/**,samples/**,fonts/**"
 
+      # Pin pnpm: with the editor checked out under editor/ (not at the
+      # workspace root), action-setup can't read `packageManager` from a
+      # root package.json — match the editor's pnpm@9.0.0 explicitly. v9
+      # reads every repo's lockfile-v9 natively.
       - uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - uses: actions/setup-node@v4
         with:
@@ -221,6 +227,8 @@ jobs:
           path: editor
 
       - uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - uses: actions/setup-node@v4
         with:
