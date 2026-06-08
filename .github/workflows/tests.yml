@@ -118,24 +118,52 @@ jobs:
       # there. `STATE_DISPATCH_TOKEN` already has read scope on the
       # private paged-media siblings (used by plugin-draw for the sdk
       # checkout); fall back to github.token for same-org runs.
+      #
+      # `envato/overrides` is in the sparse set too: even in lean mode
+      # (no fidelity/extensive-corpus specs), the canvas test driver's
+      # default-font path reads `envato/overrides/_default/fonts.sh`
+      # (tests/fidelity/fonts.ts → loadPackFonts fallback), so without it
+      # every canvas-loading spec ENOENTs. The overrides tree is ~84 KB
+      # of plain .sh/.jsx (the fonts it names all live in corpus/fonts/);
+      # the heavy envato `.zip`/`.idml`/`.pdf` assets stay out of the
+      # sparse set entirely, so cone-mode never even checks them out.
+      #
+      # LFS: smudge ON (`lfs: true`). Cone-mode sparse-checkout only
+      # populates the four tiers above, so checkout's native LFS pass
+      # downloads just THEIR objects (~25 MB: the generated/samples IDMLs
+      # + sample PDFs + the corpus/fonts TTFs), not the 4.4 GB envato
+      # tier. The earlier `lfs: false` + manual `git lfs pull --include`
+      # fetched zero objects (the smudge filter was off, so the working
+      # tree kept LFS *pointers* — the fixtures then parsed as "invalid
+      # Zip: Could not find EOCD"). Letting checkout do the smudge against
+      # the sparse tree is the reliable path.
       - name: checkout corpus fixtures (sparse + LFS)
         uses: actions/checkout@v4
         with:
           repository: paged-media/corpus
           path: editor/corpus
           token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
-          lfs: false
+          lfs: true
           sparse-checkout: |
             generated
             samples
             fonts
+            envato/overrides
           sparse-checkout-cone-mode: true
 
-      - name: pull LFS for the lean fixture tiers
+      # Guard: the IDML/font fixtures must be real bytes, not LFS
+      # pointers, or the whole canvas surface fails with opaque parse
+      # errors mid-suite. Fail fast here if the smudge didn't land.
+      - name: verify corpus fixtures are materialized (not LFS pointers)
         working-directory: editor/corpus
         run: |
-          git lfs install --local
-          git lfs pull --include="generated/**,samples/**,fonts/**"
+          for f in generated/text.idml generated/text-overset.idml; do
+            if head -c 64 "$f" | grep -q "git-lfs"; then
+              echo "::error::$f is still an LFS pointer — smudge failed"
+              exit 1
+            fi
+          done
+          echo "corpus fixtures materialized OK"
 
       # Pin pnpm: with the editor checked out under editor/ (not at the
       # workspace root), action-setup can't read `packageManager` from a
