@@ -14,7 +14,7 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "@paged-media/canvas-wasm": "0.35.2"
+    "@paged-media/canvas-wasm": "0.36.0"
   },
   "devDependencies": {
     "typescript": "^5.6.3"
