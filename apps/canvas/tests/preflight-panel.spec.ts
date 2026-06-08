@@ -42,31 +42,23 @@ test.describe("W2.12 — Preflight panel", () => {
     await expect(page.locator("[data-preflight-clean]")).toBeVisible();
   });
 
-  test.fixme("AC-PREFLIGHT-2 — findings group by severity and jump to their page", async ({
+  test("AC-PREFLIGHT-2 — findings group by severity and jump to their page", async ({
     page,
   }) => {
-    // NOT fixture-shaped on 0.35.1 (W2.2 investigation). The PDF exporter
-    // emits a `PreflightFinding` for exactly two cases:
-    //   • `font_not_embeddable` — an fsType-locked font. The OFL corpus
-    //     fonts (and the harness's registered faces) are all embeddable,
-    //     so this never fires.
-    //   • `image_missing_bytes` — an `<Image>` command that survives to
-    //     the exporter with undecodable bytes. But `paged-renderer`
-    //     decodes inline `<Contents>` at BUILD time, fails, and stamps the
-    //     missing-image placeholder, so NO `<Image>` command reaches the
-    //     exporter — verified: `preflight.idml` carries a deliberately
-    //     undecodable image yet `exportPdf` returns zero findings.
-    // The "unhealthy publication" signals (overset, missing-link,
-    // missing-font) are build-time / model-level; surfacing them as
-    // export-time findings with a page index is an ENGINE GAP. Flips the
-    // day the export pipeline promotes those diagnostics to
-    // `PreflightFinding`s (or a non-embeddable corpus font lands).
-    // `preflight.idml` is staged as the host (overset + Phantom Display
-    // missing font already round-trip; it powers AC-FONTS-3 today).
+    // 0.35.2 punch-list fix: the PDF export pipeline now promotes the
+    // build-time "unhealthy publication" diagnostics (overset, missing
+    // font) to `PreflightFinding`s with a page index, so the Preflight
+    // panel surfaces them as jump-targets. `preflight.idml` carries an
+    // overset story + a "Phantom Display" missing font (it also powers
+    // AC-FONTS-3), so exporting it raises at least one paged finding.
     await openCanvas(page);
     await loadIdml(page, `${REPO_ROOT}/corpus/generated/preflight.idml`);
     await openPreflight(page);
     await page.locator('[data-cockpit-action="run-validation"]').click();
+    // The validation pill lands once the export round-trips.
+    await expect(
+      page.locator('[data-status-pill="validation-state"]'),
+    ).toBeVisible({ timeout: 60_000 });
     const finding = page.locator("[data-preflight-finding][data-finding-page]");
     await expect(finding.first()).toBeVisible();
     await finding.first().click();

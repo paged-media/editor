@@ -380,13 +380,41 @@ test.describe("E2E character ops", () => {
   // identically after the switch. ENGINE/HARNESS GAP: the live
   // font-family mutation isn't consulted by the layout font resolver.
   test.fixme("AC-E2E-CHAR-fontFamily — characterFontFamily (runtime family switch not re-resolved by the renderer)", async () => {});
-  // characterLigatures DOES flip shaping (a render delta appears when the
-  // doc is loaded with a liga-bearing fallback like Cormorant on the
-  // `text · liga · fi-ffi` page). But (a) the harness default font Inter
-  // has no `liga` table, and (b) elementProperties reports characterLigatures
-  // as false even in the default-ON state, and undo does NOT restore the
-  // ligature render. ENGINE GAP: model read + undo for the ligature toggle.
-  test.fixme("AC-E2E-CHAR-ligatures — characterLigatures (model-read + undo gaps; needs a liga font as the load fallback)", async () => {});
+  // 0.35.2 punch-list fix: the characterLigatures READ + undo contract.
+  // Two of the old blockers are closed: elementProperties now reports
+  // ligatures default-ON (`true`) for an un-touched run, and the toggle
+  // round-trips through undo (toggle→false applies, undo restores true).
+  // We assert that read/undo contract here — NOT a render delta: the
+  // harness default font (Inter) has NO `liga` table, so flipping the
+  // ligature feature shapes IDENTICAL glyphs (verified: 0 px delta).
+  // Asserting a render change would require a liga-bearing load fallback
+  // (e.g. Cormorant on a `text · liga · fi-ffi` page) the harness doesn't
+  // register; that render half stays a documented FIXTURE gap, owned by
+  // `renderGap: true` (zero-pixel assertion) so it flips loudly the day a
+  // liga font is registered and the toggle starts repainting.
+  test("AC-E2E-CHAR-ligatures — characterLigatures reads default-ON + round-trips undo (0.35.2)", async ({
+    page,
+  }) => {
+    // Default-ON read: an un-touched run reports ligatures `true`.
+    expect(
+      (
+        (await readRangeProp(page, range, "characterLigatures")) as {
+          value: boolean;
+        }
+      ).value,
+      "characterLigatures defaults ON",
+    ).toBe(true);
+    // Toggle→false lands in the model and round-trips through undo. The
+    // render gate is the honest zero-pixel one (Inter has no liga table),
+    // and the sandwich's model dump + byte-identical undo prove the round
+    // trip restores ligatures to the default-ON state.
+    await charSandwich(page, {
+      path: "characterLigatures",
+      value: { type: "bool", value: false },
+      assertValue: (v) => expect((v as { value: boolean }).value).toBe(false),
+      renderGap: true,
+    });
+  });
   // characterLanguage only changes output via a hyphenation break, which
   // (see paragraph-ops AC-E2E-PARA-hyphenation) produces no render delta
   // on 0.35.1 even in a narrow column with a long word. ENGINE GAP:

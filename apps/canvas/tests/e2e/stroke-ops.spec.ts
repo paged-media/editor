@@ -262,30 +262,129 @@ test.describe("E2E stroke op round-trips", () => {
     });
   });
 
-  // NOT fixture-shaped (W2.2 investigation, 0.35.1). The miter delta
-  // needs a sharp-cornered shape whose miter overflows the limit — but
-  // `frameStrokeMiterLimit` is RECTANGLE-ONLY in both the panel surface
-  // (stroke.composition.ts: "LIVE miter limit (Rectangle-only)") AND the
-  // engine apply layer (paged-mutate apply.rs matches only
-  // `NodeId::Rectangle`; the mutation is REJECTED on a Polygon). A
-  // rectangle's 90° corners never overflow the limit, so even a
-  // generated sharp-star polygon can't be driven through this path.
-  // ENGINE/SURFACE GAP: miter limit isn't authorable on the shapes whose
-  // corners trip it.
-  test.fixme(
-    "AC-E2E-STROKE-miter — frameStrokeMiterLimit is Rectangle-only; rects never overflow the limit",
-    async () => {},
-  );
+  // 0.35.2 punch-list fix: `frameStrokeMiterLimit` now applies to
+  // Polygon / GraphicLine closed paths, not Rectangle-only (the old
+  // blocker: paged-mutate apply REJECTED the mutation on non-Rectangle
+  // kinds, so even a sharp polygon couldn't be driven through this path).
+  // On 0.35.2 the mutation is accepted, dirties the page, and the
+  // renderer clips the corner spikes when the limit tightens.
+  //
+  // FIXTURE NOTE: this loads `strokes-fills`, NOT the beforeEach
+  // `geometry` rect. (a) `geometry` has no polygon at all; (b) on a
+  // Polygon, `frameStrokeWeight` / `frameStrokeColor` are STILL
+  // `notImplemented` on the 0.35.2 wire (only miter/join/type/gap apply),
+  // so a heavy visible stroke can't be SET — but the `strokes-fills`
+  // polygon already carries an 18 pt black stroke baked in at parse, with
+  // corners sharp enough that limit 20→1 clips them to a measurable
+  // delta. Establish Miter join + a large limit OUTSIDE the sandwich so
+  // the baseline is the long-spike state; the sandwich then tightens to 1.
+  test("AC-E2E-STROKE-miter — frameStrokeMiterLimit clips the polygon's sharp corners (0.35.2)", async ({
+    page,
+  }) => {
+    const sf = await loadFixture(page, "strokes-fills");
+    const poly = sf.firstPolygon;
+    test.skip(!poly, "strokes-fills fixture has no polygon");
+    const target = sf.frames.find((f) => f.ref.kind === "polygon")!;
+    const polyPage = sf.pages[target.pageIndex];
+    const polyRegion = (await elementPageRectPt(page, poly!))!;
+    // Miter join + a large (non-clipping) limit. Outside the sandwich so
+    // the baseline already carries the long-spike (limit=20) state.
+    await mutate(page, {
+      op: "batch",
+      args: {
+        ops: [
+          {
+            op: "setElementProperty",
+            args: {
+              elementId: poly!,
+              path: "frameStrokeJoin",
+              value: { type: "text", value: "MiterEndJoin" },
+            },
+          },
+          {
+            op: "setElementProperty",
+            args: {
+              elementId: poly!,
+              path: "frameStrokeMiterLimit",
+              value: { type: "length", value: 20 },
+            },
+          },
+        ],
+      },
+    });
+    await opSandwich(page, {
+      pageId: polyPage.pageId,
+      pageWidthPt: polyPage.widthPt,
+      region: polyRegion,
+      containment: false,
+      dumpModel: () => dumpElement(page, poly!),
+      apply: async () => {
+        await mutate(page, {
+          op: "setElementProperty",
+          args: {
+            elementId: poly!,
+            path: "frameStrokeMiterLimit",
+            value: { type: "length", value: 1 },
+          },
+        });
+      },
+      expectModel: async () => {
+        expect(
+          (
+            (await readProp(page, poly!, "frameStrokeMiterLimit")) as {
+              value: number;
+            }
+          ).value,
+        ).toBe(1);
+      },
+    });
+  });
 
-  // NOT fixture-shaped (W2.2 investigation, 0.35.1). `frameStrokeGapTint`
-  // round-trips on the wire but produces NO render delta — verified on
-  // the working geometry rect with a frame-level high-contrast (magenta)
-  // gap colour under a heavy `$ID/Dashed` stroke: changing the gap tint
-  // repainted nothing. The renderer's gap-colour second pass (shapes.rs)
-  // consumes the gap COLOUR but not the gap TINT. ENGINE GAP: gap tint
-  // not honoured by the gap-colour under-pass.
-  test.fixme(
-    "AC-E2E-STROKE-gap-tint — frameStrokeGapTint not consumed by the renderer's gap-colour pass",
-    async () => {},
-  );
+  // 0.35.2 punch-list fix: `frameStrokeGapTint` now lightens the gap
+  // colour the renderer paints between the dashes. Set a vivid (magenta)
+  // gap colour outside the sandwich so the baseline shows the gap
+  // under-pass at full strength; the sandwich then drops the gap tint to
+  // 20%, lightening the under-painted gap → a pixel delta.
+  test("AC-E2E-STROKE-gap-tint — frameStrokeGapTint lightens the rendered gap colour (0.35.2)", async ({
+    page,
+  }) => {
+    const magenta = (await createVividSwatch(page))!;
+    // Establish a full-strength gap colour under the beforeEach dashed
+    // stroke (the gap-colour under-pass paints it). Outside the sandwich
+    // so the baseline is the un-tinted (vivid) gap.
+    await mutate(page, {
+      op: "setElementProperty",
+      args: {
+        elementId: rect,
+        path: "frameStrokeGapColor",
+        value: { type: "colorRef", value: magenta },
+      },
+    });
+    await opSandwich(page, {
+      pageId: pageInfo.pageId,
+      pageWidthPt: pageInfo.widthPt,
+      region,
+      containment: false,
+      dumpModel: () => dumpElement(page, rect),
+      apply: async () => {
+        await mutate(page, {
+          op: "setElementProperty",
+          args: {
+            elementId: rect,
+            path: "frameStrokeGapTint",
+            value: { type: "length", value: 20 },
+          },
+        });
+      },
+      expectModel: async () => {
+        expect(
+          (
+            (await readProp(page, rect, "frameStrokeGapTint")) as {
+              value: number;
+            }
+          ).value,
+        ).toBe(20);
+      },
+    });
+  });
 });
