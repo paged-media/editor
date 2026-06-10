@@ -62,6 +62,22 @@ export interface PagedEditor {
   /** Text caret + range. */
   contentSelection: ReturnType<typeof useContentSelection>;
 
+  /**
+   * S-13 (K-7) font measurement. Delegates to the worker's real shaper
+   * via `client.measureText`, satisfying the optional
+   * `Api.PagedEditor.text` member the plugin-sdk host calls from
+   * `host.text.measureString` (replacing its estimate fallback). All
+   * values in POINTS; `descender` negative per OpenType.
+   */
+  text: {
+    measure(
+      family: string,
+      style: string | null,
+      text: string,
+      sizePt: number,
+    ): Promise<{ advance: number; ascender: number; descender: number }>;
+  };
+
   /** The four shell registries. */
   registries: ShellRegistries;
 }
@@ -128,6 +144,10 @@ function PagedEditorBinder({
       overlaySignals,
       contentSelection,
       toolSettings,
+      text: {
+        measure: (family, style, str, sizePt) =>
+          client.measureText(family, style, str, sizePt),
+      },
       registries,
     }),
     [

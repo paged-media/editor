@@ -22,7 +22,15 @@ import type {
   WorkerToMain,
 } from "@paged-media/client";
 import { PROTOCOL_VERSION } from "@paged-media/client";
-import { CameraBuffer, CAMERA_SAB_BYTES, OFFSET_GEN_LO as CAMERA_OFFSET_GEN_LO, OFFSET_GEN_HI as CAMERA_OFFSET_GEN_HI, OFFSET_SCALE as CAMERA_OFFSET_SCALE, OFFSET_TX as CAMERA_OFFSET_TX, OFFSET_TY as CAMERA_OFFSET_TY } from "@paged-media/client";
+import {
+  CameraBuffer,
+  CAMERA_SAB_BYTES,
+  OFFSET_GEN_LO as CAMERA_OFFSET_GEN_LO,
+  OFFSET_GEN_HI as CAMERA_OFFSET_GEN_HI,
+  OFFSET_SCALE as CAMERA_OFFSET_SCALE,
+  OFFSET_TX as CAMERA_OFFSET_TX,
+  OFFSET_TY as CAMERA_OFFSET_TY,
+} from "@paged-media/client";
 // `@paged-media/client` has no React; safe to import from the barrel.
 // (Pre-Phase-1 this was a deep-import to bypass the @paged-media/shell
 // barrel; after the package split that workaround is unnecessary
@@ -67,17 +75,39 @@ interface CanvasWorkerInstance {
   ): string;
   pageCount(): number;
   pageInfo(index: number): unknown;
+  /**
+   * S-13 (K-7) — measure a text run against the loaded document's
+   * font registry. Returns a plain JS object
+   * `{ advance, ascender, descender }` (POINTS; `descender` negative)
+   * or `null` when no document is loaded / the family resolves to no
+   * face. A READ — no wire/protocol change, no mutation. Mirrors
+   * `paged-inspect`'s shaper resolution (styled → bare-family →
+   * document-default).
+   */
+  measureText(
+    family: string,
+    style: string | null | undefined,
+    text: string,
+    sizePt: number,
+  ): { advance: number; ascender: number; descender: number } | null;
   renderTilePng(pageId: string, targetWidthPx: number): Uint8Array | undefined;
   runResolveJson(): string | undefined;
   free(): void;
   // GPU surface, only present when the `gpu` feature is enabled at
   // build time. The worker probes via `gpuReady` after `initGpu`.
-  initGpu?(canvas: OffscreenCanvas, width: number, height: number): Promise<boolean>;
+  initGpu?(
+    canvas: OffscreenCanvas,
+    width: number,
+    height: number,
+  ): Promise<boolean>;
   resizeGpu?(width: number, height: number): void;
   presentFrame?(scale: number, tx: number, ty: number, dpr: number): boolean;
   gpuReady?(): boolean;
   /** Sub-phase D — Vello/GPU readback path for the fidelity suite. */
-  renderPageVelloPng?(pageId: string, dpi: number): Promise<Uint8Array | undefined>;
+  renderPageVelloPng?(
+    pageId: string,
+    dpi: number,
+  ): Promise<Uint8Array | undefined>;
   loadDocumentDirect(
     seq: number,
     bytes: Uint8Array,
@@ -103,9 +133,12 @@ let gestureBuffer: GestureBuffer | null = null;
 let gestureDrainHandle: ReturnType<typeof setTimeout> | null = null;
 let renderer: WorkerRenderer | null = null;
 /** Pending canvas attach that arrived before the wasm finished loading. */
-let pendingAttach:
-  | { canvas: OffscreenCanvas; dpr: number; cssWidth: number; cssHeight: number }
-  | null = null;
+let pendingAttach: {
+  canvas: OffscreenCanvas;
+  dpr: number;
+  cssWidth: number;
+  cssHeight: number;
+} | null = null;
 
 /**
  * SAB-contract reconciliation. Rust owns the canonical byte size +
@@ -127,7 +160,9 @@ function assertSabContract(mod: CanvasWasmModule): string | null {
     drift.push(`camera.bytes ${cam.bytes} != TS ${CAMERA_SAB_BYTES}`);
   }
   if (cam.offsetScale !== CAMERA_OFFSET_SCALE) {
-    drift.push(`camera.offsetScale ${cam.offsetScale} != TS ${CAMERA_OFFSET_SCALE}`);
+    drift.push(
+      `camera.offsetScale ${cam.offsetScale} != TS ${CAMERA_OFFSET_SCALE}`,
+    );
   }
   if (cam.offsetTx !== CAMERA_OFFSET_TX) {
     drift.push(`camera.offsetTx ${cam.offsetTx} != TS ${CAMERA_OFFSET_TX}`);
@@ -136,43 +171,67 @@ function assertSabContract(mod: CanvasWasmModule): string | null {
     drift.push(`camera.offsetTy ${cam.offsetTy} != TS ${CAMERA_OFFSET_TY}`);
   }
   if (cam.offsetGenLo !== CAMERA_OFFSET_GEN_LO) {
-    drift.push(`camera.offsetGenLo ${cam.offsetGenLo} != TS ${CAMERA_OFFSET_GEN_LO}`);
+    drift.push(
+      `camera.offsetGenLo ${cam.offsetGenLo} != TS ${CAMERA_OFFSET_GEN_LO}`,
+    );
   }
   if (cam.offsetGenHi !== CAMERA_OFFSET_GEN_HI) {
-    drift.push(`camera.offsetGenHi ${cam.offsetGenHi} != TS ${CAMERA_OFFSET_GEN_HI}`);
+    drift.push(
+      `camera.offsetGenHi ${cam.offsetGenHi} != TS ${CAMERA_OFFSET_GEN_HI}`,
+    );
   }
   if (ges.bytes !== GESTURE_SAB_BYTES) {
     drift.push(`gesture.bytes ${ges.bytes} != TS ${GESTURE_SAB_BYTES}`);
   }
   if (ges.offsetHandleLo !== GESTURE_SAB_OFFSETS.handleLo) {
-    drift.push(`gesture.offsetHandleLo ${ges.offsetHandleLo} != TS ${GESTURE_SAB_OFFSETS.handleLo}`);
+    drift.push(
+      `gesture.offsetHandleLo ${ges.offsetHandleLo} != TS ${GESTURE_SAB_OFFSETS.handleLo}`,
+    );
   }
   if (ges.offsetHandleHi !== GESTURE_SAB_OFFSETS.handleHi) {
-    drift.push(`gesture.offsetHandleHi ${ges.offsetHandleHi} != TS ${GESTURE_SAB_OFFSETS.handleHi}`);
+    drift.push(
+      `gesture.offsetHandleHi ${ges.offsetHandleHi} != TS ${GESTURE_SAB_OFFSETS.handleHi}`,
+    );
   }
   if (ges.offsetDx !== GESTURE_SAB_OFFSETS.dx) {
-    drift.push(`gesture.offsetDx ${ges.offsetDx} != TS ${GESTURE_SAB_OFFSETS.dx}`);
+    drift.push(
+      `gesture.offsetDx ${ges.offsetDx} != TS ${GESTURE_SAB_OFFSETS.dx}`,
+    );
   }
   if (ges.offsetDy !== GESTURE_SAB_OFFSETS.dy) {
-    drift.push(`gesture.offsetDy ${ges.offsetDy} != TS ${GESTURE_SAB_OFFSETS.dy}`);
+    drift.push(
+      `gesture.offsetDy ${ges.offsetDy} != TS ${GESTURE_SAB_OFFSETS.dy}`,
+    );
   }
   if (ges.offsetModifiers !== GESTURE_SAB_OFFSETS.modifiers) {
-    drift.push(`gesture.offsetModifiers ${ges.offsetModifiers} != TS ${GESTURE_SAB_OFFSETS.modifiers}`);
+    drift.push(
+      `gesture.offsetModifiers ${ges.offsetModifiers} != TS ${GESTURE_SAB_OFFSETS.modifiers}`,
+    );
   }
   if (ges.offsetSeq !== GESTURE_SAB_OFFSETS.seq) {
-    drift.push(`gesture.offsetSeq ${ges.offsetSeq} != TS ${GESTURE_SAB_OFFSETS.seq}`);
+    drift.push(
+      `gesture.offsetSeq ${ges.offsetSeq} != TS ${GESTURE_SAB_OFFSETS.seq}`,
+    );
   }
   if (ges.offsetGenLo !== GESTURE_SAB_OFFSETS.genLo) {
-    drift.push(`gesture.offsetGenLo ${ges.offsetGenLo} != TS ${GESTURE_SAB_OFFSETS.genLo}`);
+    drift.push(
+      `gesture.offsetGenLo ${ges.offsetGenLo} != TS ${GESTURE_SAB_OFFSETS.genLo}`,
+    );
   }
   if (ges.offsetGenHi !== GESTURE_SAB_OFFSETS.genHi) {
-    drift.push(`gesture.offsetGenHi ${ges.offsetGenHi} != TS ${GESTURE_SAB_OFFSETS.genHi}`);
+    drift.push(
+      `gesture.offsetGenHi ${ges.offsetGenHi} != TS ${GESTURE_SAB_OFFSETS.genHi}`,
+    );
   }
   if (ges.modifierShift !== GESTURE_MODIFIER_SHIFT) {
-    drift.push(`gesture.modifierShift ${ges.modifierShift} != TS ${GESTURE_MODIFIER_SHIFT}`);
+    drift.push(
+      `gesture.modifierShift ${ges.modifierShift} != TS ${GESTURE_MODIFIER_SHIFT}`,
+    );
   }
   if (ges.modifierAlt !== GESTURE_MODIFIER_ALT) {
-    drift.push(`gesture.modifierAlt ${ges.modifierAlt} != TS ${GESTURE_MODIFIER_ALT}`);
+    drift.push(
+      `gesture.modifierAlt ${ges.modifierAlt} != TS ${GESTURE_MODIFIER_ALT}`,
+    );
   }
   if (ges.modifierDisableSnap !== GESTURE_MODIFIER_DISABLE_SNAP) {
     drift.push(
@@ -189,9 +248,8 @@ async function init() {
   // so nothing is pre-evaluated, then drive `default()` with the
   // explicit `?url`-resolved wasm asset (see the top-of-file import) so
   // the fetch works in both `vite dev` and `vite build` worker chunks.
-  const mod = (await import(
-    "@paged-media/canvas-wasm"
-  )) as unknown as CanvasWasmModule;
+  const mod =
+    (await import("@paged-media/canvas-wasm")) as unknown as CanvasWasmModule;
   // Object form (`{ module_or_path }`) — the bare-URL positional form is
   // deprecated by current wasm-bindgen loaders and logs a warning.
   await mod.default({ module_or_path: canvasWasmUrl });
@@ -333,7 +391,9 @@ async function dispatch(data: IncomingMessage): Promise<void> {
           seq: data.seq,
           protocol: PROTOCOL_VERSION,
           kind: "loadFailed",
-          payload: { error: { kind: "parse", message: "worker not initialised" } },
+          payload: {
+            error: { kind: "parse", message: "worker not initialised" },
+          },
         }),
       });
       return;
@@ -398,6 +458,27 @@ async function dispatch(data: IncomingMessage): Promise<void> {
       const h = Math.max(1, Math.round(data.cssHeight * data.dpr));
       worker.resizeGpu(w, h);
     }
+    return;
+  }
+
+  // S-13 (K-7) — text measurement rides the typed `channel` envelope
+  // but is served by the dedicated `CanvasWorker.measureText` query
+  // (the v38 wasm method) rather than the generic `handleMessage`
+  // dispatch: it returns a plain JS object, not a JSON envelope. Reply
+  // with the `measureTextResult` wire kind, correlated on `seq`. A
+  // `null` shaper result (no document / unresolved face) normalises to
+  // zeroed metrics so the `measureTextResult` payload stays total.
+  if (data.kind === "channel" && data.msg.kind === "requestMeasureText") {
+    await initPromise;
+    if (!worker) return;
+    const { family, style, text, sizePt } = data.msg.payload;
+    const metrics = worker.measureText(family, style ?? null, text, sizePt);
+    postBack({
+      seq: data.msg.seq,
+      protocol: PROTOCOL_VERSION,
+      kind: "measureTextResult",
+      payload: metrics ?? { advance: 0, ascender: 0, descender: 0 },
+    });
     return;
   }
 
@@ -485,14 +566,23 @@ async function attachRenderer(
       return arr;
     },
     renderTilePng: (pageId, widthPx) => worker!.renderTilePng(pageId, widthPx),
-    presentFrame: gpuActive && worker.presentFrame
-      ? (s, x, y, d) => worker!.presentFrame!(s, x, y, d)
-      : undefined,
+    presentFrame:
+      gpuActive && worker.presentFrame
+        ? (s, x, y, d) => worker!.presentFrame!(s, x, y, d)
+        : undefined,
   };
 
-  renderer = new WorkerRenderer(canvas, wasmShim, cameraBuffer, dpr, cssWidth, cssHeight, {
-    gpuActive,
-  });
+  renderer = new WorkerRenderer(
+    canvas,
+    wasmShim,
+    cameraBuffer,
+    dpr,
+    cssWidth,
+    cssHeight,
+    {
+      gpuActive,
+    },
+  );
   if (worker.pageCount() > 0) {
     renderer.refreshLayout();
   }

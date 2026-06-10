@@ -221,7 +221,9 @@ export class CanvasClient {
   }
 
   /** Phase 3 — replace the worker's selection state. */
-  async setSelection(selection: ContentSelection | null): Promise<WorkerToMain> {
+  async setSelection(
+    selection: ContentSelection | null,
+  ): Promise<WorkerToMain> {
     return this.send({ kind: "setSelection", payload: { selection } });
   }
 
@@ -495,7 +497,9 @@ export class CanvasClient {
   }
 
   /** Concept 3 — export ONE page; returns monotone progress. */
-  async exportPdfPage(session: number): Promise<{ done: number; total: number }> {
+  async exportPdfPage(
+    session: number,
+  ): Promise<{ done: number; total: number }> {
     const reply = await this.send({
       kind: "exportPdfPage",
       payload: { session },
@@ -514,9 +518,7 @@ export class CanvasClient {
    *  `findings` (code/severity/message/pageIndex) alongside the legacy
    *  flat `diagnostics`; surface both off the typed return so callers
    *  no longer have to capture findings off the `subscribe` broadcast. */
-  async finishPdfExport(
-    session: number,
-  ): Promise<{
+  async finishPdfExport(session: number): Promise<{
     bytes: Uint8Array;
     diagnostics: string[];
     findings: PreflightFinding[];
@@ -616,6 +618,34 @@ export class CanvasClient {
       kind: "requestSceneTree",
     });
     if (reply.kind === "sceneTree") return reply.payload.roots;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
+   * S-13 (K-7) — measure a text run against the loaded document's
+   * font registry. Routes to the worker's `CanvasWorker.measureText`
+   * shaper; the editor exposes this through `PagedEditor.text.measure`,
+   * which the plugin-sdk's `host.text.measureString` calls instead of
+   * its estimate fallback. All values are in POINTS; `descender` is
+   * negative per the OpenType convention. `style` is IDML's `FontStyle`
+   * ("Bold", "Italic", …) or `null`. Resolves with zeroed metrics when
+   * no document is loaded / the family resolves to no face (the worker
+   * sends a `null` shaper result, which we normalise here).
+   */
+  async measureText(
+    family: string,
+    style: string | null,
+    text: string,
+    sizePt: number,
+  ): Promise<{ advance: number; ascender: number; descender: number }> {
+    const reply = await this.send({
+      kind: "requestMeasureText",
+      payload: { family, style, text, sizePt },
+    });
+    if (reply.kind === "measureTextResult") {
+      const { advance, ascender, descender } = reply.payload;
+      return { advance, ascender, descender };
+    }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
@@ -754,7 +784,9 @@ export class CanvasClient {
   }
 
   /** Phase 3 — fetch the caret rectangle for a selection. */
-  async caretGeometry(selection: ContentSelection): Promise<CaretGeometry | null> {
+  async caretGeometry(
+    selection: ContentSelection,
+  ): Promise<CaretGeometry | null> {
     const reply = await this.send({
       kind: "requestCaretGeometry",
       payload: { selection },
@@ -764,7 +796,9 @@ export class CanvasClient {
   }
 
   /** Phase 3 — fetch rect-per-line selection geometry. */
-  async selectionGeometry(selection: ContentSelection): Promise<SelectionRect[]> {
+  async selectionGeometry(
+    selection: ContentSelection,
+  ): Promise<SelectionRect[]> {
     const reply = await this.send({
       kind: "requestSelectionGeometry",
       payload: { selection },
@@ -858,7 +892,8 @@ export class CanvasClient {
       kind: "requestParagraphBounds",
       payload: { storyId, offset, cell },
     });
-    if (reply.kind === "paragraphBoundsResult") return reply.payload.bounds ?? null;
+    if (reply.kind === "paragraphBoundsResult")
+      return reply.payload.bounds ?? null;
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
@@ -902,7 +937,10 @@ export class CanvasClient {
    * (slow on large pages). Resolves to null when GPU is not
    * initialised (the caller falls back to `requestSnapshot`).
    */
-  async requestVelloPng(pageId: PageId, dpi: number): Promise<Uint8Array | null> {
+  async requestVelloPng(
+    pageId: PageId,
+    dpi: number,
+  ): Promise<Uint8Array | null> {
     const seq = this.nextVelloSeq++;
     const promise = new Promise<Uint8Array | null>((resolve) => {
       this.velloPending.set(seq, resolve);
@@ -912,7 +950,10 @@ export class CanvasClient {
   }
 
   private nextVelloSeq = 1;
-  private readonly velloPending = new Map<number, (bytes: Uint8Array | null) => void>();
+  private readonly velloPending = new Map<
+    number,
+    (bytes: Uint8Array | null) => void
+  >();
 
   async redo(): Promise<WorkerToMain> {
     return this.send({ kind: "redo" });
