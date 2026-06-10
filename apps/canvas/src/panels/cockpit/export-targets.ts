@@ -18,6 +18,7 @@
 
 import { useSyncExternalStore } from "react";
 import type { CanvasClient } from "@paged-media/client";
+import type { ExporterContribution } from "@paged-media/shell";
 
 export type ExportTargetId =
   | "pdf-x4"
@@ -214,6 +215,40 @@ export async function runImageExport(
 
 function defaultDownload(bytes: Uint8Array, filename: string): void {
   const blob = new Blob([bytes.slice()], { type: "image/png" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** K-2 / S-06 — run a plugin-registered exporter: pull its bytes and
+ *  download them under its suggested name (the host owns blob→download,
+ *  which is the whole point of the exporter contribution). Returns false
+ *  when the exporter declined (a null result — nothing to export). */
+export async function runPluginExporter(
+  exporter: ExporterContribution,
+  triggerDownload: (
+    bytes: Uint8Array,
+    filename: string,
+    mimeType?: string,
+  ) => void = pluginDownload,
+): Promise<boolean> {
+  const result = await exporter.export();
+  if (!result) return false;
+  triggerDownload(result.bytes, result.fileName, exporter.mimeType);
+  return true;
+}
+
+function pluginDownload(
+  bytes: Uint8Array,
+  filename: string,
+  mimeType?: string,
+): void {
+  const blob = new Blob([bytes.slice()], {
+    type: mimeType || "application/octet-stream",
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

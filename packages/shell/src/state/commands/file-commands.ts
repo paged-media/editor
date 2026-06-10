@@ -28,6 +28,25 @@ export function buildOpenIdmlCommand(options: {
       const editor = paged as PagedEditor;
       const file = await options.pickFile();
       if (!file) return;
+      // K-2 / S-06 — a registered plugin importer may claim this file type
+      // (e.g. paged.sheet's .xlsx). Route the bytes to the plugin instead
+      // of the default IDML load — the plugin owns what the file becomes
+      // (it does not replace the document unless it chooses to).
+      const importer = editor.registries.importers.resolve(file.name, file.type);
+      if (importer) {
+        options.setStatus(`importing ${file.name} via ${importer.title}…`);
+        try {
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          await importer.import({ name: file.name, bytes, mimeType: file.type });
+          options.setStatus(`imported ${file.name}`);
+        } catch (err) {
+          options.pushWarning(
+            `import of ${file.name} via ${importer.title} failed: ` +
+              (err instanceof Error ? err.message : String(err)),
+          );
+        }
+        return;
+      }
       await loadDocumentFile(editor.client, file, {
         setHandle: editor.document.setHandle,
         setLoading: editor.document.setLoading,

@@ -45,6 +45,7 @@ import type { SchemaPanelRenderer as SchemaPanelRendererType } from "@paged-medi
 import { drawBundle } from "@paged-media/draw-bundle";
 import { webBundle } from "@paged-media/web-bundle";
 import { createEditorAssetSource } from "./plugin-asset-source";
+import { pickFiles } from "./shell-file-picker";
 
 // W3.1 — the schema-panel renderer the host injects. The shell renderer
 // walks a `PanelSchema` through the catalog's `CompositionRenderer`,
@@ -844,6 +845,10 @@ function PluginBundles() {
     const shell = {
       openPanel: (id: string) => cockpitActions.openPanel?.(id),
       closePanel: (id: string) => cockpitActions.closeTab?.(id),
+      // K-5 / S-11: the host file picker — a bundle gets the chosen files'
+      // bytes (read at this boundary; no DOM File crosses the contract).
+      pickFile: (options?: { accept?: readonly string[]; multiple?: boolean }) =>
+        pickFiles(options),
     };
     // W-04: the host owns the code-editor widget (one editor across
     // every scripting-adjacent plugin). W-05: diagnostics fan out to

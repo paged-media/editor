@@ -21,7 +21,9 @@ import type {
   CanvasPointerEvent as RealCanvasPointerEvent,
   CommandContribution as RealCommandContribution,
   EditContextContribution as RealEditContextContribution,
+  ExporterContribution as RealExporterContribution,
   GestureHandler as RealGestureHandler,
+  ImporterContribution as RealImporterContribution,
   KeybindingContribution as RealKeybindingContribution,
   ObjectTypeContribution as RealObjectTypeContribution,
   OverlayContribution as RealOverlayContribution,
@@ -64,6 +66,15 @@ export type _EditContextContributionRegistrable = Assert<
 >;
 export type _ObjectTypeContributionRegistrable = Assert<
   Extends<Api.ObjectTypeContribution, RealObjectTypeContribution>
+>;
+
+// K-2 / S-06 — contract-authored document importers/exporters must
+// register against the shell's IO registries (the file-routing flow).
+export type _ImporterContributionRegistrable = Assert<
+  Extends<Api.ImporterContribution, RealImporterContribution>
+>;
+export type _ExporterContributionRegistrable = Assert<
+  Extends<Api.ExporterContribution, RealExporterContribution>
 >;
 
 // Gesture seam, both ways: the spine feeds real events/handles to

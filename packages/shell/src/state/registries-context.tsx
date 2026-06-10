@@ -10,6 +10,8 @@ import {
 import {
   createCommandRegistry,
   createEditContextRegistry,
+  createExporterRegistry,
+  createImporterRegistry,
   createKeybindingRegistry,
   createMenuRegistry,
   createObjectTypeRegistry,
@@ -20,6 +22,8 @@ import {
   createToolRegistry,
   type CommandRegistry,
   type EditContextRegistry,
+  type ExporterRegistry,
+  type ImporterRegistry,
   type KeybindingRegistry,
   type MenuRegistry,
   type ModeRegistry,
@@ -50,6 +54,13 @@ export interface ShellRegistries {
   /** W3.2 — object types (W-03): plugin-defined objects (a webFrame)
    *  whose double-click routes to an edit context. */
   objectTypes: ObjectTypeRegistry;
+  /** K-2 / S-06 — document importers (file → plugin). The open +
+   *  drag-drop flow consults this by extension before the default IDML
+   *  load. */
+  importers: ImporterRegistry;
+  /** K-2 / S-06 — document exporters (plugin → file). The export panel
+   *  lists these and pulls bytes on save. */
+  exporters: ExporterRegistry;
 }
 
 const Context = createContext<ShellRegistries | null>(null);
@@ -90,6 +101,8 @@ export function RegistriesProvider({
       tools,
       editContexts: createEditContextRegistry(),
       objectTypes: createObjectTypeRegistry(),
+      importers: createImporterRegistry(),
+      exporters: createExporterRegistry(),
     };
   }
 

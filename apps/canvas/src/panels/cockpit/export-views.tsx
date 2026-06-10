@@ -21,6 +21,7 @@ import {
   useCanvasClient,
   useDocument,
   useDocumentMeta,
+  useRegistries,
   type PanelProps,
 } from "@paged-media/shell";
 
@@ -29,6 +30,7 @@ import {
   exportTargetById,
   runIdmlExport,
   runImageExport,
+  runPluginExporter,
   setImageSettings,
   setSelectedExportTarget,
   useImageSettings,
@@ -71,6 +73,27 @@ export function OutputsPanel(_props: PanelProps) {
   const loaded = meta != null && meta.pageCount > 0;
   const profileReady = meta?.cmykProfileActive ?? false;
   const selected = useSelectedExportTarget();
+  // K-2 / S-06 — plugin-registered exporters surface as one-click
+  // outputs here (the host owns blob→download). The Export Center is the
+  // one place documents AND plugin-contributed outputs are exported.
+  const { exporters } = useRegistries();
+  const pluginExporters = exporters.list();
+  const [exportPhase, setExportPhase] = useState<{
+    id: string;
+    kind: "running" | "done" | "error";
+  } | null>(null);
+
+  const onRunExporter = async (id: string) => {
+    const exporter = pluginExporters.find((e) => e.id === id);
+    if (!exporter) return;
+    setExportPhase({ id, kind: "running" });
+    try {
+      const ran = await runPluginExporter(exporter);
+      setExportPhase({ id, kind: ran ? "done" : "error" });
+    } catch {
+      setExportPhase({ id, kind: "error" });
+    }
+  };
 
   return (
     <div
@@ -141,6 +164,80 @@ export function OutputsPanel(_props: PanelProps) {
             </div>
           );
         })}
+
+        {pluginExporters.length > 0 && (
+          <div data-plugin-exports style={{ marginTop: 10 }}>
+            <div
+              className="pg-ui-xs"
+              style={{
+                padding: "6px 10px 2px",
+                color: "var(--pg-muted-fg)",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                fontSize: 10.5,
+              }}
+            >
+              Plugin exports
+            </div>
+            {pluginExporters.map((e) => {
+              const phase = exportPhase?.id === e.id ? exportPhase.kind : null;
+              return (
+                <div
+                  key={e.id}
+                  data-plugin-export={e.id}
+                  onClick={() => void onRunExporter(e.id)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "9px 10px",
+                    borderRadius: "var(--radius-lg)",
+                    cursor: "pointer",
+                    marginBottom: 1,
+                  }}
+                >
+                  <Icon
+                    name="ui-export"
+                    size={16}
+                    style={{ color: "var(--pg-muted-fg)", flexShrink: 0 }}
+                  />
+                  <span
+                    style={{
+                      flex: 1,
+                      fontSize: 12.5,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {e.title}
+                  </span>
+                  {phase === "running" && (
+                    <span className="pg-ui-xs" style={{ color: "var(--pg-muted-fg)" }}>
+                      …
+                    </span>
+                  )}
+                  {phase === "done" && (
+                    <span
+                      className="pg-ui-xs"
+                      style={{ color: "var(--status-approved)" }}
+                    >
+                      ✓
+                    </span>
+                  )}
+                  {phase === "error" && (
+                    <span
+                      className="pg-ui-xs"
+                      style={{ color: "var(--status-error)" }}
+                    >
+                      !
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -502,7 +502,14 @@ function ShellChrome({
           new Promise<File | null>((resolve) => {
             const input = document.createElement("input");
             input.type = "file";
-            input.accept = ".idml,application/vnd.adobe.indesign-idml-package";
+            // K-2 / S-06 — also offer the file types registered plugin
+            // importers claim (e.g. paged.sheet's .xlsx), resolved at
+            // click time so late-registered importers are included.
+            input.accept = [
+              ".idml",
+              "application/vnd.adobe.indesign-idml-package",
+              ...registries.importers.acceptExtensions(),
+            ].join(",");
             input.onchange = () => resolve(input.files?.[0] ?? null);
             input.click();
           }),
@@ -716,6 +723,32 @@ function ShellChrome({
 
   const onFile = useCallback(
     (file: File) => {
+      // K-2 / S-06 — a registered plugin importer may claim this file
+      // type (drag-drop / header input). Route the bytes to the plugin
+      // instead of the default IDML load — the plugin owns what the file
+      // becomes (it does not replace the document unless it chooses to).
+      const importer = registries.importers.resolve(file.name, file.type);
+      if (importer) {
+        setStatus(`importing ${file.name} via ${importer.title}…`);
+        void (async () => {
+          try {
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            await importer.import({
+              name: file.name,
+              bytes,
+              mimeType: file.type,
+            });
+            setStatus(`imported ${file.name}`);
+          } catch (err) {
+            setWarnings((prev) => [
+              ...prev,
+              `import of ${file.name} via ${importer.title} failed: ` +
+                (err instanceof Error ? err.message : String(err)),
+            ]);
+          }
+        })();
+        return;
+      }
       void loadDocumentFile(client, file, {
         setHandle,
         setLoading,
@@ -733,6 +766,7 @@ function ShellChrome({
     },
     [
       client,
+      registries,
       resetForNewDocument,
       setHandle,
       setLoading,

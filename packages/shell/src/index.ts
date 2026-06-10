@@ -216,6 +216,20 @@ export {
   type ObjectTypeRegistryEvent,
   type DoubleClickResolution,
 } from "./registries/edit-context";
+// ── K-2 / S-06 — document importer + exporter registries (Wave 3 IO) ──
+export {
+  createImporterRegistry,
+  createExporterRegistry,
+  fileExtension,
+  type ImporterContribution,
+  type ImportRequest,
+  type ExporterContribution,
+  type ExportResult,
+  type ImporterRegistry,
+  type ExporterRegistry,
+  type ImporterRegistryEvent,
+  type ExporterRegistryEvent,
+} from "./registries/document-io";
 export {
   EditContextStackProvider,
   useEditContextStack,
