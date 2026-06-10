@@ -45,6 +45,7 @@ import type { SchemaPanelRenderer as SchemaPanelRendererType } from "@paged-medi
 import { drawBundle } from "@paged-media/draw-bundle";
 import { webBundle } from "@paged-media/web-bundle";
 import { createEditorAssetSource } from "./plugin-asset-source";
+import { createEditorBlobStore } from "./plugin-blob-store";
 import { pickFiles } from "./shell-file-picker";
 
 // W3.1 — the schema-panel renderer the host injects. The shell renderer
@@ -866,10 +867,14 @@ function PluginBundles() {
     // and `supports("assets.fonts@1")` true; paged.web degrades honestly
     // (the substitution badge) until real bytes are served.
     const assetSource = createEditorAssetSource();
+    // K-4 / S-08: the OPFS-backed blob store behind host.blob — lets a
+    // bundle persist large binary payloads (a workbook) across reloads.
+    const blobStore = createEditorBlobStore();
     const hostOptions = {
       shell,
       widgets,
       assetSource,
+      blobStore,
       diagnosticsSink: problemsSink,
       schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
     };
