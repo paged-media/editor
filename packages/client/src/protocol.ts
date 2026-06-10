@@ -21,7 +21,7 @@
 // matching Rust constant is in `paged-canvas/src/channel.rs` and
 // the published package must update in lockstep.
 
-export const PROTOCOL_VERSION = 38 as const;
+export const PROTOCOL_VERSION = 39 as const;
 
 export type {
   AnchorId,
@@ -84,6 +84,10 @@ export type {
   ParagraphStyleSummary,
   PropertyEntry,
   SceneTreeNode,
+  SceneLayer,
+  SceneItem,
+  ScenePathSeg,
+  ScenePaint,
   StorySummary,
   SwatchSummary,
   LoadError,

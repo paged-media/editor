@@ -33,6 +33,7 @@ import {
   type LayerSummary,
   type LineBounds,
   type LodTier,
+  type SceneLayer,
   type SceneTreeNode,
   type MainToWorker,
   type MainToWorkerKind,
@@ -646,6 +647,29 @@ export class CanvasClient {
       const { advance, ascender, descender } = reply.payload;
       return { advance, ascender, descender };
     }
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /** C-1 — submit (replace) a plugin vector scene layer rendered inside
+   *  the frame `elementId` (its `Self` id). The worker stores it + rebuilds
+   *  so compose lowers it inside the frame; the next snapshot reflects it. */
+  async submitSceneLayer(elementId: string, layer: SceneLayer): Promise<void> {
+    const reply = await this.send({
+      kind: "submitSceneLayer",
+      payload: { elementId, layer },
+    });
+    if (reply.kind === "sceneLayerApplied") return;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /** C-1 — clear the scene layer for `elementId` (returns the frame to its
+   *  native content). */
+  async clearSceneLayer(elementId: string): Promise<void> {
+    const reply = await this.send({
+      kind: "clearSceneLayer",
+      payload: { elementId },
+    });
+    if (reply.kind === "sceneLayerApplied") return;
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 

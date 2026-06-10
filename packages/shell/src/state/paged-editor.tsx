@@ -22,7 +22,7 @@ import {
 } from "./registries-context";
 
 // eslint-disable-next-line import/no-relative-parent-imports
-import type { CanvasClient } from "@paged-media/client";
+import type { CanvasClient, SceneLayer } from "@paged-media/client";
 
 /**
  * Aggregate handle: the single argument every panel + command
@@ -76,6 +76,17 @@ export interface PagedEditor {
       text: string,
       sizePt: number,
     ): Promise<{ advance: number; ascender: number; descender: number }>;
+  };
+
+  /**
+   * C-1 — in-frame plugin scene layers. Routes to the worker's
+   * `submitSceneLayer` / `clearSceneLayer` channel (protocol v39),
+   * satisfying the optional `Api.PagedEditor.sceneLayers` member the
+   * plugin-sdk host calls from `host.contribute.sceneLayer()`.
+   */
+  sceneLayers: {
+    submit(elementId: string, layer: SceneLayer): Promise<void>;
+    clear(elementId: string): Promise<void>;
   };
 
   /** The four shell registries. */
@@ -147,6 +158,10 @@ function PagedEditorBinder({
       text: {
         measure: (family, style, str, sizePt) =>
           client.measureText(family, style, str, sizePt),
+      },
+      sceneLayers: {
+        submit: (elementId, layer) => client.submitSceneLayer(elementId, layer),
+        clear: (elementId) => client.clearSceneLayer(elementId),
       },
       registries,
     }),
