@@ -207,6 +207,7 @@ export {
   createObjectTypeRegistry,
   resolveDoubleClick,
   type EditContextContribution,
+  type ContentPointerEvent,
   type ObjectTypeContribution,
   type EditContextCandidate,
   type EnteredEditContext,

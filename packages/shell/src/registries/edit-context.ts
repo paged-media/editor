@@ -56,11 +56,35 @@ export interface EditContextContribution {
   panelIds?: string[];
   onEnter?(ctx: EnteredEditContext): void;
   onExit?(ctx: EnteredEditContext): void;
+  /** K-1 — pointer inside the context's frame, in FRAME-CONTENT coords
+   *  (the shell inverts the frame's content transform). */
+  onContentPointerDown?(e: ContentPointerEvent): void;
+  onContentPointerMove?(e: ContentPointerEvent): void;
+  onContentPointerUp?(e: ContentPointerEvent): void;
+  /** K-1 — a key while active (Esc→onCancel, Enter→onCommit owned by the
+   *  shell; the rest forward here). */
+  onContentKey?(e: KeyboardEvent): void;
+  /** K-1 — unsaved-edit probe (gates the discard prompt + §8.0 undo
+   *  boundary). */
+  isDirty?(): boolean;
+  /** K-1 — modal commit (Enter / click-outside) / cancel (Esc); both fire
+   *  before `onExit`. */
+  onCommit?(): void;
+  onCancel?(): void;
   /** HOST-STAMPED `x-paged:<plugin id>` key — the host resolves a
    *  candidate's `metadata` from this envelope before calling `matches`
    *  (so a plugin only ever sees its OWN namespace). The SDK adapter
    *  fills it at registration. */
   metadataKey?: string;
+}
+
+/** K-1 — a pointer delivered to the ACTIVE edit context in FRAME-CONTENT
+ *  coordinates. Mirrors plugin-api `ContentPointerEvent`. */
+export interface ContentPointerEvent {
+  contentPoint: [number, number];
+  elementId: string;
+  modifiers: { shift: boolean; alt: boolean; cmd: boolean; ctrl: boolean };
+  button: number;
 }
 
 /** A plugin-defined OBJECT TYPE. Mirrors plugin-api `ObjectTypeContribution`. */
