@@ -32,6 +32,9 @@ importers:
       '@paged-media/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@paged-media/data-bundle':
+        specifier: link:../../../plugin-data/packages/data-bundle
+        version: link:../../../plugin-data/packages/data-bundle
       '@paged-media/draw-bundle':
         specifier: link:../../../plugin-draw/packages/draw-bundle
         version: link:../../../plugin-draw/packages/draw-bundle
@@ -41,6 +44,9 @@ importers:
       '@paged-media/plugin-sdk':
         specifier: link:../../../plugin-sdk/packages/plugin-sdk
         version: link:../../../plugin-sdk/packages/plugin-sdk
+      '@paged-media/sheet-bundle':
+        specifier: link:../../../plugin-sheets/packages/sheet-bundle
+        version: link:../../../plugin-sheets/packages/sheet-bundle
       '@paged-media/shell':
         specifier: workspace:*
         version: link:../../packages/shell

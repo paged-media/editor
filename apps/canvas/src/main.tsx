@@ -44,6 +44,8 @@ import { loadBundle, createDataProviderRegistry } from "@paged-media/plugin-sdk"
 import type { SchemaPanelRenderer as SchemaPanelRendererType } from "@paged-media/plugin-api";
 import { drawBundle } from "@paged-media/draw-bundle";
 import { webBundle } from "@paged-media/web-bundle";
+import { dataBundle } from "@paged-media/data-bundle";
+import { sheetBundle } from "@paged-media/sheet-bundle";
 import { createEditorAssetSource } from "./plugin-asset-source";
 import { createEditorBlobStore } from "./plugin-blob-store";
 import { pickFiles } from "./shell-file-picker";
@@ -889,6 +891,12 @@ function PluginBundles() {
     const loaded = [
       loadBundle(() => pagedRef.current, drawBundle, hostOptions),
       loadBundle(() => pagedRef.current, webBundle, hostOptions),
+      // paged.data (the §7.1 PROVIDER — publishes a governed query) + paged.sheet
+      // (the future consumer, S-15). Both rendezvous through `dataProviders`
+      // above. Engines boot lazily, so loading them is cheap; a missing engine /
+      // DuckDB degrades honestly in-panel (never crashes the app).
+      loadBundle(() => pagedRef.current, dataBundle, hostOptions),
+      loadBundle(() => pagedRef.current, sheetBundle, hostOptions),
     ];
     return () => {
       for (const l of loaded) l.dispose();
