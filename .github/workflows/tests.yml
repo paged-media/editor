@@ -10,21 +10,23 @@ name: tests
 # server process and works headless, so the chromium runner gets a
 # cross-origin-isolated context with no extra flags.
 #
-# Plugin link chain (W3): `apps/canvas/package.json` pulls four bundles
+# Plugin link chain (W3+): `apps/canvas/package.json` pulls six bundles
 # in via pnpm `link:` — draw-bundle (../../../plugin-draw/…), plugin-api
-# + plugin-sdk (../../../plugin-sdk/…), and web-bundle
-# (../../../plugin-web/…). Those `../../..` paths are relative to
+# + plugin-sdk (../../../plugin-sdk/…), web-bundle (../../../plugin-web/…),
+# data-bundle (../../../plugin-data/…), and sheet-bundle
+# (../../../plugin-sheets/…). Those `../../..` paths are relative to
 # `apps/canvas/`, so they resolve to SIBLINGS of the editor repo root.
 # We mirror the local ~/paged layout: check the editor out under
-# `editor/` and the three plugin repos under their bare names, so e.g.
+# `editor/` and the five plugin repos under their bare names, so e.g.
 # `editor/apps/canvas/../../../plugin-draw` == `$GITHUB_WORKSPACE/plugin-draw`.
 # The plugin repos are private; `STATE_DISPATCH_TOKEN` carries read scope
 # across the paged-media org (same token plugin-draw's vitest.yml uses
 # for its sdk checkout), with a github.token fallback for same-org runs.
 # Install order is the workspace rule (plugin-sdk → plugin-draw →
-# plugin-web → editor): each plugin repo's own internal `link:`s point at
-# plugin-sdk, and the editor's `link:`s need all three sibling dirs
-# present + installed before its own `--frozen-lockfile` install resolves.
+# plugin-web → plugin-data → plugin-sheets → editor): each plugin repo's
+# own internal `link:`s point at plugin-sdk, and the editor's `link:`s
+# need all five sibling dirs present + installed before its own
+# `--frozen-lockfile` install resolves.
 #
 # Scope: the behaviour surface (panels + gesture + e2e op-sandwiches),
 # NOT the Envato fidelity gate. That gate needs the 4.4 GB
@@ -86,10 +88,12 @@ jobs:
         with:
           path: editor
 
-      # The three plugin sibling repos the apps/canvas link: chain needs.
+      # The five plugin sibling repos the apps/canvas link: chain needs
+      # (apps/canvas/package.json link:s data-bundle + sheet-bundle too).
       # plugin-sdk first (the others link: at it), then plugin-draw +
-      # plugin-web. Private repos → STATE_DISPATCH_TOKEN (read scope on
-      # the org), github.token fallback for same-org runs.
+      # plugin-web + plugin-data + plugin-sheets. Private repos →
+      # STATE_DISPATCH_TOKEN (read scope on the org), github.token
+      # fallback for same-org runs.
       - name: checkout plugin-sdk (link target)
         uses: actions/checkout@v4
         with:
@@ -109,6 +113,20 @@ jobs:
         with:
           repository: paged-media/plugin-web
           path: plugin-web
+          token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
+
+      - name: checkout plugin-data (link target)
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/plugin-data
+          path: plugin-data
+          token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
+
+      - name: checkout plugin-sheets (link target)
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/plugin-sheets
+          path: plugin-sheets
           token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
 
       # License-clear fixtures the harness loads (corpus/generated/*.idml
@@ -242,12 +260,14 @@ jobs:
             plugin-sdk/pnpm-lock.yaml
             plugin-draw/pnpm-lock.yaml
             plugin-web/pnpm-lock.yaml
+            plugin-data/pnpm-lock.yaml
+            plugin-sheets/pnpm-lock.yaml
 
       # Install the link chain bottom-up (workspace rule): plugin-sdk,
-      # then plugin-draw + plugin-web (which link: at plugin-sdk), then
-      # the editor (whose link:s need all three present + installed).
-      # Each repo is its own workspace with a committed lockfile-v9, so
-      # all stay --frozen-lockfile.
+      # then plugin-draw + plugin-web + plugin-data + plugin-sheets (which
+      # link: at plugin-sdk), then the editor (whose link:s need all five
+      # present + installed). Each repo is its own workspace with a
+      # committed lockfile-v9, so all stay --frozen-lockfile.
       - name: install plugin-sdk (link root)
         working-directory: plugin-sdk
         run: pnpm install --frozen-lockfile
@@ -258,6 +278,14 @@ jobs:
 
       - name: install plugin-web
         working-directory: plugin-web
+        run: pnpm install --frozen-lockfile
+
+      - name: install plugin-data
+        working-directory: plugin-data
+        run: pnpm install --frozen-lockfile
+
+      - name: install plugin-sheets
+        working-directory: plugin-sheets
         run: pnpm install --frozen-lockfile
 
       - name: install editor (engine wasm resolves from the npm package)

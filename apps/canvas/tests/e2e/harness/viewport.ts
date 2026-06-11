@@ -39,9 +39,15 @@ export async function loadViaReactPath(
   // Home → fit page 0 to the viewport (large, centred drag target).
   await page.keyboard.press("Home");
   await page.waitForTimeout(1200);
+  // Assert the fit produced a valid positive camera scale — NOT an
+  // absolute floor. Fit scale is fixture-relative (a large spread fits at
+  // a much smaller scale than a postcard); the old `> 0.2` floor assumed a
+  // small page and spuriously failed big fixtures like the overset-frame
+  // spread, which fits at ~0.17 (TH-04). `> 0` still catches a fit that
+  // never ran or left a degenerate camera (0 / NaN both fail the poll).
   await expect
     .poll(() => cameraScale(page), { timeout: 10_000 })
-    .toBeGreaterThan(0.2);
+    .toBeGreaterThan(0);
   return fx;
 }
 
