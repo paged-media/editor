@@ -21,6 +21,7 @@ import {
   OverlayHost,
   useContentSelection,
   useEditContextEntry,
+  useOptionalEditContextStack,
   useOverlaySignals,
   type MarqueeRectPageLocal,
   type SelectionState,
@@ -28,7 +29,10 @@ import {
 
 import type { CanvasClient } from "@paged-media/client";
 import { viewportToDoc, type Camera } from "@paged-media/client";
-import type { CanvasPointerEvent } from "@paged-media/shell";
+import type {
+  CanvasPointerEvent,
+  ContentPointerEvent,
+} from "@paged-media/shell";
 import type {
   ElementGeometryItem,
   ElementId,
@@ -135,6 +139,47 @@ export interface ViewportCanvasProps {
 
 const CLICK_DRAG_THRESHOLD_PX = 4;
 
+/**
+ * K-1 — invert a PAGE-LOCAL pointer into a frame's CONTENT coordinates
+ * (the space a plugin's scene layer / edit context works in; §8.5 — the
+ * plugin never compensates for the frame transform). The geometry's
+ * `itemTransform` maps the frame's bounds-space `(bounds.left..right,
+ * bounds.top..bottom)` to page-local; we invert it, then subtract the
+ * bounds origin so `(0,0)` is the content-box top-left — the SAME model a
+ * scene-layer submission uses (C-1 composes at `itemTransform ∘
+ * translate(bounds.left, bounds.top)`). Returns `null` when the point
+ * falls OUTSIDE the content box (the caller then treats the click as a
+ * commit / re-target) or the transform is singular.
+ *
+ * NOTE: this assumes a ZERO text-inset — the same assumption the C-1
+ * consumer makes when it sizes a scene layer to the full frame bounds. A
+ * nonzero frame inset would shift the content origin by `(ins_left,
+ * ins_top)`; threading the inset through `ElementGeometryItem` is the
+ * documented residual (it is not exposed on the geometry read today).
+ */
+function pageToContentPoint(
+  geom: ElementGeometryItem,
+  pageLocal: [number, number],
+): [number, number] | null {
+  const m = geom.itemTransform;
+  let bx = pageLocal[0];
+  let by = pageLocal[1];
+  if (m) {
+    const [a, b, c, d, e, f] = m;
+    const det = a * d - b * c;
+    if (Math.abs(det) < 1e-9) return null;
+    const px = pageLocal[0] - e;
+    const py = pageLocal[1] - f;
+    bx = (d * px - c * py) / det;
+    by = (-b * px + a * py) / det;
+  }
+  const [top, left, bottom, right] = geom.bounds;
+  const cx = bx - left;
+  const cy = by - top;
+  if (cx < 0 || cy < 0 || cx > right - left || cy > bottom - top) return null;
+  return [cx, cy];
+}
+
 export function ViewportCanvas(props: ViewportCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -202,6 +247,16 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
   // consults this BEFORE group descent: a polygon enters the
   // vectorGraphic context, a webFrame enters its source context.
   const { tryEnterEditContext } = useEditContextEntry();
+
+  // K-1 — the edit-context STACK (optional: the canvas mounts standalone
+  // in some specs). While a context is active, a pointer over the active
+  // frame is delivered to its contribution in FRAME-CONTENT coordinates
+  // (the canvas inverts the frame transform; §8.5 — the plugin never
+  // compensates); a pointer OUTSIDE the active frame COMMITS the context.
+  const editContextStack = useOptionalEditContextStack();
+  // True between a content pointerdown (consumed by the active context)
+  // and its matching up — so move/up route to the context, not the tools.
+  const contentGestureRef = useRef(false);
 
   // Native `detail` on pointerup is unreliable across browsers for the
   // 3rd click, so we track the click run ourselves: same screen point
@@ -355,9 +410,77 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
     [props.camera, props.pageIds, rects],
   );
 
+  // K-1 — deliver a pointer to the ACTIVE edit context in FRAME-CONTENT
+  // coordinates. Returns true when the pointer was over the active frame
+  // (consumed); false when there is no active context or the pointer is
+  // outside its content box.
+  const dispatchContentPointer = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>, phase: "down" | "move" | "up"): boolean => {
+      const active = editContextStack?.active;
+      const contribution = editContextStack?.activeContribution;
+      if (!active || !contribution) return false;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const [docX, docY] = viewportToDoc(
+        props.camera,
+        e.clientX - rect.left,
+        e.clientY - rect.top,
+      );
+      const containing = findContainingPage(rects, props.pageIds, docX, docY);
+      if (!containing) return false;
+      const [pageId, pageRect] = containing;
+      const pageLocal: [number, number] = [docX - pageRect.x, docY - pageRect.y];
+      // The active frame's geometry (bounds + itemTransform) carries the
+      // page→content transform — same geometry the selection chrome reads.
+      const rootKey = `${active.scopeRoot.kind}:${active.scopeRoot.id}`;
+      const geom = (props.elementGeometry ?? []).find(
+        (g) => g.pageId === pageId && `${g.id.kind}:${g.id.id}` === rootKey,
+      );
+      if (!geom) return false;
+      const content = pageToContentPoint(geom, pageLocal);
+      if (!content) return false; // outside the content box
+      const ev: ContentPointerEvent = {
+        contentPoint: content,
+        // Frame-like ElementIds carry a string `id` (the union also covers
+        // story-range / table-cell addresses, which never enter a context).
+        elementId: typeof active.scopeRoot.id === "string" ? active.scopeRoot.id : "",
+        modifiers: {
+          shift: e.shiftKey,
+          alt: e.altKey,
+          cmd: e.metaKey,
+          ctrl: e.ctrlKey,
+        },
+        button: e.button,
+      };
+      if (phase === "down") contribution.onContentPointerDown?.(ev);
+      else if (phase === "move") contribution.onContentPointerMove?.(ev);
+      else contribution.onContentPointerUp?.(ev);
+      return true;
+    },
+    [editContextStack, props.camera, props.pageIds, props.elementGeometry, rects],
+  );
+
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.button !== 0 && e.button !== 1) return;
+      // K-1 — while an edit context that OPTS INTO content pointers is
+      // active (has `onContentPointerDown` — sheet's "sheet" context; NOT
+      // draw/web, whose tools must keep working), a primary-button press
+      // over the active frame goes to the context in content coords; a
+      // press OUTSIDE the frame COMMITS the context and falls through so
+      // the same click can select what was under it. Contexts WITHOUT the
+      // handler skip this block entirely (unchanged tool behavior).
+      if (
+        e.button === 0 &&
+        editContextStack?.active &&
+        editContextStack.activeContribution?.onContentPointerDown
+      ) {
+        if (dispatchContentPointer(e, "down")) {
+          e.currentTarget.setPointerCapture(e.pointerId);
+          contentGestureRef.current = true;
+          return;
+        }
+        editContextStack.commit();
+      }
       // Phase 2 — a handler-bearing tool (Rectangle, …) intercepts the
       // pointer; the legacy select/text/pan path below is skipped.
       if (props.toolGesture && e.button === 0) {
@@ -585,6 +708,12 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
 
   const onPointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      // K-1 — while a content gesture owns the pointer, route moves to the
+      // active context (content coords) and skip tool/hover logic.
+      if (contentGestureRef.current) {
+        dispatchContentPointer(e, "move");
+        return;
+      }
       // Phase 2 — route to the active tool handler while it owns the drag.
       const toolDrag = toolDragRef.current;
       if (toolDrag && props.toolGesture) {
@@ -692,6 +821,14 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
 
   const onPointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      // K-1 — end a content gesture: deliver the up to the active context
+      // and stop (don't run the tool/click path that would re-select).
+      if (contentGestureRef.current) {
+        contentGestureRef.current = false;
+        e.currentTarget.releasePointerCapture(e.pointerId);
+        dispatchContentPointer(e, "up");
+        return;
+      }
       // Phase 2 — commit the active tool handler's gesture.
       const toolDrag = toolDragRef.current;
       if (toolDrag && props.toolGesture) {
@@ -903,6 +1040,12 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
   // `onPointerUp`, which COMMITTED the interrupted gesture — a phantom
   // mutation. Now it aborts (the plan's pointercancel → abort).
   const onPointerCancel = useCallback(() => {
+    // K-1 — a cancelled content gesture just ends (the context keeps its
+    // state; no tool drag to abort).
+    if (contentGestureRef.current) {
+      contentGestureRef.current = false;
+      return;
+    }
     abortActiveDrag();
   }, [abortActiveDrag]);
 

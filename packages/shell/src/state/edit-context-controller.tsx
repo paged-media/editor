@@ -30,28 +30,39 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 export function EditContextController() {
-  const { active, pop, exitAll } = useEditContextStack();
+  const { active, activeContribution, commit, cancel, exitAll } =
+    useEditContextStack();
   const { elementSelection } = useSelection();
   const tool = useOptionalTool();
 
-  // Esc pops ONE level. Capture phase so a context pop beats other Esc
-  // consumers (the command palette / path-edit) only when a context is
-  // active; when none is active we let the event flow untouched.
+  // K-1 — Esc CANCELS the top frame (onCancel → onExit); Enter COMMITS it
+  // (onCommit → onExit), but ONLY for a context that opts into modal commit
+  // (has `onCommit` — sheet's "sheet"; NOT draw/web, where Enter belongs to
+  // the tools). Capture phase so the context wins these keys over other
+  // consumers (command palette / path-edit) ONLY while a context is active.
+  // The editable-target guard means a focused cell <input> keeps Enter/Esc
+  // for its own edit — the context-level commit/cancel fires on the canvas.
   const activeRef = useRef(active);
   activeRef.current = active;
+  const wantsCommitRef = useRef<boolean>(false);
+  wantsCommitRef.current = !!activeContribution?.onCommit;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape" && e.key !== "Enter") return;
       if (!activeRef.current) return; // no context → don't intercept
       if (isEditableTarget(e.target)) return;
+      // Enter only commits a modal context (one with onCommit); otherwise
+      // leave it for the tools (draw path-close, etc.).
+      if (e.key === "Enter" && !wantsCommitRef.current) return;
       e.preventDefault();
       e.stopPropagation();
-      pop();
+      if (e.key === "Escape") cancel();
+      else commit();
     };
-    // Capture so we win the Escape while a context is active.
+    // Capture so we win Escape/Enter while a context is active.
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [pop]);
+  }, [commit, cancel]);
 
   // On the active frame ENTER → emphasize panels + focus the first tool.
   // Keyed by the frame identity (type + scope root) so re-running only

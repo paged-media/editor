@@ -68,15 +68,29 @@ export interface EditContextStackValue {
   stack: EditContextFrame[];
   /** The TOP frame, or null when no context is active. */
   active: EditContextFrame | null;
+  /** The TOP frame's CONTRIBUTION (its live hooks — onContentPointer*,
+   *  onCommit/onCancel/isDirty), or null. K-1: the canvas reads this to
+   *  deliver content-space pointers to the active context. */
+  activeContribution: EditContextContribution | null;
   /** Breadcrumb trail (root→top) — the same as `stack`, named for the UI. */
   breadcrumb: EditContextFrame[];
   /** Push a context onto the stack (double-click / programmatic enter).
    *  Re-entering the same type+element is a no-op. Returns the pushed
    *  frame, or the existing one when it was a no-op. */
   enter(contribution: EditContextContribution, on: ElementId): EditContextFrame;
-  /** Pop the TOP frame (Esc). Returns the popped frame (for onExit), or
-   *  null when the stack was empty. */
+  /** Pop the TOP frame (plain exit — runs `onExit` only). Returns the
+   *  popped frame, or null when the stack was empty. */
   pop(): EditContextFrame | null;
+  /** K-1 — modal COMMIT the top frame: run its `onCommit` (Enter /
+   *  click-outside) THEN `onExit`, then pop. */
+  commit(): EditContextFrame | null;
+  /** K-1 — modal CANCEL the top frame: run its `onCancel` (Esc) THEN
+   *  `onExit`, then pop. */
+  cancel(): EditContextFrame | null;
+  /** K-1 — does the active context have unsaved edits? Polls the top
+   *  contribution's `isDirty` (false when none / no context). Gates the
+   *  discard prompt + the §8.0 seamless-undo boundary. */
+  isActiveDirty(): boolean;
   /** Clear the entire stack (selection-clear / document-close). */
   exitAll(): void;
   /** Is `id` inside the ACTIVE context's write-scope? True when no
@@ -144,25 +158,41 @@ export function EditContextStackProvider({ children }: PropsWithChildren) {
     [],
   );
 
-  const pop = useCallback((): EditContextFrame | null => {
-    let popped: EditContextFrame | null = null;
-    setStack((prev) => {
-      if (prev.length === 0) return prev;
-      popped = prev[prev.length - 1];
-      return prev.slice(0, -1);
-    });
-    if (popped) {
-      const frame = popped as EditContextFrame;
-      const contribution = hooksRef.current.get(frame.type);
-      hooksRef.current.delete(frame.type);
-      try {
-        contribution?.onExit?.({ type: frame.type, id: frame.scopeRoot });
-      } catch {
-        /* onExit must not wedge the unwind */
+  // Pop the top frame, running the modal hook for `mode` (commit/cancel,
+  // K-1) BEFORE `onExit`. `exit` runs `onExit` only (the plain pop). A
+  // throwing hook never wedges the unwind.
+  const popWith = useCallback(
+    (mode: "exit" | "commit" | "cancel"): EditContextFrame | null => {
+      let popped: EditContextFrame | null = null;
+      setStack((prev) => {
+        if (prev.length === 0) return prev;
+        popped = prev[prev.length - 1];
+        return prev.slice(0, -1);
+      });
+      if (popped) {
+        const frame = popped as EditContextFrame;
+        const contribution = hooksRef.current.get(frame.type);
+        hooksRef.current.delete(frame.type);
+        try {
+          if (mode === "commit") contribution?.onCommit?.();
+          else if (mode === "cancel") contribution?.onCancel?.();
+        } catch {
+          /* a modal hook must not wedge the unwind */
+        }
+        try {
+          contribution?.onExit?.({ type: frame.type, id: frame.scopeRoot });
+        } catch {
+          /* onExit must not wedge the unwind */
+        }
       }
-    }
-    return popped;
-  }, []);
+      return popped;
+    },
+    [],
+  );
+
+  const pop = useCallback(() => popWith("exit"), [popWith]);
+  const commit = useCallback(() => popWith("commit"), [popWith]);
+  const cancel = useCallback(() => popWith("cancel"), [popWith]);
 
   const exitAll = useCallback(() => {
     setStack((prev) => {
@@ -182,6 +212,22 @@ export function EditContextStackProvider({ children }: PropsWithChildren) {
   }, []);
 
   const active = stack.length > 0 ? stack[stack.length - 1] : null;
+  // The active frame's live contribution (its hooks live in the ref; this
+  // recomputes whenever `active` changes). K-1 content-pointer delivery
+  // reads it.
+  const activeContribution = active
+    ? hooksRef.current.get(active.type) ?? null
+    : null;
+
+  const isActiveDirty = useCallback((): boolean => {
+    if (!active) return false;
+    const contribution = hooksRef.current.get(active.type);
+    try {
+      return contribution?.isDirty?.() ?? false;
+    } catch {
+      return false;
+    }
+  }, [active]);
 
   const isInScope = useCallback(
     (id: ElementId | null | undefined): boolean => {
@@ -202,13 +248,28 @@ export function EditContextStackProvider({ children }: PropsWithChildren) {
     () => ({
       stack,
       active,
+      activeContribution,
       breadcrumb: stack,
       enter,
       pop,
+      commit,
+      cancel,
+      isActiveDirty,
       exitAll,
       isInScope,
     }),
-    [stack, active, enter, pop, exitAll, isInScope],
+    [
+      stack,
+      active,
+      activeContribution,
+      enter,
+      pop,
+      commit,
+      cancel,
+      isActiveDirty,
+      exitAll,
+      isInScope,
+    ],
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
