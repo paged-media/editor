@@ -30,36 +30,72 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 export function EditContextController() {
-  const { active, activeContribution, commit, cancel, exitAll } =
+  const { active, activeContribution, commit, cancel, isActiveDirty, exitAll } =
     useEditContextStack();
   const { elementSelection } = useSelection();
   const tool = useOptionalTool();
 
-  // K-1 — Esc CANCELS the top frame (onCancel → onExit); Enter COMMITS it
-  // (onCommit → onExit), but ONLY for a context that opts into modal commit
-  // (has `onCommit` — sheet's "sheet"; NOT draw/web, where Enter belongs to
-  // the tools). Capture phase so the context wins these keys over other
-  // consumers (command palette / path-edit) ONLY while a context is active.
-  // The editable-target guard means a focused cell <input> keeps Enter/Esc
-  // for its own edit — the context-level commit/cancel fires on the canvas.
+  // K-1 — keyboard routing while a context is active (capture phase so the
+  // context wins over the palette / path-edit; the editable-target guard
+  // keeps Enter/Esc for a focused <input> elsewhere). Policy:
+  //   · MID SUB-EDIT (isDirty, e.g. an in-frame cell being typed): the
+  //     context's `onContentKey` owns ALL keys — Enter commits the CELL,
+  //     Esc cancels the CELL, the context stays.
+  //   · otherwise Esc CANCELS the context (onCancel→onExit); Enter COMMITS
+  //     it but only when it opts in (onCommit — sheet has none at the
+  //     context level, so Enter falls through to start/forward below);
+  //   · a printable / editing key (no Cmd/Ctrl) is FORWARDED to
+  //     `onContentKey` (e.g. typing begins a cell edit). Shortcuts pass
+  //     through untouched.
   const activeRef = useRef(active);
   activeRef.current = active;
+  const contributionRef = useRef(activeContribution);
+  contributionRef.current = activeContribution;
   const wantsCommitRef = useRef<boolean>(false);
   wantsCommitRef.current = !!activeContribution?.onCommit;
+  const isDirtyRef = useRef(isActiveDirty);
+  isDirtyRef.current = isActiveDirty;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" && e.key !== "Enter") return;
       if (!activeRef.current) return; // no context → don't intercept
       if (isEditableTarget(e.target)) return;
-      // Enter only commits a modal context (one with onCommit); otherwise
-      // leave it for the tools (draw path-close, etc.).
-      if (e.key === "Enter" && !wantsCommitRef.current) return;
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.key === "Escape") cancel();
-      else commit();
+      const contribution = contributionRef.current;
+      const onContentKey = contribution?.onContentKey;
+
+      // Mid sub-edit → the context owns every key.
+      if (onContentKey && isDirtyRef.current()) {
+        e.preventDefault();
+        e.stopPropagation();
+        onContentKey(e);
+        return;
+      }
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        cancel();
+        return;
+      }
+      if (e.key === "Enter" && wantsCommitRef.current) {
+        e.preventDefault();
+        e.stopPropagation();
+        commit();
+        return;
+      }
+      // Forward a printable / editing key (no modifier combo) to the
+      // context — e.g. typing into a selected cell begins an edit.
+      if (
+        onContentKey &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        (e.key.length === 1 || e.key === "Backspace" || e.key === "Delete")
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        onContentKey(e);
+      }
     };
-    // Capture so we win Escape/Enter while a context is active.
+    // Capture so we win these keys while a context is active.
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, [commit, cancel]);
