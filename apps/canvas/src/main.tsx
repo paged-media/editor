@@ -40,7 +40,7 @@ import { CanvasClient } from "@paged-media/client";
 // See CanvasClientOptions for the full rationale.
 import CanvasRenderWorker from "./worker/worker.ts?worker";
 import { BUILT_IN_TOOLS } from "@paged-media/tools";
-import { loadBundle } from "@paged-media/plugin-sdk";
+import { loadBundle, createDataProviderRegistry } from "@paged-media/plugin-sdk";
 import type { SchemaPanelRenderer as SchemaPanelRendererType } from "@paged-media/plugin-api";
 import { drawBundle } from "@paged-media/draw-bundle";
 import { webBundle } from "@paged-media/web-bundle";
@@ -870,11 +870,19 @@ function PluginBundles() {
     // K-4 / S-08: the OPFS-backed blob store behind host.blob — lets a
     // bundle persist large binary payloads (a workbook) across reloads.
     const blobStore = createEditorBlobStore();
+    // D-09 (paged.data §7.1): ONE shared cross-plugin data-provider registry,
+    // injected into every bundle host so a provider plugin (paged.data publishing
+    // a governed query) and a consumer plugin (paged.sheet sourcing a sheet from
+    // it) rendezvous through it — never by direct contact. Flips
+    // supports("dataProviders@1") true; absent it the door is the no-registry
+    // default (discover empty / register no-op).
+    const dataProviders = createDataProviderRegistry();
     const hostOptions = {
       shell,
       widgets,
       assetSource,
       blobStore,
+      dataProviders,
       diagnosticsSink: problemsSink,
       schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
     };
