@@ -246,7 +246,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
   // W3.2 — the edit-context entry resolver (B-02/W-03). A double-click
   // consults this BEFORE group descent: a polygon enters the
   // vectorGraphic context, a webFrame enters its source context.
-  const { tryEnterEditContext } = useEditContextEntry();
+  const { tryEnterEditContext, tryEnterOwnedContent } = useEditContextEntry();
 
   // K-1 — the edit-context STACK (optional: the canvas mounts standalone
   // in some specs). While a context is active, a pointer over the active
@@ -907,6 +907,20 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
               });
               if (reply.kind !== "hitResult") return;
               const hit = reply.payload;
+              // C-4 — owned-content interception: a Type-tool click on
+              // a metadata-claimed frame (a lowered sheet table, a web
+              // frame) enters the OWNING plugin's modal context instead
+              // of raw text editing — manual edits must not corrupt
+              // content a plugin compiles. Object-type lane only; an
+              // empty objectType registry early-outs, so documents
+              // without plugins pay nothing.
+              if (isText && hit.element) {
+                const owned = await tryEnterOwnedContent({
+                  element: hit.element,
+                  groupChain: [],
+                });
+                if (owned) return;
+              }
               // Text tool, 2nd/3rd click on a story offset → granular
               // selection (word / line) instead of placing a caret.
               if (
@@ -957,7 +971,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         }
       }
     },
-    [props, rects, marqueeRect, setContentSelection],
+    [props, rects, marqueeRect, setContentSelection, tryEnterOwnedContent],
   );
 
   // GSM-07 / INV-8 — abort the in-flight drag WITHOUT committing.

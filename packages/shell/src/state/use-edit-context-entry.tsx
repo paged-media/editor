@@ -80,7 +80,7 @@ export function useEditContextEntry() {
    * `false` otherwise.
    */
   const tryEnterEditContext = useCallback(
-    async (hit: DoubleClickHit): Promise<boolean> => {
+    async (hit: DoubleClickHit, objectTypesOnly = false): Promise<boolean> => {
       const element = hit.element;
       if (!element) return false;
       // Nothing registered → no work (the common case stays cheap).
@@ -125,13 +125,19 @@ export function useEditContextEntry() {
         candidateFor(undefined),
         {
           ...editContexts,
+          // C-4 — owned-content interception restricts resolution to the
+          // OBJECT-TYPE lane (metadata-claimed = plugin-owned content):
+          // kind-claimed contexts (vectorGraphic by kind) must never
+          // hijack a Type-tool click on ordinary content.
           list: () =>
-            editContexts.list().map((ec) => ({
-              ...ec,
-              matches: ec.matches
-                ? () => ec.matches!(candidateFor(ec.metadataKey))
-                : undefined,
-            })),
+            objectTypesOnly
+              ? []
+              : editContexts.list().map((ec) => ({
+                  ...ec,
+                  matches: ec.matches
+                    ? () => ec.matches!(candidateFor(ec.metadataKey))
+                    : undefined,
+                })),
         },
         {
           ...objectTypes,
@@ -171,5 +177,15 @@ export function useEditContextEntry() {
     ],
   );
 
-  return { tryEnterEditContext };
+  /** C-4 — enter the OWNING plugin's edit context for a metadata-claimed
+   *  element (the objectType lane only). The Type-tool entry path calls
+   *  this before starting raw text editing on a frame, so manual edits
+   *  on plugin-owned content (a lowered sheet table) route into the
+   *  plugin's modal session instead of corrupting what it compiles. */
+  const tryEnterOwnedContent = useCallback(
+    (hit: DoubleClickHit): Promise<boolean> => tryEnterEditContext(hit, true),
+    [tryEnterEditContext],
+  );
+
+  return { tryEnterEditContext, tryEnterOwnedContent };
 }

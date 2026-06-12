@@ -238,6 +238,27 @@ test.describe("E2E sheet modal session (K-1 live validation + ADR-012)", () => {
     await runEditLoop(page, frame);
   });
 
+  test("AC-C4 — a Type-tool click on the OWNED table enters sheet mode, not text editing", async ({
+    page,
+  }) => {
+    const frame = await importAndLower(page, "A1:B3");
+    const breadcrumb = page.locator("[data-edit-context-breadcrumb]");
+    await expect(breadcrumb).toHaveCount(0);
+
+    // Switch to the Type tool and SINGLE-click the lowered (metadata-
+    // owned) table frame: the C-4 interception must route into the
+    // sheet edit context instead of placing a caret into the compiled
+    // table text.
+    await page.locator('[data-tool-slot="type"]').click();
+    const at = await elementScreenCenter(page, frame);
+    expect(at).not.toBeNull();
+    await page.mouse.click(at!.x, at!.y);
+    await expect(breadcrumb).toBeVisible({ timeout: 10_000 });
+
+    await page.keyboard.press("Escape");
+    await expect(breadcrumb).toHaveCount(0);
+  });
+
   test("AC-K1-3 — ROTATED frame: the §8.5 content inversion holds for the same loop", async ({
     page,
   }) => {
