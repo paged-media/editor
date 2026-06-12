@@ -26,6 +26,22 @@
 // createNumberingList/editNumberingList/deleteNumberingList — the
 // Bullets & Numbering list-definition surface — probed on the `text`
 // fixture). Update via the same run when core lands new ops.
+//
+// 2026-06-12: re-captured at protocol v40, closing the v36–v40 gap the
+// audit flagged (02 E5'). Added `setGroupTransform` — the group-transform
+// write that landed beside createGroup/dissolveGroup — and probed it
+// against the 0.40.0 engine (transforms a scratch group built from two
+// frames, modeled on the dissolveGroup probe). NOTE: the audit also named
+// `insertTable`, but the 0.40.0 wire union has NO standalone insertTable
+// Mutation — table creation rides a NodeSpec (`kind: "table"`, rows/cols)
+// through an insert op, not a top-level op; the engine rejects a bare
+// `insertTable` (probe-verified). Capturing table-create as a capability
+// needs the right insert-op pairing — left as a follow-up, not faked here.
+// The path-segment discriminants moveTo/lineTo/cubicTo/close are
+// `ScenePathSeg` kinds (the C-1 scene-layer payload), NOT Mutation ops,
+// so they are correctly absent. The table's op universe == the published
+// Mutation union, which `state/scripts/completeness-check.mjs` derives
+// its wire-op set from (CAPS_FILE).
 
 export type CapabilityStatus = "supported" | "unsupported";
 
@@ -88,6 +104,8 @@ export const CAPABILITIES: Capability[] = [
   // ── group ops (v32) ───────────────────────────────────────────────
   { op: "createGroup", status: "supported" },
   { op: "dissolveGroup", status: "supported" },
+  // ── group transform (v40 re-capture) ──────────────────────────────
+  { op: "setGroupTransform", status: "supported" },
   // ── plugin-metadata carrier (v33; v34 adds the batch $created
   //    sentinel — probed through the batch op) ──────────────────────
   { op: "setPluginMetadata", status: "supported" },

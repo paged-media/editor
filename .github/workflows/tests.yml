@@ -58,6 +58,8 @@ on:
       - "packages/**"
       - "pnpm-lock.yaml"
       - "package.json"
+      - "eslint.config.mjs"
+      - "scripts/**"
       - ".github/workflows/tests.yml"
   workflow_dispatch:
 
@@ -72,6 +74,57 @@ env:
   SHARDS: 3
 
 jobs:
+  # Static guards that need only the editor repo itself — no plugin
+  # siblings, no corpus/core checkout, no browser. These scripts all
+  # EXISTED but ran in no CI job (audit 02 E8'): the ESLint architecture
+  # boundaries (eslint.config.mjs — worker/shell/client/gesture-spine
+  # zones) + their self-test, the boot-time cross-origin-isolation check
+  # (the COOP/COEP contract SharedArrayBuffer needs), and the
+  # fidelity-thresholds JSON schema guard (every gated pack has an entry,
+  # so the gate can't silently skip). They're fast (seconds) and depend
+  # only on the root devDependencies, so a plain editor checkout + root
+  # frozen install is the whole setup. apps/canvas's `link:` deps resolve
+  # to absent siblings as dangling symlinks — pnpm install does not fail
+  # on that, and none of these scripts import plugin code (same property
+  # the `publish` job relies on below).
+  checks:
+    name: checks (lint + boundaries + boot-coi + thresholds)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: install (editor root)
+        run: pnpm install --frozen-lockfile
+
+      # ESLint architecture boundaries (eslint.config.mjs is boundaries-only,
+      # not style) + the fixtures proving each zone actually fires.
+      - name: lint (architecture boundaries)
+        run: pnpm lint
+
+      - name: lint boundaries self-test
+        run: pnpm lint:boundaries-selftest
+
+      # The COOP/COEP boot contract SharedArrayBuffer needs (pairs with
+      # apps/canvas/public/_headers).
+      - name: boot cross-origin-isolation check
+        run: pnpm test:boot-coi
+
+      # Every gated fidelity pack must carry a threshold entry, or the
+      # fidelity gate silently skips it.
+      - name: fidelity thresholds schema
+        run: pnpm test:thresholds
+
   playwright:
     name: playwright (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest

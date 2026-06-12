@@ -1168,6 +1168,53 @@ const GEOMETRY_PROBES: Probe[] = [
     },
     setupUndo: 3, // two inserts + the createGroup
   },
+  // ── group transform (v40 re-capture) ──────────────────────────
+  // setGroupTransform writes an affine onto an existing group — so
+  // build a scratch group first (two frames + createGroup, same as
+  // dissolveGroup), then transform it. The matrix [a b c d e f] here
+  // is a pure translate (identity 2×2 + a 12pt nudge); we only need
+  // the engine to ACCEPT + reverse the op, not assert geometry.
+  {
+    op: "setGroupTransform",
+    build: async ({ page, fx }) => {
+      const groupId = await page.evaluate(async (pageId) => {
+        const c = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                mutate: (m: unknown) => Promise<{
+                  kind: string;
+                  payload?: {
+                    createdId?: { kind: string; id: string } | null;
+                  };
+                }>;
+              };
+            };
+          }
+        ).__canvas;
+        const a = await c.client.mutate({
+          op: "insertFrame",
+          args: { pageId, bounds: [10, 10, 60, 60] },
+        });
+        const b = await c.client.mutate({
+          op: "insertFrame",
+          args: { pageId, bounds: [70, 70, 120, 120] },
+        });
+        if (!a.payload?.createdId || !b.payload?.createdId) return null;
+        const g = await c.client.mutate({
+          op: "createGroup",
+          args: { memberIds: [a.payload.createdId, b.payload.createdId] },
+        });
+        return g.payload?.createdId?.id ?? null;
+      }, fx.pages[0].pageId);
+      if (!groupId) return null;
+      return {
+        op: "setGroupTransform",
+        args: { groupId, transform: [1, 0, 0, 1, 12, 0] },
+      };
+    },
+    setupUndo: 3, // two inserts + the createGroup
+  },
   // ── plugin-metadata carrier (v33) ─────────────────────────────
   {
     op: "setPluginMetadata",
