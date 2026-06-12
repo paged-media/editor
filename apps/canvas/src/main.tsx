@@ -48,6 +48,8 @@ import { dataBundle } from "@paged-media/data-bundle";
 import { sheetBundle } from "@paged-media/sheet-bundle";
 import { createEditorAssetSource } from "./plugin-asset-source";
 import { createEditorBlobStore } from "./plugin-blob-store";
+import { createEditorConsentBackend } from "./plugin-consent";
+import { ConsentDialog } from "./ConsentDialog";
 import { pickFiles } from "./shell-file-picker";
 
 // W3.1 — the schema-panel renderer the host injects. The shell renderer
@@ -837,6 +839,21 @@ const BUILT_IN_PANELS: PanelContribution[] = [
  * editor handle per call (the command-registry idiom), so bundle
  * handlers never close over a stale snapshot.
  */
+
+// D-03 — the editor's network-consent backend. One instance for the whole app:
+// `PluginBundles` injects `backend` into every bundle host (the SDK door calls
+// it), and `<ConsentDialog>` renders + resolves prompts from the same
+// `controller`. Module scope so the two stay in sync across StrictMode remounts.
+const editorConsent = createEditorConsentBackend();
+if (!import.meta.env.PROD) {
+  // Test affordance (mirrors `window.__canvas`): drive a synthetic prompt and
+  // observe/resolve it without a network-declaring bundle (none exist yet).
+  (globalThis as unknown as { __consent?: unknown }).__consent = {
+    request: editorConsent.backend.request,
+    current: () => editorConsent.controller.current(),
+  };
+}
+
 function PluginBundles() {
   const paged = usePaged();
   const pagedRef = useRef(paged);
@@ -879,12 +896,20 @@ function PluginBundles() {
     // supports("dataProviders@1") true; absent it the door is the no-registry
     // default (discover empty / register no-op).
     const dataProviders = createDataProviderRegistry();
+    // D-03 (paged.data §11): the network-consent door. Injecting `consent`
+    // flips supports("network.consent@1") true and makes the per-origin gate
+    // live; absent it the door denies every origin. The OUTER wall is the CSP
+    // connect-src (vite.config.ts + _headers). Today every bundle declares
+    // `network: false`, so the door is dormant but correctly wired for the
+    // first bundle that asks (paged.data's remote adapter, M1).
+    const consent = editorConsent.backend;
     const hostOptions = {
       shell,
       widgets,
       assetSource,
       blobStore,
       dataProviders,
+      consent,
       diagnosticsSink: problemsSink,
       schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
     };
@@ -1101,6 +1126,7 @@ function CanvasAppRoot() {
     >
       <CanvasAppIntegration />
       <PluginBundles />
+      <ConsentDialog controller={editorConsent.controller} />
     </PagedShell>
   );
 }

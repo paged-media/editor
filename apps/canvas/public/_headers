@@ -27,3 +27,9 @@
 /*
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: require-corp
+  # D-03 network wall — bound EVERY page/worker fetch to same-origin + local
+  # bytes; no external origin is reachable (every first-party bundle declares
+  # `network: false`, so the consented set is empty). `connect-src` only — no
+  # `default-src` — so script/style/img are untouched (just the egress wall).
+  # Lock-step with the dev header in apps/canvas/vite.config.ts.
+  Content-Security-Policy: connect-src 'self' blob: data:

@@ -41,6 +41,44 @@ const crossOriginIsolation = {
   },
 };
 
+// D-03 network wall. The editor mediates plugin network access through the
+// `host.network` consent door, but a same-realm (or worker) bundle could call
+// `window.fetch` directly and bypass the in-process door entirely. The browser
+// CSP `connect-src` is the only hard wall against that: it bounds EVERY fetch /
+// XHR / WebSocket the page (and its workers) can make, no matter who issues it.
+//
+// The floor admits only same-origin + local-bytes schemes — the editor app's
+// real network surface (corpus/fonts/wasm under `/`, swatch blob: reads). NO
+// external origin is reachable, which is exact today: every first-party bundle
+// declares `capabilities.network: false`, so the consented set is empty. We
+// scope the policy to `connect-src` only (no `default-src`) so script/style/img
+// execution is untouched — minimal blast radius, just the egress wall. Keep this
+// in lock-step with `public/_headers` (the authoritative production header).
+const CONNECT_SRC_FLOOR = "connect-src 'self' blob: data:";
+// Dev adds the Vite HMR WebSocket (client live-reload) — without it `pnpm dev`
+// and the Playwright runs lose hot updates.
+const CONNECT_SRC_DEV = `${CONNECT_SRC_FLOOR} ws://127.0.0.1:* ws://localhost:*`;
+
+const networkConnectSrcPolicy = {
+  name: "network-connect-src-policy",
+  configureServer(server: import("vite").ViteDevServer) {
+    server.middlewares.use((_req, res, next) => {
+      res.setHeader("Content-Security-Policy", CONNECT_SRC_DEV);
+      next();
+    });
+  },
+  // Build only: inject the floor as a `<meta>` so a static host that ignores
+  // `_headers` still ships the wall. Skipped in dev (the header above is the
+  // single source — two policies would intersect and drop the HMR socket).
+  transformIndexHtml(html: string, ctx: { server?: unknown }) {
+    if (ctx.server) return html;
+    return html.replace(
+      "</title>",
+      `</title>\n    <meta http-equiv="Content-Security-Policy" content="${CONNECT_SRC_FLOOR}" />`,
+    );
+  },
+};
+
 /**
  * Serve `/fonts/<name>` from `<repo>/corpus/fonts/<name>`. Lets the
  * canvas auto-fetch a default font when the user drops an IDML so
@@ -220,7 +258,13 @@ export default defineConfig({
   // apps/canvas/ lives one extra level deep than web/ — adjust the
   // workspace root so node_modules + the Cargo target dir resolve.
   root: resolve(__dirname),
-  plugins: [react(), crossOriginIsolation, fontsRoute(), corpusIdmlRoute()],
+  plugins: [
+    react(),
+    crossOriginIsolation,
+    networkConnectSrcPolicy,
+    fontsRoute(),
+    corpusIdmlRoute(),
+  ],
   server: {
     // Pin to IPv4 so Playwright's `127.0.0.1` health-check resolves.
     // Node ≥20 may resolve `localhost` to IPv6 first, in which case
