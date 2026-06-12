@@ -210,7 +210,15 @@ test.describe("E2E sheet modal session (K-1 live validation + ADR-012)", () => {
   test("AC-K1-1 — lower a range, double-click enters the sheet context, Esc exits", async ({
     page,
   }) => {
+    // The page pour must succeed — the S-03 native table reaches the
+    // document (the "frame placed empty" warning was a live regression
+    // this suite caught: hitTest cannot resolve an EMPTY frame's story).
+    const emptyPours: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.text().includes("frame placed empty")) emptyPours.push(msg.text());
+    });
     const frame = await importAndLower(page, "A1:B3");
+    expect(emptyPours).toEqual([]);
     const breadcrumb = page.locator("[data-edit-context-breadcrumb]");
     await expect(breadcrumb).toHaveCount(0);
 
