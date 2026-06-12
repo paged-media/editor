@@ -47,6 +47,7 @@ import { drawBundle } from "@paged-media/draw-bundle";
 import { webBundle } from "@paged-media/web-bundle";
 import { dataBundle } from "@paged-media/data-bundle";
 import { sheetBundle } from "@paged-media/sheet-bundle";
+import { imageBundle } from "@paged-media/image-glue";
 import { createEditorAssetSource } from "./plugin-asset-source";
 import { createEditorBlobStore } from "./plugin-blob-store";
 import { createEditorConsentBackend } from "./plugin-consent";
@@ -923,6 +924,12 @@ function PluginBundles() {
       // DuckDB degrades honestly in-panel (never crashes the app).
       loadBundle(() => pagedRef.current, dataBundle, hostOptions),
       loadBundle(() => pagedRef.current, sheetBundle, hostOptions),
+      // paged.image (M4 ingest slice): C-5 placed bytes → engine-wasm
+      // decode → GPU adjustments → C-1 Stage-A in-frame composite. The
+      // engine wasm boots lazily on first ingest (the GPU device lives
+      // in the bundle realm — I-07); a missing artifact / no WebGPU
+      // degrades honestly in-panel.
+      loadBundle(() => pagedRef.current, imageBundle, hostOptions),
     ];
     return () => {
       for (const l of loaded) l.dispose();

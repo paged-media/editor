@@ -38,6 +38,9 @@ importers:
       '@paged-media/draw-bundle':
         specifier: link:../../../plugin-draw/packages/draw-bundle
         version: link:../../../plugin-draw/packages/draw-bundle
+      '@paged-media/image-glue':
+        specifier: link:../../../plugin-image/glue
+        version: link:../../../plugin-image/glue
       '@paged-media/plugin-api':
         specifier: link:../../../plugin-sdk/packages/plugin-api
         version: link:../../../plugin-sdk/packages/plugin-api

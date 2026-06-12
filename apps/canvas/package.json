@@ -23,15 +23,16 @@
     "@paged-media/client": "workspace:*",
     "@paged-media/data-bundle": "link:../../../plugin-data/packages/data-bundle",
     "@paged-media/draw-bundle": "link:../../../plugin-draw/packages/draw-bundle",
+    "@paged-media/image-glue": "link:../../../plugin-image/glue",
     "@paged-media/plugin-api": "link:../../../plugin-sdk/packages/plugin-api",
     "@paged-media/plugin-sdk": "link:../../../plugin-sdk/packages/plugin-sdk",
     "@paged-media/sheet-bundle": "link:../../../plugin-sheets/packages/sheet-bundle",
-    "@paged-media/web-bundle": "link:../../../plugin-web/packages/web-bundle",
     "@paged-media/shell": "workspace:*",
+    "@paged-media/tools": "workspace:*",
     "@paged-media/ui": "workspace:*",
+    "@paged-media/web-bundle": "link:../../../plugin-web/packages/web-bundle",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "@paged-media/tools": "workspace:*"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
