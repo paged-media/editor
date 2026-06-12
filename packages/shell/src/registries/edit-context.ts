@@ -71,6 +71,15 @@ export interface EditContextContribution {
    *  before `onExit`. */
   onCommit?(): void;
   onCancel?(): void;
+  /** ADR-012 Tier 1 — in-session undo OWNERSHIP: while active and these
+   *  are declared, Cmd-Z/Cmd-Shift-Z + Edit/Undo route HERE (the
+   *  plugin's own op-log); the document stack is suspended until the
+   *  modal exit (one batch = one document step). `false` = exhausted —
+   *  no mid-session fall-through to the document stack. */
+  onUndo?(): boolean;
+  onRedo?(): boolean;
+  onCanUndo?(): boolean;
+  onCanRedo?(): boolean;
   /** HOST-STAMPED `x-paged:<plugin id>` key — the host resolves a
    *  candidate's `metadata` from this envelope before calling `matches`
    *  (so a plugin only ever sees its OWN namespace). The SDK adapter

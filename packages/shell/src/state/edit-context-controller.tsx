@@ -62,6 +62,25 @@ export function EditContextController() {
       const contribution = contributionRef.current;
       const onContentKey = contribution?.onContentKey;
 
+      // ADR-012 Tier 1 — a context that DECLARES undo ownership gets the
+      // un/redo chords routed to ITS op-log; the document stack stays
+      // suspended until the modal exit (Tier 2: one batch). Ranked above
+      // the dirty branch so Cmd-Z mid-cell-edit reaches the plugin's
+      // undo (which may first unwind the in-flight buffer) instead of
+      // vanishing into onContentKey. No fall-through on `false` — the
+      // boundary IS the modal entry/exit (ADR-012).
+      if (
+        contribution?.onUndo &&
+        (e.metaKey || e.ctrlKey) &&
+        e.key.toLowerCase() === "z"
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.shiftKey) contribution.onRedo?.();
+        else contribution.onUndo();
+        return;
+      }
+
       // Mid sub-edit → the context owns every key.
       if (onContentKey && isDirtyRef.current()) {
         e.preventDefault();

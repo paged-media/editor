@@ -23,6 +23,7 @@ import {
   useDocument,
   usePaged,
   useRegistries,
+  useEditContextStack,
   SchemaPanelRenderer,
   CatalogRegistryProvider,
   type OverlayContribution,
@@ -944,6 +945,14 @@ function CanvasAppIntegration() {
   const { handle } = useDocument();
   const { contentSelection, setContentSelection } = useContentSelection();
   const registries = useRegistries();
+  // ADR-012 Tier 1 — the MENU path of the undo routing (the controller
+  // owns the keyboard chords): while a modal context declares undo
+  // ownership, Edit/Undo + Edit/Redo drive ITS op-log, not the document
+  // stack. A ref so the command closures (registered once per effect
+  // run) always see the live stack without re-registering per enter/exit.
+  const editContextStack = useEditContextStack();
+  const editContextRef = useRef(editContextStack);
+  editContextRef.current = editContextStack;
 
   const animateCamera = useAnimatedCamera(camera, setCamera);
   useKeyboardShortcuts({
@@ -988,9 +997,19 @@ function CanvasAppIntegration() {
     const rects = layoutPages(pageSizes);
     const commands = buildAppCommands({
       undo: () => {
+        const owner = editContextRef.current.activeContribution;
+        if (owner?.onUndo) {
+          owner.onUndo();
+          return;
+        }
         void client.undo();
       },
       redo: () => {
+        const owner = editContextRef.current.activeContribution;
+        if (owner?.onUndo) {
+          owner.onRedo?.();
+          return;
+        }
         void client.redo();
       },
       // W3.B2 — Save As IDML: serialise the loaded document to an
