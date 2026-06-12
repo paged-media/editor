@@ -1,63 +1,65 @@
 // The editor's host-injected ASSET SOURCE for the plugin SDK (W-06).
 //
 // `host.assets.getFontFace(family, style?)` is the capability-gated,
-// READ-ONLY door that serves a DOCUMENT font face's BYTES so a bundle
+// READ-ONLY door that serves a font face's BYTES so a bundle
 // (paged.web) can compose a real `@font-face` in its preview. The SDK
 // owns the door, the gate, and the budget; the editor's only job is to
-// provide a `BundleAssetProvider` rooted at the REAL document-font
-// mechanism — the same injection shape as the code-editor widget and
-// the problems sink.
+// provide a `BundleAssetProvider` rooted at the REAL font mechanism.
 //
-// THE HONEST VERDICT (DESIGN.md §13.4): document fonts are referenced by
-// NAME (IDML `Fonts/Font_*.xml` carries no bytes). The only font bytes
-// the MAIN THREAD ever holds is the single default-shaping font
-// (`/fonts/Inter.ttf`, fetched in `@paged-media/shell`'s document-loader
-// and passed to `loadDocument(bytes, fontBytes)` as the engine's
-// FALLBACK font — NOT a named per-family registration). The corpus
-// family→file map (`fonts.sh` → `client.registerFont`) lives ONLY in the
-// Playwright fidelity driver, never the running app. Once `registerFont`
-// ingests bytes they live worker-side / wasm-side in the engine's
-// `BytesResolver`; `fontRegistered` replies `{ family }` only — there is
-// NO read-back door that returns a registered face's bytes.
-//
-// So in v1 this provider returns `null` for every family — the HONEST
-// no-bytes door, not a fake (serving Inter-as-Helvetica would lie; the
-// preview would show the wrong face as "the document's"). The door is
-// real, gated, and budgeted; it simply has no bytes to serve yet.
-//
-// THE PRECISE FOLLOW-UP THAT MAKES IT SERVE REAL BYTES (core + client):
-// a worker→main read on the engine's font registry —
-// `client.fontFaceBytes(family, style?) → Uint8Array | null`, backed by a
-// new `requestFontFaceBytes` wire pair the worker answers from the
-// engine `BytesResolver` (the same store `registerFont` fills). That is a
-// CORE change (a new MainToWorker/WorkerToMain message + a `BytesResolver`
-// accessor). When it lands, `getFontFace` calls it and wraps the bytes;
-// nothing in the door/gate/budget/manifest changes. Tracked as the W-06
-// residual in plugin-web/BREAKAGE_LOG.md.
+// SERVED FOR REAL since protocol v43 (the W-06 wire pair): the worker
+// answers `requestFontFaceBytes { family, style? }` from the engine's
+// font registry — the same store `registerFont` fills, plus the
+// document-load default face. What is honestly servable is exactly
+// what the ENGINE holds: wire-registered faces. IDML packages
+// reference fonts by NAME only (Fonts/Font_*.xml carries no bytes), so
+// an unregistered document family still answers `found:false` → null —
+// the bundle keeps its substitution badge for those, never shown a
+// wrong face as "the document's".
 
+import type { CanvasClient } from "@paged-media/client";
 import type { BundleAssetProvider } from "@paged-media/plugin-sdk";
+import type { FontFaceAsset } from "@paged-media/plugin-api";
+
+/** Container formats the SDK door accepts (`FontFaceFormat`). */
+const KNOWN_FORMATS = new Set(["truetype", "opentype", "woff", "woff2"]);
 
 /**
- * Build the editor's asset provider. v1: the honest null-path door.
- * Returns `null` for every face because document face bytes are not
- * reachable on the main thread (see the file header for the verdict +
- * the exact core/client read that would expose them).
- *
- * It is wired into `loadBundle({ assetSource })` so the door + the gate
- * + the budget are all LIVE — a bundle's `getFontFace` call goes through
- * the real SDK path, the capability gate enforces
- * `capabilities.assets: ["fonts"]`, and `supports("assets.fonts@1")`
- * answers true. The bundle then degrades honestly (the substitution
- * badge stays) until the engine read lands and this provider serves
- * real bytes.
+ * Build the editor's asset provider over the live engine client (the
+ * same thunk idiom as the bundle loader — resolved at call time so the
+ * provider survives client reloads). Serves the bytes of any face the
+ * ENGINE's registry holds; `null` for everything else (the honest
+ * no-bytes answer the preview substitutes + badges on).
  */
-export function createEditorAssetSource(): BundleAssetProvider {
+export function createEditorAssetSource(
+  getClient: () => CanvasClient | null,
+): BundleAssetProvider {
   return {
-    async getFontFace(_family: string, _style?: string) {
-      // No main-thread access to document face bytes (header note).
-      // Returning null keeps the preview honest — it substitutes and
-      // badges, never shows a wrong face as the document's.
-      return null;
+    async getFontFace(
+      family: string,
+      style?: string,
+    ): Promise<FontFaceAsset | null> {
+      const client = getClient();
+      if (!client) return null;
+      try {
+        const reply = await client.send({
+          kind: "requestFontFaceBytes",
+          payload: { family, style: style ?? null },
+        });
+        if (reply.kind !== "fontFaceBytes" || !reply.payload.found) {
+          return null;
+        }
+        const p = reply.payload;
+        const format = KNOWN_FORMATS.has(p.format) ? p.format : "truetype";
+        return {
+          bytes: Uint8Array.from(p.bytes),
+          format: format as FontFaceAsset["format"],
+          postscriptName: p.postscriptName ?? undefined,
+          family: p.family,
+          style: p.style ?? undefined,
+        };
+      } catch {
+        return null;
+      }
     },
   };
 }

@@ -881,13 +881,14 @@ function PluginBundles() {
     // satisfies plugin-api's `SchemaPanelRenderer` — asserted below).
     const widgets = { CodeEditor };
     // W-06: the host injects the ASSET SOURCE that backs
-    // `host.assets.getFontFace`. v1 is the honest null-path door
-    // (document face bytes are not reachable on the main thread — see
-    // plugin-asset-source.ts for the verdict + the core/client read that
-    // would expose them). Wiring it makes the door + gate + budget LIVE
-    // and `supports("assets.fonts@1")` true; paged.web degrades honestly
-    // (the substitution badge) until real bytes are served.
-    const assetSource = createEditorAssetSource();
+    // `host.assets.getFontFace`. Served for REAL since protocol v43:
+    // the provider reads the engine's font registry over the
+    // requestFontFaceBytes wire pair (registered faces; unregistered
+    // document families still answer null and the preview keeps its
+    // honest substitution badge).
+    const assetSource = createEditorAssetSource(
+      () => pagedRef.current?.client ?? null,
+    );
     // K-4 / S-08: the OPFS-backed blob store behind host.blob — lets a
     // bundle persist large binary payloads (a workbook) across reloads.
     const blobStore = createEditorBlobStore();
