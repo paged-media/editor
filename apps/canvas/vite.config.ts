@@ -280,6 +280,11 @@ export default defineConfig({
         // under corpus/generated/* and corpus/samples/*, not just the
         // envato packs the /corpus/idml/ route serves.
         resolve(CORPUS_ENVATO, ".."),
+        // Sibling plugin checkouts (the pnpm `link:` chain): their
+        // bundles ship wasm artifacts (sheet-js, image-js, DuckDB) the
+        // dev server must serve via /@fs/ — without this the engine
+        // boot 403s (the K-1 live-validation e2e surfaced it).
+        resolve(__dirname, "..", "..", ".."),
         "/tmp",
         // System CMYK ICC profile dir — the fidelity suite fetches
         // CoatedFOGRA39.icc via /@fs/ to match `pdftoppm`'s output.

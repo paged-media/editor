@@ -17,6 +17,7 @@ import {
   useInstrumentation,
   useOverlaySignals,
   useSelection,
+  useOptionalEditContextStack,
   useOptionalTableSelection,
   tableCellElementId,
   type PanelProps,
@@ -321,6 +322,26 @@ export function CanvasPanel(_props: PanelProps) {
       .then(setElementGeometry)
       .catch(() => {});
   }, [client, elementSelection, setElementGeometry]);
+
+  // K-1 — refresh the ACTIVE edit context's frame geometry on entry. The
+  // cached `elementGeometry` only updates on the click/marquee/gesture
+  // selection paths, so a context entered after a programmatic selection
+  // (a panel's lower-to-frame) or after a mutation that moved the frame
+  // (rotate via script/panel) would hand the content-pointer dispatch a
+  // stale or absent transform — and the FIRST in-frame click would fall
+  // into the commit-exit branch instead of selecting a cell (found by
+  // the sheet-modal-session e2e).
+  const editContextStack = useOptionalEditContextStack();
+  const activeScopeRoot = editContextStack?.active?.scopeRoot ?? null;
+  useEffect(() => {
+    if (!activeScopeRoot) return;
+    void client
+      .elementGeometry([activeScopeRoot])
+      .then((items) => {
+        if (items.length > 0) setElementGeometry(items);
+      })
+      .catch(() => {});
+  }, [activeScopeRoot, client, setElementGeometry]);
 
   const onDoubleClickGroup = useCallback(
     (
