@@ -42,6 +42,8 @@ import {
   type ParagraphBounds,
   type PathAnchorsResult,
   type PreflightFinding,
+  type ProviderTileWire,
+  type ResourceTilesNeededWire,
   type SelectionMode,
   type SelectionRect,
   type SnapLine,
@@ -671,6 +673,66 @@ export class CanvasClient {
     });
     if (reply.kind === "sceneLayerApplied") return;
     throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /** C-6 (I-06) — claim a placed image's tiled mip pyramid (the v44 wire).
+   *  The worker registers the claim and emits `resourceTilesNeeded`
+   *  (worker→main, surfaced via `subscribe`) when a build lacks tiles at
+   *  the level its scale needs; the plugin fills them through
+   *  `submitResourceTiles`. The reply `resourceClaimApplied` may carry the
+   *  initial `needed` set — those notifications also arrive unsolicited, so
+   *  the SDK's subscription is the single fill path; we just await the ack. */
+  async claimImageResource(claim: {
+    imageId: string;
+    levels: number;
+    tileSize: number;
+    baseWidth: number;
+    baseHeight: number;
+    revision: number;
+  }): Promise<void> {
+    const reply = await this.send({ kind: "claimImageResource", payload: claim });
+    if (reply.kind === "resourceClaimApplied") return;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /** C-6 — release a claimed image resource (the renderer drops to the
+   *  whole-image fallback lane). */
+  async releaseImageResource(imageId: string): Promise<void> {
+    const reply = await this.send({
+      kind: "releaseImageResource",
+      payload: { imageId },
+    });
+    if (reply.kind === "resourceClaimApplied") return;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /** C-6 — fill the worker-side tile cache for a claimed image at `level`.
+   *  `generation` echoes the `resourceTilesNeeded` request so a stale reply
+   *  is dropped worker-side. */
+  async submitResourceTiles(
+    imageId: string,
+    level: number,
+    tiles: ProviderTileWire[],
+    generation: number,
+  ): Promise<void> {
+    const reply = await this.send({
+      kind: "submitResourceTiles",
+      payload: { imageId, level, tiles, generation },
+    });
+    if (reply.kind === "resourceClaimApplied") return;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /** C-6 — subscribe to the worker's `resourceTilesNeeded` notifications
+   *  (worker→main). A thin filter over `subscribe` (the events arrive
+   *  unsolicited, `seq === null`); the SDK adapter routes per-image and
+   *  pulls + submits the tiles. The returned function unsubscribes. */
+  onResourceTilesNeeded(
+    listener: (need: ResourceTilesNeededWire) => void,
+  ): () => void {
+    return this.subscribe((msg) => {
+      if (msg.kind === "resourceTilesNeeded") listener(msg.payload);
+    });
   }
 
   /**

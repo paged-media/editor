@@ -22,7 +22,12 @@ import {
 } from "./registries-context";
 
 // eslint-disable-next-line import/no-relative-parent-imports
-import type { CanvasClient, SceneLayer } from "@paged-media/client";
+import type {
+  CanvasClient,
+  ProviderTileWire,
+  ResourceTilesNeededWire,
+  SceneLayer,
+} from "@paged-media/client";
 
 /**
  * Aggregate handle: the single argument every panel + command
@@ -87,6 +92,37 @@ export interface PagedEditor {
   sceneLayers: {
     submit(elementId: string, layer: SceneLayer): Promise<void>;
     clear(elementId: string): Promise<void>;
+  };
+
+  /**
+   * C-6 (I-06) — the renderer RESOURCE-PROVIDER channel. Routes to the
+   * worker's `claimImageResource` / `submitResourceTiles` /
+   * `releaseImageResource` messages (the v44 wire) and surfaces the
+   * worker's `resourceTilesNeeded` events, satisfying the optional
+   * `Api.PagedEditor.images` member the plugin-sdk host calls from
+   * `host.images.claimImageResource()`. The SDK adapter owns the
+   * needed→source→submit plumbing; this is the thin channel over
+   * CanvasClient.
+   */
+  images: {
+    claim(claim: {
+      imageId: string;
+      levels: number;
+      tileSize: number;
+      baseWidth: number;
+      baseHeight: number;
+      revision: number;
+    }): Promise<void>;
+    release(imageId: string): Promise<void>;
+    submitTiles(
+      imageId: string,
+      level: number,
+      tiles: ProviderTileWire[],
+      generation: number,
+    ): Promise<void>;
+    onResourceTilesNeeded(
+      listener: (need: ResourceTilesNeededWire) => void,
+    ): () => void;
   };
 
   /** The four shell registries. */
@@ -162,6 +198,14 @@ function PagedEditorBinder({
       sceneLayers: {
         submit: (elementId, layer) => client.submitSceneLayer(elementId, layer),
         clear: (elementId) => client.clearSceneLayer(elementId),
+      },
+      images: {
+        claim: (claim) => client.claimImageResource(claim),
+        release: (imageId) => client.releaseImageResource(imageId),
+        submitTiles: (imageId, level, tiles, generation) =>
+          client.submitResourceTiles(imageId, level, tiles, generation),
+        onResourceTilesNeeded: (listener) =>
+          client.onResourceTilesNeeded(listener),
       },
       registries,
     }),
