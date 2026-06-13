@@ -18,7 +18,7 @@
     "fonts:resolve": "tsx scripts/fonts-resolve.ts"
   },
   "dependencies": {
-    "@paged-media/canvas-wasm": "0.47.0",
+    "@paged-media/canvas-wasm": "0.48.0",
     "@paged-media/catalog": "workspace:*",
     "@paged-media/client": "workspace:*",
     "@paged-media/data-bundle": "link:../../../plugin-data/packages/data-bundle",
