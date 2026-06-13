@@ -24,8 +24,8 @@ importers:
   apps/canvas:
     dependencies:
       '@paged-media/canvas-wasm':
-        specifier: 0.45.0
-        version: 0.45.0
+        specifier: 0.46.0
+        version: 0.46.0
       '@paged-media/catalog':
         specifier: workspace:*
         version: link:../../packages/catalog
@@ -112,8 +112,8 @@ importers:
   apps/devtools:
     dependencies:
       '@paged-media/introspect-wasm':
-        specifier: 0.45.0
-        version: 0.45.0
+        specifier: 0.46.0
+        version: 0.46.0
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@18.3.7(@types/react@18.3.29))(@types/react@18.3.29)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -222,8 +222,8 @@ importers:
   packages/client:
     dependencies:
       '@paged-media/canvas-wasm':
-        specifier: 0.45.0
-        version: 0.45.0
+        specifier: 0.46.0
+        version: 0.46.0
     devDependencies:
       typescript:
         specifier: ^5.6.3
@@ -884,11 +884,11 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@paged-media/canvas-wasm@0.45.0':
-    resolution: {integrity: sha512-P6tYGV9hoW1SbwHohOioT90HkuySgCkCZQ2qKbiw46c1c3E/ZVQWPAN+FmBMt4JVmj2rSZwKsbtEcdCcSY00vA==}
+  '@paged-media/canvas-wasm@0.46.0':
+    resolution: {integrity: sha512-mYEb4+LWvhWQOJ26hIL2cL2fDEmQUsSiaNXyOo+RzRWizBIrBqk67SluEk5kIvksc2474ZU9UdtG5peDkB++UA==}
 
-  '@paged-media/introspect-wasm@0.45.0':
-    resolution: {integrity: sha512-T64GEYzwy5guiVZ4xCWgpyWuAkE5vaQUM87nX/JC1C3wbCGqbltMSu3lK77VZcB7ieARIVh3VenT/HGX3KpOxg==}
+  '@paged-media/introspect-wasm@0.46.0':
+    resolution: {integrity: sha512-MbtwTtDB7UVh2uOBOOW8WRb002X02LIadNs18vV0mFmdERbb6smuR4WpjqJM/sH9jROCFnbvQ0x9Dn57zG6/Fg==}
 
   '@playwright/test@1.60.0':
     resolution: {integrity: sha512-O71yZIbAh/PxDMNGns37GHBIfrVkEVyn+AXyIa5dOTfb4/xNvRWV+Vv/NMbNCtODB/pO7vLlF2OTmMVLhmr7Ag==}
@@ -2836,9 +2836,9 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
 
-  '@paged-media/canvas-wasm@0.45.0': {}
+  '@paged-media/canvas-wasm@0.46.0': {}
 
-  '@paged-media/introspect-wasm@0.45.0': {}
+  '@paged-media/introspect-wasm@0.46.0': {}
 
   '@playwright/test@1.60.0':
     dependencies:
