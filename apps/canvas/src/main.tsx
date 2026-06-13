@@ -60,6 +60,8 @@ import { createEditorWorkerBackend } from "./plugin-worker";
 import imageDecodeWorkerUrl from "@paged-media/image-glue/decode-worker?worker&url";
 import { createEditorConsentBackend } from "./plugin-consent";
 import { ConsentDialog } from "./ConsentDialog";
+import { createEditorSecretStore } from "./plugin-secret-store";
+import { SecretPromptDialog } from "./SecretPromptDialog";
 import { pickFiles } from "./shell-file-picker";
 
 // W3.1 — the schema-panel renderer the host injects. The shell renderer
@@ -864,6 +866,29 @@ if (!import.meta.env.PROD) {
   };
 }
 
+// D-11 — the editor's reference credential store (host.secrets). One instance
+// for the whole app: `PluginBundles` injects `backend` into every bundle host
+// (the SDK door calls set/exists/forget), and `<SecretPromptDialog>` renders +
+// resolves the "store this credential" prompt from the same `controller`.
+// REFERENCE-ONLY: the value crosses the wire only host-ward at the attach door
+// — a plugin never reads a secret back (the no-get trust line; the SDK surface
+// has no get). Module scope so the two stay in sync across StrictMode remounts.
+const editorSecrets = createEditorSecretStore();
+if (!import.meta.env.PROD) {
+  // Test affordance: drive a synthetic set prompt + observe/resolve it, and
+  // flip the persistence tier by setting a passphrase, without a
+  // secrets-declaring bundle in the harness.
+  (globalThis as unknown as { __secrets?: unknown }).__secrets = {
+    set: editorSecrets.backend.set,
+    exists: editorSecrets.backend.exists,
+    forget: editorSecrets.backend.forget,
+    current: () => editorSecrets.controller.current(),
+    tier: () => editorSecrets.controller.tier(),
+    setPassphrase: (p: string | null) =>
+      editorSecrets.controller.setPassphrase(p),
+  };
+}
+
 function PluginBundles() {
   const paged = usePaged();
   const pagedRef = useRef(paged);
@@ -932,6 +957,16 @@ function PluginBundles() {
     // `network: false`, so the door is dormant but correctly wired for the
     // first bundle that asks (paged.data's remote adapter, M1).
     const consent = editorConsent.backend;
+    // D-11 (rfc-credential-store): the reference-only credential store behind
+    // host.secrets — lets a bundle (paged.data's authenticated DB-attach /
+    // remote sources) have the host HOLD a credential by ref. set/exists/forget
+    // only; NO get (secret bytes never return to the plugin; the host injects
+    // them at the attach door). Injecting `secrets` flips supports("secrets@1")
+    // true; the SDK door owns the capability gate + namespacing. The backing
+    // tiers honestly: WebCrypto-wrapped IndexedDB with a user passphrase (the
+    // weaker pure-web tier), else session-only in-memory (refs die with the
+    // tab). `set` PROMPTS via <SecretPromptDialog> — "via host UI only".
+    const secrets = editorSecrets.backend;
     const hostOptions = {
       shell,
       widgets,
@@ -941,6 +976,7 @@ function PluginBundles() {
       workers,
       dataProviders,
       consent,
+      secrets,
       diagnosticsSink: problemsSink,
       schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
     };
@@ -1182,6 +1218,7 @@ function CanvasAppRoot() {
       <CanvasAppIntegration />
       <PluginBundles />
       <ConsentDialog controller={editorConsent.controller} />
+      <SecretPromptDialog controller={editorSecrets.controller} />
     </PagedShell>
   );
 }
