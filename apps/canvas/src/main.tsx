@@ -51,6 +51,13 @@ import { imageBundle } from "@paged-media/image-glue";
 import { createEditorAssetSource } from "./plugin-asset-source";
 import { createEditorBlobStore } from "./plugin-blob-store";
 import { createEditorClipboardBackend } from "./plugin-clipboard";
+import { createEditorWorkerBackend } from "./plugin-worker";
+// K-3 — the paged.image decode worker module, resolved as a served URL
+// through Vite's `?worker&url` (a bundled, COOP/COEP-served chunk). The
+// editor maps the bundle's DECLARED module path ("workers/decode.js") to
+// this URL; the bundle can spawn only what the editor knows it ships.
+// @ts-ignore — `?worker&url` is a Vite affordance (string URL).
+import imageDecodeWorkerUrl from "@paged-media/image-glue/decode-worker?worker&url";
 import { createEditorConsentBackend } from "./plugin-consent";
 import { ConsentDialog } from "./ConsentDialog";
 import { pickFiles } from "./shell-file-picker";
@@ -899,6 +906,18 @@ function PluginBundles() {
     // lands a real grid. Flips supports("clipboard@1") true; the SDK door owns
     // the "full"/"vector"/"none" capability tiers.
     const clipboard = createEditorClipboardBackend();
+    // K-3 / S-07 / I-02: the worker backend behind host.workers — lets a
+    // bundle (paged.image's decode pool) spawn an off-main-thread worker.
+    // The SDK door owns the capability gate, the count cap, the SAB byte
+    // budget (gated on crossOriginIsolated — live here via COOP/COEP), and
+    // teardown; this backend resolves a bundle's DECLARED module path to a
+    // served URL + constructs the Worker. Declared-only: a plugin id with
+    // no registered resolver (or an unknown module path) rejects honestly.
+    // Flips supports("workers@1") true.
+    const workers = createEditorWorkerBackend({
+      "media.paged.image": (module) =>
+        module === "workers/decode.js" ? imageDecodeWorkerUrl : null,
+    });
     // D-09 (paged.data §7.1): ONE shared cross-plugin data-provider registry,
     // injected into every bundle host so a provider plugin (paged.data publishing
     // a governed query) and a consumer plugin (paged.sheet sourcing a sheet from
@@ -919,6 +938,7 @@ function PluginBundles() {
       assetSource,
       blobStore,
       clipboard,
+      workers,
       dataProviders,
       consent,
       diagnosticsSink: problemsSink,
