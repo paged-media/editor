@@ -50,6 +50,7 @@ import { sheetBundle } from "@paged-media/sheet-bundle";
 import { imageBundle } from "@paged-media/image-glue";
 import { createEditorAssetSource } from "./plugin-asset-source";
 import { createEditorBlobStore } from "./plugin-blob-store";
+import { createEditorClipboardBackend } from "./plugin-clipboard";
 import { createEditorConsentBackend } from "./plugin-consent";
 import { ConsentDialog } from "./ConsentDialog";
 import { pickFiles } from "./shell-file-picker";
@@ -892,6 +893,12 @@ function PluginBundles() {
     // K-4 / S-08: the OPFS-backed blob store behind host.blob — lets a
     // bundle persist large binary payloads (a workbook) across reloads.
     const blobStore = createEditorBlobStore();
+    // K-6 / S-14: the system-clipboard backend behind host.clipboard — lets a
+    // bundle (the sheets grid) copy/paste a tabular range. Writes BOTH
+    // text/plain TSV and a text/html <table> so a paste into Excel/Sheets/Word
+    // lands a real grid. Flips supports("clipboard@1") true; the SDK door owns
+    // the "full"/"vector"/"none" capability tiers.
+    const clipboard = createEditorClipboardBackend();
     // D-09 (paged.data §7.1): ONE shared cross-plugin data-provider registry,
     // injected into every bundle host so a provider plugin (paged.data publishing
     // a governed query) and a consumer plugin (paged.sheet sourcing a sheet from
@@ -911,6 +918,7 @@ function PluginBundles() {
       widgets,
       assetSource,
       blobStore,
+      clipboard,
       dataProviders,
       consent,
       diagnosticsSink: problemsSink,
