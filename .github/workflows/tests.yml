@@ -135,7 +135,12 @@ jobs:
   playwright:
     name: playwright (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 50, not 30: the COLD (uncached) image-js cargo wasm build + paged-gen
+    # build + the multi-repo install chain consumed most of a 30-min budget,
+    # leaving no room for the sharded tests (they got cancelled). After run 1
+    # both `core/target` and `plugin-image/target` are cached and the job
+    # drops back to ~20-25 min; the headroom only matters on a cold cache.
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
