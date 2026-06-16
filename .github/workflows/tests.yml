@@ -317,6 +317,48 @@ jobs:
           done
           echo "corpus fixtures materialized OK"
 
+      # ---- paged.image wasm (image_js.js + .d.ts) -----------------------
+      # apps/canvas/src/main.tsx wires the paged.image bundle; its glue
+      # re-exports types from decode-worker.ts, which imports
+      # `@paged-media/image-manifest/wasm/image_js.js`. That wasm-bindgen
+      # output is gitignored (built by plugin-image/scripts/build-wasm.sh)
+      # and produced by NO other CI, so without it `tsc` fails (TS2307) and
+      # vite can't serve the canvas app — the whole surface goes red. Build
+      # it here, the same build-from-source pattern as paged-gen above. We
+      # run build-wasm.sh's two essential steps (cargo wasm build +
+      # wasm-bindgen) but SKIP wasm-opt and the 8 MiB size gate: the
+      # editor's dev/test path doesn't need the optimized artifact (that
+      # budget is plugin-image's own CI concern). wasm-bindgen-cli is pinned
+      # to the wasm-bindgen version in plugin-image/Cargo.lock (build-wasm.sh
+      # enforces that match).
+      - name: rust toolchain + wasm32 (for the image-js wasm)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.93.0" # mirrors plugin-image/rust-toolchain.toml — bump together
+          targets: wasm32-unknown-unknown
+
+      - name: install wasm-bindgen-cli (pinned to plugin-image Cargo.lock)
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen-cli@0.2.122
+
+      - name: cache image-js wasm build
+        uses: actions/cache@v4
+        with:
+          path: plugin-image/target
+          key: image-js-wasm-${{ runner.os }}-${{ hashFiles('plugin-image/Cargo.lock') }}
+          restore-keys: image-js-wasm-${{ runner.os }}-
+
+      - name: build paged.image wasm (image_js.js + .d.ts)
+        working-directory: plugin-image
+        run: |
+          cargo build --release --target wasm32-unknown-unknown -p image-js
+          wasm-bindgen target/wasm32-unknown-unknown/release/image_js.wasm \
+            --target web --out-dir manifest/wasm
+          test -f manifest/wasm/image_js.js
+          test -f manifest/wasm/image_js.d.ts
+          echo "paged.image wasm built (unoptimized — wasm-opt + size gate skipped)"
+
       # Pin pnpm: with the editor checked out under editor/ (not at the
       # workspace root), action-setup can't read `packageManager` from a
       # root package.json — match the editor's pnpm@9.0.0 explicitly. v9
