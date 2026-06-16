@@ -71,7 +71,7 @@ async function drawRect(
 }
 
 test.describe("E2E-01 — create → Shift-move → Alt-resize → Shift-rotate → undo×4 → redo×4", () => {
-  test("AC-E2E-GEST-FAM-1", async ({ page }) => {
+  test("AC-E2E-GEST-FAM-1 @feat:editor-tools.draw.rectangle @feat:editor-tools.move.translate @feat:editor-tools.select.click-marquee @level:happy", async ({ page }) => {
     test.setTimeout(180_000);
     await openCanvas(page);
     const fx = await loadViaReactPath(page, "geometry");
@@ -211,7 +211,7 @@ test.describe("E2E-01 — create → Shift-move → Alt-resize → Shift-rotate 
 });
 
 test.describe("E2E-04 — marquee subset → rigid group drag → one undo", () => {
-  test("AC-E2E-GEST-FAM-2", async ({ page }) => {
+  test("AC-E2E-GEST-FAM-2 @feat:editor-tools.draw.rectangle @feat:editor-tools.move.translate @feat:editor-tools.select.click-marquee @level:happy", async ({ page }) => {
     test.setTimeout(180_000);
     await openCanvas(page);
     const fx = await loadViaReactPath(page, "geometry");

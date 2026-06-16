@@ -27,7 +27,7 @@ interface CanvasGlobal {
 }
 
 test.describe("Inspector P1 — scene tree", () => {
-  test("AC-TREE-1 — sceneTree() lists every spread → page → frame", async ({
+  test("AC-TREE-1 — sceneTree() lists every spread → page → frame @feat:editor-shell.panels.tree @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);

@@ -57,7 +57,7 @@ test.describe("Panel gallery — Color Wheel", () => {
     ).toBeVisible();
   });
 
-  test("AC-CW-1 — wheel renders: disc, value track, model tabs, Triadic palette", async ({
+  test("AC-CW-1 — wheel renders: disc, value track, model tabs, Triadic palette @feat:editor-shell.panels.color-wheel @level:gesture", async ({
     page,
   }) => {
     await expect(page.locator("[data-wheel-disc]")).toBeVisible();
@@ -68,7 +68,7 @@ test.describe("Panel gallery — Color Wheel", () => {
     await expect(page.locator("[data-wheel-palette-swatch]")).toHaveCount(3);
   });
 
-  test("AC-CW-2 — dragging the disc and the value track moves the colour", async ({
+  test("AC-CW-2 — dragging the disc and the value track moves the colour @feat:editor-shell.panels.color-wheel @level:happy", async ({
     page,
   }) => {
     const before = await hexField(page).inputValue();
@@ -101,7 +101,7 @@ test.describe("Panel gallery — Color Wheel", () => {
     expect(afterTrack).toBe("#000000");
   });
 
-  test("AC-CW-3 — HEX → RGB → CMYK field round-trip stays in sync", async ({
+  test("AC-CW-3 — HEX → RGB → CMYK field round-trip stays in sync @feat:editor-shell.panels.color-wheel @level:happy", async ({
     page,
   }) => {
     // Author a pure red via the HEX field.
@@ -125,7 +125,7 @@ test.describe("Panel gallery — Color Wheel", () => {
     await expect(hexField(page)).toHaveValue("#000000");
   });
 
-  test("AC-CW-4 — harmony switching resizes the palette; swatch click selects", async ({
+  test("AC-CW-4 — harmony switching resizes the palette; swatch click selects @feat:editor-shell.panels.color-wheel @level:gesture", async ({
     page,
   }) => {
     await page.locator('[data-wheel-harmony="Complementary"]').click();
@@ -141,7 +141,7 @@ test.describe("Panel gallery — Color Wheel", () => {
     await expect(hexField(page)).toHaveValue(targetHex);
   });
 
-  test("AC-CW-5 — Add to Swatches lands the palette as ONE undoable batch", async ({
+  test("AC-CW-5 — Add to Swatches lands the palette as ONE undoable batch @feat:editor-shell.panels.color-wheel @level:happy", async ({
     page,
   }) => {
     const before = await swatchCount(page);

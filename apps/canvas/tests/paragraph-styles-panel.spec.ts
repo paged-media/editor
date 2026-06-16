@@ -30,7 +30,7 @@ test.describe("Phase 5 — Paragraph Styles panel", () => {
     await openPanel(page, "paged.paragraph-styles");
   });
 
-  test("AC-PSTYLE-1 — panel mounts as a composition with a select", async ({
+  test("AC-PSTYLE-1 — panel mounts as a composition with a select @feat:editor-shell.panels.paragraph-styles @feat:styles.paragraph.crud @level:smoke", async ({
     page,
   }) => {
     // Panel-gallery pass: the panel is the shared ApplyList
@@ -47,7 +47,7 @@ test.describe("Phase 5 — Paragraph Styles panel", () => {
     ).toBeVisible();
   });
 
-  test("AC-PSTYLE-2 — without content selection, the select shows the mixed/empty placeholder", async ({
+  test("AC-PSTYLE-2 — without content selection, the select shows the mixed/empty placeholder @feat:editor-shell.panels.paragraph-styles @feat:styles.paragraph.crud @level:edge", async ({
     page,
   }) => {
     // No content selection → the binding hook returns `value: null`
@@ -62,7 +62,7 @@ test.describe("Phase 5 — Paragraph Styles panel", () => {
     await expect(select).toHaveValue("");
   });
 
-  test("AC-PSTYLE-3 — selecting a style writes appliedParagraphStyle through the apply layer", async ({
+  test("AC-PSTYLE-3 — selecting a style writes appliedParagraphStyle through the apply layer @feat:editor-shell.panels.paragraph-styles @feat:styles.paragraph.crud @level:happy", async ({
     page,
   }) => {
     // Programmatically install a content selection on a known
@@ -181,7 +181,7 @@ test.describe("Phase 5 — Paragraph Styles panel", () => {
     expect(selectedSelfId).toBeTruthy();
   });
 
-  test("AC-PSTYLE-4 — ApplyList rows + New creates + Redefine is a seam", async ({
+  test("AC-PSTYLE-4 — ApplyList rows + New creates + Redefine is a seam @feat:editor-shell.panels.paragraph-styles @feat:styles.paragraph.crud @level:happy", async ({
     page,
   }) => {
     const root = page.locator('[data-paragraph-styles-panel="ready"]');

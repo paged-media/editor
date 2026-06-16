@@ -145,7 +145,7 @@ async function portPoint(
 }
 
 test.describe("gestures.md TH — text-frame threading ports", () => {
-  test("TH-PORTS: a selected text frame shows in/out ports; a rectangle does not", async ({
+  test("TH-PORTS: a selected text frame shows in/out ports; a rectangle does not @feat:editor-tools.text.threading-ports @feat:layout-model.text-frame-chain @level:happy", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -166,7 +166,7 @@ test.describe("gestures.md TH — text-frame threading ports", () => {
     }
   });
 
-  test("TH-01: out-port click loads the cursor; clicking an empty text frame links them; undo unlinks", async ({
+  test("TH-01: out-port click loads the cursor; clicking an empty text frame links them; undo unlinks @feat:editor-tools.text.threading-ports @feat:layout-model.text-frame-chain @level:edge", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -229,7 +229,7 @@ test.describe("gestures.md TH — text-frame threading ports", () => {
     await expect.poll(() => portState(page, "out")).toBe("empty");
   });
 
-  test("TH-02: out-port click then click on empty canvas draws a new frame and links into it (2 ops)", async ({
+  test("TH-02: out-port click then click on empty canvas draws a new frame and links into it (2 ops) @feat:editor-tools.text.threading-ports @feat:layout-model.text-frame-chain @level:edge", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -267,7 +267,7 @@ test.describe("gestures.md TH — text-frame threading ports", () => {
     await expect.poll(() => portState(page, "out")).toBe("chained");
   });
 
-  test("TH-03: out-port click then Esc clears the loaded cursor with no mutation", async ({
+  test("TH-03: out-port click then Esc clears the loaded cursor with no mutation @feat:editor-tools.text.threading-ports @feat:layout-model.text-frame-chain @level:gesture", async ({
     page,
   }) => {
     test.setTimeout(120_000);

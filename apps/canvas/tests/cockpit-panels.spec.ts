@@ -32,7 +32,7 @@ async function loadFixture(page: Page) {
 }
 
 test.describe("Cockpit — Export Center", () => {
-  test("the PDF target opens the real export dialog and completes", async ({
+  test("the PDF target opens the real export dialog and completes @feat:editor-shell.panel-rail @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -63,7 +63,7 @@ test.describe("Cockpit — Export Center", () => {
 });
 
 test.describe("Cockpit — Preflight", () => {
-  test("Validate output runs the real exporter and reports", async ({
+  test("Validate output runs the real exporter and reports @feat:editor-shell.panel-rail @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -82,7 +82,7 @@ test.describe("Cockpit — Preflight", () => {
 });
 
 test.describe("Cockpit — Publication health + stubs", () => {
-  test("health shows live metrics; stubs are visibly stubs", async ({
+  test("health shows live metrics; stubs are visibly stubs @feat:editor-shell.panel-rail @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);

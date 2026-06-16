@@ -54,7 +54,7 @@ test.describe("editor.script — runtime budgets", () => {
     await loadIdml(page, FIXTURE);
   });
 
-  test("AC-SCRIPT-BUDGET-1 — a runaway loop returns a budget error, not a hang", async ({
+  test("AC-SCRIPT-BUDGET-1 — a runaway loop returns a budget error, not a hang @feat:scripting.runtime-budgets @level:edge", async ({
     page,
   }) => {
     const r = await run(page, `while (true) {}`);
@@ -64,7 +64,7 @@ test.describe("editor.script — runtime budgets", () => {
     expect(r.error!.toLowerCase()).toContain("budget");
   });
 
-  test("AC-SCRIPT-BUDGET-2 — the worker survives a runaway and serves the next script", async ({
+  test("AC-SCRIPT-BUDGET-2 — the worker survives a runaway and serves the next script @feat:scripting.runtime-budgets @level:happy", async ({
     page,
   }) => {
     // Trip the budget, then prove the engine is still alive: a trivial
@@ -77,7 +77,7 @@ test.describe("editor.script — runtime budgets", () => {
     expect(alive.output.some((l) => l.includes("still-alive"))).toBe(true);
   });
 
-  test("AC-SCRIPT-BUDGET-3 — a budget-tripped script leaves the document untouched", async ({
+  test("AC-SCRIPT-BUDGET-3 — a budget-tripped script leaves the document untouched @feat:scripting.runtime-budgets @level:happy", async ({
     page,
   }) => {
     // A scripted edit BEFORE the runaway commits; the runaway itself

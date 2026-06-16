@@ -75,7 +75,7 @@ test.describe("E2E bullets & numbering ops", () => {
     region = (await elementPageRectPt(page, frame.ref))!;
   });
 
-  test("AC-E2E-BN-bullet — list type Bullet + bullet glyph land; undo clears", async ({
+  test("AC-E2E-BN-bullet — list type Bullet + bullet glyph land; undo clears @feat:editor-shell.panels.bullets-numbering @level:gesture", async ({
     page,
   }) => {
     // List type + bullet glyph together: a marker only inserts when
@@ -136,7 +136,7 @@ test.describe("E2E bullets & numbering ops", () => {
     });
   });
 
-  test("AC-E2E-BN-numbering — numbering format lands; undo clears", async ({
+  test("AC-E2E-BN-numbering — numbering format lands; undo clears @feat:editor-shell.panels.bullets-numbering @level:happy", async ({
     page,
   }) => {
     await opSandwich(page, {

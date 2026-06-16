@@ -166,7 +166,7 @@ async function loadAndSelectCell(
 }
 
 test.describe("W3.A2 — Table panel op sandwiches", () => {
-  test("AC-TABLE-FILL: cell fill colour applies + undoes (engine truth)", async ({
+  test("AC-TABLE-FILL: cell fill colour applies + undoes (engine truth) @feat:editor-shell.panels.table @feat:tables.model @level:happy", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -194,7 +194,7 @@ test.describe("W3.A2 — Table panel op sandwiches", () => {
       .toBe(before);
   });
 
-  test("AC-TABLE-INSERT-ROW: insert row grows the table + undo shrinks it", async ({
+  test("AC-TABLE-INSERT-ROW: insert row grows the table + undo shrinks it @feat:editor-shell.panels.table @feat:tables.model @level:happy", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -312,7 +312,7 @@ test.describe("W3.A2 — Table panel op sandwiches", () => {
     void addr;
   });
 
-  test("AC-TABLE-ROW-HEIGHT: setRowHeight applies + undoes on the channel", async ({
+  test("AC-TABLE-ROW-HEIGHT: setRowHeight applies + undoes on the channel @feat:editor-shell.panels.table @feat:tables.model @level:happy", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -347,7 +347,7 @@ test.describe("W3.A2 — Table panel op sandwiches", () => {
     await expect.poll(() => replies.filter((r) => r === "undoApplied").length).toBeGreaterThan(0);
   });
 
-  test("AC-TABLE-DIMS: panel shows row × column totals; cell overlay is tighter than the table frame", async ({
+  test("AC-TABLE-DIMS: panel shows row × column totals; cell overlay is tighter than the table frame @feat:editor-shell.panels.table @feat:tables.model @level:happy", async ({
     page,
   }) => {
     test.setTimeout(120_000);

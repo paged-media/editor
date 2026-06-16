@@ -31,7 +31,7 @@ test.describe("Phase 5 — Pathfinder panel", () => {
     await openPanel(page, "paged.pathfinder");
   });
 
-  test("AC-PF-1 — panel mounts; 4 buttons; all enabled when 2+ selected", async ({
+  test("AC-PF-1 — panel mounts; 4 buttons; all enabled when 2+ selected @feat:editor-shell.panels.pathfinder @feat:frames-paths.pathfinder-boolean @level:smoke", async ({
     page,
   }) => {
     await expect(page.locator('[data-pathfinder-panel="ready"]')).toBeVisible();
@@ -45,7 +45,7 @@ test.describe("Phase 5 — Pathfinder panel", () => {
     ).toBeVisible();
   });
 
-  test("AC-PF-2 — Subtract on overlapping rects yields L-shape + removes others", async ({
+  test("AC-PF-2 — Subtract on overlapping rects yields L-shape + removes others @feat:editor-shell.panels.pathfinder @feat:frames-paths.pathfinder-boolean @level:happy", async ({
     page,
   }) => {
     const result = await page.evaluate(async () => {
@@ -246,7 +246,7 @@ test.describe("Phase 5 — Pathfinder panel", () => {
     });
   });
 
-  test("AC-PF-3 — single Cmd-Z reverses the whole Pathfinder op", async ({
+  test("AC-PF-3 — single Cmd-Z reverses the whole Pathfinder op @feat:editor-shell.panels.pathfinder @feat:frames-paths.pathfinder-boolean @level:happy", async ({
     page,
   }) => {
     const result = await page.evaluate(async () => {

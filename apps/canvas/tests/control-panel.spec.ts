@@ -18,7 +18,7 @@ test.describe("Phase 5 — Control bar", () => {
     await openPanel(page, "paged.control");
   });
 
-  test("AC-CTRL-1 — empty selection shows the guidance hint", async ({
+  test("AC-CTRL-1 — empty selection shows the guidance hint @feat:editor-shell.panels.control @level:edge", async ({
     page,
   }) => {
     await expect(page.locator('[data-control-panel="ready"]')).toBeVisible();
@@ -27,7 +27,7 @@ test.describe("Phase 5 — Control bar", () => {
     ).toBeVisible();
   });
 
-  test("AC-CTRL-2 — element selection adds Object + Stroke sections horizontally", async ({
+  test("AC-CTRL-2 — element selection adds Object + Stroke sections horizontally @feat:editor-shell.panels.control @level:happy", async ({
     page,
   }) => {
     await page.evaluate(async () => {

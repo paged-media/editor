@@ -47,7 +47,7 @@ test.describe("Gesture modifier semantics", () => {
     pageIndex = target.pageIndex;
   });
 
-  test("AC-E2E-GEST-MOD-1 — TR-01: Shift locks translate to the dominant axis", async ({
+  test("AC-E2E-GEST-MOD-1 — TR-01: Shift locks translate to the dominant axis @feat:editor-tools.move.translate @feat:editor-tools.resize.handles @feat:editor-tools.shear @level:happy", async ({
     page,
   }) => {
     const start = (await elementPageRectPt(page, ref))!;
@@ -60,7 +60,7 @@ test.describe("Gesture modifier semantics", () => {
     await undo(page);
   });
 
-  test("AC-E2E-GEST-MOD-2 — TR-01: the dominant axis flips mid-drag", async ({
+  test("AC-E2E-GEST-MOD-2 — TR-01: the dominant axis flips mid-drag @feat:editor-tools.move.translate @feat:editor-tools.resize.handles @feat:editor-tools.shear @level:gesture", async ({
     page,
   }) => {
     const start = (await elementPageRectPt(page, ref))!;
@@ -77,7 +77,7 @@ test.describe("Gesture modifier semantics", () => {
     await undo(page);
   });
 
-  test("AC-E2E-GEST-MOD-3 — INV-5/GSM-08: releasing Shift mid-gesture drops the constraint on that sample", async ({
+  test("AC-E2E-GEST-MOD-3 — INV-5/GSM-08: releasing Shift mid-gesture drops the constraint on that sample @feat:editor-tools.move.translate @feat:editor-tools.resize.handles @feat:editor-tools.shear @level:gesture", async ({
     page,
   }) => {
     const start = (await elementPageRectPt(page, ref))!;
@@ -94,7 +94,7 @@ test.describe("Gesture modifier semantics", () => {
     await undo(page);
   });
 
-  test("AC-E2E-GEST-MOD-4 — TR-02+TR-03: Shift+Alt resize is proportional about the centre", async ({
+  test("AC-E2E-GEST-MOD-4 — TR-02+TR-03: Shift+Alt resize is proportional about the centre @feat:editor-tools.move.translate @feat:editor-tools.resize.handles @feat:editor-tools.shear @level:gesture", async ({
     page,
   }) => {
     const before = await bounds(page, ref);
@@ -117,7 +117,7 @@ test.describe("Gesture modifier semantics", () => {
     await undo(page);
   });
 
-  test("AC-E2E-GEST-MOD-5 — TR-07: Shift snaps the shear angle to 15° steps", async ({
+  test("AC-E2E-GEST-MOD-5 — TR-07: Shift snaps the shear angle to 15° steps @feat:editor-tools.move.translate @feat:editor-tools.resize.handles @feat:editor-tools.shear @level:gesture", async ({
     page,
   }) => {
     const pageRect = (await elementPageRectPt(page, ref))!;
@@ -158,7 +158,7 @@ test.describe("Gesture modifier semantics", () => {
     await undo(page);
   });
 
-  test("AC-E2E-GEST-MOD-6 — SNAP-07/§8.4: disableSnap bypasses the snap pass; without it the edge snaps and indicates", async ({
+  test("AC-E2E-GEST-MOD-6 — SNAP-07/§8.4: disableSnap bypasses the snap pass; without it the edge snaps and indicates @feat:editor-tools.move.translate @feat:editor-tools.resize.handles @feat:editor-tools.shear @level:edge", async ({
     page,
   }) => {
     const start = (await elementPageRectPt(page, ref))!;
@@ -198,7 +198,7 @@ test.describe("Gesture modifier semantics", () => {
     await undo(page);
   });
 
-  test("AC-E2E-GEST-MOD-7 — modifier objects never leak between sessions (fresh begin is unconstrained)", async ({
+  test("AC-E2E-GEST-MOD-7 — modifier objects never leak between sessions (fresh begin is unconstrained) @feat:editor-tools.move.translate @feat:editor-tools.resize.handles @feat:editor-tools.shear @level:happy", async ({
     page,
   }) => {
     // A Shift-constrained session followed by a plain one: the second

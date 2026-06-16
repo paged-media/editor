@@ -27,7 +27,7 @@ test.describe("Phase 3 — Character panel (declarative composition)", () => {
     await openPanel(page, "paged.character");
   });
 
-  test("AC-CHAR-1 — Character panel mounts and shows section title", async ({
+  test("AC-CHAR-1 — Character panel mounts and shows section title @feat:editor-shell.panels.character @feat:typography.font-selection @level:smoke", async ({
     page,
   }) => {
     // The Character panel is in `BUILT_IN_PANELS` with title "Character".
@@ -62,7 +62,7 @@ test.describe("Phase 3 — Character panel (declarative composition)", () => {
     ).toBeDisabled();
   });
 
-  test("AC-CHAR-2 — fields render em-dash placeholder when no content selection", async ({
+  test("AC-CHAR-2 — fields render em-dash placeholder when no content selection @feat:editor-shell.panels.character @feat:typography.font-selection @level:happy", async ({
     page,
   }) => {
     // No content selection by default → every binding resolves to
@@ -83,7 +83,7 @@ test.describe("Phase 3 — Character panel (declarative composition)", () => {
     ).toBeVisible();
   });
 
-  test("AC-CHAR-3 — content selection over a real story populates Character fields", async ({
+  test("AC-CHAR-3 — content selection over a real story populates Character fields @feat:editor-shell.panels.character @feat:typography.font-selection @level:happy", async ({
     page,
   }) => {
     // Use `paged.stories()` to find a valid story id without
@@ -140,7 +140,7 @@ test.describe("Phase 3 — Character panel (declarative composition)", () => {
       .toBeLessThan(4);
   });
 
-  test("AC-CHAR-4 — setContentSelection routes through __canvas without throwing", async ({
+  test("AC-CHAR-4 — setContentSelection routes through __canvas without throwing @feat:editor-shell.panels.character @feat:typography.font-selection @level:happy", async ({
     page,
   }) => {
     // The shell exposes `setContentSelection` on the __canvas debug
@@ -173,7 +173,7 @@ test.describe("Phase 3 — Character panel (declarative composition)", () => {
     expect(ok).toBe(true);
   });
 
-  test("AC-CHAR-5 — OpenType chips write characterOtfFeatures over a story range; round-trips", async ({
+  test("AC-CHAR-5 — OpenType chips write characterOtfFeatures over a story range; round-trips @feat:editor-shell.panels.character @feat:typography.font-selection @level:happy", async ({
     page,
   }) => {
     // W2.4 — the OTF chip row writes the opaque `characterOtfFeatures`

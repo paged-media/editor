@@ -106,7 +106,7 @@ test.describe("Scripting Stage 1.b — REPL", () => {
     await loadIdml(page, FIXTURE);
   });
 
-  test("AC-REPL-1 — `set <frame> frameOpacity length:50` updates the frame", async ({
+  test("AC-REPL-1 — `set <frame> frameOpacity length:50` updates the frame @feat:scripting.repl @level:happy", async ({
     page,
   }) => {
     await dispatch(
@@ -116,7 +116,7 @@ test.describe("Scripting Stage 1.b — REPL", () => {
     expect(await fetchOpacity(page, TEXT_FRAME_ID)).toBe(50);
   });
 
-  test("AC-REPL-2 — `set <frame> frameFillColor colorRef:Color/Red` updates fill", async ({
+  test("AC-REPL-2 — `set <frame> frameFillColor colorRef:Color/Red` updates fill @feat:scripting.repl @level:happy", async ({
     page,
   }) => {
     await dispatch(
@@ -136,7 +136,7 @@ test.describe("Scripting Stage 1.b — REPL", () => {
     expect(fill).toBe("Color/Red");
   });
 
-  test("AC-REPL-3 — undo and redo round-trip", async ({ page }) => {
+  test("AC-REPL-3 — undo and redo round-trip @feat:scripting.repl @level:happy", async ({ page }) => {
     await dispatch(
       page,
       `set textFrame:${TEXT_FRAME_ID} frameOpacity length:25`,
@@ -148,7 +148,7 @@ test.describe("Scripting Stage 1.b — REPL", () => {
     expect(await fetchOpacity(page, TEXT_FRAME_ID)).toBe(25);
   });
 
-  test("AC-REPL-4 — inspect returns an ElementProperties payload", async ({
+  test("AC-REPL-4 — inspect returns an ElementProperties payload @feat:scripting.repl @level:happy", async ({
     page,
   }) => {
     const result = await dispatch(page, `inspect textFrame:${TEXT_FRAME_ID}`);

@@ -54,7 +54,7 @@ async function setMode(page: Page, mode: string) {
 // Export Center — the centred readiness table (canvas main view).
 // ─────────────────────────────────────────────────────────────────
 test.describe("Export family — Export Center", () => {
-  test("six rows: three LIVE (PDF/image/IDML), three HONEST seams", async ({
+  test("six rows: three LIVE (PDF/image/IDML), three HONEST seams @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -90,7 +90,7 @@ test.describe("Export family — Export Center", () => {
     await setMode(page, "design");
   });
 
-  test("LIVE — the PDF row opens the real dialog and downloads a .pdf", async ({
+  test("LIVE — the PDF row opens the real dialog and downloads a .pdf @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -108,7 +108,7 @@ test.describe("Export family — Export Center", () => {
     await setMode(page, "design");
   });
 
-  test("LIVE — the IDML row downloads a real .idml package", async ({ page }) => {
+  test("LIVE — the IDML row downloads a real .idml package @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:happy", async ({ page }) => {
     await openCanvas(page);
     await loadDoc(page, CLEAN);
     await setMode(page, "export");
@@ -126,7 +126,7 @@ test.describe("Export family — Export Center", () => {
 // Outputs — the left target nav (status dots reflect readiness).
 // ─────────────────────────────────────────────────────────────────
 test.describe("Export family — Outputs nav", () => {
-  test("nav lists every target; LIVE ones flag live + ready dots", async ({
+  test("nav lists every target; LIVE ones flag live + ready dots @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -153,7 +153,7 @@ test.describe("Export family — Outputs nav", () => {
     ).toBeVisible();
   });
 
-  test("clicking a target selects it (syncs the shared store)", async ({
+  test("clicking a target selects it (syncs the shared store) @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -171,7 +171,7 @@ test.describe("Export family — Outputs nav", () => {
 // Export settings — the right per-target inspector (inline settings).
 // ─────────────────────────────────────────────────────────────────
 test.describe("Export family — Export inspector", () => {
-  test("LIVE image target — inline DPI/scope settings drive a real PNG export", async ({
+  test("LIVE image target — inline DPI/scope settings drive a real PNG export @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -203,7 +203,7 @@ test.describe("Export family — Export inspector", () => {
     await setMode(page, "design");
   });
 
-  test("LIVE IDML target — the run button downloads the package", async ({
+  test("LIVE IDML target — the run button downloads the package @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -222,7 +222,7 @@ test.describe("Export family — Export inspector", () => {
     await setMode(page, "design");
   });
 
-  test("HONEST target — the web seam shows the concept copy, no run button", async ({
+  test("HONEST target — the web seam shows the concept copy, no run button @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -252,7 +252,7 @@ test.describe("Export family — Export inspector", () => {
 // Output readiness — the Prepress right inspector (preflight checks).
 // ─────────────────────────────────────────────────────────────────
 test.describe("Export family — Output readiness", () => {
-  test("checks are LIVE verdicts off the wire; bleed stays the one HONEST seam", async ({
+  test("checks are LIVE verdicts off the wire; bleed stays the one HONEST seam @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -290,7 +290,7 @@ test.describe("Export family — Output readiness", () => {
     await setMode(page, "design");
   });
 
-  test("broken-links doc — the LIVE checks reflect REAL missing links + low-res", async ({
+  test("broken-links doc — the LIVE checks reflect REAL missing links + low-res @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:edge", async ({
     page,
   }) => {
     await openCanvas(page);

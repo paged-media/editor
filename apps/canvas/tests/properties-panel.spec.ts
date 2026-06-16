@@ -23,7 +23,7 @@ test.describe("Phase 5 — Properties panel", () => {
     await openPanel(page, "paged.properties");
   });
 
-  test("AC-PROP-1 — empty selection shows the guidance hint", async ({
+  test("AC-PROP-1 — empty selection shows the guidance hint @feat:editor-shell.panels.properties @level:edge", async ({
     page,
   }) => {
     await expect(page.locator('[data-properties-panel="ready"]')).toBeVisible();
@@ -36,7 +36,7 @@ test.describe("Phase 5 — Properties panel", () => {
     ).toHaveCount(0);
   });
 
-  test("AC-PROP-2 — element selection adds Object + Stroke sections", async ({
+  test("AC-PROP-2 — element selection adds Object + Stroke sections @feat:editor-shell.panels.properties @level:happy", async ({
     page,
   }) => {
     await page.evaluate(async () => {

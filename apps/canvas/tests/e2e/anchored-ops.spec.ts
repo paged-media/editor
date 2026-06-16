@@ -75,7 +75,7 @@ test.describe("E2E anchored-object (W2.12) ops", () => {
     await loadIdml(page, FIXTURE);
   });
 
-  test("AC-E2E-ANCH-readback — the anchored frame surfaces its live settings", async ({
+  test("AC-E2E-ANCH-readback — the anchored frame surfaces its live settings @feat:anchored-inline-objects.anchored-ops @level:happy", async ({
     page,
   }) => {
     const pos = await readAnchored(page, "anchoredPosition");
@@ -90,7 +90,7 @@ test.describe("E2E anchored-object (W2.12) ops", () => {
     expect(xo?.type).toBe("length");
   });
 
-  test("AC-E2E-ANCH-mode — position mode + offsets land and undo restores", async ({
+  test("AC-E2E-ANCH-mode — position mode + offsets land and undo restores @feat:anchored-inline-objects.anchored-ops @level:happy", async ({
     page,
   }) => {
     // Switch to custom (Anchored) position, then push X/Y offsets —
@@ -137,7 +137,7 @@ test.describe("E2E anchored-object (W2.12) ops", () => {
     );
   });
 
-  test("AC-E2E-ANCH-geometry — a custom anchored offset MOVES the rendered geometry; undo restores byte-identically", async ({
+  test("AC-E2E-ANCH-geometry — a custom anchored offset MOVES the rendered geometry; undo restores byte-identically @feat:anchored-inline-objects.anchored-ops @level:happy", async ({
     page,
   }) => {
     // The anchored frame is nested in text, so `elementGeometry`

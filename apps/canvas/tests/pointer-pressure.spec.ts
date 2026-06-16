@@ -38,7 +38,7 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
 
 test.describe("B-08 — pointer pressure/tilt plumbing", () => {
-  test("a real DOM PointerEvent exposes the pressure/tilt/pointerType fields ViewportCanvas reads", async ({
+  test("a real DOM PointerEvent exposes the pressure/tilt/pointerType fields ViewportCanvas reads @feat:editor-tools.gesture-lifecycle @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -79,7 +79,7 @@ test.describe("B-08 — pointer pressure/tilt plumbing", () => {
     expect(seen.button).toBe(0);
   });
 
-  test("a mouse PointerEvent with a button held reports pressure 0.5 (browser semantics preserved)", async ({
+  test("a mouse PointerEvent with a button held reports pressure 0.5 (browser semantics preserved) @feat:editor-tools.gesture-lifecycle @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);

@@ -24,7 +24,7 @@ test.describe("E2E harness proving", () => {
     fx = await loadFixture(page, "geometry");
   });
 
-  test("AC-E2E-PROVE-1 — opacity via the Object panel lands on the canvas", async ({
+  test("AC-E2E-PROVE-1 — opacity via the Object panel lands on the canvas @feat:round-tripping.undo-redo @feat:the-renderer.snapshots @level:happy", async ({
     page,
   }) => {
     const target = fx.frames.find((f) => f.ref.kind === "rectangle");
@@ -62,7 +62,7 @@ test.describe("E2E harness proving", () => {
     });
   });
 
-  test("AC-E2E-PROVE-2 — translate gesture repaints exactly the moved frame", async ({
+  test("AC-E2E-PROVE-2 — translate gesture repaints exactly the moved frame @feat:round-tripping.undo-redo @feat:the-renderer.snapshots @level:gesture", async ({
     page,
   }) => {
     const target = fx.frames.find((f) => f.ref.kind === "rectangle")!;
@@ -137,7 +137,7 @@ test.describe("E2E harness proving", () => {
     });
   });
 
-  test("AC-E2E-PROVE-3 — deleteFrame removes the pixels; undo restores byte-identically", async ({
+  test("AC-E2E-PROVE-3 — deleteFrame removes the pixels; undo restores byte-identically @feat:round-tripping.undo-redo @feat:the-renderer.snapshots @level:happy", async ({
     page,
   }) => {
     // ENGINE BUG (found 2026-06-05, FIXED in core 2026-06-06,

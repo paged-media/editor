@@ -58,7 +58,7 @@ test.describe("E2E transform gestures", () => {
     fx = await loadFixture(page, "geometry-groups");
   });
 
-  test("AC-E2E-XFORM-1 — translating a frame repaints its footprint amid compound transforms; undo restores it", async ({
+  test("AC-E2E-XFORM-1 — translating a frame repaints its footprint amid compound transforms; undo restores it @feat:editor-tools.move.translate @level:happy", async ({
     page,
   }) => {
     const target = fx.frames.find((f) => f.ref.kind === "rectangle")!;

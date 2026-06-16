@@ -14,7 +14,7 @@ const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
 test.describe("Phase 5 — Links panel", () => {
-  test("AC-LINKS-1 — empty fixture renders the empty-links placeholder", async ({
+  test("AC-LINKS-1 — empty fixture renders the empty-links placeholder @feat:editor-shell.panels.links @level:edge", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -24,7 +24,7 @@ test.describe("Phase 5 — Links panel", () => {
     await expect(page.locator("[data-empty-links]")).toBeVisible();
   });
 
-  test("AC-LINKS-2 — images fixture lists at least one link", async ({
+  test("AC-LINKS-2 — images fixture lists at least one link @feat:editor-shell.panels.links @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -35,7 +35,7 @@ test.describe("Phase 5 — Links panel", () => {
     await expect(rows).not.toHaveCount(0);
   });
 
-  test("AC-LINKS-3 — resolved links carry no missing/lo-res badge", async ({
+  test("AC-LINKS-3 — resolved links carry no missing/lo-res badge @feat:editor-shell.panels.links @level:edge", async ({
     page,
   }) => {
     // W2.2 — `links-ok.idml` is the dedicated all-healthy control: two
@@ -56,7 +56,7 @@ test.describe("Phase 5 — Links panel", () => {
     await expect(page.locator('[data-row-badge="lo-res"]')).toHaveCount(0);
   });
 
-  test("AC-LINKS-4 — a broken link shows the missing badge + error dot", async ({
+  test("AC-LINKS-4 — a broken link shows the missing badge + error dot @feat:editor-shell.panels.links @level:edge", async ({
     page,
   }) => {
     // Aftercare-D: `links-broken` ships two dangling image references
@@ -72,7 +72,7 @@ test.describe("Phase 5 — Links panel", () => {
     ).toBeVisible();
   });
 
-  test("AC-LINKS-5 — a low-res placement shows the lo-res badge + PPI", async ({
+  test("AC-LINKS-5 — a low-res placement shows the lo-res badge + PPI @feat:editor-shell.panels.links @level:happy", async ({
     page,
   }) => {
     // Aftercare-D: `links-broken`'s `links · ppi · low-res` row embeds a

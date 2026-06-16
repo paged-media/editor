@@ -95,7 +95,7 @@ test.describe("Inspector P1 — property panel", () => {
     await loadIdml(page, FIXTURE);
   });
 
-  test("AC-INS-1 — element properties surface frame-level entries", async ({
+  test("AC-INS-1 — element properties surface frame-level entries @feat:editor-shell.panels.inspector @feat:the-renderer.properties-read @level:happy", async ({
     page,
   }) => {
     const props = await fetchProps(page, TEXT_FRAME_ID);
@@ -142,7 +142,7 @@ test.describe("Inspector P1 — property panel", () => {
     );
   });
 
-  test("AC-INS-2 — SetElementProperty on fill commits via the apply layer", async ({
+  test("AC-INS-2 — SetElementProperty on fill commits via the apply layer @feat:editor-shell.panels.inspector @feat:the-renderer.properties-read @level:happy", async ({
     page,
   }) => {
     const before = await fetchProps(page, TEXT_FRAME_ID);
@@ -170,7 +170,7 @@ test.describe("Inspector P1 — property panel", () => {
     expect(entryFor(after, "frameFillColor").value.value).toBe("Color/Red");
   });
 
-  test("AC-INS-3 — SetElementProperty on bounds commits", async ({ page }) => {
+  test("AC-INS-3 — SetElementProperty on bounds commits @feat:editor-shell.panels.inspector @feat:the-renderer.properties-read @level:happy", async ({ page }) => {
     const before = await fetchProps(page, TEXT_FRAME_ID);
     const boundsBefore = entryFor(before, "frameBounds").value.value as [
       number,
@@ -204,7 +204,7 @@ test.describe("Inspector P1 — property panel", () => {
     expect(entryFor(after, "frameBounds").value.value).toEqual(next);
   });
 
-  test("AC-INS-4 — Cmd-Z restores the previous value", async ({ page }) => {
+  test("AC-INS-4 — Cmd-Z restores the previous value @feat:editor-shell.panels.inspector @feat:the-renderer.properties-read @level:happy", async ({ page }) => {
     const before = await fetchProps(page, TEXT_FRAME_ID);
     const originalOpacity = entryFor(before, "frameOpacity").value.value;
     await page.evaluate(
@@ -234,7 +234,7 @@ test.describe("Inspector P1 — property panel", () => {
     );
   });
 
-  test("AC-INS-5 — a translate gesture updates the bounds entry live", async ({
+  test("AC-INS-5 — a translate gesture updates the bounds entry live @feat:editor-shell.panels.inspector @feat:the-renderer.properties-read @level:gesture", async ({
     page,
   }) => {
     // Use a Rectangle (which carries un-rotated bounds) so the

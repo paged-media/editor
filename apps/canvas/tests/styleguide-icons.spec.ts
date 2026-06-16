@@ -95,7 +95,7 @@ const ALL_NAMES = REGISTRIES.flatMap((r) =>
 );
 
 test.describe("Styleguide — icon conformance", () => {
-  test("the three glyph registries are populated and prefix-clean", () => {
+  test("the three glyph registries are populated and prefix-clean @feat:editor-shell.context-toolbars @feat:editor-shell.panel-rail @feat:editor-shell.tool-rail @level:happy", () => {
     for (const { file, konst, prefix } of REGISTRIES) {
       const src = readGlyphSource(file);
       expect(src, `${file} must export ${konst}`).toContain(
@@ -118,7 +118,7 @@ test.describe("Styleguide — icon conformance", () => {
     expect(dups, `duplicate glyph names: ${dups.join(", ")}`).toEqual([]);
   });
 
-  test("no glyph authors a hardcoded colour (currentColor / token only)", () => {
+  test("no glyph authors a hardcoded colour (currentColor / token only) @feat:editor-shell.context-toolbars @feat:editor-shell.panel-rail @feat:editor-shell.tool-rail @level:happy", () => {
     const offenders: string[] = [];
     for (const { file } of REGISTRIES) {
       const src = readGlyphSource(file);
@@ -128,7 +128,7 @@ test.describe("Styleguide — icon conformance", () => {
     expect(offenders, "\n" + offenders.join("\n")).toEqual([]);
   });
 
-  test("every Icon the app renders is a 24×24 currentColor SVG", async ({
+  test("every Icon the app renders is a 24×24 currentColor SVG @feat:editor-shell.context-toolbars @feat:editor-shell.panel-rail @feat:editor-shell.tool-rail @level:happy", async ({
     page,
   }) => {
     // The live chrome (tool rail, panel rail, mode switcher, dock tabs,
@@ -161,7 +161,7 @@ test.describe("Styleguide — icon conformance", () => {
     expect(r.offenders, "\n" + r.offenders.join("\n")).toEqual([]);
   });
 
-  test("panel + tool registry icons all resolve to a real glyph", async ({
+  test("panel + tool registry icons all resolve to a real glyph @feat:editor-shell.context-toolbars @feat:editor-shell.panel-rail @feat:editor-shell.tool-rail @level:happy", async ({
     page,
   }) => {
     // The shipped tool rail / panel tabs reference icons by name; a

@@ -23,7 +23,7 @@ test.describe("Phase 5 — toggle-group primitive", () => {
     await loadIdml(page, FIXTURE);
   });
 
-  test("AC-TG-1 — paragraph alignment toggle-group writes paragraphJustification", async ({
+  test("AC-TG-1 — paragraph alignment toggle-group writes paragraphJustification @feat:editor-shell.panel-rail @level:happy", async ({
     page,
   }) => {
     const applied = await page.evaluate(async () => {
@@ -89,7 +89,7 @@ test.describe("Phase 5 — toggle-group primitive", () => {
     expect(applied).toBe("RightAlign");
   });
 
-  test("AC-TG-2 — stroke end-cap toggle-group writes frameStrokeEndCap on Rectangle", async ({
+  test("AC-TG-2 — stroke end-cap toggle-group writes frameStrokeEndCap on Rectangle @feat:editor-shell.panel-rail @level:happy", async ({
     page,
   }) => {
     const applied = await page.evaluate(async () => {

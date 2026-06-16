@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · export", () => {
-  test("a from-scratch document round-trips through IDML export", async ({
+  test("a from-scratch document round-trips through IDML export @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);

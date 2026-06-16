@@ -23,7 +23,7 @@ test.describe("Phase 5 — Character Styles panel", () => {
     await openPanel(page, "paged.character-styles");
   });
 
-  test("AC-CSTYLE-1 — panel mounts as a composition with a select", async ({
+  test("AC-CSTYLE-1 — panel mounts as a composition with a select @feat:editor-shell.panels.character-styles @feat:styles.character.crud @level:smoke", async ({
     page,
   }) => {
     await expect(
@@ -36,7 +36,7 @@ test.describe("Phase 5 — Character Styles panel", () => {
     ).toBeVisible();
   });
 
-  test("AC-CSTYLE-2 — selecting a style writes appliedCharacterStyle through the apply layer", async ({
+  test("AC-CSTYLE-2 — selecting a style writes appliedCharacterStyle through the apply layer @feat:editor-shell.panels.character-styles @feat:styles.character.crud @level:happy", async ({
     page,
   }) => {
     const selectedSelfId = await page.evaluate(async () => {

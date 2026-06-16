@@ -26,7 +26,7 @@ test.describe("Phase 5 — Gradients panel", () => {
     await openPanel(page, "paged.gradients");
   });
 
-  test("AC-GRAD-1 — panel mounts as a composition with a gradients select", async ({
+  test("AC-GRAD-1 — panel mounts as a composition with a gradients select @feat:color-swatches.gradients @feat:editor-shell.panels.gradients @level:smoke", async ({
     page,
   }) => {
     await expect(page.locator('[data-gradients-panel="ready"]')).toBeVisible();

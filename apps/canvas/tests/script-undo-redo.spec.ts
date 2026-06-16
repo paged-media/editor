@@ -67,7 +67,7 @@ test.describe("editor.script — undo/redo", () => {
     await loadIdml(page, FIXTURE);
   });
 
-  test("AC-SCRIPT-UNDO-1 — paged.undo() then paged.redo() round-trips a scripted edit", async ({
+  test("AC-SCRIPT-UNDO-1 — paged.undo() then paged.redo() round-trips a scripted edit @feat:round-tripping.undo-redo @feat:scripting.undo-redo @level:happy", async ({
     page,
   }) => {
     const baseline = await opacity(page, TEXT_FRAME_ID);
@@ -91,7 +91,7 @@ test.describe("editor.script — undo/redo", () => {
     ).toBe(44);
   });
 
-  test("AC-SCRIPT-UNDO-2 — paged.redo() is a no-op with nothing to redo (returns without error)", async ({
+  test("AC-SCRIPT-UNDO-2 — paged.redo() is a no-op with nothing to redo (returns without error) @feat:round-tripping.undo-redo @feat:scripting.undo-redo @level:edge", async ({
     page,
   }) => {
     // A fresh document has an empty redo stack — redo must be a safe
@@ -106,7 +106,7 @@ test.describe("editor.script — undo/redo", () => {
     expect(r.output[0]).toContain("false");
   });
 
-  test("AC-SCRIPT-UNDO-3 — undo unwinds multiple scripted edits LIFO", async ({
+  test("AC-SCRIPT-UNDO-3 — undo unwinds multiple scripted edits LIFO @feat:round-tripping.undo-redo @feat:scripting.undo-redo @level:happy", async ({
     page,
   }) => {
     const baseline = await opacity(page, TEXT_FRAME_ID);

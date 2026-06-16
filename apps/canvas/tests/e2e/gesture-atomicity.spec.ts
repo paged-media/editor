@@ -45,7 +45,7 @@ test.describe("Gesture atomicity & undo symmetry", () => {
     pageIndex = target.pageIndex;
   });
 
-  test("AC-E2E-GEST-ATOM-1 — GSM-01/INV-1/INV-4: five updates commit as one Operation; undo restores byte-identically", async ({
+  test("AC-E2E-GEST-ATOM-1 — GSM-01/INV-1/INV-4: five updates commit as one Operation; undo restores byte-identically @feat:editor-tools.gesture-lifecycle @level:happy", async ({
     page,
   }) => {
     const pageInfo = fx.pages[pageIndex];
@@ -93,7 +93,7 @@ test.describe("Gesture atomicity & undo symmetry", () => {
     expect(mutations, "INV-1: no stray mutation envelopes").toBe(0);
   });
 
-  test("AC-E2E-GEST-ATOM-2 — IT-03 lite: undo/redo round-trip ×10 stays byte-stable", async ({
+  test("AC-E2E-GEST-ATOM-2 — IT-03 lite: undo/redo round-trip ×10 stays byte-stable @feat:editor-tools.gesture-lifecycle @level:happy", async ({
     page,
   }) => {
     const pageInfo = fx.pages[pageIndex];
@@ -119,7 +119,7 @@ test.describe("Gesture atomicity & undo symmetry", () => {
     await undo(page); // leave the doc at baseline
   });
 
-  test("AC-E2E-GEST-ATOM-3 — GSM-03: zero-update commit lands no empty Operation on the undo stack", async ({
+  test("AC-E2E-GEST-ATOM-3 — GSM-03: zero-update commit lands no empty Operation on the undo stack @feat:editor-tools.gesture-lifecycle @level:edge", async ({
     page,
   }) => {
     const start = await bounds(page, ref);
@@ -151,7 +151,7 @@ test.describe("Gesture atomicity & undo symmetry", () => {
     ).toBeCloseTo(start[1], 1);
   });
 
-  test("AC-E2E-GEST-ATOM-4 — GSM-05/IT-08: second begin while active is rejected; first still commits", async ({
+  test("AC-E2E-GEST-ATOM-4 — GSM-05/IT-08: second begin while active is rejected; first still commits @feat:editor-tools.gesture-lifecycle @level:happy", async ({
     page,
   }) => {
     const start = await bounds(page, ref);
@@ -201,7 +201,7 @@ test.describe("Gesture atomicity & undo symmetry", () => {
     await undo(page);
   });
 
-  test("AC-E2E-GEST-ATOM-5 — GSM-06: update/commit on a stale handle after cancel are rejected; document untouched", async ({
+  test("AC-E2E-GEST-ATOM-5 — GSM-06: update/commit on a stale handle after cancel are rejected; document untouched @feat:editor-tools.gesture-lifecycle @level:edge", async ({
     page,
   }) => {
     const modelBefore = await dumpElement(page, ref);

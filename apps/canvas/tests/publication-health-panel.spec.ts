@@ -42,7 +42,7 @@ async function loadFixtureReact(page: Page, fixture: string = FIXTURE) {
 }
 
 test.describe("W2.12 — Publication health", () => {
-  test("AC-HEALTH-1 — risk rows show live counts, not em-dash seams", async ({
+  test("AC-HEALTH-1 — risk rows show live counts, not em-dash seams @feat:editor-shell.panels.publication-health @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -80,7 +80,7 @@ test.describe("W2.12 — Publication health", () => {
     await expect(overset).not.toHaveAttribute("data-seam", /.*/);
   });
 
-  test("AC-HEALTH-OVERSET — text-overset surfaces a live non-zero overset count", async ({
+  test("AC-HEALTH-OVERSET — text-overset surfaces a live non-zero overset count @feat:editor-shell.panels.publication-health @level:edge", async ({
     page,
   }) => {
     // Aftercare-D: `text-overset` overflows its frames (Inter shaping is
@@ -100,7 +100,7 @@ test.describe("W2.12 — Publication health", () => {
       .toBeGreaterThan(0);
   });
 
-  test("AC-HEALTH-2 — preflight risk row is a seam until an export runs", async ({
+  test("AC-HEALTH-2 — preflight risk row is a seam until an export runs @feat:editor-shell.panels.publication-health @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);

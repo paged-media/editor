@@ -208,7 +208,7 @@ test.describe("E2E draw-plugin (pen + anchor tools, real viewport)", () => {
       .toBeGreaterThan(0.2);
   });
 
-  test("AC-DRAW-1 — pen click×3 + Enter creates an open 3-anchor path; undo removes it", async ({
+  test("AC-DRAW-1 — pen click×3 + Enter creates an open 3-anchor path; undo removes it @feat:plugin-draw.anchor-add @feat:plugin-draw.anchor-convert @feat:plugin-draw.anchor-delete @feat:plugin-platform.bundle-lifecycle @level:gesture", async ({
     page,
   }) => {
     const before = await countKind(page, "polygon");
@@ -233,7 +233,7 @@ test.describe("E2E draw-plugin (pen + anchor tools, real viewport)", () => {
     await expect.poll(() => countKind(page, "polygon")).toBe(before);
   });
 
-  test("AC-DRAW-2 — pen click-drag pulls mirrored smooth handles", async ({
+  test("AC-DRAW-2 — pen click-drag pulls mirrored smooth handles @feat:plugin-draw.anchor-add @feat:plugin-draw.anchor-convert @feat:plugin-draw.anchor-delete @feat:plugin-platform.bundle-lifecycle @level:gesture", async ({
     page,
   }) => {
     const before = await countKind(page, "polygon");
@@ -274,7 +274,7 @@ test.describe("E2E draw-plugin (pen + anchor tools, real viewport)", () => {
     await expect.poll(() => countKind(page, "polygon")).toBe(before);
   });
 
-  test("AC-DRAW-3 — clicking the first anchor closes the path", async ({
+  test("AC-DRAW-3 — clicking the first anchor closes the path @feat:plugin-draw.anchor-add @feat:plugin-draw.anchor-convert @feat:plugin-draw.anchor-delete @feat:plugin-platform.bundle-lifecycle @level:gesture", async ({
     page,
   }) => {
     const before = await countKind(page, "polygon");
@@ -298,7 +298,7 @@ test.describe("E2E draw-plugin (pen + anchor tools, real viewport)", () => {
     await expect.poll(() => countKind(page, "polygon")).toBe(before);
   });
 
-  test("AC-DRAW-4 — Escape cancels the in-progress path; nothing is created", async ({
+  test("AC-DRAW-4 — Escape cancels the in-progress path; nothing is created @feat:plugin-draw.anchor-add @feat:plugin-draw.anchor-convert @feat:plugin-draw.anchor-delete @feat:plugin-platform.bundle-lifecycle @level:gesture", async ({
     page,
   }) => {
     const before = await countKind(page, "polygon");
@@ -312,7 +312,7 @@ test.describe("E2E draw-plugin (pen + anchor tools, real viewport)", () => {
     expect(await countKind(page, "polygon")).toBe(before);
   });
 
-  test("AC-DRAW-5 — add anchor splits a segment; delete removes it; convert smooths a corner", async ({
+  test("AC-DRAW-5 — add anchor splits a segment; delete removes it; convert smooths a corner @feat:plugin-draw.anchor-add @feat:plugin-draw.anchor-convert @feat:plugin-draw.anchor-delete @feat:plugin-platform.bundle-lifecycle @level:gesture", async ({
     page,
   }) => {
     const c = await pageZeroScreenCenter(page);

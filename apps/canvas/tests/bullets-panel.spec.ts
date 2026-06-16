@@ -58,7 +58,7 @@ test.describe("W2.4 — Bullets & Numbering panel (partial-live)", () => {
     await openPanel(page, "paged.bullets-numbering");
   });
 
-  test("AC-BN-1 — panel mounts with the Partial badge and live controls", async ({
+  test("AC-BN-1 — panel mounts with the Partial badge and live controls @feat:editor-shell.panels.bullets-numbering @level:smoke", async ({
     page,
   }) => {
     const root = page.locator('[data-bullets-panel="ready"]');
@@ -76,7 +76,7 @@ test.describe("W2.4 — Bullets & Numbering panel (partial-live)", () => {
     ).toBeVisible();
   });
 
-  test("AC-BN-2 — without a caret the bound controls are inert", async ({
+  test("AC-BN-2 — without a caret the bound controls are inert @feat:editor-shell.panels.bullets-numbering @level:gesture", async ({
     page,
   }) => {
     const root = page.locator('[data-bullets-panel="ready"]');
@@ -90,7 +90,7 @@ test.describe("W2.4 — Bullets & Numbering panel (partial-live)", () => {
     ).toBeDisabled();
   });
 
-  test("AC-BN-3 — with a caret the list-type segment commits", async ({
+  test("AC-BN-3 — with a caret the list-type segment commits @feat:editor-shell.panels.bullets-numbering @level:gesture", async ({
     page,
   }) => {
     const seeded = await seedCaret(page);
@@ -139,7 +139,7 @@ test.describe("W2.10 — Bullets & Numbering list definitions (live CRUD)", () =
     await expect(defs.locator("[data-applied-readback-seam]")).toBeVisible();
   });
 
-  test("AC-BN-LD-2 — New list creates a definition; the list grows", async ({
+  test("AC-BN-LD-2 — New list creates a definition; the list grows @feat:editor-shell.panels.bullets-numbering @level:happy", async ({
     page,
   }) => {
     const defs = page.locator('[data-list-definitions="ready"]');
@@ -153,7 +153,7 @@ test.describe("W2.10 — Bullets & Numbering list definitions (live CRUD)", () =
     ).toBeVisible();
   });
 
-  test("AC-BN-LD-3 — continuity toggle flips and re-reads from the model", async ({
+  test("AC-BN-LD-3 — continuity toggle flips and re-reads from the model @feat:editor-shell.panels.bullets-numbering @level:happy", async ({
     page,
   }) => {
     const row = page.locator('[data-list-definitions="ready"] [data-list-def]').first();
@@ -165,7 +165,7 @@ test.describe("W2.10 — Bullets & Numbering list definitions (live CRUD)", () =
     await expect(toggle).toHaveAttribute("aria-checked", "false");
   });
 
-  test("AC-BN-LD-4 — delete removes a created list", async ({ page }) => {
+  test("AC-BN-LD-4 — delete removes a created list @feat:editor-shell.panels.bullets-numbering @level:happy", async ({ page }) => {
     const defs = page.locator('[data-list-definitions="ready"]');
     await defs.locator('[data-toolbar-btn="new-numbering-list"]').click();
     await expect(defs.locator("[data-list-def]")).toHaveCount(2);
@@ -178,7 +178,7 @@ test.describe("W2.10 — Bullets & Numbering list definitions (live CRUD)", () =
     await expect(defs.locator("[data-list-def]")).toHaveCount(1);
   });
 
-  test("AC-BN-LD-5 — Assign is inert without a caret, active with one", async ({
+  test("AC-BN-LD-5 — Assign is inert without a caret, active with one @feat:editor-shell.panels.bullets-numbering @level:gesture", async ({
     page,
   }) => {
     const row = page.locator('[data-list-definitions="ready"] [data-list-def]').first();

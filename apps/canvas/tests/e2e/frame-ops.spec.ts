@@ -71,7 +71,7 @@ test.describe("E2E frame ops", () => {
     if (sw) await setDefaultFill(page, sw);
   });
 
-  test("AC-E2E-FRAME-1 — insertFrame creates a visible rectangle; undo removes it", async ({
+  test("AC-E2E-FRAME-1 — insertFrame creates a visible rectangle; undo removes it @feat:frames-paths.frame.delete @feat:frames-paths.frame.insert @feat:frames-paths.line.insert @feat:frames-paths.path.insert @level:happy", async ({
     page,
   }) => {
     const pageInfo = fx.pages[0];
@@ -112,7 +112,7 @@ test.describe("E2E frame ops", () => {
     });
   });
 
-  test("AC-E2E-FRAME-2 — insertLine draws a stroked line; undo removes it", async ({
+  test("AC-E2E-FRAME-2 — insertLine draws a stroked line; undo removes it @feat:frames-paths.frame.delete @feat:frames-paths.frame.insert @feat:frames-paths.line.insert @feat:frames-paths.path.insert @level:happy", async ({
     page,
   }) => {
     const pageInfo = fx.pages[0];
@@ -153,7 +153,7 @@ test.describe("E2E frame ops", () => {
     });
   });
 
-  test("AC-E2E-FRAME-3 — insertPath creates a filled polygon; undo removes it", async ({
+  test("AC-E2E-FRAME-3 — insertPath creates a filled polygon; undo removes it @feat:frames-paths.frame.delete @feat:frames-paths.frame.insert @feat:frames-paths.line.insert @feat:frames-paths.path.insert @level:happy", async ({
     page,
   }) => {
     const pageInfo = fx.pages[0];
@@ -191,7 +191,7 @@ test.describe("E2E frame ops", () => {
     });
   });
 
-  test("AC-E2E-FRAME-4 — resizeFrame moves the rectangle edges; undo restores them", async ({
+  test("AC-E2E-FRAME-4 — resizeFrame moves the rectangle edges; undo restores them @feat:frames-paths.frame.delete @feat:frames-paths.frame.insert @feat:frames-paths.line.insert @feat:frames-paths.path.insert @level:happy", async ({
     page,
   }) => {
     const target = fx.frames.find((f) => f.ref.kind === "rectangle")!;

@@ -163,7 +163,7 @@ test.describe("gestures.md DR-08…DR-11 — built-in Pen tool (E2E-03)", () => 
     await loadViaReactPath(page, "geometry");
   });
 
-  test("DR-08 — click×3 + Enter commits ONE open 3-corner path; undo removes it", async ({
+  test("DR-08 — click×3 + Enter commits ONE open 3-corner path; undo removes it @feat:editor-tools.draw.pen @level:gesture", async ({
     page,
   }) => {
     const before = await countKind(page, "polygon");
@@ -198,7 +198,7 @@ test.describe("gestures.md DR-08…DR-11 — built-in Pen tool (E2E-03)", () => 
     await expect.poll(() => countKind(page, "polygon")).toBe(before);
   });
 
-  test("DR-08 — click-drag pulls a smooth anchor with mirrored handles", async ({
+  test("DR-08 — click-drag pulls a smooth anchor with mirrored handles @feat:editor-tools.draw.pen @level:gesture", async ({
     page,
   }) => {
     const before = await countKind(page, "polygon");
@@ -230,7 +230,7 @@ test.describe("gestures.md DR-08…DR-11 — built-in Pen tool (E2E-03)", () => 
     await expect.poll(() => countKind(page, "polygon")).toBe(before);
   });
 
-  test("DR-09 — Alt during the drag breaks handle symmetry", async ({
+  test("DR-09 — Alt during the drag breaks handle symmetry @feat:editor-tools.draw.pen @level:gesture", async ({
     page,
   }) => {
     const before = await countKind(page, "polygon");
@@ -282,7 +282,7 @@ test.describe("gestures.md DR-08…DR-11 — built-in Pen tool (E2E-03)", () => 
     await expect.poll(() => countKind(page, "polygon")).toBe(before);
   });
 
-  test("DR-10 — clicking the first anchor closes the path", async ({
+  test("DR-10 — clicking the first anchor closes the path @feat:editor-tools.draw.pen @level:happy", async ({
     page,
   }) => {
     const before = await countKind(page, "polygon");
@@ -306,7 +306,7 @@ test.describe("gestures.md DR-08…DR-11 — built-in Pen tool (E2E-03)", () => 
     await expect.poll(() => countKind(page, "polygon")).toBe(before);
   });
 
-  test("DR-11 — Escape mid-path aborts: nothing is created (INV-1)", async ({
+  test("DR-11 — Escape mid-path aborts: nothing is created (INV-1) @feat:editor-tools.draw.pen @level:happy", async ({
     page,
   }) => {
     const before = await countKind(page, "polygon");
@@ -333,7 +333,7 @@ test.describe("gestures.md DR-08…DR-11 — built-in Pen tool (E2E-03)", () => 
     await expect.poll(() => countKind(page, "polygon")).toBe(before);
   });
 
-  test("DR-03/GSM-03 — a single click then Enter never commits an empty path", async ({
+  test("DR-03/GSM-03 — a single click then Enter never commits an empty path @feat:editor-tools.draw.pen @level:edge", async ({
     page,
   }) => {
     const before = await countKind(page, "polygon");

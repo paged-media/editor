@@ -117,7 +117,7 @@ const packs = selectedPacks();
 
 if (packs.length === 0) {
   // Keep the file valid + discoverable without running anything heavy.
-  test.skip("AC-E2E-EXTENSIVE — opt-in (set E2E_PACKS=all or name,name)", () => {});
+  test.skip("AC-E2E-EXTENSIVE — opt-in (set E2E_PACKS=all or name,name) @feat:test-corpus.capability-matrix @feat:the-renderer.snapshots @level:happy", () => {});
 } else {
   test.describe("E2E extensive corpus", () => {
     const reports: PackReport[] = [];

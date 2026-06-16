@@ -106,7 +106,7 @@ test.describe("editor.script — collection reads", () => {
     expect(gradients.some((g) => g.selfId.startsWith("Gradient/"))).toBe(true);
   });
 
-  test("AC-SCRIPT-COLL-3 — paged.colorGroups() reflects a created group", async ({
+  test("AC-SCRIPT-COLL-3 — paged.colorGroups() reflects a created group @feat:color-swatches.color-groups @feat:color-swatches.gradients @feat:color-swatches.swatch.crud @feat:conditional-text.applied-conditions @feat:images-graphics.placed-images @feat:layers.ops @feat:scripting.collections @feat:styles.character.crud @feat:styles.object.crud @feat:styles.paragraph.crud @feat:the-renderer.collections-read @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -131,7 +131,7 @@ test.describe("editor.script — collection reads", () => {
     expect(created!.members).toContain("Color/CMYKCyan");
   });
 
-  test("AC-SCRIPT-COLL-4 — paged.paragraphStyles() lists real paragraph styles", async ({
+  test("AC-SCRIPT-COLL-4 — paged.paragraphStyles() lists real paragraph styles @feat:color-swatches.color-groups @feat:color-swatches.gradients @feat:color-swatches.swatch.crud @feat:conditional-text.applied-conditions @feat:images-graphics.placed-images @feat:layers.ops @feat:scripting.collections @feat:styles.character.crud @feat:styles.object.crud @feat:styles.paragraph.crud @feat:the-renderer.collections-read @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -143,7 +143,7 @@ test.describe("editor.script — collection reads", () => {
     ).toBe(true);
   });
 
-  test("AC-SCRIPT-COLL-5 — paged.characterStyles() lists real character styles", async ({
+  test("AC-SCRIPT-COLL-5 — paged.characterStyles() lists real character styles @feat:color-swatches.color-groups @feat:color-swatches.gradients @feat:color-swatches.swatch.crud @feat:conditional-text.applied-conditions @feat:images-graphics.placed-images @feat:layers.ops @feat:scripting.collections @feat:styles.character.crud @feat:styles.object.crud @feat:styles.paragraph.crud @feat:the-renderer.collections-read @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -155,7 +155,7 @@ test.describe("editor.script — collection reads", () => {
     ).toBe(true);
   });
 
-  test("AC-SCRIPT-COLL-6 — paged.objectStyles() lists real object styles", async ({
+  test("AC-SCRIPT-COLL-6 — paged.objectStyles() lists real object styles @feat:color-swatches.color-groups @feat:color-swatches.gradients @feat:color-swatches.swatch.crud @feat:conditional-text.applied-conditions @feat:images-graphics.placed-images @feat:layers.ops @feat:scripting.collections @feat:styles.character.crud @feat:styles.object.crud @feat:styles.paragraph.crud @feat:the-renderer.collections-read @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -165,7 +165,7 @@ test.describe("editor.script — collection reads", () => {
     expect(styles.some((s) => s.selfId.startsWith("ObjectStyle/"))).toBe(true);
   });
 
-  test("AC-SCRIPT-COLL-7 — paged.layers() reflects a created layer", async ({
+  test("AC-SCRIPT-COLL-7 — paged.layers() reflects a created layer @feat:color-swatches.color-groups @feat:color-swatches.gradients @feat:color-swatches.swatch.crud @feat:conditional-text.applied-conditions @feat:images-graphics.placed-images @feat:layers.ops @feat:scripting.collections @feat:styles.character.crud @feat:styles.object.crud @feat:styles.paragraph.crud @feat:the-renderer.collections-read @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -187,7 +187,7 @@ test.describe("editor.script — collection reads", () => {
     expect(after.some((l) => l.name === "Script Probe Layer")).toBe(true);
   });
 
-  test("AC-SCRIPT-COLL-8 — paged.links() lists placed-image links with status", async ({
+  test("AC-SCRIPT-COLL-8 — paged.links() lists placed-image links with status @feat:color-swatches.color-groups @feat:color-swatches.gradients @feat:color-swatches.swatch.crud @feat:conditional-text.applied-conditions @feat:images-graphics.placed-images @feat:layers.ops @feat:scripting.collections @feat:styles.character.crud @feat:styles.object.crud @feat:styles.paragraph.crud @feat:the-renderer.collections-read @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -201,7 +201,7 @@ test.describe("editor.script — collection reads", () => {
     expect(links.every((l) => typeof l.uri === "string")).toBe(true);
   });
 
-  test("AC-SCRIPT-COLL-9 — paged.conditions()/conditionSets() are wired (empty for this corpus)", async ({
+  test("AC-SCRIPT-COLL-9 — paged.conditions()/conditionSets() are wired (empty for this corpus) @feat:color-swatches.color-groups @feat:color-swatches.gradients @feat:color-swatches.swatch.crud @feat:conditional-text.applied-conditions @feat:images-graphics.placed-images @feat:layers.ops @feat:scripting.collections @feat:styles.character.crud @feat:styles.object.crud @feat:styles.paragraph.crud @feat:the-renderer.collections-read @level:edge", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -220,7 +220,7 @@ test.describe("editor.script — collection reads", () => {
     expect(Array.isArray(sets)).toBe(true);
   });
 
-  test("AC-SCRIPT-COLL-10 — paged.collection(name) matches the named helpers", async ({
+  test("AC-SCRIPT-COLL-10 — paged.collection(name) matches the named helpers @feat:color-swatches.color-groups @feat:color-swatches.gradients @feat:color-swatches.swatch.crud @feat:conditional-text.applied-conditions @feat:images-graphics.placed-images @feat:layers.ops @feat:scripting.collections @feat:styles.character.crud @feat:styles.object.crud @feat:styles.paragraph.crud @feat:the-renderer.collections-read @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);

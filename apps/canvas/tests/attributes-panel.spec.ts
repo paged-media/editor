@@ -18,7 +18,7 @@ test.describe("Phase 5 — Attributes panel", () => {
     await openPanel(page, "paged.attributes");
   });
 
-  test("AC-ATTR-1 — panel mounts; em-dash without selection", async ({
+  test("AC-ATTR-1 — panel mounts; em-dash without selection @feat:editor-shell.panels.attributes @level:smoke", async ({
     page,
   }) => {
     await expect(page.locator('[data-attributes-panel="ready"]')).toBeVisible();
@@ -32,7 +32,7 @@ test.describe("Phase 5 — Attributes panel", () => {
     expect(await mixed.count()).toBeGreaterThan(0);
   });
 
-  test("AC-ATTR-2 — frameNonprinting toggle round-trips", async ({ page }) => {
+  test("AC-ATTR-2 — frameNonprinting toggle round-trips @feat:editor-shell.panels.attributes @level:happy", async ({ page }) => {
     const applied = await page.evaluate(async () => {
       type DebugCanvas = {
         client?: {
@@ -86,7 +86,7 @@ test.describe("Phase 5 — Attributes panel", () => {
     expect(applied).toBe(true);
   });
 
-  test("AC-ATTR-3 — overprint pair sandwich: set fill+stroke → assert → undo", async ({
+  test("AC-ATTR-3 — overprint pair sandwich: set fill+stroke → assert → undo @feat:editor-shell.panels.attributes @level:happy", async ({
     page,
   }) => {
     // W2.3 — the overprint Bool pair. set → assert → undo → restored.
@@ -176,7 +176,7 @@ test.describe("Phase 5 — Attributes panel", () => {
     expect(result.restored).toEqual(result.before);
   });
 
-  test("AC-ATTR-4 — element visible/locked sandwich: hide + lock → assert → undo", async ({
+  test("AC-ATTR-4 — element visible/locked sandwich: hide + lock → assert → undo @feat:editor-shell.panels.attributes @level:happy", async ({
     page,
   }) => {
     // W2.5 — element-level `elementVisible` / `elementLocked` (Bool).

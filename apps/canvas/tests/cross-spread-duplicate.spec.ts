@@ -182,7 +182,7 @@ test.describe("Track K — cross-spread Alt-duplicate", () => {
     pageAH = loaded.pages[0].heightPt;
   });
 
-  test("AC-K-1 — same-spread Alt-translate: duplicate lands on source page", async ({
+  test("AC-K-1 — same-spread Alt-translate: duplicate lands on source page @feat:editor-tools.move.duplicate-drag @level:happy", async ({
     page,
   }) => {
     const src = await pickFrame(page, pageAId, pageAW, pageAH);
@@ -216,7 +216,7 @@ test.describe("Track K — cross-spread Alt-duplicate", () => {
     expect(srcGeom[0].pageId).toBe(src.pageId);
   });
 
-  test("AC-K-2 — cross-spread Alt-translate: duplicate dispatches with destination spread resolved", async ({
+  test("AC-K-2 — cross-spread Alt-translate: duplicate dispatches with destination spread resolved @feat:editor-tools.move.duplicate-drag @level:happy", async ({
     page,
   }) => {
     // End-to-end coverage of cross-spread routing is split between
@@ -315,7 +315,7 @@ test.describe("Track K — cross-spread Alt-duplicate", () => {
     expect(srcGeom[0].pageId).toBe(src.pageId);
   });
 
-  test("AC-K-4 — single Cmd-Z removes the duplicate (cross-spread)", async ({
+  test("AC-K-4 — single Cmd-Z removes the duplicate (cross-spread) @feat:editor-tools.move.duplicate-drag @level:happy", async ({
     page,
   }) => {
     const src = await pickFrame(page, pageAId, pageAW, pageAH);

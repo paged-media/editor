@@ -41,7 +41,7 @@ test.describe("E2E style ops", () => {
     fx = await loadFixture(page, "text-advanced");
   });
 
-  test("AC-E2E-STYLE-1 — setStyleProperty on the in-use paragraph style cascades to the canvas", async ({
+  test("AC-E2E-STYLE-1 — setStyleProperty on the in-use paragraph style cascades to the canvas @feat:styles.character.crud @feat:styles.object.crud @feat:styles.paragraph.crud @feat:styles.set-style-property @level:happy", async ({
     page,
   }) => {
     // ENGINE FINDING (2026-06-05) RESOLVED (2026-06-06): the engine's
@@ -88,7 +88,7 @@ test.describe("E2E style ops", () => {
     });
   });
 
-  test("AC-E2E-STYLE-2 — createParagraphStyle adds to the collection; undo removes it", async ({
+  test("AC-E2E-STYLE-2 — createParagraphStyle adds to the collection; undo removes it @feat:styles.character.crud @feat:styles.object.crud @feat:styles.paragraph.crud @feat:styles.set-style-property @level:happy", async ({
     page,
   }) => {
     const pageInfo = fx.pages[0];

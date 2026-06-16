@@ -50,7 +50,7 @@ test.describe("E2E layer ops", () => {
     pageInfo = fx.pages[0];
   });
 
-  test("AC-E2E-LAYER-1 — layerInsert grows the layer list; undo removes it", async ({
+  test("AC-E2E-LAYER-1 — layerInsert grows the layer list; undo removes it @feat:layers.ops @level:happy", async ({
     page,
   }) => {
     const before = (await layers(page)).length;
@@ -73,7 +73,7 @@ test.describe("E2E layer ops", () => {
     });
   });
 
-  test("AC-E2E-LAYER-2 — layerSetName renames the layer; undo restores", async ({
+  test("AC-E2E-LAYER-2 — layerSetName renames the layer; undo restores @feat:layers.ops @level:happy", async ({
     page,
   }) => {
     const id = await insertScratchLayer(page, "e2e original");
@@ -96,7 +96,7 @@ test.describe("E2E layer ops", () => {
     });
   });
 
-  test("AC-E2E-LAYER-3 — layerSetVisible / layerSetLocked / layerSetPrintable flip the summary", async ({
+  test("AC-E2E-LAYER-3 — layerSetVisible / layerSetLocked / layerSetPrintable flip the summary @feat:layers.ops @level:happy", async ({
     page,
   }) => {
     const id = await insertScratchLayer(page, "e2e flags");

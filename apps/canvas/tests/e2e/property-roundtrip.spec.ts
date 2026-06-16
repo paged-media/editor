@@ -128,7 +128,7 @@ test.describe("E2E property round-trips", () => {
     });
   }
 
-  test("AC-E2E-PROP-opacity — frameOpacity lands + repaints", async ({
+  test("AC-E2E-PROP-opacity — frameOpacity lands + repaints @feat:color-swatches.fill-stroke-apply @feat:effects-transparency.opacity @level:happy", async ({
     page,
   }) => {
     await propSandwich(page, {
@@ -139,7 +139,7 @@ test.describe("E2E property round-trips", () => {
     });
   });
 
-  test("AC-E2E-PROP-fill — frameFillColor lands + repaints", async ({
+  test("AC-E2E-PROP-fill — frameFillColor lands + repaints @feat:color-swatches.fill-stroke-apply @feat:effects-transparency.opacity @level:happy", async ({
     page,
   }) => {
     await propSandwich(page, {
@@ -150,7 +150,7 @@ test.describe("E2E property round-trips", () => {
     });
   });
 
-  test("AC-E2E-PROP-tint — frameFillTint lands + repaints", async ({
+  test("AC-E2E-PROP-tint — frameFillTint lands + repaints @feat:color-swatches.fill-stroke-apply @feat:effects-transparency.opacity @level:happy", async ({
     page,
   }) => {
     await propSandwich(page, {
@@ -161,7 +161,7 @@ test.describe("E2E property round-trips", () => {
     });
   });
 
-  test("AC-E2E-PROP-stroke — stroke colour + weight land + repaint", async ({
+  test("AC-E2E-PROP-stroke — stroke colour + weight land + repaint @feat:color-swatches.fill-stroke-apply @feat:effects-transparency.opacity @level:happy", async ({
     page,
   }) => {
     // Stroke bleeds outside the frame's fill box → no containment.

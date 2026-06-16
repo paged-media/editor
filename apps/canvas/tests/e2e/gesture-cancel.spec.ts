@@ -99,7 +99,7 @@ test.describe("E2E-07 — cancel rolls back every gesture family (channel)", () 
     pageRect = (await elementPageRectPt(page, target.ref))!;
   });
 
-  test("AC-E2E-GEST-CANCEL-1 — translate", async ({ page }) => {
+  test("AC-E2E-GEST-CANCEL-1 — translate @feat:editor-tools.gesture-lifecycle @level:edge", async ({ page }) => {
     await assertCancelRollsBack(
       page,
       fx,
@@ -110,7 +110,7 @@ test.describe("E2E-07 — cancel rolls back every gesture family (channel)", () 
     );
   });
 
-  test("AC-E2E-GEST-CANCEL-2 — resize (southEast)", async ({ page }) => {
+  test("AC-E2E-GEST-CANCEL-2 — resize (southEast) @feat:editor-tools.gesture-lifecycle @level:edge", async ({ page }) => {
     await assertCancelRollsBack(
       page,
       fx,
@@ -121,7 +121,7 @@ test.describe("E2E-07 — cancel rolls back every gesture family (channel)", () 
     );
   });
 
-  test("AC-E2E-GEST-CANCEL-3 — rotate", async ({ page }) => {
+  test("AC-E2E-GEST-CANCEL-3 — rotate @feat:editor-tools.gesture-lifecycle @level:edge", async ({ page }) => {
     const [cx, cy] = centroid(pageRect);
     await assertCancelRollsBack(
       page,
@@ -133,7 +133,7 @@ test.describe("E2E-07 — cancel rolls back every gesture family (channel)", () 
     );
   });
 
-  test("AC-E2E-GEST-CANCEL-4 — scale", async ({ page }) => {
+  test("AC-E2E-GEST-CANCEL-4 — scale @feat:editor-tools.gesture-lifecycle @level:edge", async ({ page }) => {
     const [cx, cy] = centroid(pageRect);
     await assertCancelRollsBack(
       page,
@@ -148,7 +148,7 @@ test.describe("E2E-07 — cancel rolls back every gesture family (channel)", () 
     );
   });
 
-  test("AC-E2E-GEST-CANCEL-5 — shear", async ({ page }) => {
+  test("AC-E2E-GEST-CANCEL-5 — shear @feat:editor-tools.gesture-lifecycle @level:edge", async ({ page }) => {
     // Shear needs a vertical lever arm from the pivot (the union
     // centroid) — anchor straight above the centroid.
     const [cx, cy] = centroid(pageRect);
@@ -162,7 +162,7 @@ test.describe("E2E-07 — cancel rolls back every gesture family (channel)", () 
     );
   });
 
-  test("AC-E2E-GEST-CANCEL-6 — translateContent (images fixture)", async ({
+  test("AC-E2E-GEST-CANCEL-6 — translateContent (images fixture) @feat:editor-tools.gesture-lifecycle @level:edge", async ({
     page,
   }) => {
     const ifx = await loadFixture(page, "images");
@@ -186,7 +186,7 @@ test.describe("E2E-07 — cancel rolls back every gesture family (channel)", () 
 // worker gesture, and the subsequent pointer-up commits nothing.
 
 test.describe("E2E-07 — real-input Escape (wiring)", () => {
-  test("AC-E2E-GEST-CANCEL-7 — Escape mid select-drag aborts; pointer-up commits nothing", async ({
+  test("AC-E2E-GEST-CANCEL-7 — Escape mid select-drag aborts; pointer-up commits nothing @feat:editor-tools.gesture-lifecycle @level:edge", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -223,7 +223,7 @@ test.describe("E2E-07 — real-input Escape (wiring)", () => {
     expect(await dumpElement(page, target.ref), "INV-2: model untouched").toBe(modelBefore);
   });
 
-  test("AC-E2E-GEST-CANCEL-8 — Escape mid draw-tool drag creates nothing", async ({
+  test("AC-E2E-GEST-CANCEL-8 — Escape mid draw-tool drag creates nothing @feat:editor-tools.gesture-lifecycle @level:edge", async ({
     page,
   }) => {
     await openCanvas(page);

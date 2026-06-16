@@ -18,7 +18,7 @@ test.describe("Phase 5 — Conditions panel", () => {
     await openPanel(page, "paged.conditions");
   });
 
-  test("AC-COND-1 — panel mounts; either lists conditions or shows empty placeholder", async ({
+  test("AC-COND-1 — panel mounts; either lists conditions or shows empty placeholder @feat:conditional-text.applied-conditions @feat:editor-shell.panels.conditions @level:edge", async ({
     page,
   }) => {
     await expect(page.locator('[data-conditions-panel="ready"]')).toBeVisible();

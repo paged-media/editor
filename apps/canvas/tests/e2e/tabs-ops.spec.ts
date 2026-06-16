@@ -85,7 +85,7 @@ test.describe("E2E tabs ops", () => {
     region = (await elementPageRectPt(page, frame.ref))!;
   });
 
-  test("AC-E2E-TABS-list — a 2-stop list lands + reads back; undo restores empty", async ({
+  test("AC-E2E-TABS-list — a 2-stop list lands + reads back; undo restores empty @feat:editor-shell.panels.tabs @level:edge", async ({
     page,
   }) => {
     // Two stops: a left stop at 36 pt and a right stop at 144 pt with

@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · sections", () => {
-  test("start a numbering section on the second page", async ({ page }) => {
+  test("start a numbering section on the second page @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:happy", async ({ page }) => {
     const designer = new Designer(page);
     await designer.open();
     await designer.newDocument();

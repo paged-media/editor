@@ -111,7 +111,7 @@ test.describe("Step 5e — SAB-mode snap-line notifications", () => {
     pageH = loaded.pages[0].heightPt;
   });
 
-  test("crossOriginIsolated holds + gestureSab is a SharedArrayBuffer", async ({
+  test("crossOriginIsolated holds + gestureSab is a SharedArrayBuffer @feat:the-renderer.snapping @level:happy", async ({
     page,
   }) => {
     // Sanity gate: if Vite isn't serving COOP/COEP, SAB mode silently
@@ -129,7 +129,7 @@ test.describe("Step 5e — SAB-mode snap-line notifications", () => {
     expect(env.bufferKind).toBe("SharedArrayBuffer");
   });
 
-  test("SAB-mode translate emits gestureSnapLines with an x-axis guide", async ({
+  test("SAB-mode translate emits gestureSnapLines with an x-axis guide @feat:the-renderer.snapping @level:happy", async ({
     page,
   }) => {
     const item = await findUnrotatedRectLike(page, pageId, pageW, pageH);
@@ -190,7 +190,7 @@ test.describe("Step 5e — SAB-mode snap-line notifications", () => {
     expect(xSnap!.position).toBeLessThanOrEqual(pageW);
   });
 
-  test("SAB-mode emits one notification per drain across a multi-push gesture", async ({
+  test("SAB-mode emits one notification per drain across a multi-push gesture @feat:the-renderer.snapping @level:gesture", async ({
     page,
   }) => {
     // The hot path coalesces inside the SAB — only the latest push

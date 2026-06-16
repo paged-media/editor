@@ -23,13 +23,13 @@ test.describe("Phase 5 — Text Frame Options panel", () => {
     await openPanel(page, "paged.text-frame-options");
   });
 
-  test("AC-TFO-1 — panel mounts as a composition", async ({ page }) => {
+  test("AC-TFO-1 — panel mounts as a composition @feat:editor-shell.panels.text-frame-options @level:smoke", async ({ page }) => {
     await expect(
       page.locator('[data-text-frame-options-panel="ready"]'),
     ).toBeVisible();
   });
 
-  test("AC-TFO-2 — frameInsetSpacing apply round-trips", async ({ page }) => {
+  test("AC-TFO-2 — frameInsetSpacing apply round-trips @feat:editor-shell.panels.text-frame-options @level:happy", async ({ page }) => {
     const result = await page.evaluate(async () => {
       type DebugCanvas = {
         client?: {
@@ -91,7 +91,7 @@ test.describe("Phase 5 — Text Frame Options panel", () => {
     expect(result).toEqual([10, 20, 30, 40]);
   });
 
-  test("AC-TFO-3 — text-frame-pref sandwich: VJ + auto-size + columns set → assert → undo", async ({
+  test("AC-TFO-3 — text-frame-pref sandwich: VJ + auto-size + columns set → assert → undo @feat:editor-shell.panels.text-frame-options @level:happy", async ({
     page,
   }) => {
     // W2.3 — the TextFrame-only preference paths. Enum-string fields

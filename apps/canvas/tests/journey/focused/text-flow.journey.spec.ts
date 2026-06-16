@@ -12,7 +12,7 @@ import { TEXT_CARET_EDITING } from "../driver/context-contract";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · text flow", () => {
-  test("a caret in a text frame surfaces the Text context; typing inserts", async ({
+  test("a caret in a text frame surfaces the Text context; typing inserts @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:gesture", async ({
     page,
   }) => {
     const designer = new Designer(page);

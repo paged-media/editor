@@ -94,7 +94,7 @@ async function rulerPoint(
 }
 
 test.describe("gestures.md GD-01 — drag a guide out of a ruler", () => {
-  test("AC-GD-01-H: horizontal guide from the top ruler follows the cursor and places on release", async ({
+  test("AC-GD-01-H: horizontal guide from the top ruler follows the cursor and places on release @feat:editor-tools.guides.drag @level:happy", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -130,7 +130,7 @@ test.describe("gestures.md GD-01 — drag a guide out of a ruler", () => {
     expect(await previewCount(page)).toBe(0);
   });
 
-  test("AC-GD-01-V: vertical guide from the left ruler", async ({ page }) => {
+  test("AC-GD-01-V: vertical guide from the left ruler @feat:editor-tools.guides.drag @level:happy", async ({ page }) => {
     test.setTimeout(120_000);
     await openCanvas(page);
     const fx = await loadViaReactPath(page, "geometry");
@@ -151,7 +151,7 @@ test.describe("gestures.md GD-01 — drag a guide out of a ruler", () => {
       .toBe(before + 1);
   });
 
-  test("AC-GD-01-CANCEL: releasing back over the ruler places nothing", async ({
+  test("AC-GD-01-CANCEL: releasing back over the ruler places nothing @feat:editor-tools.guides.drag @level:edge", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -179,7 +179,7 @@ test.describe("gestures.md GD-01 — drag a guide out of a ruler", () => {
 });
 
 test.describe("gestures.md GD-02 — reposition / delete a placed guide", () => {
-  test("AC-GD-02-MOVE: dragging a placed guide repositions it (one guide, new position)", async ({
+  test("AC-GD-02-MOVE: dragging a placed guide repositions it (one guide, new position) @feat:editor-tools.guides.drag @level:happy", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -233,7 +233,7 @@ test.describe("gestures.md GD-02 — reposition / delete a placed guide", () => 
       .toBeCloseTo(want, 0);
   });
 
-  test("AC-GD-02-DELETE: dragging a placed guide back onto a ruler deletes it", async ({
+  test("AC-GD-02-DELETE: dragging a placed guide back onto a ruler deletes it @feat:editor-tools.guides.drag @level:happy", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -265,7 +265,7 @@ test.describe("gestures.md GD-02 — reposition / delete a placed guide", () => 
 });
 
 test.describe("gestures.md GD-03 — Escape mid-drag", () => {
-  test("AC-GD-03-CREATE: Escape during a create cancels (no guide placed)", async ({
+  test("AC-GD-03-CREATE: Escape during a create cancels (no guide placed) @feat:editor-tools.guides.drag @level:happy", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -289,7 +289,7 @@ test.describe("gestures.md GD-03 — Escape mid-drag", () => {
     expect(await guideLineCount(page)).toBe(before);
   });
 
-  test("AC-GD-03-MOVE: Escape during a move restores the original position", async ({
+  test("AC-GD-03-MOVE: Escape during a move restores the original position @feat:editor-tools.guides.drag @level:happy", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -340,7 +340,7 @@ test.describe("gestures.md GD-03 — Escape mid-drag", () => {
 // ── W3.A2 — formerly-deferred legs, now live on the spreads read ────
 
 test.describe("gestures.md GD-01 — undo + engine-truth read", () => {
-  test("AC-GD-01-UNDO: Ctrl+Z removes the placed guide from the OVERLAY (INV-4)", async ({
+  test("AC-GD-01-UNDO: Ctrl+Z removes the placed guide from the OVERLAY (INV-4) @feat:editor-tools.guides.drag @level:happy", async ({
     page,
   }) => {
     // The insertGuide is undoable on the channel; W3.A2 wires the
@@ -373,7 +373,7 @@ test.describe("gestures.md GD-01 — undo + engine-truth read", () => {
       .toBe(before);
   });
 
-  test("AC-GD-01-ENGINE: the placed guide is engine truth (collection(\"spreads\").guides) and undo removes it", async ({
+  test("AC-GD-01-ENGINE: the placed guide is engine truth (collection(\"spreads\").guides) and undo removes it @feat:editor-tools.guides.drag @level:happy", async ({
     page,
   }) => {
     // The cross-boundary truth (the engine actually persisted the

@@ -46,7 +46,7 @@ test.describe("editor.script — console capture", () => {
     await loadIdml(page, FIXTURE);
   });
 
-  test("AC-SCRIPT-CONSOLE-1 — console.log captures all four levels in order", async ({
+  test("AC-SCRIPT-CONSOLE-1 — console.log captures all four levels in order @feat:scripting.console @level:happy", async ({
     page,
   }) => {
     const r = await run(
@@ -72,7 +72,7 @@ test.describe("editor.script — console capture", () => {
     expect(r.output[3].toLowerCase()).toContain("info");
   });
 
-  test("AC-SCRIPT-CONSOLE-2 — console.log joins multiple args and stringifies values", async ({
+  test("AC-SCRIPT-CONSOLE-2 — console.log joins multiple args and stringifies values @feat:scripting.console @level:happy", async ({
     page,
   }) => {
     const r = await run(page, `console.log("count", 3, true, { k: "v" });`);
@@ -84,7 +84,7 @@ test.describe("editor.script — console capture", () => {
     expect(line).toContain("true");
   });
 
-  test("AC-SCRIPT-CONSOLE-3 — a script whose completion value is undefined yields no output", async ({
+  test("AC-SCRIPT-CONSOLE-3 — a script whose completion value is undefined yields no output @feat:scripting.console @level:happy", async ({
     page,
   }) => {
     // The host echoes a non-undefined completion value (REPL-style), so

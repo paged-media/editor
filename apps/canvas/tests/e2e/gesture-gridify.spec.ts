@@ -126,7 +126,7 @@ test.describe("gestures.md DR-05/DR-07 — gridify (Rectangle tool)", () => {
   // builds the right batch in rectangle-tool.ts, and `insertFrame` carries
   // no `selfId` on the wire). Core now mints unique ids per batched insert,
   // so the N×M grid commits in one batch step.
-  test("DR-05/E2E-02 — drag + 2×Right + 1×Up commits a 3×2 grid in ONE undo step", async ({
+  test("DR-05/E2E-02 — drag + 2×Right + 1×Up commits a 3×2 grid in ONE undo step @feat:editor-tools.draw.gridify @level:gesture", async ({
     page,
   }) => {
     const before = await treeCount(page, "rectangle");
@@ -190,7 +190,7 @@ test.describe("gestures.md DR-05/DR-07 — gridify (Rectangle tool)", () => {
       .toBe(before);
   });
 
-  test("DR-07 — gridify up then back to 1×1 commits a single plain frame", async ({
+  test("DR-07 — gridify up then back to 1×1 commits a single plain frame @feat:editor-tools.draw.gridify @level:happy", async ({
     page,
   }) => {
     const before = await treeCount(page, "rectangle");
@@ -216,7 +216,7 @@ test.describe("gestures.md DR-05/DR-07 — gridify (Rectangle tool)", () => {
       .toBe(before);
   });
 
-  test("DR-07 — Right then Left back to 1×1 lands a single frame", async ({
+  test("DR-07 — Right then Left back to 1×1 lands a single frame @feat:editor-tools.draw.gridify @level:happy", async ({
     page,
   }) => {
     const before = await treeCount(page, "rectangle");
@@ -252,7 +252,7 @@ test.describe("gestures.md DR-05/DR-07 — gridify (Rectangle tool)", () => {
       .toBe(before);
   });
 
-  test("DR-05/INV-1 — Escape mid-gridify creates nothing", async ({ page }) => {
+  test("DR-05/INV-1 — Escape mid-gridify creates nothing @feat:editor-tools.draw.gridify @level:happy", async ({ page }) => {
     const before = await treeCount(page, "rectangle");
     await activateTool(page, "shape");
     const from = await screenPoint(page, 120, 120);
@@ -274,7 +274,7 @@ test.describe("gestures.md DR-05/DR-07 — gridify (Rectangle tool)", () => {
     ).toBe(before);
   });
 
-  test("DR-05 — arrow keys with no active drag do nothing (no frames)", async ({
+  test("DR-05 — arrow keys with no active drag do nothing (no frames) @feat:editor-tools.draw.gridify @level:gesture", async ({
     page,
   }) => {
     const before = await treeCount(page, "rectangle");

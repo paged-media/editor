@@ -19,7 +19,7 @@ test.describe("gestures.md — deferred E2E scenarios", () => {
   // real suites landed.
 
   test.fixme(
-    "E2E-05 — thread two text frames; verify reflow indicator (TH-01…04)",
+    "E2E-05 — thread two text frames; verify reflow indicator (TH-01…04) @feat:editor-tools.text.threading-ports @level:happy",
     async () => {
       // SUPERSEDED by gesture-threading.spec.ts (W2.9): TH-01 (out-port
       // → link an empty text frame), TH-02 (out-port → draw+link a new
@@ -34,7 +34,7 @@ test.describe("gestures.md — deferred E2E scenarios", () => {
   );
 
   test.fixme(
-    "E2E-12 — reload after commits → editor-server round-trip → document identical (IT-04)",
+    "E2E-12 — reload after commits → editor-server round-trip → document identical (IT-04) @feat:editor-tools.gesture-lifecycle @level:happy",
     async () => {
       // Not implemented: the canvas app has no editor-server
       // persistence path — committed Operations live only in the

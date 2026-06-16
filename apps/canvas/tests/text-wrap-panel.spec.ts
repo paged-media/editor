@@ -22,13 +22,13 @@ test.describe("Phase 5 — Text Wrap panel", () => {
     await openPanel(page, "paged.text-wrap");
   });
 
-  test("AC-TW-1 — panel mounts as a composition with a toggle-group + bounds row", async ({
+  test("AC-TW-1 — panel mounts as a composition with a toggle-group + bounds row @feat:editor-shell.panels.text-wrap @level:smoke", async ({
     page,
   }) => {
     await expect(page.locator('[data-text-wrap-panel="ready"]')).toBeVisible();
   });
 
-  test("AC-TW-2 — mode + offsets round-trip; partial commit preserves the unset half", async ({
+  test("AC-TW-2 — mode + offsets round-trip; partial commit preserves the unset half @feat:editor-shell.panels.text-wrap @level:happy", async ({
     page,
   }) => {
     const result = await page.evaluate(async () => {
@@ -111,7 +111,7 @@ test.describe("Phase 5 — Text Wrap panel", () => {
     expect(result.offsets).toEqual([8, 8, 8, 8]);
   });
 
-  test("AC-TW-3 — invert sandwich: set true (preserving mode) → assert → undo", async ({
+  test("AC-TW-3 — invert sandwich: set true (preserving mode) → assert → undo @feat:editor-shell.panels.text-wrap @level:happy", async ({
     page,
   }) => {
     // W2.3 — `textWrapInvert` shares the Option<TextWrap> field with
@@ -200,7 +200,7 @@ test.describe("Phase 5 — Text Wrap panel", () => {
     expect(result.restoredInvert).toBe(result.invertBefore);
   });
 
-  test("AC-TW-4 — contour options sandwich: set contour type + include-inside (preserving mode) → assert → undo", async ({
+  test("AC-TW-4 — contour options sandwich: set contour type + include-inside (preserving mode) → assert → undo @feat:editor-shell.panels.text-wrap @level:gesture", async ({
     page,
   }) => {
     // W2.4 — `frameTextWrapContourType` (Text enum) +

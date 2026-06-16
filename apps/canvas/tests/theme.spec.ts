@@ -24,7 +24,7 @@ async function htmlIsDark(page: Page): Promise<boolean> {
 }
 
 test.describe("Design system — theme", () => {
-  test("dark is the default and tokens resolve", async ({ page }) => {
+  test("dark is the default and tokens resolve @feat:editor-shell.theme @level:happy", async ({ page }) => {
     await openCanvas(page);
     expect(await htmlIsDark(page)).toBe(true);
     const probes = await page.evaluate(() => {
@@ -42,7 +42,7 @@ test.describe("Design system — theme", () => {
     expect(probes.bodyFont).toContain("IBM Plex Sans");
   });
 
-  test("toggle flips to light and persists across reload", async ({
+  test("toggle flips to light and persists across reload @feat:editor-shell.theme @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -64,7 +64,7 @@ test.describe("Design system — theme", () => {
     await expect.poll(() => htmlIsDark(page)).toBe(true);
   });
 
-  test("the IBM Plex faces actually load", async ({ page }) => {
+  test("the IBM Plex faces actually load @feat:editor-shell.theme @level:happy", async ({ page }) => {
     await openCanvas(page);
     const loaded = await page.evaluate(async () => {
       await document.fonts.ready;

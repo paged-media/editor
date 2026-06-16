@@ -106,7 +106,7 @@ test.describe("Phase G — multi-select union handles", () => {
     test.skip(ids.length < 2, "needs at least two un-rotated frames");
   });
 
-  test("multi-select Scale via union corner: applied as Batch of FrameTransform", async ({
+  test("multi-select Scale via union corner: applied as Batch of FrameTransform @feat:editor-tools.scale @level:happy", async ({
     page,
   }) => {
     const result = await page.evaluate(
@@ -129,7 +129,7 @@ test.describe("Phase G — multi-select union handles", () => {
     expect(result.appliedSeq).toBeGreaterThan(0);
   });
 
-  test("multi-select Rotate via union: applied as Batch of FrameTransform", async ({
+  test("multi-select Rotate via union: applied as Batch of FrameTransform @feat:editor-tools.scale @level:happy", async ({
     page,
   }) => {
     const result = await page.evaluate(

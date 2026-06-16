@@ -17,7 +17,7 @@ import {
 import { Designer } from "../driver/designer";
 
 test.describe("journey · master", () => {
-  test("build a flyer from scratch: text → style → shape → fill → export", async ({
+  test("build a flyer from scratch: text → style → shape → fill → export @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
