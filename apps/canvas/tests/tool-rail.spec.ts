@@ -39,7 +39,7 @@ test.describe("Concept 1 — tool rail", () => {
     ).toBeVisible();
   });
 
-  test("AC-RAIL-2 — click and single-key shortcut set the tool @feat:editor-shell.tool-rail @level:gesture", async ({
+  test("AC-RAIL-2 — click and single-key shortcut set the tool @feat:editor-shell.tool-rail @feat:editor-shell.keyboard-shortcuts @level:gesture", async ({
     page,
   }) => {
     // Click the Type slot.
@@ -92,7 +92,7 @@ test.describe("Concept 1 — tool rail", () => {
     ).toBeVisible();
   });
 
-  test("AC-RAIL-4 — holding Space spring-loads a momentary Hand @feat:editor-shell.tool-rail @level:happy", async ({
+  test("AC-RAIL-4 — holding Space spring-loads a momentary Hand @feat:editor-shell.tool-rail @feat:editor-tools.nav.pan @level:happy", async ({
     page,
   }) => {
     await expect(

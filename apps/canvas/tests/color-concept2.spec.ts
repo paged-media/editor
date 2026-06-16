@@ -369,7 +369,7 @@ test.describe("Concept 2 — colour engine + panels", () => {
     expect(out.undone).toBe(out.before);
   });
 
-  test("ink settings + standard-Lab toggle round-trip (AC-8) @feat:color-swatches.icc-cmm @feat:editor-shell.panels.color-settings @level:happy", async ({
+  test("ink settings + standard-Lab toggle round-trip (AC-8) @feat:color-swatches.icc-cmm @feat:editor-shell.panels.color-settings @feat:color-swatches.ink-manager @level:happy", async ({
     page,
   }) => {
     const out = await page.evaluate(async () => {

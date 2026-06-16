@@ -19,7 +19,7 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 const FIXTURE = `${REPO_ROOT}/corpus/generated/text.idml`;
 
 test.describe("W2.12 — Fonts panel", () => {
-  test("AC-FONTS-1 — fonts-in-use list renders non-empty @feat:editor-shell.panels.fonts @level:edge", async ({ page }) => {
+  test("AC-FONTS-1 — fonts-in-use list renders non-empty @feat:editor-shell.panels.fonts @feat:the-renderer.font-registry @level:edge", async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
     await openPanel(page, "paged.fonts");

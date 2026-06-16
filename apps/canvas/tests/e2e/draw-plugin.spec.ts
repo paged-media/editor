@@ -208,7 +208,7 @@ test.describe("E2E draw-plugin (pen + anchor tools, real viewport)", () => {
       .toBeGreaterThan(0.2);
   });
 
-  test("AC-DRAW-1 — pen click×3 + Enter creates an open 3-anchor path; undo removes it @feat:plugin-draw.anchor-add @feat:plugin-draw.anchor-convert @feat:plugin-draw.anchor-delete @feat:plugin-platform.bundle-lifecycle @level:gesture", async ({
+  test("AC-DRAW-1 — pen click×3 + Enter creates an open 3-anchor path; undo removes it @feat:plugin-draw.anchor-add @feat:plugin-draw.anchor-convert @feat:plugin-draw.anchor-delete @feat:plugin-platform.bundle-lifecycle @feat:editor-shell.plugin-bundles @level:gesture", async ({
     page,
   }) => {
     const before = await countKind(page, "polygon");

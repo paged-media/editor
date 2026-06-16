@@ -45,7 +45,7 @@ test.describe("Gesture atomicity & undo symmetry", () => {
     pageIndex = target.pageIndex;
   });
 
-  test("AC-E2E-GEST-ATOM-1 — GSM-01/INV-1/INV-4: five updates commit as one Operation; undo restores byte-identically @feat:editor-tools.gesture-lifecycle @level:happy", async ({
+  test("AC-E2E-GEST-ATOM-1 — GSM-01/INV-1/INV-4: five updates commit as one Operation; undo restores byte-identically @feat:editor-tools.gesture-lifecycle @feat:round-tripping.gesture-transactions @level:happy", async ({
     page,
   }) => {
     const pageInfo = fx.pages[pageIndex];
