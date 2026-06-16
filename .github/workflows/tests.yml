@@ -132,8 +132,70 @@ jobs:
       - name: fidelity thresholds schema
         run: pnpm test:thresholds
 
+  # Build the paged.image wasm ONCE (image_js.js + .d.ts + image_js_bg.wasm)
+  # and publish it as an artifact the playwright shards download. Doing it in
+  # one dedicated job — its own generous timeout + cargo cache — instead of
+  # inline in each of the 3 shards is what stopped the cold cargo wasm build
+  # from blowing the shard timeout (and, because cancelled shards never saved
+  # their cache, never warming it). image-js is a Rust crate in plugin-image's
+  # Cargo workspace; the build is self-contained there (no plugin-sdk / node).
+  # Mirrors build-wasm.sh's two essential steps (cargo wasm build +
+  # wasm-bindgen), skipping wasm-opt + the 8 MiB gate (the editor's dev/test
+  # path doesn't need the optimized artifact). wasm-bindgen-cli is pinned to
+  # plugin-image/Cargo.lock.
+  build-image-wasm:
+    name: build paged.image wasm
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: checkout plugin-image
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/plugin-image
+          path: plugin-image
+          token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
+
+      - name: rust toolchain + wasm32
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.93.0" # mirrors plugin-image/rust-toolchain.toml — bump together
+          targets: wasm32-unknown-unknown
+
+      - name: install wasm-bindgen-cli (pinned to plugin-image Cargo.lock)
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen-cli@0.2.122
+
+      - name: cache image-js cargo build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            plugin-image/target
+          key: image-js-wasm-${{ runner.os }}-${{ hashFiles('plugin-image/Cargo.lock') }}
+          restore-keys: image-js-wasm-${{ runner.os }}-
+
+      - name: build image-js wasm
+        working-directory: plugin-image
+        run: |
+          cargo build --release --target wasm32-unknown-unknown -p image-js
+          wasm-bindgen target/wasm32-unknown-unknown/release/image_js.wasm \
+            --target web --out-dir manifest/wasm
+          test -f manifest/wasm/image_js.js
+          test -f manifest/wasm/image_js.d.ts
+          echo "paged.image wasm built (unoptimized — wasm-opt + size gate skipped)"
+
+      - name: upload image-js wasm
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-js-wasm
+          path: plugin-image/manifest/wasm
+          retention-days: 7
+
   playwright:
     name: playwright (shard ${{ matrix.shard }}/3)
+    needs: build-image-wasm
     runs-on: ubuntu-latest
     # 50, not 30: the COLD (uncached) image-js cargo wasm build + paged-gen
     # build + the multi-repo install chain consumed most of a 30-min budget,
@@ -322,47 +384,25 @@ jobs:
           done
           echo "corpus fixtures materialized OK"
 
-      # ---- paged.image wasm (image_js.js + .d.ts) -----------------------
-      # apps/canvas/src/main.tsx wires the paged.image bundle; its glue
-      # re-exports types from decode-worker.ts, which imports
-      # `@paged-media/image-manifest/wasm/image_js.js`. That wasm-bindgen
-      # output is gitignored (built by plugin-image/scripts/build-wasm.sh)
-      # and produced by NO other CI, so without it `tsc` fails (TS2307) and
-      # vite can't serve the canvas app — the whole surface goes red. Build
-      # it here, the same build-from-source pattern as paged-gen above. We
-      # run build-wasm.sh's two essential steps (cargo wasm build +
-      # wasm-bindgen) but SKIP wasm-opt and the 8 MiB size gate: the
-      # editor's dev/test path doesn't need the optimized artifact (that
-      # budget is plugin-image's own CI concern). wasm-bindgen-cli is pinned
-      # to the wasm-bindgen version in plugin-image/Cargo.lock (build-wasm.sh
-      # enforces that match).
-      - name: rust toolchain + wasm32 (for the image-js wasm)
-        uses: dtolnay/rust-toolchain@master
+      # paged.image wasm (image_js.js + .d.ts + image_js_bg.wasm) — built
+      # ONCE by the `build-image-wasm` job (this job `needs:` it) and
+      # downloaded here, NOT rebuilt per shard. apps/canvas/src/main.tsx
+      # wires the paged.image bundle; its glue re-exports types from
+      # decode-worker.ts which imports `@paged-media/image-manifest/wasm/
+      # image_js.js` — a gitignored wasm-bindgen output produced by no other
+      # CI. Without it `tsc` fails (TS2307) and vite can't serve the canvas
+      # app. Downloading (vs the cold ~15-min cargo wasm build × 3 shards)
+      # is what keeps the shard inside its timeout.
+      - name: download paged.image wasm (from build-image-wasm)
+        uses: actions/download-artifact@v4
         with:
-          toolchain: "1.93.0" # mirrors plugin-image/rust-toolchain.toml — bump together
-          targets: wasm32-unknown-unknown
-
-      - name: install wasm-bindgen-cli (pinned to plugin-image Cargo.lock)
-        uses: taiki-e/install-action@v2
-        with:
-          tool: wasm-bindgen-cli@0.2.122
-
-      - name: cache image-js wasm build
-        uses: actions/cache@v4
-        with:
-          path: plugin-image/target
-          key: image-js-wasm-${{ runner.os }}-${{ hashFiles('plugin-image/Cargo.lock') }}
-          restore-keys: image-js-wasm-${{ runner.os }}-
-
-      - name: build paged.image wasm (image_js.js + .d.ts)
-        working-directory: plugin-image
+          name: image-js-wasm
+          path: plugin-image/manifest/wasm
+      - name: verify image wasm present
         run: |
-          cargo build --release --target wasm32-unknown-unknown -p image-js
-          wasm-bindgen target/wasm32-unknown-unknown/release/image_js.wasm \
-            --target web --out-dir manifest/wasm
-          test -f manifest/wasm/image_js.js
-          test -f manifest/wasm/image_js.d.ts
-          echo "paged.image wasm built (unoptimized — wasm-opt + size gate skipped)"
+          test -f plugin-image/manifest/wasm/image_js.js
+          test -f plugin-image/manifest/wasm/image_js.d.ts
+          echo "paged.image wasm present (downloaded)"
 
       # Pin pnpm: with the editor checked out under editor/ (not at the
       # workspace root), action-setup can't read `packageManager` from a
