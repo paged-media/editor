@@ -51,21 +51,7 @@ export async function loadDocumentFile(
   cb.resetForNewDocument();
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-
-  // Phase 3 — auto-fetch a default font so text is shaped + the
-  // captured StoryLayout has real glyph positions. Without this the
-  // caret + selection rendering has nothing to position against
-  // (glyphs vec empty → no clusters captured). Inter is checked in
-  // under corpus/fonts/.
-  let fontBytes: Uint8Array | undefined;
-  try {
-    const fontResp = await fetch("/fonts/Inter.ttf");
-    if (fontResp.ok) {
-      fontBytes = new Uint8Array(await fontResp.arrayBuffer());
-    }
-  } catch {
-    // Font fetch is best-effort; canvas still renders without it.
-  }
+  const fontBytes = await fetchDefaultFont();
 
   let handle: DocumentHandle;
   try {
@@ -81,9 +67,80 @@ export async function loadDocumentFile(
   cb.setStatus(
     `loaded ${handle.pageCount} page${handle.pageCount === 1 ? "" : "s"}; snapshotting…`,
   );
+  await snapshotAllPages(client, handle, cb);
+}
 
-  // Sequential snapshot requests — see comment above re: worker
-  // being single-threaded.
+/** Size of a new blank document in points, [width, height]. */
+export interface BlankDocumentOptions {
+  widthPt: number;
+  heightPt: number;
+}
+
+/**
+ * File ▸ New — create an empty single-page document and run the same
+ * post-load orchestration as {@link loadDocumentFile} (reset, snapshot,
+ * ready). The blank package is minted by the engine
+ * ([`CanvasClient.newBlankDocument`]); the editor only orchestrates the
+ * surrounding UI state, exactly like opening a file.
+ */
+export async function createBlankDocument(
+  client: CanvasClient,
+  opts: BlankDocumentOptions,
+  cb: DocumentLoaderCallbacks,
+): Promise<void> {
+  cb.setStatus("creating new document…");
+  cb.setLoading({ name: "Untitled", bytes: 0 });
+  cb.resetForNewDocument();
+
+  const fontBytes = await fetchDefaultFont();
+
+  let handle: DocumentHandle;
+  try {
+    handle = await client.newBlankDocument(opts.widthPt, opts.heightPt, fontBytes);
+  } catch (err) {
+    cb.setLoading(null);
+    cb.setStatus(`new document failed: ${String(err)}`);
+    return;
+  }
+
+  cb.setHandle(handle);
+  cb.setLoading(null);
+  cb.setStatus(
+    `new ${handle.pageCount}-page document; snapshotting…`,
+  );
+  await snapshotAllPages(client, handle, cb);
+}
+
+/**
+ * Auto-fetch a default font so text is shaped + the captured StoryLayout
+ * has real glyph positions. Without this the caret + selection rendering
+ * has nothing to position against (glyphs vec empty → no clusters
+ * captured). Inter is checked in under corpus/fonts/. Best-effort: the
+ * canvas still renders without it.
+ */
+async function fetchDefaultFont(): Promise<Uint8Array | undefined> {
+  try {
+    const fontResp = await fetch("/fonts/Inter.ttf");
+    if (fontResp.ok) {
+      return new Uint8Array(await fontResp.arrayBuffer());
+    }
+  } catch {
+    // best-effort
+  }
+  return undefined;
+}
+
+/**
+ * Sequential per-page snapshot requests + ready flag, shared by the
+ * open-file and new-document paths. Sequential because the worker is
+ * single-threaded; parallel requests would only queue. A missing
+ * snapshot is a warning, not a hard failure.
+ */
+async function snapshotAllPages(
+  client: CanvasClient,
+  handle: DocumentHandle,
+  cb: DocumentLoaderCallbacks,
+): Promise<void> {
   for (const pageId of handle.pageIds) {
     try {
       const snap = await client.requestSnapshot(pageId, SNAPSHOT_WIDTH_PX);

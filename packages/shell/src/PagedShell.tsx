@@ -64,7 +64,10 @@ import {
 import type { ModeContribution } from "./registries/mode";
 import { ToolSettingsProvider } from "./state/tool-settings-context";
 import { FormattingAffectsProvider } from "./state/formatting-affects-context";
-import { EditContextStackProvider } from "./state/edit-context-stack";
+import {
+  EditContextStackProvider,
+  useOptionalEditContextStack,
+} from "./state/edit-context-stack";
 import { EditContextController } from "./state/edit-context-controller";
 import { PagedEditorProvider } from "./state/paged-editor";
 import { useRegistries } from "./state/registries-context";
@@ -78,10 +81,12 @@ import { CockpitLayout } from "./cockpit/CockpitLayout";
 import {
   CockpitStateProvider,
   cockpitActions,
+  useOptionalCockpitState,
 } from "./cockpit/cockpit-state-context";
 import { loadDocumentFile } from "./state/document-loader";
 import {
   PAGED_FILE_OPEN_IDML,
+  buildNewDocumentCommand,
   buildOpenIdmlCommand,
 } from "./state/commands/file-commands";
 import {
@@ -276,6 +281,16 @@ function ShellChrome({
   const { theme, setTheme } = useTheme();
   const { mode: workflowMode, setMode: setWorkflowMode } = useWorkflowMode();
   const paged = useOptionalPaged();
+  // Journey-oracle introspection (dev only). The cockpit tab state +
+  // edit-context stack live BELOW this component (CockpitStateProvider
+  // wraps shellBody), so they're unobservable from the `__canvas` block
+  // here. A child `<DebugContextProbe>` rendered inside that provider
+  // writes them into this ref; `__canvas.debugContext()` reads it.
+  const debugContextRef = useRef<DebugContextSnapshot>({
+    panels: { open: [], active: null },
+    editContext: null,
+    inspectorContext: null,
+  });
   const {
     contentSelection,
     setContentSelection,
@@ -517,6 +532,15 @@ function ShellChrome({
         pushWarning: (w) => setWarnings((prev) => [...prev, w]),
       }),
     );
+    // File ▸ New — mint a blank document through the engine. Shares
+    // setStatus/pushWarning with Open so menu + palette + tests reach
+    // one path.
+    const newDoc = registries.commands.register(
+      buildNewDocumentCommand({
+        setStatus,
+        pushWarning: (w) => setWarnings((prev) => [...prev, w]),
+      }),
+    );
     // Concept 2 — swatch-library import/export commands.
     const importAse = registries.commands.register(
       buildImportAseCommand({
@@ -539,6 +563,7 @@ function ShellChrome({
     const exportPdf = registries.commands.register(buildExportPdfCommand());
     return () => {
       handle.dispose();
+      newDoc.dispose();
       importAse.dispose();
       exportAse.dispose();
       exportPdf.dispose();
@@ -643,6 +668,12 @@ function ShellChrome({
       // Cockpit — open any REGISTERED panel as a right-dock tab
       // (the panel-rail / Window-menu path, exposed for tests).
       openPanel: (id: string) => cockpitActions.openPanel?.(id),
+      // Journey-oracle introspection — the dimensions DOM/`__canvas`
+      // can't otherwise give: which panels are open/active and the
+      // edit-context stack. Populated by `<DebugContextProbe>` (mounted
+      // inside CockpitStateProvider); reads the ref so it stays valid
+      // across this object's per-render republish.
+      debugContext: () => debugContextRef.current,
     };
   }
 
@@ -857,10 +888,50 @@ function ShellChrome({
   // The cockpit's tab state mounts only on the cockpit path so the
   // legacy dockview layout keys survive while the flag is off.
   return cockpitActive ? (
-    <CockpitStateProvider>{shellBody}</CockpitStateProvider>
+    <CockpitStateProvider>
+      {!isProd && <DebugContextProbe targetRef={debugContextRef} />}
+      {shellBody}
+    </CockpitStateProvider>
   ) : (
     shellBody
   );
+}
+
+/** Snapshot of the context dimensions only observable from inside the
+ *  cockpit + edit-context providers. See `__canvas.debugContext`. */
+interface DebugContextSnapshot {
+  panels: { open: string[]; active: string | null };
+  editContext: { type: string; scopeRoot: unknown; label: string } | null;
+  inspectorContext: string | null;
+}
+
+/** Dev-only renderless probe: reads the cockpit tab state + edit-context
+ *  stack (both providers are in scope here, unlike at the `__canvas`
+ *  publish site) and mirrors them into `targetRef` for the journey-test
+ *  oracle. Writing a ref during render is safe — it's idempotent and
+ *  triggers no state update. */
+function DebugContextProbe({
+  targetRef,
+}: {
+  targetRef: React.MutableRefObject<DebugContextSnapshot>;
+}) {
+  const cockpit = useOptionalCockpitState();
+  const editStack = useOptionalEditContextStack();
+  targetRef.current = {
+    panels: {
+      open: cockpit?.rightTabs ?? [],
+      active: cockpit?.activeTab ?? null,
+    },
+    editContext: editStack?.active
+      ? {
+          type: editStack.active.type,
+          scopeRoot: editStack.active.scopeRoot,
+          label: editStack.active.label,
+        }
+      : null,
+    inspectorContext: cockpit?.inspectorContext ?? null,
+  };
+  return null;
 }
 
 /**

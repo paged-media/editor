@@ -185,6 +185,42 @@ export class CanvasClient {
     return promise;
   }
 
+  /**
+   * File ▸ New — replace the active document with a freshly-minted
+   * EMPTY one at `widthPt` × `heightPt` (points). The engine synthesises
+   * the blank IDML and loads it through the normal parse path, so the
+   * returned handle is identical in shape to {@link loadDocument}.
+   *
+   * Unlike `loadDocument` this carries no large payload, so it rides the
+   * regular JSON channel (`send`) rather than the binary side-channel.
+   * `font` is the optional default-font fallback (the editor's Inter) so
+   * text the user then types has glyph metrics.
+   */
+  async newBlankDocument(
+    widthPt: number,
+    heightPt: number,
+    font?: Uint8Array,
+  ): Promise<DocumentHandle> {
+    const reply = await this.send({
+      kind: "newBlankDocument",
+      payload: {
+        widthPt,
+        heightPt,
+        font: font ? Array.from(font) : null,
+      },
+    });
+    if (reply.kind === "documentLoaded") {
+      return reply.payload;
+    }
+    if (reply.kind === "loadFailed") {
+      const e = reply.payload.error;
+      throw new Error(
+        `new document failed (${e.kind}): ${"message" in e ? e.message : ""}`,
+      );
+    }
+    throw new Error(`unexpected reply kind: ${reply.kind}`);
+  }
+
   private readonly loadDocPending = new Map<
     number,
     { resolve: (h: DocumentHandle) => void; reject: (e: Error) => void }

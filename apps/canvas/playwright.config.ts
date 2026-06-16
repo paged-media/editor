@@ -52,11 +52,13 @@ const ENVATO_LEAN_DROP = [
   "translate.spec.ts",
 ];
 
+const LEAN_DROP = LEAN_CI
+  ? ["fidelity.spec.ts", "e2e/extensive-corpus.spec.ts", ...ENVATO_LEAN_DROP]
+  : [];
+
 export default defineConfig({
   testDir: "./tests",
-  testIgnore: LEAN_CI
-    ? ["fidelity.spec.ts", "e2e/extensive-corpus.spec.ts", ...ENVATO_LEAN_DROP]
-    : [],
+  testIgnore: LEAN_DROP,
   // Single worker keeps the snapshot tier deterministic (worker pool
   // contention can race the layout cache across packs). Re-enable
   // parallelism once we've confirmed perf isn't bottlenecked by it.
@@ -70,6 +72,11 @@ export default defineConfig({
   timeout: 5 * 60_000,
   expect: {
     timeout: 30_000,
+    // Journey visual baselines. A real regression moves far more than
+    // 1% of pixels; the tolerance absorbs last-pixel AA noise without
+    // hiding one. Caret/HUD animations are frozen for chrome shots.
+    toHaveScreenshot: { maxDiffPixelRatio: 0.01, animations: "disabled" },
+    toMatchSnapshot: { maxDiffPixelRatio: 0.01 },
   },
   // The GPU/Vello path occasionally trips a wasm-bindgen "recursive
   // use of an object" race when the prior test's worker hasn't
@@ -95,12 +102,43 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
+      // The journey tier is its own project (below); keep it out of the
+      // behaviour-surface suite so each runs once.
+      testIgnore: [...LEAN_DROP, "journey/**"],
       use: {
         ...devices["Desktop Chrome"],
         // WebGPU lights up when BACKEND=gpu — but headless Chromium
         // doesn't ship a WebGPU adapter, so we force headed mode in
         // that case. On Linux the Vulkan flags are needed; on macOS
         // Metal works by default.
+        headless: (process.env.BACKEND ?? "").toLowerCase() !== "gpu",
+        launchOptions:
+          (process.env.BACKEND ?? "").toLowerCase() === "gpu"
+            ? {
+                args: [
+                  "--enable-unsafe-webgpu",
+                  "--use-vulkan",
+                  "--enable-features=Vulkan",
+                ],
+              }
+            : {},
+      },
+    },
+    {
+      // The "user-journey" tier — real-user DTP workflows that assert
+      // context-sensitivity (the intent→context contract) + visual
+      // baselines. Separate project so it shards/gates independently.
+      // `{projectName}-{platform}` in the snapshot path lets per-OS and
+      // CPU-vs-GPU baselines coexist (CI commits Linux; macOS local gets
+      // its own suffix).
+      name: "journeys",
+      testDir: "./tests/journey",
+      testMatch: "**/*.journey.spec.ts",
+      snapshotPathTemplate:
+        "{testDir}/__screenshots__/{testFileName}/{arg}-{projectName}-{platform}{ext}",
+      use: {
+        ...devices["Desktop Chrome"],
+        deviceScaleFactor: 1,
         headless: (process.env.BACKEND ?? "").toLowerCase() !== "gpu",
         launchOptions:
           (process.env.BACKEND ?? "").toLowerCase() === "gpu"

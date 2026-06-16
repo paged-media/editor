@@ -370,6 +370,56 @@ jobs:
             --shard=${{ matrix.shard }}/${{ env.SHARDS }} \
             --reporter=blob
 
+      # Advisory GPU lane — re-run the journey tier through the WebGPU /
+      # Vello present path (headed via xvfb; software Vulkan when present,
+      # CPU fallback otherwise). Opt-in (workflow_dispatch only) on one
+      # shard, `continue-on-error` so it NEVER gates: the journeys' visual
+      # regression is the deterministic CPU readback above — this only
+      # smoke-checks that the GPU live-render path runs without crashing.
+      - name: journeys (GPU, advisory)
+        if: ${{ github.event_name == 'workflow_dispatch' && matrix.shard == 1 }}
+        continue-on-error: true
+        working-directory: editor/apps/canvas
+        env:
+          CI: "1"
+          PAGED_CI_LEAN: "1"
+          BACKEND: gpu
+        run: |
+          xvfb-run -a npx playwright test \
+            --project=journeys \
+            --reporter=list
+
+      # Seed/refresh the committed LINUX visual baselines. Opt-in
+      # (workflow_dispatch only) on one shard: runs the journey tier with
+      # JOURNEY_VISUAL=1 (turns the content + chrome checkpoints ON — they
+      # CI-skip by default until baselines exist) and --update-snapshots,
+      # then uploads the regenerated PNGs as an artifact for the author to
+      # commit. Linux is the gate platform; the {platform} token in
+      # playwright.config's snapshotPathTemplate keeps macOS-local
+      # baselines (-darwin) separate from these (-linux). Reuses CI's
+      # already-working multi-repo install — no local Docker dance.
+      - name: seed journey visual baselines (Linux, advisory)
+        if: ${{ github.event_name == 'workflow_dispatch' && matrix.shard == 1 }}
+        continue-on-error: true
+        working-directory: editor/apps/canvas
+        env:
+          CI: "1"
+          PAGED_CI_LEAN: "1"
+          JOURNEY_VISUAL: "1"
+        run: |
+          npx playwright test \
+            --project=journeys \
+            --update-snapshots \
+            --reporter=list
+
+      - name: upload regenerated baselines
+        if: ${{ github.event_name == 'workflow_dispatch' && matrix.shard == 1 }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: journey-baselines-linux
+          path: "editor/apps/canvas/tests/journey/__screenshots__/**/*-linux.png"
+          retention-days: 14
+
       - name: upload blob report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4

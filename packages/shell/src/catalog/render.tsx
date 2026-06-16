@@ -104,7 +104,27 @@ function Node({ node }: { node: CompositionNode }): ReactElement {
         ...resolvedExtras(resolved),
       },
     };
-    return <Leaf {...leafProps} />;
+    // Address composition-rendered controls by their binding PATH (e.g.
+    // `characterFontSize`, `frameStrokeWeight`) — composition leaves
+    // carry only an icon, no aria-label, so tests + a11y need a stable
+    // hook. Only VALUE-bearing input leaves get it (layout leaves —
+    // section/cluster/row — have no `value` binding); the `contents`
+    // span is layout-neutral.
+    const valueBinding = node.bindings?.value as
+      | { path?: string }
+      | undefined;
+    const controlPath =
+      valueBinding && typeof valueBinding.path === "string"
+        ? valueBinding.path
+        : undefined;
+    const leaf = <Leaf {...leafProps} />;
+    return controlPath ? (
+      <span data-control={controlPath} className="contents">
+        {leaf}
+      </span>
+    ) : (
+      leaf
+    );
   }
 
   // Composition. Render the children — either inline children on
