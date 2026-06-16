@@ -129,7 +129,11 @@ function renderHandle(
   const visiblePx = 8;
   const hitPx = 12;
   return (
-    <g key={key} transform={`translate(${x}, ${y}) scale(${inv})`}>
+    <g
+      key={key}
+      transform={`translate(${x}, ${y}) scale(${inv})`}
+      data-selection-handle={name}
+    >
       <rect
         x={-hitPx / 2}
         y={-hitPx / 2}

@@ -51,6 +51,7 @@ function renderCaret(
       height={caret.heightPt}
       fill="var(--overlay-selection)"
       pointerEvents="none"
+      data-text-caret
     >
       <animate
         attributeName="opacity"

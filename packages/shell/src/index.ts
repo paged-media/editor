@@ -246,7 +246,9 @@ export {
 
 // ── Built-in commands ──────────────────────────────────────────
 export {
+  buildNewDocumentCommand,
   buildOpenIdmlCommand,
+  PAGED_FILE_NEW,
   PAGED_FILE_OPEN_IDML,
 } from "./state/commands/file-commands";
 export {

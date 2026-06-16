@@ -2,11 +2,56 @@
 // picker and (3h+) the Cmd+K palette both resolve through this
 // contribution so there's a single load path.
 
-import { loadDocumentFile } from "../document-loader";
+import { createBlankDocument, loadDocumentFile } from "../document-loader";
 import type { PagedEditor } from "../paged-editor";
 import type { CommandContribution } from "../../registries";
 
 export const PAGED_FILE_OPEN_IDML = "paged.file.openIdml";
+export const PAGED_FILE_NEW = "paged.file.new";
+
+/** US Letter in points — InDesign's default new-document size. */
+const LETTER_PT: readonly [number, number] = [612, 792];
+
+/**
+ * Build the File ▸ New command. Mints a blank single-page document via
+ * the engine ([`CanvasClient.newBlankDocument`]) and runs it through the
+ * same document-state orchestration as Open, so the menu, palette, and
+ * tests all reach one path.
+ */
+export function buildNewDocumentCommand(options: {
+  setStatus: (s: string) => void;
+  pushWarning: (w: string) => void;
+  defaultSizePt?: readonly [number, number];
+}): CommandContribution {
+  return {
+    id: PAGED_FILE_NEW,
+    title: "New document",
+    category: "File",
+    handler: async (paged) => {
+      const editor = paged as PagedEditor;
+      const [widthPt, heightPt] = options.defaultSizePt ?? LETTER_PT;
+      await createBlankDocument(
+        editor.client,
+        { widthPt, heightPt },
+        {
+          setHandle: editor.document.setHandle,
+          setLoading: editor.document.setLoading,
+          setStatus: options.setStatus,
+          setSnapshotsReady: editor.document.setSnapshotsReady,
+          addSnapshot: (pageId, url) => {
+            editor.document.setSnapshots((prev) => {
+              const next = new Map(prev);
+              next.set(pageId, url);
+              return next;
+            });
+          },
+          resetForNewDocument: editor.document.resetForNewDocument,
+          pushWarning: options.pushWarning,
+        },
+      );
+    },
+  };
+}
 
 /**
  * Build the file-open command contribution. The `pickFile` thunk
