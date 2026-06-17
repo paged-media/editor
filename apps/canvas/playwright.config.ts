@@ -135,7 +135,10 @@ export default defineConfig({
       // `--enable-features=Vulkan` + a lavapipe ICD (follow-up).
       name: "journeys-gpu",
       testDir: "./tests/journey",
-      testMatch: "**/gpu-backend.journey.spec.ts",
+      // The FULL DTP journey surface on the editor's real default backend
+      // (WebGPU/Vello) — proving every workflow runs on GPU, not just the CPU
+      // fallback the bundled-Chromium `journeys` lane exercises.
+      testMatch: "**/*.journey.spec.ts",
       snapshotPathTemplate:
         "{testDir}/__screenshots__/{testFileName}/{arg}-{projectName}-{platform}{ext}",
       use: {
