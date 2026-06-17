@@ -24,7 +24,7 @@ const collection = <T = { selfId: string }>(page: Page, name: string) =>
   ) as Promise<T[]>;
 
 test.describe("journey · ink + overset", () => {
-  test("convert a spot ink to process; overflow a frame to overset @feat:color-swatches.ink-manager @feat:stories-text.overset @level:happy", async ({
+  test("convert a spot ink to process; overflow a frame to overset @feat:color-swatches.ink-manager @feat:color-swatches.process-spot-tint @feat:stories-text.overset @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);

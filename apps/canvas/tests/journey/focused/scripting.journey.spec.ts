@@ -28,7 +28,7 @@ const exec = (page: import("@playwright/test").Page, src: string) =>
   );
 
 test.describe("journey · scripting", () => {
-  test("read, write, inspect, log, undo/redo, survive a runaway @feat:scripting.property-readwrite @feat:scripting.mutation-parity @feat:scripting.inspection @feat:scripting.collections @feat:scripting.console @feat:scripting.undo-redo @feat:scripting.runtime-budgets @feat:scripting.script-editor @feat:scripting.repl @level:happy", async ({
+  test("read, write, inspect, log, undo/redo, survive a runaway @feat:scripting.property-readwrite @feat:scripting.mutation-parity @feat:scripting.inspection @feat:scripting.collections @feat:scripting.console @feat:scripting.undo-redo @feat:scripting.runtime-budgets @feat:scripting.script-editor @feat:scripting.repl @feat:the-renderer.collections-read @feat:the-renderer.properties-read @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
