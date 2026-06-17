@@ -14,7 +14,7 @@ import { Designer } from "../driver/designer";
 const NO_SNAP = { shift: false, alt: false, disableSnap: true };
 
 test.describe("journey · transforms", () => {
-  test("move, resize, rotate, scale, shear each reshape the frame @feat:editor-tools.move.translate @feat:editor-tools.resize.handles @feat:editor-tools.rotate @feat:editor-tools.scale @feat:editor-tools.shear @feat:editor-tools.gesture-lifecycle @feat:editor-shell.panels.object-transform @level:gesture", async ({
+  test("move, resize, rotate, scale, shear each reshape the frame @feat:editor-tools.move.translate @feat:editor-tools.resize.handles @feat:editor-tools.rotate @feat:editor-tools.scale @feat:editor-tools.shear @feat:editor-tools.gesture-lifecycle @feat:round-tripping.gesture-transactions @feat:editor-shell.panels.object-transform @level:gesture", async ({
     page,
   }) => {
     const designer = new Designer(page);
