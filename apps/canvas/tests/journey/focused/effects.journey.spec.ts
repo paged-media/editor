@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · effects", () => {
-  test("apply a drop shadow to a filled shape @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:happy", async ({ page }) => {
+  test("apply a drop shadow to a filled shape @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @feat:frames-paths.frame.insert @feat:color-swatches.fill-stroke-apply @feat:effects-transparency.drop-shadow @feat:editor-shell.panels.effects @level:happy", async ({ page }) => {
     const designer = new Designer(page);
     await designer.open();
     await designer.newDocument();

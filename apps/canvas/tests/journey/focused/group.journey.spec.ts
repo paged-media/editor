@@ -14,7 +14,7 @@ import { expect, test } from "@playwright/test";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · group", () => {
-  test("grouping two shapes creates a group in the scene tree @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:happy", async ({
+  test("grouping two shapes creates a group in the scene tree @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @feat:frames-paths.frame.insert @feat:frames-paths.groups @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);

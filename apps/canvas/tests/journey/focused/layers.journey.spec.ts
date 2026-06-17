@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · layers", () => {
-  test("add a layer and toggle its visibility @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:happy", async ({ page }) => {
+  test("add a layer and toggle its visibility @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @feat:layers.ops @feat:editor-shell.panels.layers @level:happy", async ({ page }) => {
     const designer = new Designer(page);
     await designer.open();
     await designer.newDocument();

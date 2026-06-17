@@ -10,7 +10,7 @@ import { FRAME_SELECTED } from "../driver/context-contract";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · color", () => {
-  test("create a swatch + color group and fill a shape with the swatch @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:happy", async ({
+  test("create a swatch + color group and fill a shape with the swatch @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @feat:color-swatches.swatch.crud @feat:color-swatches.color-groups @feat:color-swatches.fill-stroke-apply @feat:frames-paths.frame.insert @feat:editor-tools.draw.rectangle @feat:editor-tools.select.click-marquee @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);

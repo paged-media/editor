@@ -10,7 +10,7 @@ import { MULTI_SELECT } from "../driver/context-contract";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · multi-select", () => {
-  test("selecting two shapes surfaces the combined Frame context @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:happy", async ({
+  test("selecting two shapes surfaces the combined Frame context @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @feat:frames-paths.frame.insert @feat:editor-tools.select.click-marquee @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
