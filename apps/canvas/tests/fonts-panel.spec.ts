@@ -19,7 +19,7 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 const FIXTURE = `${REPO_ROOT}/corpus/generated/text.idml`;
 
 test.describe("W2.12 — Fonts panel", () => {
-  test("AC-FONTS-1 — fonts-in-use list renders non-empty", async ({ page }) => {
+  test("AC-FONTS-1 — fonts-in-use list renders non-empty @feat:editor-shell.panels.fonts @feat:the-renderer.font-registry @level:edge", async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
     await openPanel(page, "paged.fonts");
@@ -28,7 +28,7 @@ test.describe("W2.12 — Fonts panel", () => {
     await expect(rows).not.toHaveCount(0);
   });
 
-  test("AC-FONTS-2 — Missing tab narrows to only unresolved families", async ({
+  test("AC-FONTS-2 — Missing tab narrows to only unresolved families @feat:editor-shell.panels.fonts @level:edge", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -65,7 +65,7 @@ test.describe("W2.12 — Fonts panel", () => {
     }
   });
 
-  test("AC-FONTS-3 — a deliberately-missing family shows the missing badge", async ({
+  test("AC-FONTS-3 — a deliberately-missing family shows the missing badge @feat:editor-shell.panels.fonts @level:edge", async ({
     page,
   }) => {
     // W2.2 — `preflight.idml` carries a run pinned to "Phantom Display",

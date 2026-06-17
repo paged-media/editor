@@ -22,7 +22,7 @@ test.describe("Phase 5 — Object Styles panel", () => {
     await openPanel(page, "paged.object-styles");
   });
 
-  test("AC-OSTYLE-1 — panel mounts as a composition with a select", async ({
+  test("AC-OSTYLE-1 — panel mounts as a composition with a select @feat:editor-shell.panels.object-styles @feat:styles.object.crud @level:smoke", async ({
     page,
   }) => {
     await expect(
@@ -35,7 +35,7 @@ test.describe("Phase 5 — Object Styles panel", () => {
     ).toBeVisible();
   });
 
-  test("AC-OSTYLE-2 — selecting a style writes appliedObjectStyle through the apply layer", async ({
+  test("AC-OSTYLE-2 — selecting a style writes appliedObjectStyle through the apply layer @feat:editor-shell.panels.object-styles @feat:styles.object.crud @level:happy", async ({
     page,
   }) => {
     const selectedSelfId = await page.evaluate(async () => {

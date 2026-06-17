@@ -56,7 +56,7 @@ test.describe("E2E text ops", () => {
     fx = await loadFixture(page, "text");
   });
 
-  test("AC-E2E-TEXT-1 — insertText grows the story and repaints the frame", async ({
+  test("AC-E2E-TEXT-1 — insertText grows the story and repaints the frame @feat:stories-text.text.delete @feat:stories-text.text.insert @level:happy", async ({
     page,
   }) => {
     expect(fx.firstStory, "text fixture has a story").toBeTruthy();
@@ -92,7 +92,7 @@ test.describe("E2E text ops", () => {
     });
   });
 
-  test("AC-E2E-TEXT-2 — deleteRange shrinks the story and repaints the frame", async ({
+  test("AC-E2E-TEXT-2 — deleteRange shrinks the story and repaints the frame @feat:stories-text.text.delete @feat:stories-text.text.insert @level:happy", async ({
     page,
   }) => {
     const story = fx.firstStory!;
@@ -121,7 +121,7 @@ test.describe("E2E text ops", () => {
     });
   });
 
-  test("AC-E2E-TEXT-5 — undo of a text edit restores the canvas byte-identically", async ({
+  test("AC-E2E-TEXT-5 — undo of a text edit restores the canvas byte-identically @feat:stories-text.text.delete @feat:stories-text.text.insert @level:happy", async ({
     page,
   }) => {
     // Owns the strict undo-render check (the byte-identical pixel
@@ -156,7 +156,7 @@ test.describe("E2E text ops", () => {
   // probe (capability-matrix.spec.ts) owns the support classification;
   // these assert the user-visible domain effect (render + model + undo).
 
-  test("AC-E2E-TEXT-3 — applyStyle attributes a contrasting paragraph style and REPAINTS the run", async ({
+  test("AC-E2E-TEXT-3 — applyStyle attributes a contrasting paragraph style and REPAINTS the run @feat:stories-text.text.delete @feat:stories-text.text.insert @level:happy", async ({
     page,
   }) => {
     // W2.1 — the `text` fixture now ships a deliberately-contrasting
@@ -209,7 +209,7 @@ test.describe("E2E text ops", () => {
     });
   });
 
-  test("AC-E2E-TEXT-4 — insertField inserts a page-number field and repaints", async ({
+  test("AC-E2E-TEXT-4 — insertField inserts a page-number field and repaints @feat:stories-text.text.delete @feat:stories-text.text.insert @level:happy", async ({
     page,
   }) => {
     // A page-number field is one character in the story stream; inserting

@@ -57,7 +57,7 @@ async function runTape(
 }
 
 test.describe("INV-3 — gesture replay determinism", () => {
-  test("AC-E2E-GEST-DET-1 — identical tape on a fresh load reproduces dump + raster byte-identically", async ({
+  test("AC-E2E-GEST-DET-1 — identical tape on a fresh load reproduces dump + raster byte-identically @feat:editor-tools.gesture-lifecycle @level:happy", async ({
     page,
   }) => {
     const first = await runTape(page);

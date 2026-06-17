@@ -25,7 +25,7 @@ test.describe("Concept 1 — tool rail", () => {
     await loadIdml(page, FIXTURE);
   });
 
-  test("AC-RAIL-1 — rail mounts with registry-driven slots", async ({
+  test("AC-RAIL-1 — rail mounts with registry-driven slots @feat:editor-shell.tool-rail @level:smoke", async ({
     page,
   }) => {
     await expect(page.locator('[data-tool-rail="ready"]')).toBeVisible();
@@ -39,7 +39,7 @@ test.describe("Concept 1 — tool rail", () => {
     ).toBeVisible();
   });
 
-  test("AC-RAIL-2 — click and single-key shortcut set the tool", async ({
+  test("AC-RAIL-2 — click and single-key shortcut set the tool @feat:editor-shell.tool-rail @feat:editor-shell.keyboard-shortcuts @level:gesture", async ({
     page,
   }) => {
     // Click the Type slot.
@@ -57,7 +57,7 @@ test.describe("Concept 1 — tool rail", () => {
     ).toBeVisible();
   });
 
-  test("AC-RAIL-3 — tool shortcuts are inert while a text caret is active", async ({
+  test("AC-RAIL-3 — tool shortcuts are inert while a text caret is active @feat:editor-shell.tool-rail @level:gesture", async ({
     page,
   }) => {
     // Seed a (synthetic) content selection — the guard only checks
@@ -92,7 +92,7 @@ test.describe("Concept 1 — tool rail", () => {
     ).toBeVisible();
   });
 
-  test("AC-RAIL-4 — holding Space spring-loads a momentary Hand", async ({
+  test("AC-RAIL-4 — holding Space spring-loads a momentary Hand @feat:editor-shell.tool-rail @feat:editor-tools.nav.pan @level:happy", async ({
     page,
   }) => {
     await expect(
@@ -109,7 +109,7 @@ test.describe("Concept 1 — tool rail", () => {
     ).toBeVisible();
   });
 
-  test("AC-RAIL-5 — flyout reveals hidden tools and promotes the pick", async ({
+  test("AC-RAIL-5 — flyout reveals hidden tools and promotes the pick @feat:editor-shell.tool-rail @level:happy", async ({
     page,
   }) => {
     // Right-click opens the Pen flyout (long-press is the other path).
@@ -138,7 +138,7 @@ test.describe("Concept 1 — tool rail", () => {
     ).toBeVisible();
   });
 
-  test("AC-RAIL-6 — Alt+click cycles the slot through its group", async ({
+  test("AC-RAIL-6 — Alt+click cycles the slot through its group @feat:editor-shell.tool-rail @level:gesture", async ({
     page,
   }) => {
     const shape = page.locator('[data-tool-slot="shape"]');
@@ -156,7 +156,7 @@ test.describe("Concept 1 — tool rail", () => {
     ).toBeVisible();
   });
 
-  test("AC-RAIL-7 — screen-mode selector is view state only", async ({
+  test("AC-RAIL-7 — screen-mode selector is view state only @feat:editor-shell.tool-rail @level:happy", async ({
     page,
   }) => {
     await expect(page.locator('[data-screen-mode="normal"]')).toBeVisible();
@@ -168,7 +168,7 @@ test.describe("Concept 1 — tool rail", () => {
     await expect(page.locator('[data-screen-mode="normal"]')).toBeVisible();
   });
 
-  test("AC-RAIL-8 — fill/stroke cluster mounts at the rail foot", async ({
+  test("AC-RAIL-8 — fill/stroke cluster mounts at the rail foot @feat:editor-shell.tool-rail @level:smoke", async ({
     page,
   }) => {
     await expect(
@@ -178,7 +178,7 @@ test.describe("Concept 1 — tool rail", () => {
     await expect(page.locator('[data-well="stroke"]')).toBeVisible();
   });
 
-  test("AC-RAIL-9 — Tab hides the chrome and Tab restores it", async ({
+  test("AC-RAIL-9 — Tab hides the chrome and Tab restores it @feat:editor-shell.tool-rail @level:happy", async ({
     page,
   }) => {
     await expect(page.locator('[data-tool-rail="ready"]')).toBeVisible();
@@ -188,7 +188,7 @@ test.describe("Concept 1 — tool rail", () => {
     await expect(page.locator('[data-tool-rail="ready"]')).toBeVisible();
   });
 
-  test("AC-RAIL-10 — tear-off opens a floating palette for the group", async ({
+  test("AC-RAIL-10 — tear-off opens a floating palette for the group @feat:editor-shell.tool-rail @level:happy", async ({
     page,
   }) => {
     await page.locator('[data-tool-slot="shape"]').click({ button: "right" });

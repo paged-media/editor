@@ -147,7 +147,7 @@ test.describe("Phase F — content grabber gesture", () => {
     pageSizesPt = loaded.pages.map((p) => [p.widthPt, p.heightPt]);
   });
 
-  test("TranslateContent commits successfully and leaves frame ItemTransform unchanged", async ({
+  test("TranslateContent commits successfully and leaves frame ItemTransform unchanged @feat:editor-tools.content-transform @level:happy", async ({
     page,
   }) => {
     const hit = await findImageBearingRectangle(page, pageIds, pageSizesPt);
@@ -188,7 +188,7 @@ test.describe("Phase F — content grabber gesture", () => {
     }
   });
 
-  test("TranslateContent undo round-trips", async ({ page }) => {
+  test("TranslateContent undo round-trips @feat:editor-tools.content-transform @level:happy", async ({ page }) => {
     const hit = await findImageBearingRectangle(page, pageIds, pageSizesPt);
     test.skip(hit === null, "pack has no image-bearing rectangles to grab");
     const target = hit!.element;
@@ -211,7 +211,7 @@ test.describe("Phase F — content grabber gesture", () => {
     expect(reply.appliedSeq).toBeGreaterThan(0);
   });
 
-  test("TranslateContent cancel restores", async ({ page }) => {
+  test("TranslateContent cancel restores @feat:editor-tools.content-transform @level:edge", async ({ page }) => {
     const hit = await findImageBearingRectangle(page, pageIds, pageSizesPt);
     test.skip(hit === null, "pack has no image-bearing rectangles to grab");
     const target = hit!.element;

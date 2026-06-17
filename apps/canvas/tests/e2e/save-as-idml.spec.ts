@@ -55,7 +55,7 @@ async function loadBytesStats(page: Page, bytes: number[]): Promise<DocStats> {
 }
 
 test.describe("W3.B2 — Save As IDML", () => {
-  test("AC-IDML-EXPORT: exportIdml returns a non-empty PK-zip package", async ({
+  test("AC-IDML-EXPORT: exportIdml returns a non-empty PK-zip package @feat:round-tripping.idml-reserialization @level:edge", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -71,7 +71,7 @@ test.describe("W3.B2 — Save As IDML", () => {
     expect(bytes[3]).toBe(0x04);
   });
 
-  test("AC-IDML-ROUNDTRIP: re-loading the exported bytes yields the same doc stats", async ({
+  test("AC-IDML-ROUNDTRIP: re-loading the exported bytes yields the same doc stats @feat:round-tripping.idml-reserialization @level:happy", async ({
     page,
   }) => {
     test.setTimeout(120_000);

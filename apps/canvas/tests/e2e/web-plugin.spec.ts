@@ -94,7 +94,7 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
       .toBe(true);
   });
 
-  test("AC-WEB-1 — insert web frame: one undoable frame, selected, panel open with default source", async ({
+  test("AC-WEB-1 — insert web frame: one undoable frame, selected, panel open with default source @feat:plugin-web.insert-command @feat:plugin-web.metadata-persistence @feat:plugin-web.source-panel @level:happy", async ({
     page,
   }) => {
     const before = await countKind(page, "textFrame");
@@ -129,7 +129,7 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
       .toBe(before + beforeRect);
   });
 
-  test("AC-WEB-2 — editing HTML updates the sandboxed preview and persists across reopen", async ({
+  test("AC-WEB-2 — editing HTML updates the sandboxed preview and persists across reopen @feat:plugin-web.insert-command @feat:plugin-web.metadata-persistence @feat:plugin-web.source-panel @level:happy", async ({
     page,
   }) => {
     await invokeCommand(page, INSERT_COMMAND);
@@ -164,7 +164,7 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
     ).toHaveValue("<h1>Price list</h1>", { timeout: 5_000 });
   });
 
-  test("AC-WEB-3 — <script> surfaces the policy error; removing it clears diagnostics", async ({
+  test("AC-WEB-3 — <script> surfaces the policy error; removing it clears diagnostics @feat:plugin-web.insert-command @feat:plugin-web.metadata-persistence @feat:plugin-web.source-panel @level:edge", async ({
     page,
   }) => {
     await invokeCommand(page, INSERT_COMMAND);
@@ -188,7 +188,7 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
     });
   });
 
-  test("AC-WEB-4 — the host codeEditor widget renders: line numbers, highlighting, gutter markers", async ({
+  test("AC-WEB-4 — the host codeEditor widget renders: line numbers, highlighting, gutter markers @feat:plugin-web.insert-command @feat:plugin-web.metadata-persistence @feat:plugin-web.source-panel @level:happy", async ({
     page,
   }) => {
     await invokeCommand(page, INSERT_COMMAND);
@@ -219,7 +219,7 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
     ).toBeVisible({ timeout: 5_000 });
   });
 
-  test("AC-WEB-5 — the Problems panel lists a published diagnostic and click focuses the source panel", async ({
+  test("AC-WEB-5 — the Problems panel lists a published diagnostic and click focuses the source panel @feat:editor-shell.panels.problems @feat:plugin-web.insert-command @feat:plugin-web.metadata-persistence @feat:plugin-web.source-panel @level:gesture", async ({
     page,
   }) => {
     await invokeCommand(page, INSERT_COMMAND);

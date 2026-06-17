@@ -63,7 +63,7 @@ test.describe("E2E numbering-list (W2.10) ops", () => {
     await loadFixture(page, NUMBERING);
   });
 
-  test("AC-E2E-NL-create — create mints a list; undo removes it", async ({
+  test("AC-E2E-NL-create — create mints a list; undo removes it @feat:styles.bullets-numbering @level:happy", async ({
     page,
   }) => {
     const before = await readLists(page);
@@ -96,7 +96,7 @@ test.describe("E2E numbering-list (W2.10) ops", () => {
     expect(undone.find((l) => l.name === "My List")).toBeFalsy();
   });
 
-  test("AC-E2E-NL-edit — rename + continuity land; undo restores", async ({
+  test("AC-E2E-NL-edit — rename + continuity land; undo restores @feat:styles.bullets-numbering @level:happy", async ({
     page,
   }) => {
     // Edit the document's pre-existing `Shared` list.
@@ -135,7 +135,7 @@ test.describe("E2E numbering-list (W2.10) ops", () => {
     expect(back.continueAcrossStories).toBe(true);
   });
 
-  test("AC-E2E-NL-assign — create a list, assign it + numbering format renumbers the paragraphs; undo restores byte-identically", async ({
+  test("AC-E2E-NL-assign — create a list, assign it + numbering format renumbers the paragraphs; undo restores byte-identically @feat:styles.bullets-numbering @level:happy", async ({
     page,
   }) => {
     // Load the UN-numbered `text` fixture, CREATE a named list, then

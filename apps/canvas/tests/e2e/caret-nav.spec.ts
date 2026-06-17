@@ -225,7 +225,7 @@ test.describe("W2.11 caret navigation", () => {
     storyId = fx.firstStory!.selfId;
   });
 
-  test("CARET-NAV-1 — ArrowDown moves the caret to the next line", async ({
+  test("CARET-NAV-1 — ArrowDown moves the caret to the next line @feat:editor-tools.text.caret-typing @feat:stories-text.caret-selection @level:gesture", async ({
     page,
   }) => {
     if (!(await isMultiLine(page, storyId))) {
@@ -256,7 +256,7 @@ test.describe("W2.11 caret navigation", () => {
     expect(after!.topPt).toBeGreaterThan(before!.topPt + 0.5);
   });
 
-  test("CARET-NAV-2 — typing after ArrowDown inserts at the new line (op sandwich)", async ({
+  test("CARET-NAV-2 — typing after ArrowDown inserts at the new line (op sandwich) @feat:editor-tools.text.caret-typing @feat:stories-text.caret-selection @level:gesture", async ({
     page,
   }) => {
     if (!(await isMultiLine(page, storyId))) {
@@ -309,7 +309,7 @@ test.describe("W2.11 caret navigation", () => {
       .toBe(before);
   });
 
-  test("CARET-NAV-3 — Shift+ArrowDown extends the selection across two lines", async ({
+  test("CARET-NAV-3 — Shift+ArrowDown extends the selection across two lines @feat:editor-tools.text.caret-typing @feat:stories-text.caret-selection @level:gesture", async ({
     page,
   }) => {
     if (!(await isMultiLine(page, storyId))) {
@@ -356,7 +356,7 @@ test.describe("W2.11 caret navigation", () => {
     expect(rects.length, "selection rects").toBeGreaterThan(0);
   });
 
-  test("CARET-NAV-4 — Home/End move the caret to the line start/end", async ({
+  test("CARET-NAV-4 — Home/End move the caret to the line start/end @feat:editor-tools.text.caret-typing @feat:stories-text.caret-selection @level:gesture", async ({
     page,
   }) => {
     const chars = await storyChars(page, storyId);
@@ -408,7 +408,7 @@ test.describe("W2.11 caret navigation", () => {
     expect(homeSel.start).toBeLessThan(endSel.start);
   });
 
-  test("CARET-NAV-5 — double-click in text selects a range; typing replaces it", async ({
+  test("CARET-NAV-5 — double-click in text selects a range; typing replaces it @feat:editor-tools.text.caret-typing @feat:stories-text.caret-selection @level:gesture", async ({
     page,
   }) => {
     // REAL pointer path: mount the viewport, activate the Type tool,
@@ -456,7 +456,7 @@ test.describe("W2.11 caret navigation", () => {
       .toBe(before - rangeLen + 1);
   });
 
-  test("CARET-NAV-6 — double-click selects exactly the clicked word (requestWordBounds)", async ({
+  test("CARET-NAV-6 — double-click selects exactly the clicked word (requestWordBounds) @feat:editor-tools.text.caret-typing @feat:stories-text.caret-selection @level:gesture", async ({
     page,
   }) => {
     // Aftercare-A: protocol v31 exposes `requestWordBounds` (UAX-29
@@ -540,7 +540,7 @@ test.describe("W2.11 caret navigation", () => {
     expect(spaceOffset!.start).toBeGreaterThanOrEqual(word!.end);
   });
 
-  test("CARET-NAV-6b — double-click on punctuation selects sensibly (UAX-29)", async ({
+  test("CARET-NAV-6b — double-click on punctuation selects sensibly (UAX-29) @feat:editor-tools.text.caret-typing @feat:stories-text.caret-selection @level:gesture", async ({
     page,
   }) => {
     // Word-granularity edge case: a double-click landing on a punctuation
@@ -593,7 +593,7 @@ test.describe("W2.11 caret navigation", () => {
     }
   });
 
-  test("CARET-NAV-7 — triple-click selects the whole paragraph across wrapped lines (requestParagraphBounds)", async ({
+  test("CARET-NAV-7 — triple-click selects the whole paragraph across wrapped lines (requestParagraphBounds) @feat:editor-tools.text.caret-typing @feat:stories-text.caret-selection @level:gesture", async ({
     page,
   }) => {
     // W2.9: protocol v35 ships requestParagraphBounds (W1.23). Triple-
@@ -667,7 +667,7 @@ test.describe("W2.11 caret navigation", () => {
       .toBe(`${para!.start}:${para!.end}`);
   });
 
-  test("CARET-NAV-8 — typing replaces a triple-click paragraph selection", async ({
+  test("CARET-NAV-8 — typing replaces a triple-click paragraph selection @feat:editor-tools.text.caret-typing @feat:stories-text.caret-selection @level:gesture", async ({
     page,
   }) => {
     // The paragraph range must behave like any other range selection:

@@ -23,7 +23,7 @@ import { test, expect } from "@playwright/test";
 import { openCanvas } from "./fidelity/canvas-driver";
 
 test.describe("W0.17 — worker boot + cross-origin isolation", () => {
-  test("the document is cross-origin isolated (SAB is allocatable)", async ({
+  test("the document is cross-origin isolated (SAB is allocatable) @feat:plugin-platform.worker-pool @feat:the-renderer.offscreen-worker @level:happy", async ({
     page,
   }) => {
     await page.goto("/");
@@ -49,7 +49,7 @@ test.describe("W0.17 — worker boot + cross-origin isolation", () => {
     expect(sabOk, "new SharedArrayBuffer(8) must not throw").toBe(true);
   });
 
-  test("the boot-time isolation banner does NOT fire", async ({ page }) => {
+  test("the boot-time isolation banner does NOT fire @feat:plugin-platform.worker-pool @feat:the-renderer.offscreen-worker @level:smoke", async ({ page }) => {
     const banners: string[] = [];
     page.on("console", (msg) => {
       if (/CROSS-ORIGIN ISOLATION MISSING/.test(msg.text())) {
@@ -62,7 +62,7 @@ test.describe("W0.17 — worker boot + cross-origin isolation", () => {
     expect(banners, "boot COI banner must not fire when isolated").toEqual([]);
   });
 
-  test("the render worker boots: spawns, loads wasm, reports ready", async ({
+  test("the render worker boots: spawns, loads wasm, reports ready @feat:plugin-platform.worker-pool @feat:the-renderer.offscreen-worker @level:smoke", async ({
     page,
   }) => {
     const failures: string[] = [];
@@ -89,7 +89,7 @@ test.describe("W0.17 — worker boot + cross-origin isolation", () => {
     );
   });
 
-  test("the worker chunk + wasm asset resolve with correct content-types", async ({
+  test("the worker chunk + wasm asset resolve with correct content-types @feat:plugin-platform.worker-pool @feat:the-renderer.offscreen-worker @level:happy", async ({
     page,
     request,
   }) => {

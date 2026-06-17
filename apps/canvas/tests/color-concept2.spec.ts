@@ -40,7 +40,7 @@ test.describe("Concept 2 — colour engine + panels", () => {
     await loadFixture(page);
   });
 
-  test("colorCompute resolves arbitrary values across spaces", async ({
+  test("colorCompute resolves arbitrary values across spaces @feat:color-swatches.icc-cmm @feat:editor-shell.panels.color-settings @level:happy", async ({
     page,
   }) => {
     const result = await page.evaluate(async () => {
@@ -85,7 +85,7 @@ test.describe("Concept 2 — colour engine + panels", () => {
     expect(result.tinted.cmyk).toEqual([50, 0, 0, 0]);
   });
 
-  test("swatch create → edit → rename round-trips through the raw channels", async ({
+  test("swatch create → edit → rename round-trips through the raw channels @feat:color-swatches.icc-cmm @feat:editor-shell.panels.color-settings @level:happy", async ({
     page,
   }) => {
     const out = await page.evaluate(async () => {
@@ -163,7 +163,7 @@ test.describe("Concept 2 — colour engine + panels", () => {
     expect(out.renamed?.rgbHex).toBe(out.after?.rgbHex);
   });
 
-  test("gradient detail reads stops; editGradient round-trips stop edits", async ({
+  test("gradient detail reads stops; editGradient round-trips stop edits @feat:color-swatches.icc-cmm @feat:editor-shell.panels.color-settings @level:happy", async ({
     page,
   }) => {
     const out = await page.evaluate(async () => {
@@ -256,7 +256,7 @@ test.describe("Concept 2 — colour engine + panels", () => {
     expect(out.after?.stops[0].midpointPct).toBe(70);
   });
 
-  test(".ase import lands swatches+group as ONE undoable op (HLC bytes)", async ({
+  test(".ase import lands swatches+group as ONE undoable op (HLC bytes) @feat:color-swatches.icc-cmm @feat:editor-shell.panels.color-settings @level:happy", async ({
     page,
   }) => {
     // Use the BUNDLED HLC asset — fetch its dev-server URL from the
@@ -369,7 +369,7 @@ test.describe("Concept 2 — colour engine + panels", () => {
     expect(out.undone).toBe(out.before);
   });
 
-  test("ink settings + standard-Lab toggle round-trip (AC-8)", async ({
+  test("ink settings + standard-Lab toggle round-trip (AC-8) @feat:color-swatches.icc-cmm @feat:editor-shell.panels.color-settings @feat:color-swatches.ink-manager @level:happy", async ({
     page,
   }) => {
     const out = await page.evaluate(async () => {
@@ -429,7 +429,7 @@ test.describe("Concept 2 — colour engine + panels", () => {
     expect(out.standardLab).toBe(true);
   });
 
-  test("colour settings + soft-proof surface through documentMeta", async ({
+  test("colour settings + soft-proof surface through documentMeta @feat:color-swatches.icc-cmm @feat:editor-shell.panels.color-settings @level:happy", async ({
     page,
   }) => {
     const out = await page.evaluate(async () => {
@@ -487,7 +487,7 @@ test.describe("Concept 2 — colour engine + panels", () => {
     expect(out.badProof).toBe("mutationFailed");
   });
 
-  test("panels mount: mixer, ink manager, colour settings, libraries menu", async ({
+  test("panels mount: mixer, ink manager, colour settings, libraries menu @feat:color-swatches.icc-cmm @feat:editor-shell.panels.color-settings @level:smoke", async ({
     page,
   }) => {
     // Color panel hosts the mixer (activate its dock tab first).

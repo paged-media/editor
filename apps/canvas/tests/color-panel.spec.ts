@@ -18,7 +18,7 @@ test.describe("Phase 5 — Color panel", () => {
     await openPanel(page, "paged.color");
   });
 
-  test("AC-COLOR-1 — panel mounts as a composition with fill picker + tint scrub", async ({
+  test("AC-COLOR-1 — panel mounts as a composition with fill picker + tint scrub @feat:editor-shell.panels.color @level:smoke", async ({
     page,
   }) => {
     await expect(page.locator('[data-color-panel="ready"]')).toBeVisible();
@@ -29,7 +29,7 @@ test.describe("Phase 5 — Color panel", () => {
     ).toBeVisible();
   });
 
-  test("AC-COLOR-3 — fill swatch surfaces a CMYK/RGB readout", async ({
+  test("AC-COLOR-3 — fill swatch surfaces a CMYK/RGB readout @feat:editor-shell.panels.color @level:happy", async ({
     page,
   }) => {
     // Select a frame whose fill resolves to a non-Paper swatch
@@ -91,7 +91,7 @@ test.describe("Phase 5 — Color panel", () => {
     ).toBeVisible();
   });
 
-  test("AC-COLOR-2 — frameFillTint round-trips via the apply layer", async ({
+  test("AC-COLOR-2 — frameFillTint round-trips via the apply layer @feat:editor-shell.panels.color @level:happy", async ({
     page,
   }) => {
     const applied = await page.evaluate(async () => {
@@ -147,7 +147,7 @@ test.describe("Phase 5 — Color panel", () => {
     expect(applied).toBe(42);
   });
 
-  test("AC-COLOR-4 — no-selection Apply writes the document-default fill (W2.5)", async ({
+  test("AC-COLOR-4 — no-selection Apply writes the document-default fill (W2.5) @feat:editor-shell.panels.color @level:happy", async ({
     page,
   }) => {
     // W2.5 — with nothing selected the Color panel routes the applied

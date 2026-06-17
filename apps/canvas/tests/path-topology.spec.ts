@@ -94,7 +94,7 @@ test.describe("Track J — path topology acceptance", () => {
     await loadIdml(page, FIXTURE);
   });
 
-  test("AC-J-2 — delete shrinks anchor count; remaining anchors unchanged", async ({
+  test("AC-J-2 — delete shrinks anchor count; remaining anchors unchanged @feat:editor-tools.path.direct-edit @feat:geometry-coordinates.path-topology-ops @level:happy", async ({
     page,
   }) => {
     const before = await pathSnapshot(page);
@@ -125,7 +125,7 @@ test.describe("Track J — path topology acceptance", () => {
     expect(after.anchors.length).toBe(before.anchors.length - 1);
   });
 
-  test("AC-J-3 — corner → smooth derives handles; smooth → corner collapses", async ({
+  test("AC-J-3 — corner → smooth derives handles; smooth → corner collapses @feat:editor-tools.path.direct-edit @feat:geometry-coordinates.path-topology-ops @level:happy", async ({
     page,
   }) => {
     const before = await pathSnapshot(page);
@@ -186,7 +186,7 @@ test.describe("Track J — path topology acceptance", () => {
     ).toBeLessThan(1e-3);
   });
 
-  test("AC-J-4 — compound paths keep subpath_starts after non-collapsing delete", async ({
+  test("AC-J-4 — compound paths keep subpath_starts after non-collapsing delete @feat:editor-tools.path.direct-edit @feat:geometry-coordinates.path-topology-ops @level:happy", async ({
     page,
   }) => {
     const before = await pathSnapshot(page);
@@ -214,7 +214,7 @@ test.describe("Track J — path topology acceptance", () => {
     expect(after.subpathStarts).toEqual([0, 4]);
   });
 
-  test("AC-J-5 — undo round-trips delete bytewise", async ({ page }) => {
+  test("AC-J-5 — undo round-trips delete bytewise @feat:editor-tools.path.direct-edit @feat:geometry-coordinates.path-topology-ops @level:happy", async ({ page }) => {
     const before = await pathSnapshot(page);
 
     await page.evaluate(
@@ -242,7 +242,7 @@ test.describe("Track J — path topology acceptance", () => {
     }
   });
 
-  test("AC-J-1 — insert preserves visible shape via de Casteljau split", async ({
+  test("AC-J-1 — insert preserves visible shape via de Casteljau split @feat:editor-tools.path.direct-edit @feat:geometry-coordinates.path-topology-ops @level:happy", async ({
     page,
   }) => {
     // The fixture's outer square has corner anchors with zero-length
@@ -360,7 +360,7 @@ test.describe("Track J — path topology acceptance", () => {
     }
   });
 
-  test("AC-J-1 closing edge — insert on wraparound segment lands inside prior subpath", async ({
+  test("AC-J-1 closing edge — insert on wraparound segment lands inside prior subpath @feat:editor-tools.path.direct-edit @feat:geometry-coordinates.path-topology-ops @level:edge", async ({
     page,
   }) => {
     // Closing-edge follow-up. The outer-square subpath [0..4) is
@@ -466,7 +466,7 @@ test.describe("Track J — path topology acceptance", () => {
     }
   });
 
-  test("Track J fan-out — PathPointRemove + curve-type toggle accept a TextFrame", async ({
+  test("Track J fan-out — PathPointRemove + curve-type toggle accept a TextFrame @feat:editor-tools.path.direct-edit @feat:geometry-coordinates.path-topology-ops @level:gesture", async ({
     page,
   }) => {
     // The page-0 label text frame in geometry-groups.idml is a
@@ -541,7 +541,7 @@ test.describe("Track J — path topology acceptance", () => {
     }
   });
 
-  test("AC-J-5 — undo round-trips curve-type toggle bytewise", async ({
+  test("AC-J-5 — undo round-trips curve-type toggle bytewise @feat:editor-tools.path.direct-edit @feat:geometry-coordinates.path-topology-ops @level:gesture", async ({
     page,
   }) => {
     const before = await pathSnapshot(page);

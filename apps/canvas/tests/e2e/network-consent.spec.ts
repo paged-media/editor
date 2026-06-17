@@ -37,7 +37,7 @@ test.describe("D-03 — network-consent enforcement", () => {
     await openCanvas(page);
   });
 
-  test("AC-NET-1 — CSP connect-src refuses external fetch; same-origin works", async ({
+  test("AC-NET-1 — CSP connect-src refuses external fetch; same-origin works @feat:plugin-platform.network-consent @level:happy", async ({
     page,
   }) => {
     // A direct fetch to an external origin must trip a `connect-src`
@@ -72,7 +72,7 @@ test.describe("D-03 — network-consent enforcement", () => {
     expect(sameOrigin).toBe(true);
   });
 
-  test("AC-NET-2 — consent door surfaces the manifest; a granted subset resolves", async ({
+  test("AC-NET-2 — consent door surfaces the manifest; a granted subset resolves @feat:plugin-platform.network-consent @level:happy", async ({
     page,
   }) => {
     // Start a request (two origins) without awaiting it in-page.
@@ -110,7 +110,7 @@ test.describe("D-03 — network-consent enforcement", () => {
     await expect(page.getByTestId("consent-dialog")).toBeHidden();
   });
 
-  test("AC-NET-3 — Deny grants nothing (default-deny is the dismissal)", async ({
+  test("AC-NET-3 — Deny grants nothing (default-deny is the dismissal) @feat:plugin-platform.network-consent @level:happy", async ({
     page,
   }) => {
     await page.evaluate(() => {

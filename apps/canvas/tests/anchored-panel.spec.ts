@@ -96,7 +96,7 @@ test.describe("W2.12 — Anchored Object panel", () => {
     await openPanel(page, "paged.anchored");
   });
 
-  test("AC-ANCH-1 — empty selection states honestly (no fake enable)", async ({
+  test("AC-ANCH-1 — empty selection states honestly (no fake enable) @feat:anchored-inline-objects.anchored-frames @feat:editor-shell.panels.anchored @level:edge", async ({
     page,
   }) => {
     const root = page.locator('[data-anchored-panel="ready"]');
@@ -110,7 +110,7 @@ test.describe("W2.12 — Anchored Object panel", () => {
     await expect(root.locator("[data-anchored-empty]")).toBeVisible();
   });
 
-  test("AC-ANCH-2 — a non-anchored frame is reported as not anchored", async ({
+  test("AC-ANCH-2 — a non-anchored frame is reported as not anchored @feat:anchored-inline-objects.anchored-frames @feat:editor-shell.panels.anchored @level:happy", async ({
     page,
   }) => {
     const ref = await firstNonAnchoredFrame(page);
@@ -124,7 +124,7 @@ test.describe("W2.12 — Anchored Object panel", () => {
     await expect(root.locator("[data-anchored-select]")).toHaveCount(0);
   });
 
-  test("AC-ANCH-3 — an anchored frame reads back its live position values", async ({
+  test("AC-ANCH-3 — an anchored frame reads back its live position values @feat:anchored-inline-objects.anchored-frames @feat:editor-shell.panels.anchored @level:happy", async ({
     page,
   }) => {
     await selectFrame(page, "textFrame", ANCHORED_FRAME);
@@ -154,7 +154,7 @@ test.describe("W2.12 — Anchored Object panel", () => {
     await expect(root.locator("[data-anchored-custom-hint]")).toBeVisible();
   });
 
-  test("AC-ANCH-4 — switching to Custom enables the offset + reference controls", async ({
+  test("AC-ANCH-4 — switching to Custom enables the offset + reference controls @feat:anchored-inline-objects.anchored-frames @feat:editor-shell.panels.anchored @level:happy", async ({
     page,
   }) => {
     await selectFrame(page, "textFrame", ANCHORED_FRAME);

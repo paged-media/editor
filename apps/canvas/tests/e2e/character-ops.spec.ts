@@ -154,7 +154,7 @@ test.describe("E2E character ops", () => {
     });
   }
 
-  test("AC-E2E-CHAR-fontStyle — characterFontStyle lands + repaints", async ({
+  test("AC-E2E-CHAR-fontStyle — characterFontStyle lands + repaints @feat:editor-shell.panels.character @level:happy", async ({
     page,
   }) => {
     await charSandwich(page, {
@@ -164,7 +164,7 @@ test.describe("E2E character ops", () => {
     });
   });
 
-  test("AC-E2E-CHAR-case — characterCase (AllCaps) lands + repaints", async ({
+  test("AC-E2E-CHAR-case — characterCase (AllCaps) lands + repaints @feat:editor-shell.panels.character @level:happy", async ({
     page,
   }) => {
     // AllCaps re-cases the glyph run → a guaranteed visible change on
@@ -177,7 +177,7 @@ test.describe("E2E character ops", () => {
     });
   });
 
-  test("AC-E2E-CHAR-hscale — characterHorizontalScale lands + repaints", async ({
+  test("AC-E2E-CHAR-hscale — characterHorizontalScale lands + repaints @feat:editor-shell.panels.character @level:happy", async ({
     page,
   }) => {
     await charSandwich(page, {
@@ -187,7 +187,7 @@ test.describe("E2E character ops", () => {
     });
   });
 
-  test("AC-E2E-CHAR-vscale — characterVerticalScale lands + repaints", async ({
+  test("AC-E2E-CHAR-vscale — characterVerticalScale lands + repaints @feat:editor-shell.panels.character @level:happy", async ({
     page,
   }) => {
     await charSandwich(page, {
@@ -197,7 +197,7 @@ test.describe("E2E character ops", () => {
     });
   });
 
-  test("AC-E2E-CHAR-skew — characterSkew lands + repaints", async ({
+  test("AC-E2E-CHAR-skew — characterSkew lands + repaints @feat:editor-shell.panels.character @level:happy", async ({
     page,
   }) => {
     // characterSkew (false-italic slant) applies in core's glyph compose
@@ -219,7 +219,7 @@ test.describe("E2E character ops", () => {
   // `test.fail` while undo left a ~58 px residual) — undo now restores
   // the page byte-identically.
   test(
-    "AC-E2E-CHAR-skew-undo — characterSkew undo restores byte-identically (engine determinism follow-up)",
+    "AC-E2E-CHAR-skew-undo — characterSkew undo restores byte-identically (engine determinism follow-up) @feat:editor-shell.panels.character @level:happy",
     async ({ page }) => {
       await opSandwich(page, {
         pageId: pageInfo.pageId,
@@ -250,7 +250,7 @@ test.describe("E2E character ops", () => {
     },
   );
 
-  test("AC-E2E-CHAR-baseline — characterBaselineShift lands + repaints", async ({
+  test("AC-E2E-CHAR-baseline — characterBaselineShift lands + repaints @feat:editor-shell.panels.character @level:happy", async ({
     page,
   }) => {
     await charSandwich(page, {
@@ -260,7 +260,7 @@ test.describe("E2E character ops", () => {
     });
   });
 
-  test("AC-E2E-CHAR-underline — characterUnderline lands + repaints", async ({
+  test("AC-E2E-CHAR-underline — characterUnderline lands + repaints @feat:editor-shell.panels.character @level:happy", async ({
     page,
   }) => {
     await charSandwich(page, {
@@ -270,7 +270,7 @@ test.describe("E2E character ops", () => {
     });
   });
 
-  test("AC-E2E-CHAR-strikethru — characterStrikethru lands + repaints", async ({
+  test("AC-E2E-CHAR-strikethru — characterStrikethru lands + repaints @feat:editor-shell.panels.character @level:happy", async ({
     page,
   }) => {
     await charSandwich(page, {
@@ -287,7 +287,7 @@ test.describe("E2E character ops", () => {
   // pangram), addressing the WHOLE story so the kern pair / superscript
   // digit is in the selection.
 
-  test("AC-E2E-CHAR-kerning — characterKerningMethod (None) shifts kern-pair glyphs", async ({
+  test("AC-E2E-CHAR-kerning — characterKerningMethod (None) shifts kern-pair glyphs @feat:editor-shell.panels.character @level:happy", async ({
     page,
   }) => {
     // Page "text · kern · pairs" (idx 13) is "AVATAR To Wave Yes Tom" —
@@ -327,7 +327,7 @@ test.describe("E2E character ops", () => {
     });
   });
 
-  test("AC-E2E-CHAR-position — characterPosition (Superscript) lifts the run", async ({
+  test("AC-E2E-CHAR-position — characterPosition (Superscript) lifts the run @feat:editor-shell.panels.character @level:happy", async ({
     page,
   }) => {
     // Page "text · superscript · digit" (idx 14) is "E = mc2 and 1st …".
@@ -379,7 +379,7 @@ test.describe("E2E character ops", () => {
   // A `text · family · second` page + registering a 2nd face still paints
   // identically after the switch. ENGINE/HARNESS GAP: the live
   // font-family mutation isn't consulted by the layout font resolver.
-  test.fixme("AC-E2E-CHAR-fontFamily — characterFontFamily (runtime family switch not re-resolved by the renderer)", async () => {});
+  test.fixme("AC-E2E-CHAR-fontFamily — characterFontFamily (runtime family switch not re-resolved by the renderer) @feat:editor-shell.panels.character @level:happy", async () => {});
   // 0.35.2 punch-list fix: the characterLigatures READ + undo contract.
   // Two of the old blockers are closed: elementProperties now reports
   // ligatures default-ON (`true`) for an un-touched run, and the toggle
@@ -392,7 +392,7 @@ test.describe("E2E character ops", () => {
   // register; that render half stays a documented FIXTURE gap, owned by
   // `renderGap: true` (zero-pixel assertion) so it flips loudly the day a
   // liga font is registered and the toggle starts repainting.
-  test("AC-E2E-CHAR-ligatures — characterLigatures reads default-ON + round-trips undo (0.35.2)", async ({
+  test("AC-E2E-CHAR-ligatures — characterLigatures reads default-ON + round-trips undo (0.35.2) @feat:editor-shell.panels.character @level:happy", async ({
     page,
   }) => {
     // Default-ON read: an un-touched run reports ligatures `true`.
@@ -419,8 +419,8 @@ test.describe("E2E character ops", () => {
   // (see paragraph-ops AC-E2E-PARA-hyphenation) produces no render delta
   // on 0.35.1 even in a narrow column with a long word. ENGINE GAP:
   // gated on the hyphenation-toggle render gap.
-  test.fixme("AC-E2E-CHAR-language — characterLanguage (gated on the hyphenation-render engine gap)", async () => {});
+  test.fixme("AC-E2E-CHAR-language — characterLanguage (gated on the hyphenation-render engine gap) @feat:editor-shell.panels.character @level:happy", async () => {});
   // characterOtfFeatures is an opaque tag string with no panel write
   // surface — no `setElementProperty` value shape to drive. ENGINE GAP.
-  test.fixme("AC-E2E-CHAR-otf — characterOtfFeatures (opaque tag string; no panel write surface yet)", async () => {});
+  test.fixme("AC-E2E-CHAR-otf — characterOtfFeatures (opaque tag string; no panel write surface yet) @feat:editor-shell.panels.character @level:happy", async () => {});
 });

@@ -55,7 +55,7 @@ test.describe("W2.4 — Tabs panel (live whole-list editor)", () => {
     await openPanel(page, "paged.tabs");
   });
 
-  test("AC-TABS-1 — panel mounts live (no concept badge, ruler present)", async ({
+  test("AC-TABS-1 — panel mounts live (no concept badge, ruler present) @feat:editor-shell.panels.tabs @level:smoke", async ({
     page,
   }) => {
     const root = page.locator('[data-tabs-panel="ready"]');
@@ -65,7 +65,7 @@ test.describe("W2.4 — Tabs panel (live whole-list editor)", () => {
     await expect(root.locator("[data-tabs-ruler]")).toBeVisible();
   });
 
-  test("AC-TABS-2 — without a caret the editor is inert (commit disabled)", async ({
+  test("AC-TABS-2 — without a caret the editor is inert (commit disabled) @feat:editor-shell.panels.tabs @level:gesture", async ({
     page,
   }) => {
     const root = page.locator('[data-tabs-panel="ready"]');
@@ -75,7 +75,7 @@ test.describe("W2.4 — Tabs panel (live whole-list editor)", () => {
     await expect(root.locator("[data-tabs-empty]")).toBeVisible();
   });
 
-  test("AC-TABS-3 — add then remove a stop drives real commits", async ({
+  test("AC-TABS-3 — add then remove a stop drives real commits @feat:editor-shell.panels.tabs @level:happy", async ({
     page,
   }) => {
     const seeded = await seedCaret(page);

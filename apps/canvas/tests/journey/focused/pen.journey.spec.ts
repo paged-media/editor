@@ -10,7 +10,7 @@ import { FRAME_SELECTED } from "../driver/context-contract";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · pen", () => {
-  test("clicking the Pen tool draws a path and surfaces the Frame context", async ({
+  test("clicking the Pen tool draws a path and surfaces the Frame context @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:gesture", async ({
     page,
   }) => {
     const designer = new Designer(page);

@@ -12,7 +12,7 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
 
 test.describe("Phase 5 — Color Groups panel", () => {
-  test("AC-CGROUPS-1 — panel mounts; lists groups or shows empty placeholder", async ({
+  test("AC-CGROUPS-1 — panel mounts; lists groups or shows empty placeholder @feat:color-swatches.color-groups @feat:editor-shell.panels.color-groups @level:edge", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -32,7 +32,7 @@ test.describe("Phase 5 — Color Groups panel", () => {
     expect(listVisible || emptyVisible).toBe(true);
   });
 
-  test("AC-CGROUPS-2 — New group creates; delete removes (live ops)", async ({
+  test("AC-CGROUPS-2 — New group creates; delete removes (live ops) @feat:color-swatches.color-groups @feat:editor-shell.panels.color-groups @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);

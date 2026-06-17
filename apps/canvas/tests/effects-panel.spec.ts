@@ -22,7 +22,7 @@ test.describe("Phase 5 — Effects panel", () => {
     await openPanel(page, "paged.effects");
   });
 
-  test("AC-EFFECTS-1 — panel mounts; em-dash when no selection", async ({
+  test("AC-EFFECTS-1 — panel mounts; em-dash when no selection @feat:editor-shell.panels.effects @feat:effects-transparency.drop-shadow @level:smoke", async ({
     page,
   }) => {
     await expect(page.locator('[data-effects-panel="ready"]')).toBeVisible();
@@ -48,7 +48,7 @@ test.describe("Phase 5 — Effects panel", () => {
     ).toHaveCount(8);
   });
 
-  test("AC-EFFECTS-2 — drop-shadow toggle round-trips via the apply layer", async ({
+  test("AC-EFFECTS-2 — drop-shadow toggle round-trips via the apply layer @feat:editor-shell.panels.effects @feat:effects-transparency.drop-shadow @level:happy", async ({
     page,
   }) => {
     const initial = await page.evaluate(async () => {

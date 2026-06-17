@@ -154,7 +154,7 @@ test.describe("Phase D — rotate + scale gestures", () => {
     pageBounds = hit.pageBounds;
   });
 
-  test("AC-E-15 — rotate 90° about centroid; committed matrix matches", async ({
+  test("AC-E-15 — rotate 90° about centroid; committed matrix matches @feat:editor-tools.rotate @feat:editor-tools.scale @level:happy", async ({
     page,
   }) => {
     // Bounds are [top, left, bottom, right]; centroid in page-local
@@ -190,7 +190,7 @@ test.describe("Phase D — rotate + scale gestures", () => {
     expect(t![3]).toBeCloseTo(0, 2);
   });
 
-  test("AC-E-15 — Shift snaps rotation to 15° increments", async ({ page }) => {
+  test("AC-E-15 — Shift snaps rotation to 15° increments @feat:editor-tools.rotate @feat:editor-tools.scale @level:happy", async ({ page }) => {
     const cx = (pageBounds[1] + pageBounds[3]) / 2;
     const cy = (pageBounds[0] + pageBounds[2]) / 2;
     // Anchor to the right; nudge slightly up: raw angle ~ -16.7°,
@@ -220,7 +220,7 @@ test.describe("Phase D — rotate + scale gestures", () => {
     expect(t![1]).toBeCloseTo(expectedB, 3);
   });
 
-  test("rotate cancel restores original transform", async ({ page }) => {
+  test("rotate cancel restores original transform @feat:editor-tools.rotate @feat:editor-tools.scale @level:edge", async ({ page }) => {
     const before = await getTransform(page, target);
     const cx = (pageBounds[1] + pageBounds[3]) / 2;
     const cy = (pageBounds[0] + pageBounds[2]) / 2;
@@ -241,7 +241,7 @@ test.describe("Phase D — rotate + scale gestures", () => {
     expect(after).toEqual(before);
   });
 
-  test("rotate undo round-trips", async ({ page }) => {
+  test("rotate undo round-trips @feat:editor-tools.rotate @feat:editor-tools.scale @level:happy", async ({ page }) => {
     const before = await getTransform(page, target);
     const cx = (pageBounds[1] + pageBounds[3]) / 2;
     const cy = (pageBounds[0] + pageBounds[2]) / 2;
@@ -263,7 +263,7 @@ test.describe("Phase D — rotate + scale gestures", () => {
     expect(after).toEqual(before);
   });
 
-  test("scale doubles via FrameTransform when anchor is on a centroid axis", async ({
+  test("scale doubles via FrameTransform when anchor is on a centroid axis @feat:editor-tools.rotate @feat:editor-tools.scale @level:happy", async ({
     page,
   }) => {
     // Anchor 100 pt right of centroid; drag +100 pt right ⇒ sx = 2.
@@ -293,7 +293,7 @@ test.describe("Phase D — rotate + scale gestures", () => {
     expect(t![3]).toBeCloseTo(1.0, 2);
   });
 
-  test("scale with Shift locks aspect ratio", async ({ page }) => {
+  test("scale with Shift locks aspect ratio @feat:editor-tools.rotate @feat:editor-tools.scale @level:happy", async ({ page }) => {
     const cx = (pageBounds[1] + pageBounds[3]) / 2;
     const cy = (pageBounds[0] + pageBounds[2]) / 2;
     // Diagonal anchor → both sx and sy populated; Shift forces them

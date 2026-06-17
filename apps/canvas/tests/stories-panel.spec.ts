@@ -29,7 +29,7 @@ async function openStories(page: import("@playwright/test").Page) {
 }
 
 test.describe("W2.12 — Stories panel", () => {
-  test("AC-STORIES-1 — real story list renders from paged.stories()", async ({
+  test("AC-STORIES-1 — real story list renders from paged.stories() @feat:editor-shell.panels.stories @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -40,7 +40,7 @@ test.describe("W2.12 — Stories panel", () => {
     await expect(rows).not.toHaveCount(0);
   });
 
-  test("AC-STORIES-2 — clicking a story selects it (caret at head)", async ({
+  test("AC-STORIES-2 — clicking a story selects it (caret at head) @feat:editor-shell.panels.stories @level:gesture", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -65,7 +65,7 @@ test.describe("W2.12 — Stories panel", () => {
       .not.toBeNull();
   });
 
-  test("AC-STORIES-3 — an overset story shows the overset badge", async ({
+  test("AC-STORIES-3 — an overset story shows the overset badge @feat:editor-shell.panels.stories @level:edge", async ({
     page,
   }) => {
     // Aftercare-D: `text-overset` ships body stories that overflow their
@@ -117,7 +117,7 @@ async function wireStories(
 }
 
 test.describe("W2.7 — Stories field inspector", () => {
-  test("AC-STORIES-INSP-1 — inspector counts match the wire StorySummary", async ({
+  test("AC-STORIES-INSP-1 — inspector counts match the wire StorySummary @feat:editor-shell.panels.stories @level:happy", async ({
     page,
   }) => {
     // text-overset is a real MULTI-STORY fixture (4 stories).
@@ -178,7 +178,7 @@ test.describe("W2.7 — Stories field inspector", () => {
     ).toContainText("Overset");
   });
 
-  test("AC-STORIES-INSP-3 — frame-chain / words / preview are honest seams", async ({
+  test("AC-STORIES-INSP-3 — frame-chain / words / preview are honest seams @feat:editor-shell.panels.stories @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);

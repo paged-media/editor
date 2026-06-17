@@ -138,7 +138,7 @@ test.describe("Phase C — resize gesture", () => {
     target = await hitTopmostUnrotatedFrame(page, pageId, pageW, pageH);
   });
 
-  test("AC-E-14 — SE handle: opposite (top + left) edges fixed", async ({ page }) => {
+  test("AC-E-14 — SE handle: opposite (top + left) edges fixed @feat:editor-tools.resize.handles @level:gesture", async ({ page }) => {
     const before = await getBounds(page, target);
     await resize(page, target, "southEast", [15.0, 25.0]);
     const after = await getBounds(page, target);
@@ -149,7 +149,7 @@ test.describe("Phase C — resize gesture", () => {
     expect(after[3]).toBeCloseTo(before[3] + 15.0, 2);
   });
 
-  test("AC-E-14 — N handle: only top moves", async ({ page }) => {
+  test("AC-E-14 — N handle: only top moves @feat:editor-tools.resize.handles @level:gesture", async ({ page }) => {
     const before = await getBounds(page, target);
     await resize(page, target, "north", [0.0, -10.0]);
     const after = await getBounds(page, target);
@@ -159,7 +159,7 @@ test.describe("Phase C — resize gesture", () => {
     expect(after[3]).toBeCloseTo(before[3], 2);
   });
 
-  test("AC-E-14 — Alt + SE: centre fixed, both opposite edges mirror", async ({ page }) => {
+  test("AC-E-14 — Alt + SE: centre fixed, both opposite edges mirror @feat:editor-tools.resize.handles @level:happy", async ({ page }) => {
     const before = await getBounds(page, target);
     const cxBefore = (before[1] + before[3]) * 0.5;
     const cyBefore = (before[0] + before[2]) * 0.5;
@@ -178,7 +178,7 @@ test.describe("Phase C — resize gesture", () => {
     expect(hAfter).toBeCloseTo(hBefore + 12.0, 2);
   });
 
-  test("AC-E-14 — Shift + SE corner locks aspect ratio", async ({ page }) => {
+  test("AC-E-14 — Shift + SE corner locks aspect ratio @feat:editor-tools.resize.handles @level:happy", async ({ page }) => {
     const before = await getBounds(page, target);
     const aspect = (before[3] - before[1]) / (before[2] - before[0]);
     await resize(page, target, "southEast", [40.0, 10.0], { shift: true, alt: false });
@@ -190,7 +190,7 @@ test.describe("Phase C — resize gesture", () => {
     expect(after[1]).toBeCloseTo(before[1], 2);
   });
 
-  test("cancel restores", async ({ page }) => {
+  test("cancel restores @feat:editor-tools.resize.handles @level:edge", async ({ page }) => {
     const before = await getBounds(page, target);
     await page.evaluate(
       async ({ target }) => {
@@ -208,7 +208,7 @@ test.describe("Phase C — resize gesture", () => {
     for (let i = 0; i < 4; i++) expect(after[i]).toBeCloseTo(before[i], 2);
   });
 
-  test("resize undo round-trips", async ({ page }) => {
+  test("resize undo round-trips @feat:editor-tools.resize.handles @level:gesture", async ({ page }) => {
     const before = await getBounds(page, target);
     await resize(page, target, "east", [25.0, 0.0]);
     const after = await getBounds(page, target);

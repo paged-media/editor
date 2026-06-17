@@ -18,7 +18,7 @@ declare global {
 const MODES = ["design", "content", "prepress", "data", "review", "export"];
 
 test.describe("Cockpit — workflow modes", () => {
-  test("the switcher lists six modes; design is default and active", async ({
+  test("the switcher lists six modes; design is default and active @feat:editor-shell.cockpit-modes @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -36,7 +36,7 @@ test.describe("Cockpit — workflow modes", () => {
     );
   });
 
-  test("clicking a mode activates it; __canvas drives it too", async ({
+  test("clicking a mode activates it; __canvas drives it too @feat:editor-shell.cockpit-modes @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -58,7 +58,7 @@ test.describe("Cockpit — workflow modes", () => {
     );
   });
 
-  test("the active mode persists across reload", async ({ page }) => {
+  test("the active mode persists across reload @feat:editor-shell.cockpit-modes @level:happy", async ({ page }) => {
     await openCanvas(page);
     await page.locator('[data-mode-option="review"]').click();
     await page.reload();
@@ -71,7 +71,7 @@ test.describe("Cockpit — workflow modes", () => {
     await page.evaluate(() => window.__canvas.setMode("design"));
   });
 
-  test("the panel rail opens a panel as a right-dock tab and closes it", async ({
+  test("the panel rail opens a panel as a right-dock tab and closes it @feat:editor-shell.cockpit-modes @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -96,7 +96,7 @@ test.describe("Cockpit — workflow modes", () => {
 });
 
 test.describe("Cockpit — per-mode panel sets + toolbars (D3-D4)", () => {
-  test("switching modes swaps the panel set and a round-trip restores it", async ({
+  test("switching modes swaps the panel set and a round-trip restores it @feat:editor-shell.cockpit-modes @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -150,7 +150,7 @@ test.describe("Cockpit — per-mode panel sets + toolbars (D3-D4)", () => {
     await page.evaluate(() => window.__canvas.setMode("design"));
   });
 
-  test("each mode renders its toolbar segment", async ({ page }) => {
+  test("each mode renders its toolbar segment @feat:editor-shell.cockpit-modes @level:happy", async ({ page }) => {
     await openCanvas(page);
     // Design: live tool pills — clicking Type activates the tool.
     await expect(
@@ -194,7 +194,7 @@ test.describe("Cockpit — per-mode REAL context-toolbar pills (W2.8)", () => {
   const setMode = (page: Page, m: string) =>
     page.evaluate((mode) => window.__canvas.setMode(mode), m);
 
-  test("Design — Preview pill reflects the real screen mode", async ({
+  test("Design — Preview pill reflects the real screen mode @feat:editor-shell.cockpit-modes @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -208,7 +208,7 @@ test.describe("Cockpit — per-mode REAL context-toolbar pills (W2.8)", () => {
     await expect(preview).not.toHaveAttribute("data-on", "");
   });
 
-  test("Content — formatting raises are honest-disabled with no text selection", async ({
+  test("Content — formatting raises are honest-disabled with no text selection @feat:editor-shell.cockpit-modes @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -228,7 +228,7 @@ test.describe("Cockpit — per-mode REAL context-toolbar pills (W2.8)", () => {
     await setMode(page, "design");
   });
 
-  test("Content — a text selection enables + drives the Character raise", async ({
+  test("Content — a text selection enables + drives the Character raise @feat:editor-shell.cockpit-modes @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -262,7 +262,7 @@ test.describe("Cockpit — per-mode REAL context-toolbar pills (W2.8)", () => {
     await setMode(page, "design");
   });
 
-  test("Prepress — the Bleed pill drives the real screen mode", async ({
+  test("Prepress — the Bleed pill drives the real screen mode @feat:editor-shell.cockpit-modes @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -281,7 +281,7 @@ test.describe("Cockpit — per-mode REAL context-toolbar pills (W2.8)", () => {
     await setMode(page, "design");
   });
 
-  test("Data — the Field-mapping pill raises its dock (real focus)", async ({
+  test("Data — the Field-mapping pill raises its dock (real focus) @feat:editor-shell.cockpit-modes @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -299,7 +299,7 @@ test.describe("Cockpit — per-mode REAL context-toolbar pills (W2.8)", () => {
     await setMode(page, "design");
   });
 
-  test("Review — the Comments pill raises its dock (real focus)", async ({
+  test("Review — the Comments pill raises its dock (real focus) @feat:editor-shell.cockpit-modes @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -314,7 +314,7 @@ test.describe("Cockpit — per-mode REAL context-toolbar pills (W2.8)", () => {
     await setMode(page, "design");
   });
 
-  test("Export — image / IDML pills are honest-disabled with no document", async ({
+  test("Export — image / IDML pills are honest-disabled with no document @feat:editor-shell.cockpit-modes @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);

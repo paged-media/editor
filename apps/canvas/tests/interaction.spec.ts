@@ -138,7 +138,7 @@ test.describe("Phase A — element selection + hit-testing", () => {
     pageH = loaded.pages[0].heightPt;
   });
 
-  test("AC-E-10 — click selects, Shift adds, Cmd toggles, empty click clears", async ({
+  test("AC-E-10 — click selects, Shift adds, Cmd toggles, empty click clears @feat:editor-tools.select.click-marquee @feat:the-renderer.hit-testing @level:edge", async ({
     page,
   }) => {
     const w = pageW;
@@ -185,7 +185,7 @@ test.describe("Phase A — element selection + hit-testing", () => {
     expect(afterToggle2).toEqual([firstHit!]);
   });
 
-  test("AC-E-11 — marquee returns every selectable element in its rect", async ({
+  test("AC-E-11 — marquee returns every selectable element in its rect @feat:editor-tools.select.click-marquee @feat:the-renderer.hit-testing @level:gesture", async ({
     page,
   }) => {
     const w = pageW;
@@ -207,7 +207,7 @@ test.describe("Phase A — element selection + hit-testing", () => {
     expect(center.length).toBeLessThanOrEqual(all.length);
   });
 
-  test("AC-E-12 — selection survives a camera zoom change", async ({ page }) => {
+  test("AC-E-12 — selection survives a camera zoom change @feat:editor-tools.nav.zoom @feat:editor-tools.select.click-marquee @feat:the-renderer.hit-testing @level:gesture", async ({ page }) => {
     const w = pageW;
     const h = pageH;
 
@@ -260,7 +260,7 @@ test.describe("Phase A — element selection + hit-testing", () => {
     expect(highZoom.element).toEqual(centerHit);
   });
 
-  test("HitFilter=text only returns text frames with stories", async ({ page }) => {
+  test("HitFilter=text only returns text frames with stories @feat:editor-tools.select.click-marquee @feat:the-renderer.hit-testing @level:happy", async ({ page }) => {
     const w = pageW;
     const h = pageH;
 

@@ -133,7 +133,7 @@ test.describe("E2E tools-ui (real viewport drag)", () => {
       .toBeGreaterThan(0.2);
   });
 
-  test("AC-E2E-TOOLS-1 — dragging the Rectangle tool on the canvas creates a frame; undo removes it", async ({
+  test("AC-E2E-TOOLS-1 — dragging the Rectangle tool on the canvas creates a frame; undo removes it @feat:editor-tools.draw.rectangle @level:happy", async ({
     page,
   }) => {
     const before = await countKind(page, "rectangle");
@@ -156,7 +156,7 @@ test.describe("E2E tools-ui (real viewport drag)", () => {
     await expect.poll(() => countKind(page, "rectangle")).toBe(before);
   });
 
-  test("AC-E2E-TOOLS-2 — a click (no drag) with the Rectangle tool creates nothing", async ({
+  test("AC-E2E-TOOLS-2 — a click (no drag) with the Rectangle tool creates nothing @feat:editor-tools.draw.rectangle @level:gesture", async ({
     page,
   }) => {
     const before = await countKind(page, "rectangle");

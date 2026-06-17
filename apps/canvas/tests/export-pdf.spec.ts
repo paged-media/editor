@@ -60,7 +60,7 @@ test.describe("Concept 3 — PDF export wire (protocol 26)", () => {
     await loadFixture(page, FIXTURE_MULTI);
   });
 
-  test("begin → page×N → finish produces a PDF with monotone progress", async ({
+  test("begin → page×N → finish produces a PDF with monotone progress @feat:editor-shell.panels.preflight @feat:the-renderer.pdf-export @level:happy", async ({
     page,
   }) => {
     const result = await page.evaluate(async () => {
@@ -107,7 +107,7 @@ test.describe("Concept 3 — PDF export wire (protocol 26)", () => {
     expect(result.size).toBeGreaterThan(500);
   });
 
-  test("high-level exportPdf reports progress per page", async ({ page }) => {
+  test("high-level exportPdf reports progress per page @feat:editor-shell.panels.preflight @feat:the-renderer.pdf-export @level:happy", async ({ page }) => {
     const result = await page.evaluate(async () => {
       const c = (globalThis as unknown as { __canvas: { client: unknown } })
         .__canvas.client as {
@@ -131,7 +131,7 @@ test.describe("Concept 3 — PDF export wire (protocol 26)", () => {
     expect(result.size).toBeGreaterThan(500);
   });
 
-  test("cancel drops the session; further page calls reject", async ({
+  test("cancel drops the session; further page calls reject @feat:editor-shell.panels.preflight @feat:the-renderer.pdf-export @level:edge", async ({
     page,
   }) => {
     const result = await page.evaluate(async () => {
@@ -162,7 +162,7 @@ test.describe("Concept 3 — PDF export wire (protocol 26)", () => {
     expect(result.message).toContain("unknown export session");
   });
 
-  test("AbortSignal cancels between pages with AbortError", async ({
+  test("AbortSignal cancels between pages with AbortError @feat:editor-shell.panels.preflight @feat:the-renderer.pdf-export @level:happy", async ({
     page,
   }) => {
     const result = await page.evaluate(async () => {
@@ -200,7 +200,7 @@ test.describe("Concept 3 — PDF export wire (protocol 26)", () => {
     expect(result.name).toBe("AbortError");
   });
 
-  test("X-4 without any profile fails at begin", async ({ page }) => {
+  test("X-4 without any profile fails at begin @feat:editor-shell.panels.preflight @feat:the-renderer.pdf-export @level:happy", async ({ page }) => {
     const message = await page.evaluate(async () => {
       const c = (globalThis as unknown as { __canvas: { client: unknown } })
         .__canvas.client as {
@@ -233,7 +233,7 @@ test.describe("Concept 3 — Export PDF dialog", () => {
     await expect(page.locator("[data-export-dialog]")).toBeVisible();
   }
 
-  test("File ▸ Export PDF… opens the dialog", async ({ page }) => {
+  test("File ▸ Export PDF… opens the dialog @feat:editor-shell.panels.preflight @feat:the-renderer.pdf-export @level:happy", async ({ page }) => {
     await openDialog(page);
     await expect(page.locator("[data-export-status]")).toHaveAttribute(
       "data-export-status",
@@ -241,7 +241,7 @@ test.describe("Concept 3 — Export PDF dialog", () => {
     );
   });
 
-  test("X-4 without a profile shows validation and disables Export", async ({
+  test("X-4 without a profile shows validation and disables Export @feat:editor-shell.panels.preflight @feat:the-renderer.pdf-export @level:happy", async ({
     page,
   }) => {
     await openDialog(page);
@@ -254,7 +254,7 @@ test.describe("Concept 3 — Export PDF dialog", () => {
     await expect(page.locator("[data-export-confirm]")).toBeEnabled();
   });
 
-  test("PDF 1.7 export completes and downloads <docname>.pdf", async ({
+  test("PDF 1.7 export completes and downloads <docname>.pdf @feat:editor-shell.panels.preflight @feat:the-renderer.pdf-export @level:happy", async ({
     page,
   }) => {
     await openDialog(page);

@@ -68,7 +68,7 @@ test.describe("B-07 — path/cubic tool-preview overlay (W3.3)", () => {
       .toBe(true);
   });
 
-  test("an in-progress cubic pen preview renders ONE <path> of C commands", async ({
+  test("an in-progress cubic pen preview renders ONE <path> of C commands @feat:editor-tools.draw.pen @level:gesture", async ({
     page,
   }) => {
     const pageId = await firstPageId(page);
@@ -99,7 +99,7 @@ test.describe("B-07 — path/cubic tool-preview overlay (W3.3)", () => {
     await expect.poll(() => previewPathDs(page).then((d) => d.length)).toBe(0);
   });
 
-  test("a closed cubic preview emits a Z-terminated <path>", async ({
+  test("a closed cubic preview emits a Z-terminated <path> @feat:editor-tools.draw.pen @level:happy", async ({
     page,
   }) => {
     const pageId = await firstPageId(page);
@@ -122,7 +122,7 @@ test.describe("B-07 — path/cubic tool-preview overlay (W3.3)", () => {
     expect((closed.match(/C/g) ?? []).length).toBe(3);
   });
 
-  test("the path preview strokes the snap-teal token (one preview family)", async ({
+  test("the path preview strokes the snap-teal token (one preview family) @feat:editor-tools.draw.pen @level:happy", async ({
     page,
   }) => {
     const pageId = await firstPageId(page);

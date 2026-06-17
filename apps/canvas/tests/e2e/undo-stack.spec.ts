@@ -199,7 +199,7 @@ test.describe("E2E undo stack + determinism", () => {
     bounds = props!;
   }
 
-  test("AC-E2E-UNDO-1 — a 5-op stack undoes to byte-identical baseline and redoes to byte-identical end", async ({
+  test("AC-E2E-UNDO-1 — a 5-op stack undoes to byte-identical baseline and redoes to byte-identical end @feat:round-tripping.undo-redo @level:happy", async ({
     page,
   }) => {
     test.setTimeout(90_000);
@@ -226,7 +226,7 @@ test.describe("E2E undo stack + determinism", () => {
     ).toBe(true);
   });
 
-  test("AC-E2E-UNDO-2 — replay determinism: a fresh reload + replay reproduces the same pixels", async ({
+  test("AC-E2E-UNDO-2 — replay determinism: a fresh reload + replay reproduces the same pixels @feat:round-tripping.undo-redo @level:happy", async ({
     page,
   }) => {
     test.setTimeout(90_000);

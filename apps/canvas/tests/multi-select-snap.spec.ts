@@ -161,7 +161,7 @@ test.describe("Phase E — multi-select, snap, modifiers", () => {
     pageH = loaded.pages[0].heightPt;
   });
 
-  test("AC-E-16 — multi-select translate moves all rigidly, one undo entry", async ({
+  test("AC-E-16 — multi-select translate moves all rigidly, one undo entry @feat:editor-tools.move.translate @feat:the-renderer.snapping @level:happy", async ({
     page,
   }) => {
     const items = await findMultipleUnrotatedFrames(page, pageId, pageW, pageH, 2);
@@ -240,7 +240,7 @@ test.describe("Phase E — multi-select, snap, modifiers", () => {
     }
   });
 
-  test("snap-to-page-left-edge surfaces a SnapLine and aligns the moved bbox", async ({
+  test("snap-to-page-left-edge surfaces a SnapLine and aligns the moved bbox @feat:editor-tools.move.translate @feat:the-renderer.snapping @level:edge", async ({
     page,
   }) => {
     const items = await findMultipleUnrotatedFrames(page, pageId, pageW, pageH, 1);
@@ -277,7 +277,7 @@ test.describe("Phase E — multi-select, snap, modifiers", () => {
     expect(xSnap!.position).toBeLessThanOrEqual(pageW);
   });
 
-  test("smart-guide alignment lines surface beyond the snap winner", async ({
+  test("smart-guide alignment lines surface beyond the snap winner @feat:editor-tools.move.translate @feat:the-renderer.snapping @level:happy", async ({
     page,
   }) => {
     // Plan-2 §8.2. When the snap winner pulls the moving frame onto
@@ -317,7 +317,7 @@ test.describe("Phase E — multi-select, snap, modifiers", () => {
     }
   });
 
-  test("disableSnap (Ctrl) bypasses the snap pass", async ({ page }) => {
+  test("disableSnap (Ctrl) bypasses the snap pass @feat:editor-tools.move.translate @feat:the-renderer.snapping @level:happy", async ({ page }) => {
     // Plan-2 §8.4. Same setup as the snap-to-page-left-edge test
     // (dragging just short of the page edge would normally snap),
     // but with the disable-snap modifier set: the delta passes
@@ -346,7 +346,7 @@ test.describe("Phase E — multi-select, snap, modifiers", () => {
     ).toBe(0);
   });
 
-  test("Shift-constrain locks translate to the dominant axis", async ({ page }) => {
+  test("Shift-constrain locks translate to the dominant axis @feat:editor-tools.move.translate @feat:the-renderer.snapping @level:happy", async ({ page }) => {
     const items = await findMultipleUnrotatedFrames(page, pageId, pageW, pageH, 1);
     const it = items[0];
     const before = it.pageBounds;

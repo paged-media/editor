@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · gradient", () => {
-  test("create a linear gradient and fill a shape with it", async ({ page }) => {
+  test("create a linear gradient and fill a shape with it @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:happy", async ({ page }) => {
     const designer = new Designer(page);
     await designer.open();
     await designer.newDocument();

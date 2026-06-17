@@ -41,7 +41,7 @@ interface CanvasGlobal {
 }
 
 test.describe("Track M.1 — layers read + toggle", () => {
-  test("client.layers() lists every IDML layer; visibility/lock/printable round-trip on undo", async ({
+  test("client.layers() lists every IDML layer; visibility/lock/printable round-trip on undo @feat:layers.model @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);

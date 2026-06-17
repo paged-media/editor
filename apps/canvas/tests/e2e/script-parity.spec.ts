@@ -40,7 +40,7 @@ test.describe("E2E script parity", () => {
     rect = fx.frames.find((f) => f.ref.kind === "rectangle")!.ref;
   });
 
-  test("AC-E2E-SCRIPT-1 — paged.set(frameOpacity) matches the wire mutation byte-for-byte", async ({
+  test("AC-E2E-SCRIPT-1 — paged.set(frameOpacity) matches the wire mutation byte-for-byte @feat:scripting.mutation-parity @feat:scripting.property-readwrite @level:happy", async ({
     page,
   }) => {
     // Wire path.
@@ -68,7 +68,7 @@ test.describe("E2E script parity", () => {
     ).toBe(wireDump);
   });
 
-  test("AC-E2E-SCRIPT-2 — paged.set(frameStrokeWeight) matches the wire mutation byte-for-byte", async ({
+  test("AC-E2E-SCRIPT-2 — paged.set(frameStrokeWeight) matches the wire mutation byte-for-byte @feat:scripting.mutation-parity @feat:scripting.property-readwrite @level:happy", async ({
     page,
   }) => {
     await mutate(page, {
@@ -91,7 +91,7 @@ test.describe("E2E script parity", () => {
     expect(scriptDump).toBe(wireDump);
   });
 
-  test("AC-E2E-SCRIPT-3 — paged.undo() reverses a scripted edit to the baseline", async ({
+  test("AC-E2E-SCRIPT-3 — paged.undo() reverses a scripted edit to the baseline @feat:scripting.mutation-parity @feat:scripting.property-readwrite @level:happy", async ({
     page,
   }) => {
     const baseline = await dumpElement(page, rect);

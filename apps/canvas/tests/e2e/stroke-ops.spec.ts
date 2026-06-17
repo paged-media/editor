@@ -134,7 +134,7 @@ test.describe("E2E stroke op round-trips", () => {
     });
   });
 
-  test("AC-E2E-STROKE-type — Dashed → Dotted lands + repaints, undo restores", async ({
+  test("AC-E2E-STROKE-type — Dashed → Dotted lands + repaints, undo restores @feat:editor-shell.panels.stroke @level:gesture", async ({
     page,
   }) => {
     await opSandwich(page, {
@@ -163,7 +163,7 @@ test.describe("E2E stroke op round-trips", () => {
     });
   });
 
-  test("AC-E2E-STROKE-join — MiterEndJoin → RoundEndJoin lands + repaints, undo restores", async ({
+  test("AC-E2E-STROKE-join — MiterEndJoin → RoundEndJoin lands + repaints, undo restores @feat:editor-shell.panels.stroke @level:happy", async ({
     page,
   }) => {
     await opSandwich(page, {
@@ -192,7 +192,7 @@ test.describe("E2E stroke op round-trips", () => {
     });
   });
 
-  test("AC-E2E-STROKE-align — Center → Outside lands + repaints, undo restores", async ({
+  test("AC-E2E-STROKE-align — Center → Outside lands + repaints, undo restores @feat:editor-shell.panels.stroke @level:happy", async ({
     page,
   }) => {
     await opSandwich(page, {
@@ -223,7 +223,7 @@ test.describe("E2E stroke op round-trips", () => {
     });
   });
 
-  test("AC-E2E-STROKE-gap-color — gap swatch lands + under-paints beneath the dashes, undo restores", async ({
+  test("AC-E2E-STROKE-gap-color — gap swatch lands + under-paints beneath the dashes, undo restores @feat:editor-shell.panels.stroke @level:happy", async ({
     page,
   }) => {
     // `frameStrokeGapColor` round-trips on the wire (model + undo
@@ -345,7 +345,7 @@ test.describe("E2E stroke op round-trips", () => {
   // gap colour outside the sandwich so the baseline shows the gap
   // under-pass at full strength; the sandwich then drops the gap tint to
   // 20%, lightening the under-painted gap → a pixel delta.
-  test("AC-E2E-STROKE-gap-tint — frameStrokeGapTint lightens the rendered gap colour (0.35.2)", async ({
+  test("AC-E2E-STROKE-gap-tint — frameStrokeGapTint lightens the rendered gap colour (0.35.2) @feat:editor-shell.panels.stroke @level:happy", async ({
     page,
   }) => {
     const magenta = (await createVividSwatch(page))!;

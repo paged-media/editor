@@ -126,7 +126,7 @@ test.describe("W2.10 — content rotate / scale gestures (channel)", () => {
     target = found!;
   });
 
-  test("AC-W2.10-1 — RotateContent repaints the image inside an unmoved frame; undo restores byte-identically", async ({
+  test("AC-W2.10-1 — RotateContent repaints the image inside an unmoved frame; undo restores byte-identically @feat:editor-tools.content-transform @feat:geometry-coordinates.image-content-transform @level:happy", async ({
     page,
   }) => {
     const pageInfo = fx.pages[target.pageIndex];
@@ -211,7 +211,7 @@ test.describe("W2.10 — content rotate / scale gestures (channel)", () => {
     });
   });
 
-  test("AC-W2.10-2 — ScaleContent repaints the image inside an unmoved frame; undo restores byte-identically", async ({
+  test("AC-W2.10-2 — ScaleContent repaints the image inside an unmoved frame; undo restores byte-identically @feat:editor-tools.content-transform @feat:geometry-coordinates.image-content-transform @level:happy", async ({
     page,
   }) => {
     const pageInfo = fx.pages[target.pageIndex];
@@ -318,7 +318,7 @@ test.describe("W2.10 — content rotate / scale gestures (channel)", () => {
     ).toBe(true);
   }
 
-  test("AC-W2.10-3 — RotateContent cancel rolls back", async ({ page }) => {
+  test("AC-W2.10-3 — RotateContent cancel rolls back @feat:editor-tools.content-transform @feat:geometry-coordinates.image-content-transform @level:edge", async ({ page }) => {
     const rect = (await elementPageRectPt(page, target.ref))!;
     const [, cy] = centroid(rect);
     await assertContentCancelRollsBack(
@@ -328,7 +328,7 @@ test.describe("W2.10 — content rotate / scale gestures (channel)", () => {
     );
   });
 
-  test("AC-W2.10-4 — ScaleContent cancel rolls back", async ({ page }) => {
+  test("AC-W2.10-4 — ScaleContent cancel rolls back @feat:editor-tools.content-transform @feat:geometry-coordinates.image-content-transform @level:edge", async ({ page }) => {
     const rect = (await elementPageRectPt(page, target.ref))!;
     await assertContentCancelRollsBack(
       page,

@@ -12,7 +12,7 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
 
 test.describe("Phase 5 — Condition Sets panel", () => {
-  test("AC-CSETS-1 — panel mounts; lists sets or shows empty placeholder", async ({
+  test("AC-CSETS-1 — panel mounts; lists sets or shows empty placeholder @feat:editor-shell.panels.conditions @level:edge", async ({
     page,
   }) => {
     await openCanvas(page);

@@ -43,7 +43,7 @@ interface CanvasGlobal {
 }
 
 test.describe("Plan-2 §8.3 — ruler guides", () => {
-  test("DocumentHandle surfaces every Guide element from the IDML", async ({
+  test("DocumentHandle surfaces every Guide element from the IDML @feat:layout-model.guides @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);

@@ -58,7 +58,7 @@ test.describe("E2E page ops", () => {
   // guard: paged-canvas tests/emit_cache_undo.rs). PAGE-1 keeps the
   // model assertion; AC-E2E-PAGE-4 owns the mid-set render
   // integration that used to panic.
-  test("AC-E2E-PAGE-1 — insertPage grows the page set; undo restores the count (model)", async ({
+  test("AC-E2E-PAGE-1 — insertPage grows the page set; undo restores the count (model) @feat:layout-model.spreads-pages @level:happy", async ({
     page,
   }) => {
     const reply = (await mutate(page, {
@@ -84,7 +84,7 @@ test.describe("E2E page ops", () => {
     ).toBe(fx.pageCount);
   });
 
-  test("AC-E2E-PAGE-2 — deletePage shrinks the page set; undo restores it byte-identically", async ({
+  test("AC-E2E-PAGE-2 — deletePage shrinks the page set; undo restores it byte-identically @feat:layout-model.spreads-pages @level:happy", async ({
     page,
   }) => {
     const control = fx.pages[0];
@@ -112,7 +112,7 @@ test.describe("E2E page ops", () => {
     ).toBe(true);
   });
 
-  test("AC-E2E-PAGE-4 — insertPage in the middle keeps the document renderable", async ({
+  test("AC-E2E-PAGE-4 — insertPage in the middle keeps the document renderable @feat:layout-model.spreads-pages @level:happy", async ({
     page,
   }) => {
     // The case that used to panic the worker: rasterise first (so a

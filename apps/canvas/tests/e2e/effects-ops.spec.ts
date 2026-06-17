@@ -170,7 +170,7 @@ test.describe("E2E effects op round-trips", () => {
 
   // Drop shadow — the original live family; enable rides the legacy
   // `frameDropShadow` bool, fields ride `frameDropShadow*`.
-  test("AC-E2E-FX-drop — enable + size land, undo ×2 restores", async ({
+  test("AC-E2E-FX-drop — enable + size land, undo ×2 restores @feat:editor-shell.panels.effects @level:happy", async ({
     page,
   }) => {
     await opSandwich(page, {

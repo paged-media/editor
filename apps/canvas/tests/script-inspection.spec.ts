@@ -71,7 +71,7 @@ test.describe("editor.script — inspection", () => {
     await loadIdml(page, FIXTURE);
   });
 
-  test("AC-SCRIPT-INSPECT-1 — paged.tree() returns the spread/page/frame hierarchy", async ({
+  test("AC-SCRIPT-INSPECT-1 — paged.tree() returns the spread/page/frame hierarchy @feat:scripting.inspection @feat:the-renderer.properties-read @level:happy", async ({
     page,
   }) => {
     const tree = await read<TreeNode[]>(page, "paged.tree()");
@@ -115,7 +115,7 @@ test.describe("editor.script — inspection", () => {
     expect(props.entries.some((e) => e.path === "frameBounds")).toBe(true);
   });
 
-  test("AC-SCRIPT-INSPECT-4 — paged.get(ref, path) reads a single property and reflects a write", async ({
+  test("AC-SCRIPT-INSPECT-4 — paged.get(ref, path) reads a single property and reflects a write @feat:scripting.inspection @feat:the-renderer.properties-read @level:happy", async ({
     page,
   }) => {
     // Set a known value through the script, then read it back via get —

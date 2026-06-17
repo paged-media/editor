@@ -55,7 +55,7 @@ async function undo(page: Page) {
 }
 
 test.describe("W2.12 — Document Map", () => {
-  test("AC-DOCMAP-1 — the spread tree + page-meta render", async ({ page }) => {
+  test("AC-DOCMAP-1 — the spread tree + page-meta render @feat:editor-shell.panels.document-map @level:happy", async ({ page }) => {
     await openCanvas(page);
     await loadFixtureReact(page);
     const panel = page.locator("[data-document-map-panel]");
@@ -67,7 +67,7 @@ test.describe("W2.12 — Document Map", () => {
     await expect(panel.locator("[data-spread-meta]").first()).toBeVisible();
   });
 
-  test("AC-DOCMAP-2 — Add section inserts a section chip; undo removes it", async ({
+  test("AC-DOCMAP-2 — Add section inserts a section chip; undo removes it @feat:editor-shell.panels.document-map @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -116,7 +116,7 @@ async function wireMissingLinks(page: Page): Promise<number> {
 }
 
 test.describe("W2.7 — Document Map per-page chips", () => {
-  test("AC-DOCMAP-CHIP-1 — broken-links fixture shows a real missing-links chip; click navigates", async ({
+  test("AC-DOCMAP-CHIP-1 — broken-links fixture shows a real missing-links chip; click navigates @feat:editor-shell.panels.document-map @level:edge", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -143,7 +143,7 @@ test.describe("W2.7 — Document Map per-page chips", () => {
     ).toHaveAttribute("data-selected", "true");
   });
 
-  test("AC-DOCMAP-CHIP-2 — overset fixture shows an honest doc-level seam chip, not a per-page claim", async ({
+  test("AC-DOCMAP-CHIP-2 — overset fixture shows an honest doc-level seam chip, not a per-page claim @feat:editor-shell.panels.document-map @level:edge", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -163,7 +163,7 @@ test.describe("W2.7 — Document Map per-page chips", () => {
     );
   });
 
-  test("AC-DOCMAP-CHIP-3 — no missing LINKS ⇒ no real missing-links chip (only honest seams remain)", async ({
+  test("AC-DOCMAP-CHIP-3 — no missing LINKS ⇒ no real missing-links chip (only honest seams remain) @feat:editor-shell.panels.document-map @level:edge", async ({
     page,
   }) => {
     // geometry-groups carries NO missing links on the wire, so the REAL

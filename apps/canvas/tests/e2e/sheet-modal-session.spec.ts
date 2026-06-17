@@ -207,7 +207,7 @@ test.describe("E2E sheet modal session (K-1 live validation + ADR-012)", () => {
     await fitHome(page);
   });
 
-  test("AC-K1-1 — lower a range, double-click enters the sheet context, Esc exits", async ({
+  test("AC-K1-1 — lower a range, double-click enters the sheet context, Esc exits @feat:plugin-platform.modal-edit-session @level:gesture", async ({
     page,
   }) => {
     // The page pour must succeed — the S-03 native table reaches the
@@ -231,14 +231,14 @@ test.describe("E2E sheet modal session (K-1 live validation + ADR-012)", () => {
     await expect(breadcrumb).toHaveCount(0);
   });
 
-  test("AC-K1-2 — unrotated: click selects, type+Enter commits, Cmd-Z journals back", async ({
+  test("AC-K1-2 — unrotated: click selects, type+Enter commits, Cmd-Z journals back @feat:plugin-platform.modal-edit-session @level:gesture", async ({
     page,
   }) => {
     const frame = await importAndLower(page, "A1:B3");
     await runEditLoop(page, frame);
   });
 
-  test("AC-C4 — a Type-tool click on the OWNED table enters sheet mode, not text editing", async ({
+  test("AC-C4 — a Type-tool click on the OWNED table enters sheet mode, not text editing @feat:plugin-platform.modal-edit-session @level:gesture", async ({
     page,
   }) => {
     const frame = await importAndLower(page, "A1:B3");
@@ -259,7 +259,7 @@ test.describe("E2E sheet modal session (K-1 live validation + ADR-012)", () => {
     await expect(breadcrumb).toHaveCount(0);
   });
 
-  test("AC-K1-3 — ROTATED frame: the §8.5 content inversion holds for the same loop", async ({
+  test("AC-K1-3 — ROTATED frame: the §8.5 content inversion holds for the same loop @feat:plugin-platform.modal-edit-session @level:happy", async ({
     page,
   }) => {
     const frame = await importAndLower(page, "A1:B3");

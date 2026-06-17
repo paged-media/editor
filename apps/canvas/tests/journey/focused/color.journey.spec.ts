@@ -10,7 +10,7 @@ import { FRAME_SELECTED } from "../driver/context-contract";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · color", () => {
-  test("create a swatch + color group and fill a shape with the swatch", async ({
+  test("create a swatch + color group and fill a shape with the swatch @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);

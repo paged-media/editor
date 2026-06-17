@@ -91,7 +91,7 @@ const PATHS: Array<{ path: string; min: number; max: number }> = [
 
 const ITERATIONS = 6;
 
-test("AC-E2E-FUZZ-1 — random in-range property writes never error and undo to byte-identical baseline", async ({
+test("AC-E2E-FUZZ-1 — random in-range property writes never error and undo to byte-identical baseline @feat:the-renderer.properties-read @level:edge", async ({
   page,
 }) => {
   test.setTimeout(120_000);

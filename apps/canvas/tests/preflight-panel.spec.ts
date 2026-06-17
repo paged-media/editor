@@ -26,7 +26,7 @@ async function openPreflight(page: import("@playwright/test").Page) {
 }
 
 test.describe("W2.12 — Preflight panel", () => {
-  test("AC-PREFLIGHT-1 — Validate output runs the real exporter and reports a state", async ({
+  test("AC-PREFLIGHT-1 — Validate output runs the real exporter and reports a state @feat:editor-shell.panels.preflight @feat:the-renderer.pdf-export @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -42,7 +42,7 @@ test.describe("W2.12 — Preflight panel", () => {
     await expect(page.locator("[data-preflight-clean]")).toBeVisible();
   });
 
-  test("AC-PREFLIGHT-2 — findings group by severity and jump to their page", async ({
+  test("AC-PREFLIGHT-2 — findings group by severity and jump to their page @feat:editor-shell.panels.preflight @feat:the-renderer.pdf-export @level:happy", async ({
     page,
   }) => {
     // 0.35.2 punch-list fix: the PDF export pipeline now promotes the

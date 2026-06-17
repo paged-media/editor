@@ -59,7 +59,7 @@ async function resolveAttrs(
 }
 
 test.describe("Styleguide — overlay tokens", () => {
-  test("the four core overlay tokens resolve to the DTP palette", async ({
+  test("the four core overlay tokens resolve to the DTP palette @feat:editor-tools.overlays @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -171,7 +171,7 @@ test.describe("Styleguide — overlay tokens", () => {
     });
   }
 
-  test("every campaign overlay is registered in the overlay registry", async ({
+  test("every campaign overlay is registered in the overlay registry @feat:editor-tools.overlays @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);

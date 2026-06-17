@@ -112,7 +112,7 @@ test.describe("Editor-ops — protocol v24 engine operations", () => {
       .toBe(true);
   });
 
-  test("insertFrame returns createdId and undo removes the frame", async ({
+  test("insertFrame returns createdId and undo removes the frame @feat:color-swatches.document-defaults @feat:frames-paths.frame.insert @feat:frames-paths.line.insert @feat:frames-paths.path.insert @level:happy", async ({
     page,
   }) => {
     const pageId = await firstPageId(page);
@@ -146,7 +146,7 @@ test.describe("Editor-ops — protocol v24 engine operations", () => {
     expect(after).toBeNull();
   });
 
-  test("insertLine creates a GraphicLine with the drag endpoints", async ({
+  test("insertLine creates a GraphicLine with the drag endpoints @feat:color-swatches.document-defaults @feat:frames-paths.frame.insert @feat:frames-paths.line.insert @feat:frames-paths.path.insert @level:gesture", async ({
     page,
   }) => {
     const pageId = await firstPageId(page);
@@ -163,7 +163,7 @@ test.describe("Editor-ops — protocol v24 engine operations", () => {
     expect(result?.anchors[1].anchor[1]).toBeCloseTo(220, 1);
   });
 
-  test("insertPath{smooth} compresses a polyline into fitted cubics", async ({
+  test("insertPath{smooth} compresses a polyline into fitted cubics @feat:color-swatches.document-defaults @feat:frames-paths.frame.insert @feat:frames-paths.line.insert @feat:frames-paths.path.insert @level:happy", async ({
     page,
   }) => {
     const pageId = await firstPageId(page);
@@ -187,7 +187,7 @@ test.describe("Editor-ops — protocol v24 engine operations", () => {
     expect(result!.subpathOpen[0]).toBe(true);
   });
 
-  test("setDocumentDefaults is consulted by inserts and echoed by documentMeta", async ({
+  test("setDocumentDefaults is consulted by inserts and echoed by documentMeta @feat:color-swatches.document-defaults @feat:frames-paths.frame.insert @feat:frames-paths.line.insert @feat:frames-paths.path.insert @level:happy", async ({
     page,
   }) => {
     const pageId = await firstPageId(page);
@@ -236,7 +236,7 @@ test.describe("Editor-ops — protocol v24 engine operations", () => {
     expect(fill.value).toBe(swatchId);
   });
 
-  test("pathOpenAt opens a closed contour at the clicked anchor (Scissors)", async ({
+  test("pathOpenAt opens a closed contour at the clicked anchor (Scissors) @feat:color-swatches.document-defaults @feat:frames-paths.frame.insert @feat:frames-paths.line.insert @feat:frames-paths.path.insert @level:happy", async ({
     page,
   }) => {
     const pageId = await firstPageId(page);
@@ -264,7 +264,7 @@ test.describe("Editor-ops — protocol v24 engine operations", () => {
     expect(after!.anchors.length).toBe(square.length + 1);
   });
 
-  test("shear worker gesture commits a skewed transform", async ({ page }) => {
+  test("shear worker gesture commits a skewed transform @feat:color-swatches.document-defaults @feat:frames-paths.frame.insert @feat:frames-paths.line.insert @feat:frames-paths.path.insert @level:gesture", async ({ page }) => {
     const pageId = await firstPageId(page);
     const insert = await mutate(page, {
       op: "insertFrame",
@@ -323,7 +323,7 @@ test.describe("Editor-ops — protocol v24 engine operations", () => {
     expect(m[3]).toBeCloseTo(1, 3);
   });
 
-  test("gradient axis + gradient feather author and read back", async ({
+  test("gradient axis + gradient feather author and read back @feat:color-swatches.document-defaults @feat:frames-paths.frame.insert @feat:frames-paths.line.insert @feat:frames-paths.path.insert @level:happy", async ({
     page,
   }) => {
     const pageId = await firstPageId(page);
@@ -408,7 +408,7 @@ test.describe("Editor-ops — protocol v24 engine operations", () => {
     expect(cleared.value).toBeNull();
   });
 
-  test("fill/stroke cluster writes DOCUMENT defaults when nothing is selected", async ({
+  test("fill/stroke cluster writes DOCUMENT defaults when nothing is selected @feat:color-swatches.document-defaults @feat:frames-paths.frame.insert @feat:frames-paths.line.insert @feat:frames-paths.path.insert @level:happy", async ({
     page,
   }) => {
     // No selection → the cluster's D button routes to
@@ -458,7 +458,7 @@ test.describe("Editor-ops — protocol v24 engine operations", () => {
     expect(strokeColor.value).toMatch(/^Color\//);
   });
 
-  test("page insert/resize/delete refresh the page grid, incl. undo", async ({
+  test("page insert/resize/delete refresh the page grid, incl. undo @feat:color-swatches.document-defaults @feat:frames-paths.frame.insert @feat:frames-paths.line.insert @feat:frames-paths.path.insert @level:gesture", async ({
     page,
   }) => {
     const pageId = await firstPageId(page);

@@ -65,7 +65,7 @@ test.describe("Scripting Stage 2 — embedded Boa", () => {
     await loadIdml(page, FIXTURE);
   });
 
-  test("AC-SCRIPT-1 — paged.set routes through the Operation channel", async ({
+  test("AC-SCRIPT-1 — paged.set routes through the Operation channel @feat:scripting.property-readwrite @feat:scripting.script-editor @level:happy", async ({
     page,
   }) => {
     const result = await run(
@@ -76,7 +76,7 @@ test.describe("Scripting Stage 2 — embedded Boa", () => {
     expect(await opacity(page, TEXT_FRAME_ID)).toBe(50);
   });
 
-  test("AC-SCRIPT-2 — console.log lines surface in output", async ({
+  test("AC-SCRIPT-2 — console.log lines surface in output @feat:scripting.property-readwrite @feat:scripting.script-editor @level:happy", async ({
     page,
   }) => {
     const result = await run(page, `console.log("hello", 1, true);`);
@@ -84,7 +84,7 @@ test.describe("Scripting Stage 2 — embedded Boa", () => {
     expect(result.output.some((l) => l.includes("hello"))).toBe(true);
   });
 
-  test("AC-SCRIPT-3 — paged.frame Proxy sugar writes propagate", async ({
+  test("AC-SCRIPT-3 — paged.frame Proxy sugar writes propagate @feat:scripting.property-readwrite @feat:scripting.script-editor @level:happy", async ({
     page,
   }) => {
     const result = await run(
@@ -98,7 +98,7 @@ test.describe("Scripting Stage 2 — embedded Boa", () => {
     expect(await opacity(page, TEXT_FRAME_ID)).toBe(25);
   });
 
-  test("AC-SCRIPT-4 — paged.undo reverts script-side mutations", async ({
+  test("AC-SCRIPT-4 — paged.undo reverts script-side mutations @feat:scripting.property-readwrite @feat:scripting.script-editor @level:happy", async ({
     page,
   }) => {
     const before = await opacity(page, TEXT_FRAME_ID);
@@ -111,7 +111,7 @@ test.describe("Scripting Stage 2 — embedded Boa", () => {
     expect(await opacity(page, TEXT_FRAME_ID)).toEqual(before);
   });
 
-  test("AC-SCRIPT-5 — syntax errors surface as error, document untouched", async ({
+  test("AC-SCRIPT-5 — syntax errors surface as error, document untouched @feat:scripting.property-readwrite @feat:scripting.script-editor @level:edge", async ({
     page,
   }) => {
     const before = await opacity(page, TEXT_FRAME_ID);

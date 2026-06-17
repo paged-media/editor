@@ -141,7 +141,7 @@ test.describe("E2E paragraph ops", () => {
     });
   }
 
-  test("AC-E2E-PARA-leftIndent — paragraphLeftIndent lands + repaints", async ({
+  test("AC-E2E-PARA-leftIndent — paragraphLeftIndent lands + repaints @feat:editor-shell.panels.paragraph @level:happy", async ({
     page,
   }) => {
     // Indents now honoured by core's paragraph compose (render-honor
@@ -155,7 +155,7 @@ test.describe("E2E paragraph ops", () => {
     });
   });
 
-  test("AC-E2E-PARA-rightIndent — paragraphRightIndent lands + repaints", async ({
+  test("AC-E2E-PARA-rightIndent — paragraphRightIndent lands + repaints @feat:editor-shell.panels.paragraph @level:happy", async ({
     page,
   }) => {
     // Same as the left indent — core now honours the right indent
@@ -167,7 +167,7 @@ test.describe("E2E paragraph ops", () => {
     });
   });
 
-  test("AC-E2E-PARA-dropCapChars — paragraphDropCapCharacters lands + repaints", async ({
+  test("AC-E2E-PARA-dropCapChars — paragraphDropCapCharacters lands + repaints @feat:editor-shell.panels.paragraph @level:happy", async ({
     page,
   }) => {
     // A drop cap needs both a character count and a line span; set
@@ -226,7 +226,7 @@ test.describe("E2E paragraph ops", () => {
     });
   });
 
-  test("AC-E2E-PARA-ruleAbove — paragraphRuleAbove struct lands + repaints", async ({
+  test("AC-E2E-PARA-ruleAbove — paragraphRuleAbove struct lands + repaints @feat:editor-shell.panels.paragraph @level:happy", async ({
     page,
   }) => {
     // Whole-struct ParagraphRule value (the bespoke disclosure's
@@ -277,7 +277,7 @@ test.describe("E2E paragraph ops", () => {
 
   // ── W2.1 multi-paragraph flip ────────────────────────────────────
 
-  test("AC-E2E-PARA-ruleBelow — paragraphRuleBelow draws a rule in the inter-paragraph gap", async ({
+  test("AC-E2E-PARA-ruleBelow — paragraphRuleBelow draws a rule in the inter-paragraph gap @feat:editor-shell.panels.paragraph @level:happy", async ({
     page,
   }) => {
     // Page "text · para · multi-trailing" (idx 16) stacks two paragraphs
@@ -334,7 +334,7 @@ test.describe("E2E paragraph ops", () => {
   // non-hyphenated breaks, and the narrow column overflows the long word
   // rather than hyphenating. ENGINE GAP: the hyphenation toggle does not
   // change the composed line breaks for any fixture-shaped content.
-  test.fixme("AC-E2E-PARA-hyphenation — paragraphHyphenation (toggle produces no composed-break delta on 0.35.1)", async () => {});
+  test.fixme("AC-E2E-PARA-hyphenation — paragraphHyphenation (toggle produces no composed-break delta on 0.35.1) @feat:editor-shell.panels.paragraph @level:happy", async () => {});
   // keep_lines_together / keep_with_next round-trip through mutate but
   // are NOT consumed by paged-compose/paged-text for frame-break
   // decisions (stored on structs, never read in the break logic).

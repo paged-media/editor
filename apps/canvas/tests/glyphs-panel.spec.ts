@@ -41,7 +41,7 @@ async function storyCount(page: Page, storyId: string): Promise<number> {
   }, storyId);
 }
 
-test("AC-GLYPHS-1 — caret + glyph click inserts via insertText", async ({
+test("AC-GLYPHS-1 — caret + glyph click inserts via insertText @feat:editor-shell.panels.glyphs @level:gesture", async ({
   page,
 }) => {
   await openCanvas(page);
@@ -93,7 +93,7 @@ test("AC-GLYPHS-1 — caret + glyph click inserts via insertText", async ({
   ).toBeVisible();
 });
 
-test("AC-GLYPHS-2 — Font select is fed real families from the fonts collection", async ({
+test("AC-GLYPHS-2 — Font select is fed real families from the fonts collection @feat:editor-shell.panels.glyphs @level:happy", async ({
   page,
 }) => {
   await openCanvas(page);

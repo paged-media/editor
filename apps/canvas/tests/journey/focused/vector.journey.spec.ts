@@ -12,7 +12,7 @@ import { FRAME_SELECTED } from "../driver/context-contract";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · vector", () => {
-  test("dragging the Rectangle tool draws a frame and surfaces the Frame context", async ({
+  test("dragging the Rectangle tool draws a frame and surfaces the Frame context @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);

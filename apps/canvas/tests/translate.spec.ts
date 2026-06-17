@@ -123,7 +123,7 @@ test.describe("Phase B — translate gesture", () => {
     target = await hitTopmostFrame(page, pageId, pageW, pageH);
   });
 
-  test("AC-E-13 — committed bounds equal anchor + delta (within snap tolerance)", async ({
+  test("AC-E-13 — committed bounds equal anchor + delta (within snap tolerance) @feat:editor-tools.move.translate @level:happy", async ({
     page,
   }) => {
     const before = await frameBoundsRaw(page, target);
@@ -158,7 +158,7 @@ test.describe("Phase B — translate gesture", () => {
     expect(after[2] - before[2]).toBeCloseTo(dy, 1);
   });
 
-  test("AC-E-8 — undo restores, redo replays", async ({ page }) => {
+  test("AC-E-8 — undo restores, redo replays @feat:editor-tools.move.translate @level:happy", async ({ page }) => {
     const before = await frameBoundsRaw(page, target);
     const delta: [number, number] = [125.0, 95.0];
 
@@ -185,7 +185,7 @@ test.describe("Phase B — translate gesture", () => {
     expect(Math.abs(redone[1] - (before[1] + delta[0]))).toBeLessThanOrEqual(4.5);
   });
 
-  test("cancel restores", async ({ page }) => {
+  test("cancel restores @feat:editor-tools.move.translate @level:edge", async ({ page }) => {
     const before = await frameBoundsRaw(page, target);
     await page.evaluate(
       async ({ target }) => {
@@ -200,7 +200,7 @@ test.describe("Phase B — translate gesture", () => {
     for (let i = 0; i < 4; i++) expect(after[i]).toBeCloseTo(before[i], 2);
   });
 
-  test("AC-E-9 — gesture delta is camera-independent", async ({ page }) => {
+  test("AC-E-9 — gesture delta is camera-independent @feat:editor-tools.move.translate @level:gesture", async ({ page }) => {
     const before = await frameBoundsRaw(page, target);
     // Use a delta large enough that snap is in the noise — the
     // property under test is that doc-space delta != viewport delta,

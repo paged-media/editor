@@ -71,7 +71,7 @@ test.describe("E2E path + pathfinder ops", () => {
     }
   });
 
-  test("AC-E2E-PATHF-1 — pathfinderBoolean union merges two rects; undo restores both", async ({
+  test("AC-E2E-PATHF-1 — pathfinderBoolean union merges two rects; undo restores both @feat:frames-paths.pathfinder-boolean @feat:geometry-coordinates.path-topology-ops @level:happy", async ({
     page,
   }) => {
     const pageInfo = fx.pages[0];

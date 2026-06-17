@@ -20,7 +20,7 @@ test.describe("Phase 5 — Align panel", () => {
     await openPanel(page, "paged.align");
   });
 
-  test("AC-ALIGN-1 — panel mounts; 6 align + 2 distribute buttons; hints when no selection", async ({
+  test("AC-ALIGN-1 — panel mounts; 6 align + 2 distribute buttons; hints when no selection @feat:editor-shell.panels.align @level:smoke", async ({
     page,
   }) => {
     await expect(page.locator('[data-align-panel="ready"]')).toBeVisible();
@@ -35,7 +35,7 @@ test.describe("Phase 5 — Align panel", () => {
     ).toBeVisible();
   });
 
-  test("AC-ALIGN-2 — align-left writes new bounds to every selected frame", async ({
+  test("AC-ALIGN-2 — align-left writes new bounds to every selected frame @feat:editor-shell.panels.align @level:happy", async ({
     page,
   }) => {
     const minLeft = await page.evaluate(async () => {
@@ -119,7 +119,7 @@ test.describe("Phase 5 — Align panel", () => {
     expect(Math.abs(aftermath[0] - aftermath[1])).toBeLessThan(0.01);
   });
 
-  test("AC-DIST-1 — distribute-h spaces middle frames evenly between extremes", async ({
+  test("AC-DIST-1 — distribute-h spaces middle frames evenly between extremes @feat:editor-shell.panels.align @level:happy", async ({
     page,
   }) => {
     const result = await page.evaluate(async () => {
@@ -247,7 +247,7 @@ test.describe("Phase 5 — Align panel", () => {
     expect(Math.abs(sortedCenters[1] - expectedMid)).toBeLessThan(0.5);
   });
 
-  test("AC-ALIGN-3 — multi-target align is one undo entry (Mutation::Batch)", async ({
+  test("AC-ALIGN-3 — multi-target align is one undo entry (Mutation::Batch) @feat:editor-shell.panels.align @level:happy", async ({
     page,
   }) => {
     const result = await page.evaluate(async () => {

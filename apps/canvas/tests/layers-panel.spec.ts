@@ -61,7 +61,7 @@ async function getLayers(
 }
 
 test.describe("Track M.4-M.7 — structural layer ops", () => {
-  test("AC-M-4 — rename a layer + undo restores the original", async ({
+  test("AC-M-4 — rename a layer + undo restores the original @feat:editor-shell.panels.layers @feat:layers.ops @level:happy", async ({
     page,
   }) => {
     await load(page);
@@ -93,7 +93,7 @@ test.describe("Track M.4-M.7 — structural layer ops", () => {
     );
   });
 
-  test("AC-M-5 — reorder a layer + undo restores", async ({ page }) => {
+  test("AC-M-5 — reorder a layer + undo restores @feat:editor-shell.panels.layers @feat:layers.ops @level:happy", async ({ page }) => {
     await load(page);
     const before = await getLayers(page);
     expect(before.length).toBeGreaterThanOrEqual(2);
@@ -118,7 +118,7 @@ test.describe("Track M.4-M.7 — structural layer ops", () => {
     expect(after[after.length - 1].selfId).toBe(moved.selfId);
   });
 
-  test("AC-M-6 — add + delete a layer; both round-trip on undo", async ({
+  test("AC-M-6 — add + delete a layer; both round-trip on undo @feat:editor-shell.panels.layers @feat:layers.ops @level:happy", async ({
     page,
   }) => {
     await load(page);

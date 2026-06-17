@@ -68,7 +68,7 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
     await loadIdml(page, FIXTURE);
   });
 
-  test("AC-STROKE-1 — Stroke panel mounts; shows em-dash placeholders when no selection", async ({
+  test("AC-STROKE-1 — Stroke panel mounts; shows em-dash placeholders when no selection @feat:editor-shell.panels.object-transform @feat:editor-shell.panels.stroke @level:smoke", async ({
     page,
   }) => {
     await activateTab(page, "paged.stroke");
@@ -84,7 +84,7 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
     await expect(mixed).toHaveCount(9);
   });
 
-  test("AC-STROKE-2 — selecting a frame populates the Stroke panel fields", async ({
+  test("AC-STROKE-2 — selecting a frame populates the Stroke panel fields @feat:editor-shell.panels.object-transform @feat:editor-shell.panels.stroke @level:happy", async ({
     page,
   }) => {
     await selectFrame(page, TEXT_FRAME_ID);
@@ -110,7 +110,7 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
     ).toBeVisible();
   });
 
-  test("AC-OBJECT-1 — Object panel mounts; em-dash placeholders when no selection", async ({
+  test("AC-OBJECT-1 — Object panel mounts; em-dash placeholders when no selection @feat:editor-shell.panels.object-transform @feat:editor-shell.panels.stroke @level:smoke", async ({
     page,
   }) => {
     await activateTab(page, "paged.object-transform");
@@ -133,7 +133,7 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
     await expect(mixed).toHaveCount(7);
   });
 
-  test("AC-OBJECT-2 — selecting a frame populates Bounds + Opacity", async ({
+  test("AC-OBJECT-2 — selecting a frame populates Bounds + Opacity @feat:editor-shell.panels.object-transform @feat:editor-shell.panels.stroke @level:happy", async ({
     page,
   }) => {
     await selectFrame(page, TEXT_FRAME_ID);
@@ -156,7 +156,7 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
     ).toHaveCount(0);
   });
 
-  test("AC-OBJECT-3 — multi-selection with differing bounds shows mixed", async ({
+  test("AC-OBJECT-3 — multi-selection with differing bounds shows mixed @feat:editor-shell.panels.object-transform @feat:editor-shell.panels.stroke @level:happy", async ({
     page,
   }) => {
     // Select two frames with different bounds — Bounds should
@@ -199,7 +199,7 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
       .toBeGreaterThanOrEqual(1);
   });
 
-  test("AC-OBJECT-4 — rotation decompose sandwich: rotate 30° → reads ~30 → undo restores", async ({
+  test("AC-OBJECT-4 — rotation decompose sandwich: rotate 30° → reads ~30 → undo restores @feat:editor-shell.panels.object-transform @feat:editor-shell.panels.stroke @level:happy", async ({
     page,
   }) => {
     // W2.3 transform-decompose round-trip through the REAL apply
@@ -261,7 +261,7 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
     await expect.poll(read).toBeCloseTo(before ?? 0, 1);
   });
 
-  test("AC-OBJECT-5 — flipH decompose sandwich: toggle → reads true → undo restores", async ({
+  test("AC-OBJECT-5 — flipH decompose sandwich: toggle → reads true → undo restores @feat:editor-shell.panels.object-transform @feat:editor-shell.panels.stroke @level:happy", async ({
     page,
   }) => {
     const target = { kind: "rectangle", id: "ueccee2" };
@@ -325,7 +325,7 @@ test.describe("Phase 3 — element-scope declarative panels", () => {
     await expect.poll(readFlip).toBe(before);
   });
 
-  test("AC-OBJECT-6 — reference-point anchor keeps the chosen edge fixed on resize (W2.4)", async ({
+  test("AC-OBJECT-6 — reference-point anchor keeps the chosen edge fixed on resize (W2.4) @feat:editor-shell.panels.object-transform @feat:editor-shell.panels.stroke @level:edge", async ({
     page,
   }) => {
     // W2.4 — the 3×3 reference-point grid is UI state driving

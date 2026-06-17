@@ -154,7 +154,7 @@ test.describe("Track L — Group transform acceptance", () => {
     expect(leaves.length).toBe(2); // page 0 = two rects in the group
   });
 
-  test("AC-L-1 — hit-test on a grouped leaf exposes the outermost group via groupChain", async () => {
+  test("AC-L-1 — hit-test on a grouped leaf exposes the outermost group via groupChain @feat:editor-tools.select.group-descent @feat:frames-paths.groups @level:happy", async () => {
     // Panel logic: on a single-click with `activeGroup === null`,
     // the panel maps `hit.element` → `{kind:'group', id: chain[0]}`.
     // Verifies the necessary precondition (chain[0] is the
@@ -163,7 +163,7 @@ test.describe("Track L — Group transform acceptance", () => {
     expect(firstRectId.kind).toBe("rectangle");
   });
 
-  test("AC-L-2 — translate Group: every leaf transform shifts by (dx, dy)", async ({
+  test("AC-L-2 — translate Group: every leaf transform shifts by (dx, dy) @feat:editor-tools.select.group-descent @feat:frames-paths.groups @level:happy", async ({
     page,
   }) => {
     const before = await leafTransforms(page, leaves);
@@ -211,7 +211,7 @@ test.describe("Track L — Group transform acceptance", () => {
     expect(shifts[1][1]).toBeCloseTo(shifts[0][1], 1);
   });
 
-  test("AC-L-3 — rotate Group: every leaf transform picks up the same rotation", async ({
+  test("AC-L-3 — rotate Group: every leaf transform picks up the same rotation @feat:editor-tools.select.group-descent @feat:frames-paths.groups @level:happy", async ({
     page,
   }) => {
     const before = await leafTransforms(page, leaves);
@@ -285,7 +285,7 @@ test.describe("Track L — Group transform acceptance", () => {
     }
   });
 
-  test("AC-L-4 — double-click descent sets activeGroup; Escape exits", async ({
+  test("AC-L-4 — double-click descent sets activeGroup; Escape exits @feat:editor-tools.select.group-descent @feat:frames-paths.groups @level:gesture", async ({
     page,
   }) => {
     // activeGroup starts null (no descent). Set it via the dev hook
@@ -327,7 +327,7 @@ test.describe("Track L — Group transform acceptance", () => {
     );
   });
 
-  test("AC-L-5 — undo restores every leaf transform bytewise", async ({
+  test("AC-L-5 — undo restores every leaf transform bytewise @feat:editor-tools.select.group-descent @feat:frames-paths.groups @level:happy", async ({
     page,
   }) => {
     const before = await leafTransforms(page, leaves);

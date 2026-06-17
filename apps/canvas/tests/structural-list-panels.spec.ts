@@ -39,7 +39,7 @@ test.describe("Phase 5 — Wave 1 structural panels", () => {
     await loadIdml(page, FIXTURE);
   });
 
-  test("AC-WAVE1-1 — Pages (list) panel mounts and lists pages", async ({
+  test("AC-WAVE1-1 — Pages (list) panel mounts and lists pages @feat:editor-shell.panels.master-pages @feat:editor-shell.panels.pages-list @feat:editor-shell.panels.spreads @level:smoke", async ({
     page,
   }) => {
     await mountAndAssert(
@@ -51,7 +51,7 @@ test.describe("Phase 5 — Wave 1 structural panels", () => {
     );
   });
 
-  test("AC-WAVE1-1b — Pages list toolbar: New inserts, Delete removes the selected page", async ({
+  test("AC-WAVE1-1b — Pages list toolbar: New inserts, Delete removes the selected page @feat:editor-shell.panels.master-pages @feat:editor-shell.panels.pages-list @feat:editor-shell.panels.spreads @level:happy", async ({
     page,
   }) => {
     await openPanel(page, "paged.pages-list");
@@ -72,7 +72,7 @@ test.describe("Phase 5 — Wave 1 structural panels", () => {
     ).toBeDisabled();
   });
 
-  test("AC-WAVE1-2 — Spreads panel mounts", async ({ page }) => {
+  test("AC-WAVE1-2 — Spreads panel mounts @feat:editor-shell.panels.master-pages @feat:editor-shell.panels.pages-list @feat:editor-shell.panels.spreads @level:smoke", async ({ page }) => {
     await mountAndAssert(
       page,
       "paged.spreads",
@@ -82,7 +82,7 @@ test.describe("Phase 5 — Wave 1 structural panels", () => {
     );
   });
 
-  test("AC-WAVE1-3 — Master Pages panel mounts", async ({ page }) => {
+  test("AC-WAVE1-3 — Master Pages panel mounts @feat:editor-shell.panels.master-pages @feat:editor-shell.panels.pages-list @feat:editor-shell.panels.spreads @level:smoke", async ({ page }) => {
     await mountAndAssert(
       page,
       "paged.master-pages",
@@ -92,7 +92,7 @@ test.describe("Phase 5 — Wave 1 structural panels", () => {
     );
   });
 
-  test("AC-WAVE1-4 — Cell Styles panel mounts", async ({ page }) => {
+  test("AC-WAVE1-4 — Cell Styles panel mounts @feat:editor-shell.panels.master-pages @feat:editor-shell.panels.pages-list @feat:editor-shell.panels.spreads @level:smoke", async ({ page }) => {
     await mountAndAssert(
       page,
       "paged.cell-styles",
@@ -102,7 +102,7 @@ test.describe("Phase 5 — Wave 1 structural panels", () => {
     );
   });
 
-  test("AC-WAVE1-5 — Table Styles panel mounts", async ({ page }) => {
+  test("AC-WAVE1-5 — Table Styles panel mounts @feat:editor-shell.panels.master-pages @feat:editor-shell.panels.pages-list @feat:editor-shell.panels.spreads @level:smoke", async ({ page }) => {
     await mountAndAssert(
       page,
       "paged.table-styles",
@@ -112,7 +112,7 @@ test.describe("Phase 5 — Wave 1 structural panels", () => {
     );
   });
 
-  test("AC-WAVE1-6 — Fonts panel mounts and lists fonts in use", async ({
+  test("AC-WAVE1-6 — Fonts panel mounts and lists fonts in use @feat:editor-shell.panels.master-pages @feat:editor-shell.panels.pages-list @feat:editor-shell.panels.spreads @level:smoke", async ({
     page,
   }) => {
     await mountAndAssert(

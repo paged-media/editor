@@ -22,7 +22,7 @@ test.describe("Phase 3 — Paragraph panel (declarative composition)", () => {
     await openPanel(page, "paged.paragraph");
   });
 
-  test("AC-PARA-1 — Paragraph panel mounts and shows section title", async ({
+  test("AC-PARA-1 — Paragraph panel mounts and shows section title @feat:editor-shell.panels.paragraph @level:smoke", async ({
     page,
   }) => {
     await expect(page.locator('[data-paragraph-panel="ready"]')).toBeVisible();
@@ -48,7 +48,7 @@ test.describe("Phase 3 — Paragraph panel (declarative composition)", () => {
     ).toHaveCount(2);
   });
 
-  test("AC-PARA-2 — fields render em-dash placeholder when no content selection", async ({
+  test("AC-PARA-2 — fields render em-dash placeholder when no content selection @feat:editor-shell.panels.paragraph @level:happy", async ({
     page,
   }) => {
     // W2.1: with the layout paths live, the mixed-control count grew
@@ -60,7 +60,7 @@ test.describe("Phase 3 — Paragraph panel (declarative composition)", () => {
     expect(await mixed.count()).toBeGreaterThanOrEqual(4);
   });
 
-  test("AC-PARA-3 — content selection over a real story populates Paragraph fields", async ({
+  test("AC-PARA-3 — content selection over a real story populates Paragraph fields @feat:editor-shell.panels.paragraph @level:happy", async ({
     page,
   }) => {
     const seeded = await page.evaluate(async () => {

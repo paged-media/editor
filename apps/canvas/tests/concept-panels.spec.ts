@@ -80,7 +80,7 @@ test.describe("Panel gallery — concept panels", () => {
     });
   }
 
-  test("AC-CONCEPT-TABS — Object Export tab switcher is live local state", async ({
+  test("AC-CONCEPT-TABS — Object Export tab switcher is live local state @feat:editor-shell.panels.bullets-numbering @feat:editor-shell.panels.export-tagging @feat:editor-shell.panels.object-export @feat:editor-shell.panels.table @feat:editor-shell.panels.tabs @level:happy", async ({
     page,
   }) => {
     await openPanel(page, "paged.object-export");
@@ -96,7 +96,7 @@ test.describe("Panel gallery — concept panels", () => {
     await expect(root.locator("[data-seam]").first()).toBeVisible();
   });
 
-  test("AC-CONCEPT-SCOPE — Export Tagging scope toggle swaps the mapping", async ({
+  test("AC-CONCEPT-SCOPE — Export Tagging scope toggle swaps the mapping @feat:editor-shell.panels.bullets-numbering @feat:editor-shell.panels.export-tagging @feat:editor-shell.panels.object-export @feat:editor-shell.panels.table @feat:editor-shell.panels.tabs @level:happy", async ({
     page,
   }) => {
     await openPanel(page, "paged.export-tagging");

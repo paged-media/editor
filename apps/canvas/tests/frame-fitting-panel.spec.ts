@@ -22,13 +22,13 @@ test.describe("Phase 5 — Frame Fitting panel", () => {
     await openPanel(page, "paged.frame-fitting");
   });
 
-  test("AC-FF-1 — panel mounts", async ({ page }) => {
+  test("AC-FF-1 — panel mounts @feat:editor-shell.panels.frame-fitting @feat:images-graphics.frame-fitting @level:smoke", async ({ page }) => {
     await expect(
       page.locator('[data-frame-fitting-panel="ready"]'),
     ).toBeVisible();
   });
 
-  test("AC-FF-2 — type + crops round-trip; partial commits preserve the other half", async ({
+  test("AC-FF-2 — type + crops round-trip; partial commits preserve the other half @feat:editor-shell.panels.frame-fitting @feat:images-graphics.frame-fitting @level:gesture", async ({
     page,
   }) => {
     const result = await page.evaluate(async () => {
@@ -112,7 +112,7 @@ test.describe("Phase 5 — Frame Fitting panel", () => {
     expect(result.crops).toEqual([4, 8, 12, 16]);
   });
 
-  test("AC-FF-3 — reference-point + auto-fit sandwich: set → assert → undo", async ({
+  test("AC-FF-3 — reference-point + auto-fit sandwich: set → assert → undo @feat:editor-shell.panels.frame-fitting @feat:images-graphics.frame-fitting @level:happy", async ({
     page,
   }) => {
     // W2.3 — Rectangle-only. `frameFittingReferencePoint` is the raw
@@ -205,7 +205,7 @@ test.describe("Phase 5 — Frame Fitting panel", () => {
     expect(result.restored).toEqual(result.before);
   });
 
-  test("AC-FF-4 — fill-proportionally writes frameFittingType; round-trips", async ({
+  test("AC-FF-4 — fill-proportionally writes frameFittingType; round-trips @feat:editor-shell.panels.frame-fitting @feat:images-graphics.frame-fitting @level:happy", async ({
     page,
   }) => {
     // W2.4 — the "Fill frame proportionally" action writes the real

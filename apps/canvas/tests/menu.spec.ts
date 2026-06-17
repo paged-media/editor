@@ -22,7 +22,7 @@ test.describe("Phase 4 — menu via commands", () => {
     await loadIdml(page, FIXTURE);
   });
 
-  test("AC-MENU-1 — File / Edit / View menu buttons render", async ({
+  test("AC-MENU-1 — File / Edit / View menu buttons render @feat:editor-shell.menus @level:happy", async ({
     page,
   }) => {
     // The MenuBar renders one top-level button per registered
@@ -45,7 +45,7 @@ test.describe("Phase 4 — menu via commands", () => {
     ).toBeVisible();
   });
 
-  test("AC-MENU-2 — clicking View opens a menu listing the zoom commands", async ({
+  test("AC-MENU-2 — clicking View opens a menu listing the zoom commands @feat:editor-shell.menus @feat:editor-tools.nav.zoom @level:gesture", async ({
     page,
   }) => {
     await page
@@ -85,7 +85,7 @@ test.describe("Phase 4 — menu via commands", () => {
     ).not.toBeVisible();
   });
 
-  test("AC-MENU-4 — Edit menu lists Undo and Redo as registered commands", async ({
+  test("AC-MENU-4 — Edit menu lists Undo and Redo as registered commands @feat:editor-shell.menus @level:happy", async ({
     page,
   }) => {
     await page

@@ -23,7 +23,7 @@ test.describe("Phase 5 — Info panel", () => {
     await openPanel(page, "paged.info");
   });
 
-  test("AC-INFO-1 — panel mounts and surfaces the six DocumentMeta fields", async ({
+  test("AC-INFO-1 — panel mounts and surfaces the six DocumentMeta fields @feat:editor-shell.panels.info @level:smoke", async ({
     page,
   }) => {
     await expect(page.locator('[data-info-panel="ready"]')).toBeVisible();

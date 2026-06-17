@@ -69,7 +69,7 @@ async function opLatencies(page: Page, ref: ElementRef): Promise<number[]> {
   );
 }
 
-test("AC-E2E-PERF-1 — load / op / snapshot latencies stay within budget", async ({
+test("AC-E2E-PERF-1 — load / op / snapshot latencies stay within budget @feat:the-renderer.pipeline @level:happy", async ({
   page,
 }) => {
   test.setTimeout(180_000);

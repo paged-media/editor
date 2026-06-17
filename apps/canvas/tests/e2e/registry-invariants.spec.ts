@@ -73,7 +73,7 @@ test.describe("registry invariants (built-ins + bundles)", () => {
       .toBe(true);
   });
 
-  test("INV-REG-1 — tool shortcuts are unique", async ({ page }) => {
+  test("INV-REG-1 — tool shortcuts are unique @feat:editor-shell.tool-rail @level:happy", async ({ page }) => {
     const { tools } = await snapshot(page);
     const byShortcut = new Map<string, string[]>();
     for (const t of tools) {
@@ -91,7 +91,7 @@ test.describe("registry invariants (built-ins + bundles)", () => {
     ).toEqual([]);
   });
 
-  test("INV-REG-2 — one group default per flyout slot", async ({ page }) => {
+  test("INV-REG-2 — one group default per flyout slot @feat:editor-shell.tool-rail @level:happy", async ({ page }) => {
     const { tools } = await snapshot(page);
     const defaults = new Map<string, string[]>();
     for (const t of tools) {
@@ -109,7 +109,7 @@ test.describe("registry invariants (built-ins + bundles)", () => {
     ).toEqual([]);
   });
 
-  test("INV-REG-3 — keybindings are unique per key+command", async ({
+  test("INV-REG-3 — keybindings are unique per key+command @feat:editor-shell.tool-rail @level:happy", async ({
     page,
   }) => {
     const { keybindings } = await snapshot(page);

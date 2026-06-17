@@ -72,7 +72,7 @@ test.describe("E2E colour ops", () => {
     fx = await loadFixture(page, "geometry");
   });
 
-  test("AC-E2E-COLOR-1 — editSwatch on a used swatch repaints the frame", async ({
+  test("AC-E2E-COLOR-1 — editSwatch on a used swatch repaints the frame @feat:color-swatches.color-groups @feat:color-swatches.gradients @feat:color-swatches.swatch.crud @level:happy", async ({
     page,
   }) => {
     const target = fx.frames.find((f) => f.ref.kind === "rectangle")!;
@@ -161,7 +161,7 @@ test.describe("E2E colour ops", () => {
     });
   }
 
-  test("AC-E2E-COLOR-2 — createSwatch adds to the palette; undo removes it", async ({
+  test("AC-E2E-COLOR-2 — createSwatch adds to the palette; undo removes it @feat:color-swatches.color-groups @feat:color-swatches.gradients @feat:color-swatches.swatch.crud @level:happy", async ({
     page,
   }) => {
     const before = (await swatches(page)).length;
@@ -189,7 +189,7 @@ test.describe("E2E colour ops", () => {
     );
   });
 
-  test("AC-E2E-COLOR-3 — createGradient adds to the gradient list; undo removes it", async ({
+  test("AC-E2E-COLOR-3 — createGradient adds to the gradient list; undo removes it @feat:color-swatches.color-groups @feat:color-swatches.gradients @feat:color-swatches.swatch.crud @level:happy", async ({
     page,
   }) => {
     const sw = (await swatches(page))[0].selfId;
@@ -225,7 +225,7 @@ test.describe("E2E colour ops", () => {
     );
   });
 
-  test("AC-E2E-COLOR-4 — createColorGroup adds to the group list; undo removes it", async ({
+  test("AC-E2E-COLOR-4 — createColorGroup adds to the group list; undo removes it @feat:color-swatches.color-groups @feat:color-swatches.gradients @feat:color-swatches.swatch.crud @level:happy", async ({
     page,
   }) => {
     const before = await page.evaluate(async () => {

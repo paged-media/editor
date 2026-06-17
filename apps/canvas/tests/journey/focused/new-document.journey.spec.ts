@@ -10,7 +10,7 @@ import { EMPTY_DOC } from "../driver/context-contract";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · new document", () => {
-  test("File ▸ New mints a blank Letter page with an empty context", async ({
+  test("File ▸ New mints a blank Letter page with an empty context @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:edge", async ({
     page,
   }) => {
     const designer = new Designer(page);

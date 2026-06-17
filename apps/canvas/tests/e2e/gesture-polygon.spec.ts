@@ -148,7 +148,7 @@ test.describe("gestures.md DR-01/DR-02 — built-in Polygon tool", () => {
     await loadViaReactPath(page, "geometry");
   });
 
-  test("DR-01 — default polygon drag commits ONE closed path with corner anchors; undo removes it", async ({
+  test("DR-01 — default polygon drag commits ONE closed path with corner anchors; undo removes it @feat:editor-tools.draw.rectangle @feat:frames-paths.shape-tools @level:gesture", async ({
     page,
   }) => {
     const before = await treeCount(page, "polygon");
@@ -177,7 +177,7 @@ test.describe("gestures.md DR-01/DR-02 — built-in Polygon tool", () => {
     await expect.poll(() => treeCount(page, "polygon")).toBe(before);
   });
 
-  test("DR-01 — sides option drives the vertex count (5 sides → 5 anchors)", async ({
+  test("DR-01 — sides option drives the vertex count (5 sides → 5 anchors) @feat:editor-tools.draw.rectangle @feat:frames-paths.shape-tools @level:happy", async ({
     page,
   }) => {
     const before = await treeCount(page, "polygon");
@@ -193,7 +193,7 @@ test.describe("gestures.md DR-01/DR-02 — built-in Polygon tool", () => {
     await expect.poll(() => treeCount(page, "polygon")).toBe(before);
   });
 
-  test("DR-01 — star inset alternates outer/inner radii (2N anchors)", async ({
+  test("DR-01 — star inset alternates outer/inner radii (2N anchors) @feat:editor-tools.draw.rectangle @feat:frames-paths.shape-tools @level:happy", async ({
     page,
   }) => {
     const before = await treeCount(page, "polygon");
@@ -225,7 +225,7 @@ test.describe("gestures.md DR-01/DR-02 — built-in Polygon tool", () => {
     await expect.poll(() => treeCount(page, "polygon")).toBe(before);
   });
 
-  test("DR-02 — Shift constrains the polygon bounds to a square", async ({
+  test("DR-02 — Shift constrains the polygon bounds to a square @feat:editor-tools.draw.rectangle @feat:frames-paths.shape-tools @level:happy", async ({
     page,
   }) => {
     const before = await treeCount(page, "polygon");
@@ -248,7 +248,7 @@ test.describe("gestures.md DR-01/DR-02 — built-in Polygon tool", () => {
     await expect.poll(() => treeCount(page, "polygon")).toBe(before);
   });
 
-  test("DR-01/INV-1 — Escape mid-drag creates nothing", async ({ page }) => {
+  test("DR-01/INV-1 — Escape mid-drag creates nothing @feat:editor-tools.draw.rectangle @feat:frames-paths.shape-tools @level:gesture", async ({ page }) => {
     const before = await treeCount(page, "polygon");
     await activatePolygon(page);
     const start = await screenPoint(page, 120, 120);

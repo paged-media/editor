@@ -115,7 +115,7 @@ test.describe("E2E export verification", () => {
     fx = await loadFixture(page, "gradients");
   });
 
-  test("AC-E2E-EXPORT-1 — a fill edit changes the exported PDF page 1", async ({
+  test("AC-E2E-EXPORT-1 — a fill edit changes the exported PDF page 1 @feat:the-renderer.pdf-export @level:happy", async ({
     page,
   }) => {
     test.setTimeout(120_000);
