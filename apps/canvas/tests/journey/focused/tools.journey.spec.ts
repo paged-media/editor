@@ -15,7 +15,7 @@ import { Designer } from "../driver/designer";
 type Cam = { scale: number; tx: number; ty: number };
 
 test.describe("journey · tools", () => {
-  test("zoom, pan, content-transform, group descent, duplicate, gridify, overlays @feat:editor-tools.nav.zoom @feat:editor-tools.nav.pan @feat:editor-tools.content-transform @feat:editor-tools.select.group-descent @feat:editor-tools.move.duplicate-drag @feat:editor-tools.draw.gridify @feat:editor-tools.overlays @level:gesture", async ({
+  test("zoom, pan, content-transform, group descent, duplicate, gridify, overlays @feat:editor-tools.nav.zoom @feat:editor-tools.nav.pan @feat:editor-tools.content-transform @feat:geometry-coordinates.image-content-transform @feat:editor-tools.select.group-descent @feat:editor-tools.move.duplicate-drag @feat:editor-tools.draw.gridify @feat:editor-tools.overlays @level:gesture", async ({
     page,
   }) => {
     const designer = new Designer(page);
