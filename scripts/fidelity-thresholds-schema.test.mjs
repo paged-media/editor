@@ -11,7 +11,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
@@ -25,6 +25,22 @@ const THRESHOLDS_PATH = resolve(
   "canvas-fidelity-thresholds.json",
 );
 const MANIFEST_PATH = resolve(here, "..", "corpus", "envato", "manifest.json");
+
+// Both inputs live in the SEPARATE paged-media/corpus repo (locally a
+// `corpus` symlink → ~/paged/corpus). The corpus-free CI jobs (the static
+// `checks` job; the playwright job's sparse checkout only pulls
+// `envato/overrides`) don't carry these JSONs, so skip gracefully when
+// they're absent rather than ENOENT-failing — the guard still runs in
+// full locally and anywhere corpus is present. Same skip-when-absent
+// contract as core's corpus/generated/diff.sh.
+if (!existsSync(THRESHOLDS_PATH) || !existsSync(MANIFEST_PATH)) {
+  // eslint-disable-next-line no-console
+  console.log(
+    "[thresholds] corpus/envato thresholds + manifest absent — skipping " +
+      "schema guard (corpus repo not checked out in this environment)",
+  );
+  process.exit(0);
+}
 
 const raw = JSON.parse(readFileSync(THRESHOLDS_PATH, "utf8"));
 const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
