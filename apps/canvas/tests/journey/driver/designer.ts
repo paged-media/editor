@@ -391,6 +391,119 @@ export class Designer {
     expect(Buffer.from(b64, "base64")).toMatchSnapshot(`${name}.png`);
   }
 
+  /**
+   * Read the page back through the deterministic CPU snapshot (the same
+   * tiny-skia readback {@link contentCheckpoint} uses — it composites
+   * native content AND any plugin sceneLayer) and return the raw PNG
+   * bytes. Unlike `contentCheckpoint`, there is NO committed baseline:
+   * pair two of these around an action and assert with
+   * {@link expectRenderChanged} / {@link expectRenderStable}. That makes
+   * "the plugin's output actually rendered" CI-runnable without seeding
+   * per-platform baselines. An integral px-per-pt width keeps dims stable.
+   */
+  async renderBytes(
+    opts: { widthPx?: number; pageIndex?: number } = {},
+  ): Promise<Uint8Array> {
+    const { pageIds, pageSizesPt } = await this.handle();
+    const idx = opts.pageIndex ?? 0;
+    const widthPx = opts.widthPx ?? 816; // 612pt Letter @ 96dpi
+    const dpi = (widthPx * 72) / pageSizesPt[idx][0];
+    const arr = await this.page.evaluate(
+      async ({ pageId, widthPx, dpi }) => {
+        const c = (globalThis as unknown as CanvasGlobal).__canvas;
+        const snap = await c.client.requestSnapshot(pageId, widthPx, dpi);
+        return Array.from(snap.pngBytes);
+      },
+      { pageId: pageIds[idx], widthPx, dpi },
+    );
+    return Uint8Array.from(arr);
+  }
+
+  /**
+   * Count pixels that differ between two snapshots beyond an anti-aliasing
+   * tolerance, decoding both PNGs in the (secure) page context via
+   * `createImageBitmap` + `OffscreenCanvas` — no Node PNG decoder needed.
+   * The CPU snapshot is deterministic (tiny-skia, same display list → same
+   * bytes), so two snapshots of an UNCHANGED page diff to exactly 0; any
+   * non-zero count is genuine rendered-content signal. A dimension change
+   * counts as fully changed. Returns the changed-pixel count.
+   */
+  async renderDiffPixels(
+    before: Uint8Array,
+    after: Uint8Array,
+    tol = 12,
+  ): Promise<number> {
+    return this.page.evaluate(
+      async ({ before, after, tol }) => {
+        const decode = async (bytes: number[]) => {
+          const blob = new Blob([new Uint8Array(bytes)], { type: "image/png" });
+          const bmp = await createImageBitmap(blob);
+          const cv = new OffscreenCanvas(bmp.width, bmp.height);
+          const ctx = cv.getContext("2d");
+          if (!ctx) throw new Error("no 2d context for snapshot diff");
+          ctx.drawImage(bmp, 0, 0);
+          return {
+            data: ctx.getImageData(0, 0, bmp.width, bmp.height).data,
+            w: bmp.width,
+            h: bmp.height,
+          };
+        };
+        const a = await decode(before);
+        const b = await decode(after);
+        if (a.w !== b.w || a.h !== b.h) return a.w * a.h; // resized = all-changed
+        let changed = 0;
+        for (let i = 0; i < a.data.length; i += 4) {
+          if (
+            Math.abs(a.data[i] - b.data[i]) > tol ||
+            Math.abs(a.data[i + 1] - b.data[i + 1]) > tol ||
+            Math.abs(a.data[i + 2] - b.data[i + 2]) > tol ||
+            Math.abs(a.data[i + 3] - b.data[i + 3]) > tol
+          ) {
+            changed++;
+          }
+        }
+        return changed;
+      },
+      { before: Array.from(before), after: Array.from(after), tol },
+    );
+  }
+
+  /**
+   * Assert the rendered page VISIBLY changed between two snapshots — the
+   * core rendered-output oracle for plugin journeys. `minPixels` (default
+   * 64) sits well above the deterministic-snapshot floor of 0 yet below any
+   * real DTP edit (even a thin stroke or a single edited cell clears it).
+   * Returns the changed-pixel count for logging/escalation.
+   */
+  async expectRenderChanged(
+    before: Uint8Array,
+    after: Uint8Array,
+    minPixels = 64,
+  ): Promise<number> {
+    const changed = await this.renderDiffPixels(before, after);
+    expect(
+      changed,
+      `rendered page should change by >${minPixels}px (got ${changed}px)`,
+    ).toBeGreaterThan(minPixels);
+    return changed;
+  }
+
+  /** Inverse of {@link expectRenderChanged}: assert the render did NOT
+   *  change (a cleared preview, an undo, a no-op). `maxPixels` allows a
+   *  small AA margin though the deterministic snapshot is usually exact. */
+  async expectRenderStable(
+    before: Uint8Array,
+    after: Uint8Array,
+    maxPixels = 16,
+  ): Promise<number> {
+    const changed = await this.renderDiffPixels(before, after);
+    expect(
+      changed,
+      `rendered page should be stable (≤${maxPixels}px, got ${changed}px)`,
+    ).toBeLessThanOrEqual(maxPixels);
+    return changed;
+  }
+
   /** Set a frame's placed-image LINK (the PlaceImage mutation). This
    *  flips the frame's `has_image` geometry flag → the Image inspector
    *  (Frame Fitting). It does NOT serve pixels — pair it with
