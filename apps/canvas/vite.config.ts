@@ -25,6 +25,22 @@ function resolveCorpusSubdir(name: string): string {
 const CORPUS_FONTS = resolveCorpusSubdir("fonts");
 const CORPUS_ENVATO = resolveCorpusSubdir("envato");
 
+// The vendored DuckDB-WASM dist (paged.data's query engine). The editor
+// consumes data-bundle through the pnpm `link:` chain, so the bundle's
+// `bootDuckDB` resolves the worker/wasm URLs relative to its own module at
+// `~/paged/plugin-data/packages/data-bundle/src/query/duckdb.ts` → the dist
+// at `~/paged/plugin-data/vendor/duckdb-wasm/dist/`.
+const DUCKDB_DIST = resolve(
+  __dirname,
+  "..",
+  "..",
+  "..",
+  "plugin-data",
+  "vendor",
+  "duckdb-wasm",
+  "dist",
+);
+
 // SharedArrayBuffer requires cross-origin isolation. Set the two
 // COOP / COEP headers Vite's dev server needs so the worker can
 // allocate a SAB for the camera transform. Production hosts must
@@ -254,6 +270,105 @@ function corpusIdmlRoute(): import("vite").Plugin {
   };
 }
 
+/**
+ * Serve the vendored DuckDB-WASM dist files as RAW assets with the correct
+ * MIME type. paged.data boots its query engine by spawning a Worker from the
+ * vendored `duckdb-browser-*.worker.js`, which then nested-fetches the
+ * `*.pthread.worker.js` and the `duckdb-*.wasm` module. Vite's dev server
+ * resolves the worker's top-level URL through its module graph, but the
+ * worker's OWN nested `fetch`/`importScripts` for the pthread script + the
+ * wasm fall through to the SPA fallback → it hands back `index.html`, and the
+ * worker chokes on "Unexpected token '<'" (it expected JS/wasm). This
+ * middleware intercepts any request whose path ends in one of the vendored
+ * DuckDB dist filenames and streams the raw bytes from `DUCKDB_DIST` with the
+ * right Content-Type, BEFORE the SPA fallback runs. It stays graceful when the
+ * dist is un-vendored (the file isn't there → `next()`, the bundle reports
+ * `duckdb-missing` honestly). Flat-name guard mirrors `fontsRoute`.
+ *
+ * The worker is served same-origin, so it inherits the COOP/COEP cross-origin
+ * isolation the `crossOriginIsolation` plugin sets — the SharedArrayBuffer
+ * the DuckDB pthread runtime needs is available.
+ */
+// The DuckDB-WASM browser API entry (`duckdb-browser.mjs`, the module the
+// bundle dynamically imports via `@vite-ignore`) carries ONE bare specifier:
+// `import { … } from "apache-arrow"`. Served raw (the `@vite-ignore` dist is
+// outside Vite's module graph), the browser can't resolve a bare specifier →
+// it fetches `/apache-arrow`, hits the SPA fallback, gets `index.html`, and
+// the module load fails. We rewrite that one specifier to a virtual ESM module
+// id (below) that Vite DOES transform — `export * from "apache-arrow"` resolved
+// through the editor's `apache-arrow` alias + dep-optimizer. Same-origin, no
+// CDN, no bare specifier left for the browser.
+const DUCKDB_ARROW_VIRTUAL = "/@id/__x00__virtual:duckdb-apache-arrow";
+
+function duckdbDistRoute(): import("vite").Plugin {
+  // Match the vendored DuckDB dist artifacts the worker boot needs: the
+  // browser worker bootstraps, the pthread worker, and the wasm modules.
+  // `.map` sourcemaps are matched too so the worker's lazy sourcemap fetch
+  // doesn't trip the SPA fallback either.
+  const isDuckDbAsset = (name: string): boolean =>
+    /^duckdb-(browser|coi|eh|mvp)[\w.-]*\.(js|cjs|mjs|wasm)(\.map)?$/.test(name);
+  // The API-entry modules that carry the bare `apache-arrow` import (NOT the
+  // worker IIFEs, which are self-contained). These get a body rewrite.
+  const needsArrowRewrite = (name: string): boolean =>
+    /^duckdb-browser\.(c?js|mjs)$/.test(name);
+  const mimeFor = (name: string): string => {
+    if (name.endsWith(".wasm")) return "application/wasm";
+    if (name.endsWith(".map") || name.endsWith(".json")) return "application/json";
+    // .js / .cjs / .mjs — a worker script must be served as JS (a `<`-leading
+    // HTML body is the exact failure this route fixes).
+    return "text/javascript";
+  };
+  const VIRTUAL_ID = "virtual:duckdb-apache-arrow";
+  const RESOLVED_VIRTUAL_ID = "\0" + VIRTUAL_ID;
+  return {
+    name: "static-suffix:duckdb-wasm-dist",
+    // Virtual ESM the rewritten dist imports instead of the bare specifier —
+    // Vite transforms its graph (apache-arrow via the editor alias).
+    resolveId(id) {
+      if (id === VIRTUAL_ID) return RESOLVED_VIRTUAL_ID;
+      return null;
+    },
+    load(id) {
+      if (id === RESOLVED_VIRTUAL_ID) return `export * from "apache-arrow";`;
+      return null;
+    },
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (!req.url) return next();
+        const pathOnly = decodeURIComponent(req.url.split("?")[0]);
+        const base = pathOnly.split("/").pop() ?? "";
+        if (!isDuckDbAsset(base)) return next();
+        const abs = resolve(DUCKDB_DIST, base);
+        // Containment + existence guard (the basename can't escape the dist).
+        if (!abs.startsWith(DUCKDB_DIST)) {
+          res.statusCode = 400;
+          return res.end("bad path");
+        }
+        try {
+          if (!statSync(abs).isFile()) return next();
+        } catch {
+          return next();
+        }
+        res.setHeader("Content-Type", mimeFor(base));
+        res.setHeader("Cache-Control", "no-cache");
+        // Same-origin worker scripts must be embeddable under COEP.
+        res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+        if (needsArrowRewrite(base)) {
+          // Read + rewrite the single bare `apache-arrow` specifier to the
+          // virtual module URL. Small files (~30 KiB); read fully, not streamed.
+          const src = readFileSync(abs, "utf8");
+          const rewritten = src.replace(
+            /(["'])apache-arrow\1/g,
+            `"${DUCKDB_ARROW_VIRTUAL}"`,
+          );
+          return res.end(rewritten);
+        }
+        createReadStream(abs).pipe(res);
+      });
+    },
+  };
+}
+
 export default defineConfig({
   // apps/canvas/ lives one extra level deep than web/ — adjust the
   // workspace root so node_modules + the Cargo target dir resolve.
@@ -264,6 +379,7 @@ export default defineConfig({
     networkConnectSrcPolicy,
     fontsRoute(),
     corpusIdmlRoute(),
+    duckdbDistRoute(),
   ],
   server: {
     // Pin to IPv4 so Playwright's `127.0.0.1` health-check resolves.
@@ -308,6 +424,14 @@ export default defineConfig({
     // Keep it out of the dep pre-bundle so the worker's dynamic import
     // + `?url` wasm asset resolve through Vite's module graph intact.
     exclude: ["@paged-media/canvas-wasm"],
+    // Pre-bundle apache-arrow at server startup. The DuckDB-WASM API entry's
+    // bare `apache-arrow` import is rewritten to a virtual module (see
+    // duckdbDistRoute) that pulls in apache-arrow; if Vite first discovers it
+    // mid-test (when the data panel boots DuckDB), the dep-optimizer kicks off
+    // a server-wide reload that races the in-flight worker boot and the source
+    // never reaches "ready" on a COLD first run. Optimizing it up front removes
+    // that reload — the boot is then deterministic on both lanes.
+    include: ["apache-arrow"],
   },
   worker: {
     format: "es",

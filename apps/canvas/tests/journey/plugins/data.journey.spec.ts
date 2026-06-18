@@ -20,25 +20,27 @@
 // run reports exactly how far the real engine drove without flaking the gate.
 //
 // VERIFIED RESULT (updated 2026-06-18, journeys project): this ships
-// @level:smoke. The smoke surface drives green. Promoting to @level:happy is
-// a multi-blocker DuckDB-WASM-in-Vite-headless effort; TWO blockers are now
-// CLEARED and the remaining two are documented:
+// @level:smoke for host integration, and the DuckDB-backed import now DRIVES —
+// all four DuckDB-WASM-in-Vite-headless blockers are CLEARED:
 //   (1) CLEARED — the dist is vendored (scripts/vendor-duckdb.sh) and the
-//       `apache-arrow` peer now resolves (editor apps/canvas dep +
-//       vite.config resolve.alias + optimizeDeps.include).
-//   (2) CLEARED — the worker is now spawned from the VENDORED same-origin
-//       files, not the jsDelivr CDN (which gave a cross-origin Worker
-//       SecurityError); see plugin-data query/duckdb.ts.
-//   (3) OPEN — Vite returns index.html (not the raw script) for the vendored
-//       `*.worker.js` URL ("Unexpected token '<'" in the worker), so the
-//       DuckDB pthread worker won't load. Needs Vite to serve the vendored
-//       worker as a raw asset (a `?worker`/`?url` lane that stays graceful
-//       when the dist is un-vendored).
-//   (4) OPEN/UNPROVEN — even past (3), the COI/pthread + SharedArrayBuffer
-//       36 MiB DuckDB boot in a headless Playwright worker is unproven (the
-//       bundle's own vitest mocks DuckDB). This is the genuine wall.
-// Until (3)+(4) land, the data flow stays honestly un-driven and this ships
-// @level:smoke (host-integration: commands registered + panels mount).
+//       `apache-arrow` peer resolves (editor apps/canvas dep +
+//       vite.config resolve.alias; the entry's bare import is rewritten to a
+//       same-origin virtual module by the vite.config `duckdbDistRoute`).
+//   (2) CLEARED — the worker is spawned from the VENDORED same-origin files,
+//       not the jsDelivr CDN (a cross-origin Worker SecurityError); see
+//       plugin-data query/duckdb.ts.
+//   (3) CLEARED — the editor's Vite dev server now serves the vendored
+//       `duckdb-browser-*.worker.js` / `duckdb-*.wasm` as RAW assets with the
+//       right MIME (`duckdbDistRoute` in apps/canvas/vite.config.ts), BEFORE
+//       the SPA fallback — so the worker's nested fetches no longer get
+//       index.html ("Unexpected token '<'"). It stays graceful (next()) when
+//       the dist is un-vendored.
+//   (4) CLEARED — the COI/pthread + SharedArrayBuffer ~36 MiB DuckDB boot WORKS
+//       in the headless harness on BOTH lanes (the bundled-Chromium `journeys`
+//       lane AND the real-Chrome `journeys-gpu` lane), both cross-origin
+//       isolated by the existing COOP/COEP plugin. The source reaches "ready"
+//       in ~3-4 s. The full import→resolve→lower→render flow is render-verified
+//       in the sibling data-render.journey.spec.ts (@level:happy).
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -178,8 +180,9 @@ test.describe("journey · paged.data plugin", () => {
         )
         .toBe("ready");
 
-      // The source row appears in the list (the registered table name).
-      await expect(page.getByText(/data-people/)).toBeVisible({
+      // The source row appears in the list (the sanitised table name —
+      // `data-people.csv` → `data_people`).
+      await expect(page.getByText(/data_people/).first()).toBeVisible({
         timeout: 6_000,
       });
       importDrove = true;
@@ -192,7 +195,7 @@ test.describe("journey · paged.data plugin", () => {
           .getAttribute("data-status")
           .catch(() => null)) ?? "unknown";
       failures.push(
-        `import: source did not reach "ready" (engine status: "${status}"). Blockers (1) apache-arrow resolution + (2) the CDN→vendored same-origin worker are now CLEARED; the remaining wall is (3) Vite serving the vendored *.worker.js as a raw script (it currently returns index.html → "Unexpected token '<'" in the worker) and (4) the unproven COI/pthread + SharedArrayBuffer DuckDB boot in a headless Playwright worker. See the spec header.`,
+        `import: source did not reach "ready" (engine status: "${status}"). DuckDB-WASM normally boots on the editor dev server (vite.config duckdbDistRoute + the COOP/COEP isolation); this only fails if the vendored dist is absent or the context is not cross-origin isolated. See the spec header.`,
       );
     }
 

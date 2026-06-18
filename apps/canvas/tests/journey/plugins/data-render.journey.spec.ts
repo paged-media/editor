@@ -1,23 +1,29 @@
-// Journey: paged.data RENDERED output — a TRIPWIRE for the one plugin whose
-// render can't be verified headless yet.
+// Journey: paged.data RENDERED output — the data-publishing flow lowers bound
+// content INTO the layout and it VISIBLY renders on the page.
 //
-// paged.data publishes governed data INTO the layout: a CSV registers through
+// paged.data publishes governed data into the document: a CSV registers through
 // the vendored DuckDB-WASM query engine, a binding resolves, and the bound
 // content LOWERS to native Paged content (data-host-model → Mutation) that
-// reaches the page. To render-verify that, the query engine must boot — and
-// DuckDB-WASM (a ~36 MiB COI/pthread + SharedArrayBuffer artifact) does not
-// boot in the headless Playwright harness today. The documented walls
-// (data.journey.spec.ts header):
-//   (3) Vite serves the vendored `*.worker.js` via the SPA fallback (the COI
-//       worker's nested fetch gets index.html → "Unexpected token '<'");
-//   (4) the COI/pthread + SAB DuckDB boot in headless Chrome is unproven.
+// reaches the page. This journey drives that end to end through the REAL editor
+// host and render-verifies the result with a before/after pixel diff.
 //
-// So this is NOT faked: it drives the REAL import gateway and, when the source
-// reaches "ready" (DuckDB booted), proceeds to render-verify the lowered
-// content reaches the page; when it does NOT (today's reality), it SKIPS with
-// the precise blocker. The day (3)+(4) land, this auto-fires the render
-// assertion — no edit needed. Until then data honestly carries no render
-// claim (it stays @level:smoke for host-integration in the sibling journey).
+// DuckDB-WASM headless boot is UNBLOCKED (2026-06-18). The two documented walls
+// (data.journey.spec.ts header) are closed by the editor's Vite dev server:
+//   (3) the vendored `duckdb-browser-*.worker.js` / `duckdb-*.wasm` are served
+//       as RAW assets with the right MIME by the `duckdbDistRoute` middleware in
+//       `apps/canvas/vite.config.ts` (they previously fell through the SPA
+//       fallback → index.html → "Unexpected token '<'" in the worker). The same
+//       route rewrites the API entry's lone bare `apache-arrow` import to a
+//       same-origin virtual module so the entry loads;
+//   (4) the COI/pthread + SharedArrayBuffer DuckDB boot WORKS in the headless
+//       harness — on BOTH the bundled-Chromium `journeys` lane and the real-
+//       Chrome `journeys-gpu` lane (both cross-origin-isolated by the existing
+//       COOP/COEP plugin). The ~36 MiB engine reaches "ready" in ~3-4 s.
+//
+// Defence in depth: if DuckDB ever fails to boot on a future host (a missing
+// vendored dist, a non-isolated context), the source never reaches "ready" and
+// the test SKIPS with the precise status rather than flaking — but on the
+// standard editor dev server the render assertion is HARD and drives green.
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -33,9 +39,8 @@ const CSV_FIXTURE = pathResolve(
 );
 
 const SOURCES_PANEL = "media.paged.data.panel.sources";
+const BINDINGS_PANEL = "media.paged.data.panel.bindings";
 const IMPORT_COMMAND = "media.paged.data.command.importData";
-const RESOLVE_COMMAND = "media.paged.data.command.resolveBindings";
-const LOWER_COMMAND = "media.paged.data.command.lowerBinding";
 
 const invoke = (page: Page, id: string) =>
   page.evaluate(
@@ -49,7 +54,7 @@ const invoke = (page: Page, id: string) =>
   );
 
 test.describe("journey · paged.data render output", () => {
-  test("a designer publishes data into the layout: import a CSV, then the bound content renders on the page @feat:data.plugin.bundle @feat:editor-shell.plugin-bundles @level:happy", async ({
+  test("a designer publishes data into the layout: import a CSV, wire a binding, then the bound content renders on the page @feat:data.plugin.bundle @feat:editor-shell.plugin-bundles @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -58,7 +63,7 @@ test.describe("journey · paged.data render output", () => {
 
     // ── 1. IMPORT GATEWAY — feed the CSV into the sources panel; the session
     //    lazily boots the vendored DuckDB-WASM engine and registers the table.
-    //    Reaching "ready" means the query engine booted. ──
+    //    Reaching "ready" means the query engine booted (the unblocked path). ──
     await invoke(page, IMPORT_COMMAND);
     await openPanel(page, SOURCES_PANEL);
     const fileInput = page.locator('input[type="file"][accept*="csv"]');
@@ -83,22 +88,36 @@ test.describe("journey · paged.data render output", () => {
       const got = (await status.getAttribute("data-status").catch(() => null)) ?? "unknown";
       test.skip(
         true,
-        `paged.data render is blocked on DuckDB-WASM headless boot (engine status "${got}"): ` +
-          "(3) Vite serves the vendored *.worker.js via the SPA fallback, (4) the COI/pthread " +
-          "+ SAB DuckDB boot in headless Chrome is unproven. The render assertion below fires " +
-          "automatically once those land — see the file header.",
+        `paged.data render needs DuckDB-WASM to boot (engine status "${got}"). On the ` +
+          "standard editor dev server it boots on both lanes (Vite duckdbDistRoute + the " +
+          "COOP/COEP isolation). This skip only fires if the vendored dist is absent or the " +
+          "context is not cross-origin isolated — see the file header.",
       );
     }
 
-    // ── 2. RENDER (fires only when DuckDB booted) — resolve + lower the bound
-    //    content to native Paged content; the page, blank before, must now
-    //    carry the data-driven content. ──
-    await expect(page.getByText(/data-people/)).toBeVisible({ timeout: 6_000 });
+    // The source registered (the panel sanitises `data-people.csv` →
+    // `data_people`). The sanitised name surfaces in more than one place once
+    // wired (the source row + a query referencing it), so target the first.
+    await expect(page.getByText(/data_people/).first()).toBeVisible({ timeout: 6_000 });
+
+    // ── 2. WIRE + LOWER — open the bindings panel, wire the demo binding (a
+    //    query over the imported source + a variable field bound to it), then
+    //    lower it to the document. `lowerAll` refreshes the data through DuckDB
+    //    and commits the resolved content as native Paged Mutations — the page,
+    //    blank before, now carries the data-driven content. ──
+    await openPanel(page, BINDINGS_PANEL);
+    await expect(page.getByText(/paged\.data · bindings/i)).toBeVisible({ timeout: 10_000 });
+
     const beforeLower = await designer.renderBytes();
-    await invoke(page, RESOLVE_COMMAND);
-    await invoke(page, LOWER_COMMAND);
-    await page.waitForTimeout(500);
+    await page.getByRole("button", { name: /wire demo binding/i }).click();
+    await page.waitForTimeout(300);
+    await page.getByRole("button", { name: /lower to document/i }).click();
+    // The lower lane refreshes data (a DuckDB query) + commits the Mutations;
+    // give the worker + the render pipeline a beat to settle.
+    await page.waitForTimeout(1200);
     const afterLower = await designer.renderBytes();
+
+    // ── 3. RENDER ASSERTION (HARD) — the bound content visibly reached the page. ──
     await designer.expectRenderChanged(beforeLower, afterLower);
   });
 });
