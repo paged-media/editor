@@ -9,10 +9,14 @@
 //     rest consumed; the kept silhouette renders differently and the
 //     operand count drops (HARD: subtract).
 //   · Outline Stroke — converts a stroked shape's outline to a filled
-//     path; render-verified (HARD).
-//   · Offset Path — grows/shrinks a CLOSED path (the registry pins:
-//     offsetPath REJECTS open strokes); render-verified on a closed rect
-//     (HARD).
+//     path. CORE FIX LANDED: the apply layer now synthesizes a primitive
+//     rectangle's path from its bounds, so outlineStroke produces geometry
+//     on a plain rect (was: kernel rejected the empty-anchor rect). The
+//     render-change is HARD under the sync-wasm override; on the PUBLISHED
+//     engine (0.49.0) it no-ops until the paired publish → soft-reported.
+//   · Offset Path — grows/shrinks a CLOSED path. Same core fix: a plain
+//     rect now offsets (synthesized from bounds). HARD under the override,
+//     soft-reported on the published engine until the paired publish.
 //   · Simplify Path — accepted + undoable but a NO-OP on corner polylines
 //     at v0.43 (the decimation kernel does nothing); driven + COLLECTED.
 //   · Join / Average endpoints — pathPointSet coincidence over open-path
@@ -120,13 +124,13 @@ test.describe("journey · paged.draw path ops", () => {
       }
     }
 
-    // ── 3. OUTLINE STROKE (drive + soft-report) — the command emits the
-    //    `outlineStroke` wire op for the selection. HONEST ENGINE FINDING
-    //    (observed on the published engine): the kernel REJECTS a
-    //    rectangle's outline ("open path where closed is required / offset
-    //    past the medial axis"), so the op is emitted but produces no
-    //    geometry change. The bundle DRIVES correctly (the command path
-    //    runs); the kernel result is core's contract → soft-reported. ──
+    // ── 3. OUTLINE STROKE (drive + render) — the command emits the
+    //    `outlineStroke` wire op for the selection. CORE FIX: the apply layer
+    //    synthesizes the rectangle's path from its bounds when the frame has
+    //    no explicit anchors, so a plain rect now outlines (unit-proven in
+    //    paged-mutate kernel_ops). Under the sync-wasm OVERRIDE the render
+    //    changes (HARD); on the PUBLISHED engine 0.49.0 it still no-ops until
+    //    the paired publish → soft-reported (never faked green). ──
     try {
       const id = await designer.drawRectangle({ x0: 160, y0: 420, x1: 400, y1: 560 });
       await designer.applyStroke("rectangle", id, "Color/Black", 8);
@@ -138,7 +142,7 @@ test.describe("journey · paged.draw path ops", () => {
       const changed = await designer.renderDiffPixels(before, after);
       if (changed <= 64) {
         renderNotes.push(
-          `outlineStroke: engine kernel produced no result on a rectangle (${changed}px) — the bundle emitted the op; the kernel rejects a closed-rect outline`,
+          `outlineStroke: no render change on a rectangle (${changed}px) — core fix landed but the published engine 0.49.0 no-ops until the paired publish (HARD under the sync-wasm override)`,
         );
       }
       expect(await designer.count("rectangle"), "outlineStroke kept the element").toBeGreaterThan(0);
@@ -146,11 +150,12 @@ test.describe("journey · paged.draw path ops", () => {
       collected.push(`outline stroke: ${String(err).split("\n")[0]}`);
     }
 
-    // ── 4. OFFSET PATH (drive + soft-report — closed path) — the registry
-    //    pins that offsetPath REJECTS open strokes; this drives it on a
-    //    CLOSED filled rect (the accepted case). The op emits; the
-    //    geometry/render result is the kernel's contract → soft-reported
-    //    (the published engine no-ops the rect offset on this input). ──
+    // ── 4. OFFSET PATH (drive + render — closed path) — drives offsetPath on
+    //    a CLOSED filled rect. CORE FIX (same as outlineStroke): a plain rect
+    //    is synthesized from its bounds, so the closed-rect offset now
+    //    produces geometry (unit-proven in kernel_ops). HARD render-change
+    //    under the sync-wasm override; soft-reported on the published engine
+    //    0.49.0 until the paired publish. ──
     try {
       const id = await designer.drawRectangle({ x0: 440, y0: 420, x1: 560, y1: 540 });
       await designer.applyFill("rectangle", id, "Color/Black");
@@ -161,7 +166,9 @@ test.describe("journey · paged.draw path ops", () => {
       const after = await designer.renderBytes();
       const changed = await designer.renderDiffPixels(before, after);
       if (changed <= 64) {
-        renderNotes.push(`offsetPath: render changed only ${changed}px on a closed rect (≤64)`);
+        renderNotes.push(
+          `offsetPath: no render change on a closed rect (${changed}px) — core fix landed; published engine 0.49.0 no-ops until the paired publish (HARD under the override)`,
+        );
       }
       expect(await designer.count("rectangle"), "offsetPath kept the element").toBeGreaterThan(0);
     } catch (err) {
