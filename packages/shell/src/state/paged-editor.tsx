@@ -24,6 +24,7 @@ import {
 // eslint-disable-next-line import/no-relative-parent-imports
 import type {
   CanvasClient,
+  PixelLayer,
   ProviderTileWire,
   ResourceTilesNeededWire,
   SceneLayer,
@@ -91,6 +92,17 @@ export interface PagedEditor {
    */
   sceneLayers: {
     submit(elementId: string, layer: SceneLayer): Promise<void>;
+    clear(elementId: string): Promise<void>;
+  };
+
+  /**
+   * C-1 Stage B — in-frame plugin PIXEL layers. Routes to the worker's
+   * `submitPixelLayer` / `clearPixelLayer` channel (protocol v50),
+   * satisfying the optional `Api.PagedEditor.pixelLayers` member the
+   * plugin-sdk host calls from `host.contribute.pixelLayer()`.
+   */
+  pixelLayers: {
+    submit(elementId: string, layer: PixelLayer): Promise<void>;
     clear(elementId: string): Promise<void>;
   };
 
@@ -198,6 +210,10 @@ function PagedEditorBinder({
       sceneLayers: {
         submit: (elementId, layer) => client.submitSceneLayer(elementId, layer),
         clear: (elementId) => client.clearSceneLayer(elementId),
+      },
+      pixelLayers: {
+        submit: (elementId, layer) => client.submitPixelLayer(elementId, layer),
+        clear: (elementId) => client.clearPixelLayer(elementId),
       },
       images: {
         claim: (claim) => client.claimImageResource(claim),
