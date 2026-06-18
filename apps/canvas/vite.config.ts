@@ -292,6 +292,17 @@ export default defineConfig({
       ],
     },
   },
+  resolve: {
+    alias: {
+      // The vendored DuckDB-WASM dist (paged.data's query engine, loaded
+      // from plugin-data/vendor via a @vite-ignore dynamic import) imports
+      // "apache-arrow" as a bare specifier. Vite resolves that relative to
+      // the dist's own location (plugin-data/vendor), where it isn't
+      // installed — so pin it to the editor's copy. Without this the bundle
+      // reports duckdb-missing and data binding can't drive.
+      "apache-arrow": resolve(__dirname, "node_modules/apache-arrow"),
+    },
+  },
   optimizeDeps: {
     // Decision-B: the wasm loader ships in @paged-media/canvas-wasm.
     // Keep it out of the dep pre-bundle so the worker's dynamic import
