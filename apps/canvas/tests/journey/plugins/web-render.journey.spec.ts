@@ -6,21 +6,25 @@
 // renderWebFrame, which loads the Blitz/WASM engine and lowers its paint to
 // a C-1 sceneLayer submitted into the frame.
 //
-// WHAT THIS VERIFIES + FOUND:
+// WHAT THIS VERIFIES:
 //   · The Blitz engine BOOTS headless and the C-1 submit path drives — the
 //     command logs "scene layer submitted to canvas" (vs "engine not
 //     loaded" on the fallback). That is the shipped milestone
-//     (plugin-web.engine-rendering, partial). HARD when the engine loads;
+//     (plugin-web.engine-rendering). HARD when the engine loads;
 //     skip-with-note when it can't (a realm that can't fetch the sibling
 //     wasm) — honest degrade.
-//   · FINDING (annotation, not gated): in the editor end-to-end, the
-//     submitted web sceneLayer currently renders NO visible pixels — a
-//     blank page even for a solid-fill div. plugin-web's OWN suites verify
-//     the lowering "VISIBLE" by CPU-rasterising the sceneLayer directly;
-//     the EDITOR-browser visible-paint of that submitted layer is the open
-//     end-to-end gap this surfaces (sheet + image sceneLayers DO composite
-//     into the same snapshot, so the oracle is sound). Recorded for the
-//     plugin-web maintainer; clears when the editor composites web layers.
+//   · The submitted web sceneLayer PAINTS in the editor end-to-end — a
+//     solid-fill div lights real pixels in the deterministic snapshot
+//     (the same composite path sheet + image scene layers ride). This is a
+//     HARD render-diff assertion (no longer an annotation).
+//
+// HISTORY (WS-A root-cause, fixed): the bake path created a scene-layer
+// surface, submitted, then DISPOSED it in a `finally`. The SDK treats
+// `dispose()` as releasing the contribution → `clearSceneLayer(id)` for
+// every submitted element, so the submit was immediately wiped and the
+// frame rendered 0 visible pixels. The fix (plugin-web/web-bundle/bake.ts)
+// keeps ONE host-persistent surface (like the sheet session) and never
+// disposes it per-bake, so the baked layer persists.
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -34,7 +38,11 @@ const invoke = (page: Page, id: string) =>
     (c) =>
       (
         globalThis as unknown as {
-          __canvas: { registries: { commands: { invoke: (i: string) => Promise<unknown> } } };
+          __canvas: {
+            registries: {
+              commands: { invoke: (i: string) => Promise<unknown> };
+            };
+          };
         }
       ).__canvas.registries.commands.invoke(c),
     id,
@@ -54,7 +62,8 @@ test.describe("journey · paged.web render output", () => {
       const t = m.text();
       if (/renderWebFrame:|web\]/i.test(t)) logs.push(t);
     });
-    const sawSubmitted = () => logs.some((l) => /scene layer submitted/i.test(l));
+    const sawSubmitted = () =>
+      logs.some((l) => /scene layer submitted/i.test(l));
     const sawNotLoaded = () => logs.some((l) => /engine not loaded/i.test(l));
 
     // ── 1. INSERT + SOURCE — the bundle's insert command mints a web frame
@@ -64,7 +73,9 @@ test.describe("journey · paged.web render output", () => {
     await invoke(page, INSERT);
     const html = page.locator("[data-web-html] [data-code-input]");
     await expect(html).toBeVisible({ timeout: 6_000 });
-    await html.fill("<div style='width:300px;height:200px;background:#101820'></div>");
+    await html.fill(
+      "<div style='width:300px;height:200px;background:#101820'></div>",
+    );
     const css = page.locator("[data-web-css] [data-code-input]");
     if (await css.isVisible().catch(() => false)) {
       await css.fill("html,body{margin:0;background:#101820}");
@@ -90,21 +101,29 @@ test.describe("journey · paged.web render output", () => {
     }
 
     // HARD: the engine booted headless and the C-1 submit path drove.
-    expect(sawSubmitted(), `expected a submitted sceneLayer; logs: ${logs.join(" | ")}`).toBe(true);
+    expect(
+      sawSubmitted(),
+      `expected a submitted sceneLayer; logs: ${logs.join(" | ")}`,
+    ).toBe(true);
 
-    // FINDING (annotation, not gated): does that submitted layer actually
-    // paint in the editor end-to-end? Record the visible-render diff.
+    // ── 3. VISIBLE PAINT — HARD. The submitted layer must composite into
+    //    the deterministic CPU snapshot (the same path sheet + image scene
+    //    layers ride). A solid-fill div over a 240×180pt content box lights
+    //    tens of thousands of px; `expectRenderChanged`'s 64px floor sits
+    //    far below that yet above the snapshot's 0px noise floor. ──
     await page.waitForTimeout(800);
     const after = await designer.renderBytes();
-    const visiblePx = await designer.renderDiffPixels(before, after);
-    const finding =
-      visiblePx > 64
-        ? `editor end-to-end web render is VISIBLE (${visiblePx}px changed)`
-        : `editor end-to-end web render is BLANK (${visiblePx}px) — Blitz layer submitted ` +
-          "but not composited in the editor snapshot (plugin-web suites verify the lowering " +
-          "CPU-side; editor-browser visible-paint is the open gap)";
-    test.info().annotations.push({ type: "render-finding", description: finding });
+    const visiblePx = await designer.expectRenderChanged(before, after);
     // eslint-disable-next-line no-console
-    console.log(`[web-render] finding: ${finding}`);
+    console.log(
+      `[web-render] editor end-to-end web render VISIBLE (${visiblePx}px changed)`,
+    );
+
+    // ── 4. NEGATIVE CONTROL — the oracle is sound: re-snapshot with no
+    //    further edit and assert the page is STABLE (the deterministic
+    //    tiny-skia readback diffs to ~0 for an unchanged page, so the
+    //    visible-paint signal above is real, not snapshot jitter). ──
+    const again = await designer.renderBytes();
+    await designer.expectRenderStable(after, again);
   });
 });

@@ -92,7 +92,7 @@ async function hidePanel(page: Page, id: string): Promise<void> {
 }
 
 test.describe("journey · paged.web plugin", () => {
-  test("a designer embeds an HTML snippet: insert a web frame, edit the source, watch the sandboxed preview, and persist across reopen @feat:plugin-web.insert-command @feat:plugin-web.source-panel @feat:plugin-web.metadata-persistence @feat:editor-shell.plugin-bundles @level:happy", async ({
+  test("a designer embeds an HTML snippet: insert a web frame, edit the source, watch the sandboxed preview, and persist across reopen @feat:plugin-web.insert-command @feat:plugin-web.source-panel @feat:plugin-web.metadata-persistence @feat:plugin-platform.document-metadata @feat:editor-shell.plugin-bundles @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
