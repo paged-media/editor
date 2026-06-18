@@ -11,15 +11,21 @@
 //      sceneLayer; the modal screen-point math is fiddly headless, so it
 //      collects rather than gates.
 //
-// FINDING (documented, not silently passed): on the published engine
-// (canvas-wasm 0.49.0 / protocol 49) the LOWERED STATIC native table renders
-// BLANK — its cell pour addresses cells through the `tableCell` ElementId
-// kind (story_id/table_id/row/col), which the published engine rejects
-// ("invalid type: map, expected a string"). That cell-addressing landed in
-// core at protocol 50 (ElementId::TableCell, W3.A1) and is not yet published.
-// The sibling plumbing journey never saw this because it reads the modal grid
-// PANEL (DOM), never the page. The lowering step here asserts only that a
-// frame reached the page; whether its static cells poured is reported.
+// FINDING (documented, not silently passed): the LOWERED STATIC native table
+// renders BLANK — its phase-3 cell-pour batch is rejected ("invalid type: map,
+// expected a string") because the decor ops address cells through the
+// `tableCell` ElementId kind ({kind:"tableCell", id:{story_id,table_id,row,
+// col}}). That `{kind, id}` shape MATCHES core's adjacently-tagged
+// ElementId::TableCell (element_selection.rs, serde tag="kind" content="id"),
+// yet the rejection persists at BOTH protocol 49 (published 0.49.0) AND
+// protocol 50 (core main, verified under the sync-wasm override) — so the
+// tableCell cell-addressing is not wired through the setElementProperty mutate
+// path: a core↔bundle WIRE-CONTRACT gap, NOT merely an unpublished-protocol
+// gap. The batch is atomic (insertText pour + decor), so the rejected decor
+// takes the text down too. The sibling plumbing journey never saw this — it
+// reads the modal grid PANEL (DOM), never the page. The lowering step here
+// asserts only that a frame reached the page; whether its static cells poured
+// is reported.
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -138,7 +144,7 @@ async function importAndLower(page: Page, range: string): Promise<ElementRef> {
 }
 
 test.describe("journey · paged.sheet render output", () => {
-  test("a lowered spreadsheet renders its grid in-frame through the K-1 modal session (the static native table awaits protocol-50 cell addressing) @feat:sheet.grid.inframe @feat:plugin-platform.modal-edit-session @feat:sheet.lower.page @feat:editor-shell.plugin-bundles @level:gesture", async ({
+  test("a lowered spreadsheet renders its grid in-frame through the K-1 modal session (the static native table is blocked by a core↔bundle cell-addressing wire gap) @feat:sheet.grid.inframe @feat:plugin-platform.modal-edit-session @feat:sheet.lower.page @feat:editor-shell.plugin-bundles @level:gesture", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -154,9 +160,9 @@ test.describe("journey · paged.sheet render output", () => {
     await designer.expectRenderStable(blankA, blankB);
 
     // ── 1. LOWER — import the .xlsx, lower A1:B3 to a page frame. HARD: a
-    //    frame reaches the page. The STATIC cell pour is REPORTED (it needs
-    //    the protocol-50 `tableCell` addressing the published engine lacks,
-    //    so it renders blank — see the file header). ──
+    //    frame reaches the page. The STATIC cell pour is REPORTED (rejected by
+    //    the engine's mutate path at protocol 49 AND 50, so it renders blank —
+    //    see the file header). ──
     const beforeLower = await designer.renderBytes();
     const frame = await importAndLower(page, "A1:B3");
     expect(frame.id, "the lowering created a page frame").not.toBe("");
@@ -165,8 +171,10 @@ test.describe("journey · paged.sheet render output", () => {
     const staticPx = await designer.renderDiffPixels(beforeLower, afterLower);
     if (staticPx <= 64) {
       collected.push(
-        `static native table did NOT render (${staticPx}px) — expected on the ` +
-          "published engine: cell pour needs the protocol-50 tableCell kind",
+        `static native table did NOT render (${staticPx}px) — the cell-pour batch is ` +
+          "rejected ('invalid type: map, expected a string') at protocol 49 AND 50: a " +
+          "core↔bundle tableCell cell-addressing wire gap (the setElementProperty mutate " +
+          "path doesn't accept the {kind:tableCell, id:{…}} ElementId), not just a publish gap",
       );
     }
 
@@ -209,11 +217,12 @@ test.describe("journey · paged.sheet render output", () => {
     await expect(breadcrumb).toHaveCount(0);
 
     // The HARD gates were the negative control + the in-frame grid render
-    // above. The static-table protocol-50 gap and the best-effort edit
+    // above. The static-table cell-addressing gap and the best-effort edit
     // re-render are recorded as visible annotations — NOT gated, so this
     // journey stays green while surfacing exactly what does and doesn't
-    // reach the page. When protocol 50 publishes, the static-table note
-    // disappears (the cell pour starts rendering); the in-frame proof holds.
+    // reach the page. The static-table note clears when core accepts the
+    // tableCell ElementId through the setElementProperty mutate path; the
+    // in-frame grid proof holds regardless.
     for (const note of collected) {
       test.info().annotations.push({ type: "render-finding", description: note });
       // eslint-disable-next-line no-console
