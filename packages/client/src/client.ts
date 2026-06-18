@@ -34,6 +34,7 @@ import {
   type LineBounds,
   type LodTier,
   type SceneLayer,
+  type PixelLayer,
   type SceneTreeNode,
   type MainToWorker,
   type MainToWorkerKind,
@@ -709,6 +710,45 @@ export class CanvasClient {
     });
     if (reply.kind === "sceneLayerApplied") return;
     throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /** C-1 Stage B (protocol v50) — submit a plugin PIXEL layer: a set of
+   *  independently-positioned RGBA8 tiles composited inside `elementId`
+   *  during an interactive gesture (e.g. an image-adjust slider drag). The
+   *  worker lowers it through the SAME Stage-A `SceneItem::Image` lane as
+   *  `submitSceneLayer`, so only the dirtied tiles re-stream per frame.
+   *  Ephemeral — re-submitted per drag, never a document mutation. */
+  async submitPixelLayer(elementId: string, layer: PixelLayer): Promise<void> {
+    const reply = await this.send({
+      kind: "submitPixelLayer",
+      payload: { elementId, layer },
+    });
+    if (reply.kind === "sceneLayerApplied") return;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /** C-1 Stage B — clear the pixel layer for `elementId`. */
+  async clearPixelLayer(elementId: string): Promise<void> {
+    const reply = await this.send({
+      kind: "clearPixelLayer",
+      payload: { elementId },
+    });
+    if (reply.kind === "sceneLayerApplied") return;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /** C-1 Stage B pixel save-back (protocol v50) — replace a placed frame's
+   *  inline image bytes (the committed, undoable counterpart to the
+   *  ephemeral pixel layer). `bytes: null` clears the inline payload.
+   *  Routes through the standard mutate channel (undo-stack journaled). */
+  async replaceImageBytes(
+    elementId: string,
+    bytes: number[] | null,
+  ): Promise<WorkerToMain> {
+    return this.mutate({
+      op: "replaceImageBytes",
+      args: { elementId, bytes },
+    });
   }
 
   /** C-6 (I-06) — claim a placed image's tiled mip pyramid (the v44 wire).
