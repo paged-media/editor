@@ -73,11 +73,25 @@ interface CanvasGlobal {
         Array<{ selfId: string; name?: string; visible?: boolean; locked?: boolean }>
       >;
     };
+    gpuActive?: boolean | null;
     registries: {
       commands: {
         invoke?: (id: string) => Promise<void>;
         execute?: (id: string) => Promise<void>;
         run?: (id: string) => Promise<void>;
+      };
+      importers?: {
+        resolve: (
+          fileName: string,
+          mimeType?: string,
+        ) => {
+          id?: string;
+          import: (args: {
+            name: string;
+            bytes: Uint8Array;
+            mimeType?: string;
+          }) => Promise<void>;
+        } | null;
       };
     };
   };
@@ -502,6 +516,57 @@ export class Designer {
       `rendered page should be stable (≤${maxPixels}px, got ${changed}px)`,
     ).toBeLessThanOrEqual(maxPixels);
     return changed;
+  }
+
+  /** Whether the live canvas is on the real WebGPU/Vello backend (the
+   *  bundled-Chromium lane falls back to CPU → null/false). Gate GPU-only
+   *  plugin pixels (paged.image's kernels) on this. */
+  async gpuActive(): Promise<boolean> {
+    return this.page.evaluate(
+      () =>
+        (globalThis as unknown as CanvasGlobal).__canvas.gpuActive === true,
+    );
+  }
+
+  /**
+   * Drive the K-2 raster importer with a REAL encoded image — the path a
+   * designer hits via File ▸ Open / drag-drop, routed through the host's
+   * importer registry to the paged.image bundle's `importBytes` (decode
+   * into the session). The bytes are a genuine PNG synthesized in the
+   * (secure) page context via OffscreenCanvas → `convertToBlob`, so the
+   * engine's real codec decodes them — no committed binary fixture. A
+   * distinctive diagonal gradient makes a later adjust visibly change the
+   * pixels. Returns the resolved importer id (or a reason string).
+   */
+  async importImage(
+    opts: { name?: string; width?: number; height?: number } = {},
+  ): Promise<string> {
+    const name = opts.name ?? "adjust-sample.png";
+    const width = opts.width ?? 96;
+    const height = opts.height ?? 96;
+    return this.page.evaluate(
+      async ({ name, width, height }) => {
+        const cv = new OffscreenCanvas(width, height);
+        const ctx = cv.getContext("2d");
+        if (!ctx) return "no 2d context to synthesize a PNG";
+        const g = ctx.createLinearGradient(0, 0, width, height);
+        g.addColorStop(0, "#1830ff");
+        g.addColorStop(0.5, "#20c040");
+        g.addColorStop(1, "#ff3018");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, width, height);
+        const blob = await cv.convertToBlob({ type: "image/png" });
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        const reg = (globalThis as unknown as CanvasGlobal).__canvas.registries
+          .importers;
+        if (!reg) return "host serves no importer registry";
+        const imp = reg.resolve(name, "image/png");
+        if (!imp) return "no importer resolved for image/png";
+        await imp.import({ name, bytes, mimeType: "image/png" });
+        return imp.id ?? "imported";
+      },
+      { name, width, height },
+    );
   }
 
   /** Set a frame's placed-image LINK (the PlaceImage mutation). This
