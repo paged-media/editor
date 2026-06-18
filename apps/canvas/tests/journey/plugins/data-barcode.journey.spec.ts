@@ -11,18 +11,14 @@
 // lower. The engine encodes the modules in Rust and the lower lane reaches the
 // per-module insertPath ops.
 //
-// RENDER-VERIFY FINDING (published engine v0.40.x): the encoded VECTOR modules
-// themselves commit (a batch of insertPath filled-rects applies — verified in
-// isolation), BUT the barcode lower wraps them with a `setPluginMetadata` op on
-// the v34 `$created` batch sentinel (to stamp the binding envelope for undo +
-// round-trip), and that op makes the WHOLE atomic batch fail on this published
-// engine ("insertPath batch rejected"). So the symbology drives through the
-// panel + the engine encodes, but the modules do not yet reach the page. This
-// is a published-engine `$created`-sentinel gap (same class as the sheet
-// table-cell / web blank-paint render-verify findings) — recorded as an
-// annotation, NOT a false-green render assertion. The cap is driven; the
-// pixel-paint flips HARD the day the engine resolves `$created` for
-// setPluginMetadata in a batch that also inserts paths.
+// RESOLVED (was a render-verify finding): the lower's atomic batch (insertPath
+// ×N + a setPluginMetadata stamping the binding envelope) was rejected
+// ("insertPath batch rejected"). The real cause was NOT the `$created` target —
+// it was the ENVELOPE SHAPE: makeEnvelope emitted `{ v, payload }`, but the
+// host's setPluginMetadata door VALIDATES `{ v, data, engine? }`, so the
+// metadata op failed and sank the whole atomic batch. The fix (data-host-model
+// binding.ts) emits `{ v, data }`, so the batch now applies and the VECTOR
+// modules paint. Pure bundle-side — works on the published engine. Asserted HARD.
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -136,29 +132,10 @@ test.describe("journey · paged.data barcode symbology", () => {
       timeout: 8_000,
     });
 
-    // ── 5. RENDER (graceful) — the engine encoded the VECTOR modules, but the
-    //    published engine rejects the lower's atomic batch because of the
-    //    `$created` setPluginMetadata envelope op (see the file header). The
-    //    insertPath modules apply in isolation, so the symbology + encoding +
-    //    panel surface are PROVEN; the pixel-paint is the published-engine
-    //    `$created`-sentinel gap. Assert what is true today + record the
-    //    finding, never a false green. ──
+    // ── 5. RENDER (HARD) — the lower's atomic batch (insertPath ×N +
+    //    setPluginMetadata with the `{ v, data }` envelope) now applies, so the
+    //    encoded VECTOR modules paint into the page. The render must change. ──
     const after = await designer.renderBytes();
-    const changed = await designer.renderDiffPixels(before, after);
-    if (changed > 64) {
-      // The day the engine resolves `$created` for the metadata op, the modules
-      // paint and this asserts HARD.
-      await designer.expectRenderChanged(before, after);
-    } else {
-      const note =
-        "barcode VECTOR modules encoded but did NOT paint: the lower's atomic batch " +
-        "(insertPath ×N + setPluginMetadata on the v34 `$created` sentinel) is rejected by " +
-        "published engine v0.40.x — a batch of insertPath alone APPLIES (verified in " +
-        "isolation), so the block is the `$created` metadata op. Render flips HARD when the " +
-        "engine resolves `$created` for setPluginMetadata in a path-inserting batch.";
-      test.info().annotations.push({ type: "render-finding", description: note });
-      // eslint-disable-next-line no-console
-      console.log(`[data-barcode] finding: ${note}`);
-    }
+    await designer.expectRenderChanged(before, after);
   });
 });
