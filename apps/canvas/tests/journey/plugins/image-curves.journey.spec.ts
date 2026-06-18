@@ -170,4 +170,64 @@ test.describe("journey · paged.image levels / curves / white balance", () => {
       "the curve LUT pass changed the composited pixels",
     ).toBeGreaterThan(64);
   });
+
+  // AUTO-ENHANCE — its OWN test (independent of the flaky curve-drag step
+  // above), so its evidence stands alone. The finding: the kernel
+  // image_auto_enhance_params shipped but had NO editor surface; it is now
+  // wired (engine.autoEnhanceParams facade → session.autoEnhance →
+  // "Auto-enhance" panel button + the autoEnhance command). It reads the
+  // histogram for auto-levels + a gray-world white balance and fills the
+  // Levels + WB sliders (preview-only, like every edit); Apply composites it.
+  test("a designer clicks Auto-enhance and the histogram-derived levels + white balance composite @feat:image.editor.auto-enhance @feat:image.reduce.statistics @feat:image.editor.ingest @feat:editor-shell.plugin-bundles @level:gesture", async ({
+    page,
+  }) => {
+    const designer = new Designer(page);
+    await designer.open();
+    await designer.newDocument();
+
+    if (!(await designer.gpuActive())) {
+      test.skip(
+        true,
+        "paged.image kernels are GPU-only (no CPU path) — auto-enhance render-verified on the journeys-gpu lane",
+      );
+    }
+
+    const frame = await designer.drawRectangle({ x0: 90, y0: 120, x1: 360, y1: 320 });
+    await designer.selectElement("rectangle", frame);
+    const importer = await designer.importImage({ name: "auto-sample.png" });
+    expect(importer, "the raster importer resolved + ran").toContain(
+      "media.paged.image.importer.raster",
+    );
+    await designer.openPanel(ADJ_PANEL);
+    await expect
+      .poll(() => sourceReadout(page), { timeout: 15_000 })
+      .toEqual(expect.stringContaining("auto-sample.png"));
+    await expect(
+      page.locator('svg[aria-label="RGB and luma histogram"]'),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // HARD: the wired affordance exists + is enabled, the auto white point
+    // flows from the kernel into the In white slider (identity 1 → below 1
+    // for this full-range gradient), and Apply composites the change.
+    const autoBtn = page.locator("[data-image-auto-enhance]");
+    await expect(autoBtn, "the Auto-enhance affordance is wired + enabled").toBeEnabled({
+      timeout: 6_000,
+    });
+    const beforeAuto = await designer.renderBytes();
+    await autoBtn.click();
+    await page.waitForTimeout(200);
+    const inWhiteVal = await page
+      .locator("input[type=range]")
+      .nth(SLIDER.inWhite)
+      .inputValue();
+    expect(
+      Number(inWhiteVal),
+      "auto-enhance populated the In white point from the histogram",
+    ).toBeLessThan(1);
+    const applyBtn = page.getByRole("button", { name: "Apply", exact: true });
+    await expect(applyBtn).toBeEnabled();
+    await applyBtn.click();
+    const afterAuto = await designer.renderBytes();
+    await designer.expectRenderChanged(beforeAuto, afterAuto);
+  });
 });
