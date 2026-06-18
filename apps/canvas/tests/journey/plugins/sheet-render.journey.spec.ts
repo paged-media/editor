@@ -11,21 +11,25 @@
 //      sceneLayer; the modal screen-point math is fiddly headless, so it
 //      collects rather than gates.
 //
-// FINDING (documented, not silently passed): the LOWERED STATIC native table
-// renders BLANK — its phase-3 cell-pour batch is rejected ("invalid type: map,
-// expected a string") because the decor ops address cells through the
-// `tableCell` ElementId kind ({kind:"tableCell", id:{story_id,table_id,row,
-// col}}). That `{kind, id}` shape MATCHES core's adjacently-tagged
-// ElementId::TableCell (element_selection.rs, serde tag="kind" content="id"),
-// yet the rejection persists at BOTH protocol 49 (published 0.49.0) AND
-// protocol 50 (core main, verified under the sync-wasm override) — so the
-// tableCell cell-addressing is not wired through the setElementProperty mutate
-// path: a core↔bundle WIRE-CONTRACT gap, NOT merely an unpublished-protocol
-// gap. The batch is atomic (insertText pour + decor), so the rejected decor
-// takes the text down too. The sibling plumbing journey never saw this — it
-// reads the modal grid PANEL (DOM), never the page. The lowering step here
-// asserts only that a frame reached the page; whether its static cells poured
-// is reported.
+// FINDING (root-caused + FIXED — pending a paired release): on the PUBLISHED
+// engine the LOWERED STATIC native table renders BLANK because its phase-3
+// cell pour never applies. Three causes, all now fixed:
+//   1. The bundle nested the whole Table id object as `table_id`
+//      (createdId.id was cast `as string` but insertTable mints a STRUCTURED
+//      {story_id, table_id}), so the engine rejected every cell op with
+//      "invalid type: map, expected a string". [plugin-sheets fix/tablecell-id]
+//   2. The bundle combined the text pour (insertText) + decor
+//      (setElementProperty) in ONE batch; Operation::Batch carries only frame
+//      ops (text is a separate apply lane), so the engine rejected the whole
+//      batch (Mutation::Batch NotImplemented). [plugin-sheets fix/tablecell-id]
+//   3. Pouring text into a fresh (zero-paragraph) cell PANICKED in core
+//      (index out of bounds at mutate.rs:264), poisoning the wasm.
+//      [core fix/empty-cell-text-pour — seed an empty paragraph]
+// With both fixes the table RENDERS (verified under the protocol-50 sync-wasm
+// override). On the published 0.49.0 editor it stays blank until that paired
+// core+bundle release ships — so the finding below still fires there. The
+// sibling plumbing journey never saw this — it reads the modal grid PANEL
+// (DOM), never the page.
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -144,7 +148,7 @@ async function importAndLower(page: Page, range: string): Promise<ElementRef> {
 }
 
 test.describe("journey · paged.sheet render output", () => {
-  test("a lowered spreadsheet renders its grid in-frame through the K-1 modal session (the static native table is blocked by a core↔bundle cell-addressing wire gap) @feat:sheet.grid.inframe @feat:plugin-platform.modal-edit-session @feat:sheet.lower.page @feat:editor-shell.plugin-bundles @level:gesture", async ({
+  test("a lowered spreadsheet renders its grid in-frame through the K-1 modal session (the static native table is blank until the paired core+bundle cell-pour fix ships) @feat:sheet.grid.inframe @feat:plugin-platform.modal-edit-session @feat:sheet.lower.page @feat:editor-shell.plugin-bundles @level:gesture", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -160,9 +164,9 @@ test.describe("journey · paged.sheet render output", () => {
     await designer.expectRenderStable(blankA, blankB);
 
     // ── 1. LOWER — import the .xlsx, lower A1:B3 to a page frame. HARD: a
-    //    frame reaches the page. The STATIC cell pour is REPORTED (rejected by
-    //    the engine's mutate path at protocol 49 AND 50, so it renders blank —
-    //    see the file header). ──
+    //    frame reaches the page. Whether its STATIC cells poured is REPORTED —
+    //    blank on the published 0.49.0 engine until the paired core+bundle
+    //    cell-pour fix ships (see the file header). ──
     const beforeLower = await designer.renderBytes();
     const frame = await importAndLower(page, "A1:B3");
     expect(frame.id, "the lowering created a page frame").not.toBe("");
@@ -171,10 +175,10 @@ test.describe("journey · paged.sheet render output", () => {
     const staticPx = await designer.renderDiffPixels(beforeLower, afterLower);
     if (staticPx <= 64) {
       collected.push(
-        `static native table did NOT render (${staticPx}px) — the cell-pour batch is ` +
-          "rejected ('invalid type: map, expected a string') at protocol 49 AND 50: a " +
-          "core↔bundle tableCell cell-addressing wire gap (the setElementProperty mutate " +
-          "path doesn't accept the {kind:tableCell, id:{…}} ElementId), not just a publish gap",
+        `static native table did NOT render (${staticPx}px) on the published engine — ` +
+          "root-caused + FIXED on core fix/empty-cell-text-pour (empty-cell paragraph seed) " +
+          "+ plugin-sheets fix/tablecell-id (table id + two apply lanes); renders under the " +
+          "protocol-50 override, ships when that paired release lands",
       );
     }
 
@@ -217,12 +221,12 @@ test.describe("journey · paged.sheet render output", () => {
     await expect(breadcrumb).toHaveCount(0);
 
     // The HARD gates were the negative control + the in-frame grid render
-    // above. The static-table cell-addressing gap and the best-effort edit
+    // above. The static-table cell-pour status and the best-effort edit
     // re-render are recorded as visible annotations — NOT gated, so this
     // journey stays green while surfacing exactly what does and doesn't
-    // reach the page. The static-table note clears when core accepts the
-    // tableCell ElementId through the setElementProperty mutate path; the
-    // in-frame grid proof holds regardless.
+    // reach the page. The static-table note clears once the paired
+    // core+bundle cell-pour fix ships to the published engine; the in-frame
+    // grid proof holds regardless.
     for (const note of collected) {
       test.info().annotations.push({ type: "render-finding", description: note });
       // eslint-disable-next-line no-console
