@@ -11,7 +11,7 @@ import { TEXT_CARET_EDITING } from "../driver/context-contract";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · styles", () => {
-  test("type a heading and apply a 36pt font size @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:gesture", async ({ page }) => {
+  test("type a heading and apply a 36pt font size @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @feat:stories-text.text.insert @feat:stories-text.caret-selection @feat:stories-text.style-apply-range @feat:editor-shell.panels.character @level:gesture", async ({ page }) => {
     const designer = new Designer(page);
     await designer.open();
     await designer.newDocument();

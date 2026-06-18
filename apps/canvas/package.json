@@ -32,7 +32,8 @@
     "@paged-media/ui": "workspace:*",
     "@paged-media/web-bundle": "link:../../../plugin-web/packages/web-bundle",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "apache-arrow": "^17.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

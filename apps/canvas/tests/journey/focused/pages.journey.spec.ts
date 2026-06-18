@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · pages", () => {
-  test("inserting a page grows the document to two pages @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:happy", async ({ page }) => {
+  test("inserting a page grows the document to two pages @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @feat:layout-model.spreads-pages @level:happy", async ({ page }) => {
     const designer = new Designer(page);
     await designer.open();
     await designer.newDocument();

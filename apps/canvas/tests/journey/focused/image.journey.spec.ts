@@ -13,7 +13,7 @@ import { IMAGE_FRAME } from "../driver/context-contract";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · image", () => {
-  test("placing an image surfaces the Image context and renders it @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:happy", async ({
+  test("placing an image surfaces the Image context and renders it @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @feat:frames-paths.frame.insert @feat:images-graphics.placed-images @feat:images-graphics.frame-fitting @feat:editor-shell.panels.frame-fitting @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);

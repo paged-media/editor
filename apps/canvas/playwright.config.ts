@@ -125,6 +125,35 @@ export default defineConfig({
       },
     },
     {
+      // GPU-backend tier — proves the WebGPU/Vello render path actually
+      // engages (not the CPU fallback). Playwright's BUNDLED Chromium ships
+      // WITHOUT WebGPU, so this lane uses the REAL Chrome (`channel: "chrome"`)
+      // in the new headless mode (`--headless=new`), which DOES expose a
+      // WebGPU adapter on a secure context (the dev server is localhost).
+      // `--enable-unsafe-webgpu` opts in regardless of the blocklist; macOS
+      // resolves WebGPU over Metal natively. Linux CI will need
+      // `--enable-features=Vulkan` + a lavapipe ICD (follow-up).
+      name: "journeys-gpu",
+      testDir: "./tests/journey",
+      // The FULL DTP journey surface on the editor's real default backend
+      // (WebGPU/Vello) — proving every workflow runs on GPU, not just the CPU
+      // fallback the bundled-Chromium `journeys` lane exercises.
+      testMatch: "**/*.journey.spec.ts",
+      snapshotPathTemplate:
+        "{testDir}/__screenshots__/{testFileName}/{arg}-{projectName}-{platform}{ext}",
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: "chrome",
+        deviceScaleFactor: 1,
+        // `--headless=new` (the new headless that ships GPU) is requested as
+        // an arg; `headless:false` keeps Playwright from forcing old headless.
+        headless: false,
+        launchOptions: {
+          args: ["--headless=new", "--enable-unsafe-webgpu", "--use-angle=metal"],
+        },
+      },
+    },
+    {
       // The "user-journey" tier — real-user DTP workflows that assert
       // context-sensitivity (the intent→context contract) + visual
       // baselines. Separate project so it shards/gates independently.
@@ -134,6 +163,10 @@ export default defineConfig({
       name: "journeys",
       testDir: "./tests/journey",
       testMatch: "**/*.journey.spec.ts",
+      // The GPU-backend journey needs the real-Chrome WebGPU lane
+      // (journeys-gpu); under the bundled Chromium here it would always
+      // fall back to CPU. Keep it out of the default journey suite.
+      testIgnore: "**/gpu-backend.journey.spec.ts",
       snapshotPathTemplate:
         "{testDir}/__screenshots__/{testFileName}/{arg}-{projectName}-{platform}{ext}",
       use: {

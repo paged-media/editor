@@ -17,7 +17,7 @@ import {
 import { Designer } from "../driver/designer";
 
 test.describe("journey · master", () => {
-  test("build a flyer from scratch: text → style → shape → fill → export @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:happy", async ({
+  test("build a flyer from scratch: text → style → shape → fill → export @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @feat:stories-text.story-model @feat:stories-text.caret-selection @feat:stories-text.text.insert @feat:editor-shell.panels.character @feat:frames-paths.frame.insert @feat:color-swatches.fill-stroke-apply @feat:round-tripping.idml-reserialization @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);

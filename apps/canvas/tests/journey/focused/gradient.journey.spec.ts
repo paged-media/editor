@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · gradient", () => {
-  test("create a linear gradient and fill a shape with it @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @level:happy", async ({ page }) => {
+  test("create a linear gradient and fill a shape with it @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @feat:color-swatches.swatch.crud @feat:color-swatches.gradients @feat:color-swatches.fill-stroke-apply @feat:frames-paths.frame.insert @feat:editor-tools.draw.rectangle @level:happy", async ({ page }) => {
     const designer = new Designer(page);
     await designer.open();
     await designer.newDocument();

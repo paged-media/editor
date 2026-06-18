@@ -298,7 +298,8 @@ function ShellChrome({
     setSelectionRects,
     contentSelectionRef,
   } = useContentSelection();
-  const { setFps, setGpuActive, setLayoutCacheStats } = useInstrumentation();
+  const { gpuActive, setFps, setGpuActive, setLayoutCacheStats } =
+    useInstrumentation();
   const registries = useRegistries();
 
   // Concept 1 (T2) — Space → Hand, Cmd → Direct Selection, Cmd+Space →
@@ -665,6 +666,10 @@ function ShellChrome({
       // Cockpit — Playwright drives/asserts the workflow mode.
       mode: workflowMode,
       setMode: setWorkflowMode,
+      // Renderer backend — tests assert the WebGPU path actually engaged
+      // (true), fell back to CPU (false), or hasn't attached yet (null).
+      // Set from the worker's `attachReady.gpuActive` (a real `initGpu`).
+      gpuActive,
       // Cockpit — open any REGISTERED panel as a right-dock tab
       // (the panel-rail / Window-menu path, exposed for tests).
       openPanel: (id: string) => cockpitActions.openPanel?.(id),
