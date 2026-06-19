@@ -1,7 +1,7 @@
 // Journey: paged.image CROP — the on-canvas crop + straighten tool reaching
 // the page. A designer imports a real PNG (the K-2 raster importer →
 // engine decode), composites it in-frame (Stage-A Apply), arms the crop
-// TOOL (media.paged.image.tool.crop, the "c" shortcut / transform rail),
+// TOOL (media.paged.image.tool.crop, the "shift+x" shortcut / transform rail),
 // constrains the crop to a sub-region via the panel Aspect lock, then
 // COMMITS the crop (the commitCrop command / "Apply crop" button) — the
 // engine windows the source buffer (geom.crop, image.kernel.family-t2) and

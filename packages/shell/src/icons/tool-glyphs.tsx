@@ -405,4 +405,43 @@ export const TOOL_GLYPHS: Record<string, ReactNode> = {
       <line x1={7.5} y1={10.5} x2={13.5} y2={10.5} {...LINE} strokeWidth={1.5} />
     </>
   ),
+
+  // Curvature — a smooth arc with three anchor dots (drop points, the
+  // curve fits itself). paged.draw pro tool.
+  "tool-curvature": (
+    <>
+      <path d="M4 18 Q4 7 12 7 Q20 7 20 18" {...LINE} strokeWidth={1.7} />
+      <circle cx={4} cy={18} r={1.6} />
+      <circle cx={12} cy={7} r={1.6} />
+      <circle cx={20} cy={18} r={1.6} />
+    </>
+  ),
+
+  // Gradient annotator — a rounded square with a diagonal drag line
+  // between two endpoint handles (the gradient direction). paged.draw.
+  "tool-gradient": (
+    <>
+      <rect x={4} y={4} width={16} height={16} rx={1.6} {...LINE} strokeWidth={1.6} />
+      <line x1={7.5} y1={16.5} x2={16.5} y2={7.5} {...LINE} strokeWidth={1.6} />
+      <circle cx={7.5} cy={16.5} r={1.5} />
+      <circle cx={16.5} cy={7.5} r={1.5} />
+    </>
+  ),
+
+  // Shape builder — two overlapping shapes being united. paged.draw.
+  "tool-shapeBuilder": (
+    <>
+      <rect x={4} y={8} width={11} height={11} rx={1.4} {...LINE} strokeWidth={1.6} />
+      <circle cx={15.5} cy={13.5} r={5.5} {...LINE} strokeWidth={1.6} />
+    </>
+  ),
+
+  // Crop — two offset right-angle brackets (the classic crop marks).
+  // paged.image transform tool.
+  "tool-crop": (
+    <>
+      <path d="M8 3 L8 16 L21 16" {...LINE} strokeWidth={1.7} />
+      <path d="M3 8 L16 8 L16 21" {...LINE} strokeWidth={1.7} />
+    </>
+  ),
 };

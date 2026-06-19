@@ -145,9 +145,16 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
       timeout: 5_000,
     });
 
-    // Persistence: wait out the save debounce, close + reopen the
-    // panel, the edit survives (storage-backed source of truth).
-    await page.waitForTimeout(500);
+    // Persistence is EXPLICIT (preview ≠ persistence by design — see
+    // plugin-web CLAUDE.md): the document is written ONLY by the
+    // "Save to document" action, never the live preview/debounce. Commit,
+    // confirm the panel reports clean, then close + reopen — the edit
+    // survives (metadata + .paged container part are the source of truth).
+    await page.locator("[data-web-commit]").click();
+    await expect(page.locator("[data-web-dirty]")).toHaveText(
+      /Saved to the document/,
+      { timeout: 5_000 },
+    );
     // B-15: the hide command is HOST-derived from the registry
     // (`paged.panel.hide.<panelId>`), not bundle-registered.
     await page.evaluate((id) => {

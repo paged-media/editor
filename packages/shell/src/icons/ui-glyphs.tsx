@@ -384,4 +384,23 @@ export const UI_GLYPHS: Record<string, ReactNode> = {
   // Solid dot — the dropdown-menu radio indicator (replaces lucide's
   // Circle so the shadcn primitives stay on the in-house registry).
   "ui-dot": <circle cx={12} cy={12} r={4} fill="currentColor" stroke="none" />,
+
+  // Swatch (fill) — a filled rounded square with a thin frame; the
+  // paged.draw Fill schema panel's section glyph.
+  "ui-swatch-fill": (
+    <>
+      <rect x={4} y={4} width={16} height={16} rx={2} />
+      <rect
+        x={4}
+        y={4}
+        width={16}
+        height={16}
+        rx={2}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.4}
+        opacity={0.35}
+      />
+    </>
+  ),
 };
