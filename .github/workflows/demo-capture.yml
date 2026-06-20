@@ -1,0 +1,48 @@
+name: demo-capture
+
+# Capture the showcase journeys as rrweb sessions (DOM chrome + WebGPU document
+# frames via the worker frame-tap) and attach them to the release as assets.
+# docs.paged.media pulls them (its sources.pin → demos, set enabled:true once the
+# first release carries *.rrweb.json). See apps/canvas/tests/demo/README.md.
+#
+# Real Chrome is used for a true WebGPU render; on a runner without a GPU the
+# editor falls back to the CPU rasterizer and convertToBlob still yields frames,
+# so capture works either way (Linux WebGPU needs a Vulkan/lavapipe ICD — the
+# same follow-up the journeys-gpu lane notes).
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to attach the demo sessions to
+        required: true
+
+permissions:
+  contents: write # upload release assets
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: install Chrome (WebGPU lane; CPU fallback otherwise)
+        run: pnpm --filter paged-canvas exec playwright install --with-deps chrome
+      - name: capture demo sessions
+        working-directory: apps/canvas
+        # The vite dev server (with COOP/COEP for SAB) is started by the
+        # Playwright config's webServer. window.__canvas + the frame-tap are
+        # present in the dev build the tests run against.
+        run: npx playwright test --project=demo-capture
+      - name: upload sessions to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: gh release upload "$TAG" apps/canvas/tests/demo/out/*.rrweb.json --clobber

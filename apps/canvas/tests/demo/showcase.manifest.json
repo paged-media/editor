@@ -1,8 +1,10 @@
 {
   "$comment": "Curated 'hero' journeys captured as live demos (rrweb sessions) for docs.paged.media + the website. The capture pipeline (capture.ts) records each of these and uploads <id>.rrweb.json as a GitHub Release asset; docs/website pull them. Add an entry to amplify a journey publicly; the rest of the suite stays CI-gates-only. The journey path is relative to apps/canvas/tests/journey.",
   "canvasSelector": "canvas[data-paged-canvas]",
+  "fps": 24,
   "demos": [
     { "id": "new-document", "journey": "focused/new-document.journey.spec.ts", "title": "Start a document", "description": "Create a blank Letter document." },
+    { "id": "draw-fill", "journey": "focused/tools.journey.spec.ts", "title": "Draw + fill", "description": "Draw a rectangle and apply a solid fill." },
     { "id": "text-flow", "journey": "focused/text-flow.journey.spec.ts", "title": "Flow text", "description": "Type and thread text across frames." },
     { "id": "gradient", "journey": "focused/gradient.journey.spec.ts", "title": "Gradients", "description": "Build a gradient swatch and fill a shape." },
     { "id": "pen", "journey": "focused/pen.journey.spec.ts", "title": "Draw paths", "description": "Pen tool: anchors and curves." },

@@ -185,6 +185,26 @@ export default defineConfig({
             : {},
       },
     },
+    {
+      // Demo capture — records the showcase flows as rrweb sessions (with the
+      // WebGPU document frames bridged in) for the docs live demos. Real Chrome
+      // + new headless for a true WebGPU render, same as journeys-gpu, so the
+      // captured frames look like the real product. Run via:
+      //   npx playwright test --project=demo-capture
+      // Writes tests/demo/out/<id>.rrweb.json; CI uploads them as release assets.
+      name: "demo-capture",
+      testDir: "./tests/demo",
+      testMatch: "**/capture.spec.ts",
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: "chrome",
+        deviceScaleFactor: 1,
+        headless: false,
+        launchOptions: {
+          args: ["--headless=new", "--enable-unsafe-webgpu", "--use-angle=metal"],
+        },
+      },
+    },
   ],
   metadata: {
     repoRoot: REPO_ROOT,
