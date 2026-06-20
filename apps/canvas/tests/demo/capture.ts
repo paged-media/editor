@@ -17,7 +17,24 @@
 // The custom-event tags are inlined here (mirror of
 // @paged-media/demo-replay/types PAGED_DEMO) so the editor needs no extra dep.
 
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+import { existsSync } from "node:fs";
 import type { Page } from "@playwright/test";
+
+const require = createRequire(import.meta.url);
+/** Local rrweb UMD bundle (hermetic — no CDN). rrweb is an editor devDependency.
+ *  rrweb's exports map hides the dist subpath, so resolve the main entry (which
+ *  lives in dist/) and join the UMD bundle beside it. */
+function localRrwebPath(): string | null {
+  try {
+    const main = require.resolve("rrweb"); // .../rrweb/dist/rrweb.cjs
+    const umd = join(dirname(main), "rrweb.umd.min.cjs");
+    return existsSync(umd) ? umd : null;
+  } catch {
+    return null;
+  }
+}
 
 const PAGED_DEMO = {
   ATTACH: "paged.canvas.attach",
@@ -30,7 +47,7 @@ export interface CaptureOptions {
   canvasSelector: string;
   /** Frames per second to tap (default 10). */
   fps?: number;
-  /** rrweb UMD bundle to inject. Vendor for hermetic CI. */
+  /** Override the rrweb UMD source. Defaults to the local install (hermetic). */
   rrwebUrl?: string;
 }
 
@@ -40,8 +57,15 @@ export interface DemoSessionResult {
 
 /** Begin recording: inject rrweb, start the frame-tap, bridge frames → events. */
 export async function startCapture(page: Page, opts: CaptureOptions): Promise<void> {
-  const rrwebUrl = opts.rrwebUrl ?? "https://cdn.jsdelivr.net/npm/rrweb@2/dist/rrweb.umd.min.cjs";
-  await page.addScriptTag({ url: rrwebUrl });
+  // Prefer the local rrweb bundle (hermetic); fall back to a CDN only if asked.
+  const localPath = localRrwebPath();
+  if (opts.rrwebUrl) {
+    await page.addScriptTag({ url: opts.rrwebUrl });
+  } else if (localPath) {
+    await page.addScriptTag({ path: localPath });
+  } else {
+    await page.addScriptTag({ url: "https://cdn.jsdelivr.net/npm/rrweb@2/dist/rrweb.umd.min.cjs" });
+  }
   await page.evaluate(
     ({ tags, selector, fps }) => {
       const w = window as unknown as Record<string, unknown>;

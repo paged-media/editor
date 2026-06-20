@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "@playwright/test";
 
 import { Designer } from "../journey/driver/designer";
+import { screenPoint, dragMouse, activateTool } from "../e2e/harness/viewport";
 import { startCapture, step, finishCapture } from "./capture";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -27,12 +28,33 @@ const manifest = JSON.parse(readFileSync(join(HERE, "showcase.manifest.json"), "
 const CANVAS_SELECTOR = manifest.canvasSelector;
 const FPS = manifest.fps ?? 24;
 
+type PWPage = import("@playwright/test").Page;
+
 /** A paced beat so the replay has watchable duration per step. */
-async function beat(page: import("@playwright/test").Page, ms = 900): Promise<void> {
+async function beat(page: PWPage, ms = 900): Promise<void> {
   await page.waitForTimeout(ms);
 }
 
-type Flow = (designer: Designer, page: import("@playwright/test").Page, say: (label: string) => Promise<void>) => Promise<void>;
+/** Glide the real cursor to a document point (cursor-visible, no click). */
+async function cursorTo(page: PWPage, ptX: number, ptY: number): Promise<void> {
+  const p = await screenPoint(page, ptX, ptY);
+  await page.mouse.move(p.x, p.y, { steps: 12 });
+}
+
+/** REAL pointer translate: select tool, then body-drag the element from one
+ *  document point to another — the cursor follows and the frame moves. */
+async function moveByDrag(
+  page: PWPage,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+): Promise<void> {
+  await activateTool(page, "select");
+  const a = await screenPoint(page, from.x, from.y);
+  const b = await screenPoint(page, to.x, to.y);
+  await dragMouse(page, a, b, { steps: 16, settleMs: 160 });
+}
+
+type Flow = (designer: Designer, page: PWPage, say: (label: string) => Promise<void>) => Promise<void>;
 
 const flows: Record<string, Flow> = {
   "new-document": async (designer, page, say) => {
@@ -49,20 +71,28 @@ const flows: Record<string, Flow> = {
     await say("Build a linear gradient");
     const grad = await designer.createGradient("Sunset", [red, blue]);
     await beat(page);
-    await say("Draw a frame and fill it with the gradient");
+    await say("Draw a frame (real pointer drag)");
+    await cursorTo(page, 90, 120);
     const id = await designer.drawRectangle({ x0: 90, y0: 120, x1: 460, y1: 320 });
+    await beat(page, 500);
+    await say("Fill it with the gradient");
     await designer.selectElement("rectangle", id);
     await designer.applyFill("rectangle", id, grad);
     await beat(page);
   },
 
   "draw-fill": async (designer, page, say) => {
-    await say("Draw a rectangle");
-    const id = await designer.drawRectangle({ x0: 120, y0: 140, x1: 520, y1: 380 });
-    await beat(page, 600);
+    await say("Draw a rectangle (real pointer drag)");
+    await cursorTo(page, 120, 140);
+    const id = await designer.drawRectangle({ x0: 120, y0: 140, x1: 420, y1: 320 });
+    await beat(page, 500);
     await say("Apply a solid fill");
     await designer.selectElement("rectangle", id);
     await designer.applyFill("rectangle", id, "Color/Black");
+    await beat(page, 600);
+    await say("Move it across the page (real pointer drag)");
+    // Drag from inside the frame to a new spot — cursor-visible translate.
+    await moveByDrag(page, { x: 270, y: 230 }, { x: 470, y: 380 });
     await beat(page);
   },
 };
@@ -72,8 +102,8 @@ mkdirSync(OUT_DIR, { recursive: true });
 for (const demo of manifest.demos) {
   const flow = flows[demo.id];
   // Only flows authored above are captured; the rest of the manifest is the
-  // backlog of journeys to turn into demo flows.
-  test.skip(!flow, `no authored flow for "${demo.id}" yet`);
+  // backlog of journeys to turn into demo flows. (Don't use top-level
+  // test.skip here — at file scope it would skip the WHOLE suite.)
   if (!flow) continue;
 
   test(`capture · ${demo.id}`, async ({ page }) => {

@@ -9,3 +9,6 @@ src/wasm/
 tsconfig.tsbuildinfo
 playwright-report/
 test-results/
+
+# demo-capture rrweb session output (uploaded as release assets, not committed)
+apps/canvas/tests/demo/out/
