@@ -14,8 +14,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "@playwright/test";
 
+import { expect } from "@playwright/test";
 import { Designer } from "../journey/driver/designer";
-import { screenPoint, dragMouse, activateTool } from "../e2e/harness/viewport";
+import { screenPoint, activateTool, treeCount, treeIds } from "../e2e/harness/viewport";
 import { startCapture, step, finishCapture } from "./capture";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -35,23 +36,77 @@ async function beat(page: PWPage, ms = 900): Promise<void> {
   await page.waitForTimeout(ms);
 }
 
-/** Glide the real cursor to a document point (cursor-visible, no click). */
-async function cursorTo(page: PWPage, ptX: number, ptY: number): Promise<void> {
+// The render loop ticks ~every 16ms and the frame-tap captures one frame per
+// rendered tick (throttled to the manifest fps). Playwright's stepped mouse.move
+// fires all its steps in a few ms, so a whole drag spans only 1-2 ticks → 1-2
+// frames. To make GESTURES SMOOTH we pace the pointer over REAL TIME: one small
+// move per ~stepMs, so each increment gets its own render tick and tapped frame.
+const STEP_MS = 36; // ~28 pointer samples/sec → smooth, comfortably under the loop rate
+
+/** Glide the real cursor to a document point over real time (cursor-visible). */
+async function cursorTo(page: PWPage, ptX: number, ptY: number, ms = 450): Promise<void> {
   const p = await screenPoint(page, ptX, ptY);
-  await page.mouse.move(p.x, p.y, { steps: 12 });
+  await pacedMove(page, p.x, p.y, ms);
 }
 
-/** REAL pointer translate: select tool, then body-drag the element from one
- *  document point to another — the cursor follows and the frame moves. */
-async function moveByDrag(
+/** Move the pointer from its current spot to (x,y), paced over `ms` real time so
+ *  the render loop + frame-tap sample a smooth path. Assumes a known start: call
+ *  after a cursorTo / mouse.move so interpolation has an origin. */
+let lastPointer = { x: 0, y: 0 };
+async function pacedMove(page: PWPage, x: number, y: number, ms: number): Promise<void> {
+  const steps = Math.max(2, Math.round(ms / STEP_MS));
+  const from = lastPointer;
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    await page.mouse.move(from.x + (x - from.x) * t, from.y + (y - from.y) * t);
+    await page.waitForTimeout(STEP_MS);
+  }
+  lastPointer = { x, y };
+}
+
+/** REAL, SMOOTH pointer translate: select tool, press inside the element, drag it
+ *  to a new spot paced over real time, release. The cursor follows and the frame
+ *  glides — captured as a smooth frame sequence. */
+async function smoothMove(
   page: PWPage,
   from: { x: number; y: number },
   to: { x: number; y: number },
+  ms = 1100,
 ): Promise<void> {
   await activateTool(page, "select");
   const a = await screenPoint(page, from.x, from.y);
   const b = await screenPoint(page, to.x, to.y);
-  await dragMouse(page, a, b, { steps: 16, settleMs: 160 });
+  await page.mouse.move(a.x, a.y);
+  lastPointer = { x: a.x, y: a.y };
+  await page.mouse.down();
+  await page.waitForTimeout(STEP_MS);
+  await pacedMove(page, b.x, b.y, ms);
+  await page.waitForTimeout(120);
+  await page.mouse.up();
+}
+
+/** REAL, SMOOTH rectangle draw with the shape tool (paced), returning the new
+ *  element id. Mirrors Designer.drawRectangle's id-tracking but drags over real
+ *  time so the rubber-band renders as a smooth sequence. */
+async function smoothDrawRectangle(
+  page: PWPage,
+  rect: { x0: number; y0: number; x1: number; y1: number },
+  ms = 1000,
+): Promise<string> {
+  await activateTool(page, "shape");
+  const before = await treeIds(page, "rectangle");
+  const a = await screenPoint(page, rect.x0, rect.y0);
+  const b = await screenPoint(page, rect.x1, rect.y1);
+  await page.mouse.move(a.x, a.y);
+  lastPointer = { x: a.x, y: a.y };
+  await page.mouse.down();
+  await page.waitForTimeout(STEP_MS);
+  await pacedMove(page, b.x, b.y, ms);
+  await page.waitForTimeout(120);
+  await page.mouse.up();
+  await expect.poll(() => treeCount(page, "rectangle")).toBeGreaterThan(before.length);
+  const after = await treeIds(page, "rectangle");
+  return after.find((f) => !before.some((b2) => b2.id === f.id))?.id ?? "";
 }
 
 type Flow = (designer: Designer, page: PWPage, say: (label: string) => Promise<void>) => Promise<void>;
@@ -73,7 +128,7 @@ const flows: Record<string, Flow> = {
     await beat(page);
     await say("Draw a frame (real pointer drag)");
     await cursorTo(page, 90, 120);
-    const id = await designer.drawRectangle({ x0: 90, y0: 120, x1: 460, y1: 320 });
+    const id = await smoothDrawRectangle(page, { x0: 90, y0: 120, x1: 460, y1: 320 });
     await beat(page, 500);
     await say("Fill it with the gradient");
     await designer.selectElement("rectangle", id);
@@ -84,15 +139,15 @@ const flows: Record<string, Flow> = {
   "draw-fill": async (designer, page, say) => {
     await say("Draw a rectangle (real pointer drag)");
     await cursorTo(page, 120, 140);
-    const id = await designer.drawRectangle({ x0: 120, y0: 140, x1: 420, y1: 320 });
+    const id = await smoothDrawRectangle(page, { x0: 120, y0: 140, x1: 420, y1: 320 });
     await beat(page, 500);
     await say("Apply a solid fill");
     await designer.selectElement("rectangle", id);
     await designer.applyFill("rectangle", id, "Color/Black");
     await beat(page, 600);
     await say("Move it across the page (real pointer drag)");
-    // Drag from inside the frame to a new spot — cursor-visible translate.
-    await moveByDrag(page, { x: 270, y: 230 }, { x: 470, y: 380 });
+    // Drag from inside the frame to a new spot — a smooth cursor-visible translate.
+    await smoothMove(page, { x: 270, y: 230 }, { x: 470, y: 380 });
     await beat(page);
   },
 };
