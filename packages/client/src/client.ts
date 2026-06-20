@@ -99,6 +99,10 @@ export class CanvasClient {
   private nextSeq = 1;
   private readonly pending = new Map<number, PendingReply>();
   private readonly listeners = new Set<(msg: WorkerToMain) => void>();
+  /** Demo capture only: subscribers to tapped document frames (data URLs). */
+  private readonly frameListeners = new Set<
+    (f: { src: string; width: number; height: number }) => void
+  >();
   readonly camera: CameraBuffer;
   readonly gestureSab: GestureBuffer;
 
@@ -1112,6 +1116,28 @@ export class CanvasClient {
     this.worker.postMessage({ kind: "resizeCanvas", dpr, cssWidth, cssHeight });
   }
 
+  // ── demo capture (CI): tap rendered document frames for rrweb replay ──
+  // Drives the worker's WorkerRenderer frame tap. Off unless started; used by the
+  // demo-capture harness via `window.__canvas.client`. See @paged-media/demo-replay.
+
+  /** Start tapping rendered document frames at ~`fps` (webp). */
+  startFrameTap(fps = 10): void {
+    this.worker.postMessage({ kind: "startFrameTap", fps });
+  }
+
+  /** Stop the frame tap. */
+  stopFrameTap(): void {
+    this.worker.postMessage({ kind: "stopFrameTap" });
+  }
+
+  /** Subscribe to tapped frames (image data URLs). Returns an unsubscribe fn. */
+  onFrame(cb: (f: { src: string; width: number; height: number }) => void): () => void {
+    this.frameListeners.add(cb);
+    return () => {
+      this.frameListeners.delete(cb);
+    };
+  }
+
   dispose(): void {
     this.worker.removeEventListener("message", this.onMessage);
     this.worker.terminate();
@@ -1167,6 +1193,23 @@ export class CanvasClient {
       if (cb) {
         this.velloPending.delete(reply.seq);
         cb(reply.pngBytes ? Uint8Array.from(reply.pngBytes) : null);
+      }
+      return;
+    }
+    // Demo capture side-channel: tapped document frames (transferable bytes).
+    if (raw && raw.kind === "frameTap") {
+      if (this.frameListeners.size > 0) {
+        const m = event.data as {
+          bytes: ArrayBuffer;
+          width: number;
+          height: number;
+        };
+        const reader = new FileReader();
+        reader.onload = () => {
+          const src = reader.result as string;
+          for (const l of this.frameListeners) l({ src, width: m.width, height: m.height });
+        };
+        reader.readAsDataURL(new Blob([m.bytes], { type: "image/webp" }));
       }
       return;
     }

@@ -103,6 +103,19 @@ export class WorkerRenderer {
   private running = false;
   private loopHandle: ReturnType<typeof setTimeout> | null = null;
 
+  // ── demo frame-tap (OFF by default — enabled only for CI demo capture) ──
+  // When fps > 0, after each present we read the OffscreenCanvas back as a webp
+  // blob (throttled, fire-and-forget) and hand it to `onFrameTap`. convertToBlob
+  // works on the OffscreenCanvas regardless of 2D vs WebGPU context, which is how
+  // we bridge the worker/OffscreenCanvas boundary that main-thread session replay
+  // (rrweb) cannot reach. Inert — a single fps<=0 check — when disabled.
+  private frameTapFps = 0;
+  private lastTapAt = 0;
+  private tapInFlight = false;
+  private onFrameTap:
+    | ((f: { bytes: ArrayBuffer; width: number; height: number; ts: number }) => void)
+    | undefined;
+
   constructor(
     canvas: OffscreenCanvas,
     wasm: RendererWasm,
@@ -229,10 +242,44 @@ export class WorkerRenderer {
       // composite Vello scene and presents directly to the surface.
       // No CPU work in this branch.
       this.wasm.presentFrame(camera.scale, camera.tx, camera.ty, this.dpr);
+      this.maybeTap();
       return;
     }
     this.draw(camera);
+    this.maybeTap();
   };
+
+  /**
+   * Demo capture only: enable/disable the frame tap. `fps <= 0` disables it
+   * (the default), making the tap a single no-op check on the hot path.
+   */
+  setFrameTap(
+    fps: number,
+    onFrame?: (f: { bytes: ArrayBuffer; width: number; height: number; ts: number }) => void,
+  ): void {
+    this.frameTapFps = Math.max(0, fps);
+    this.onFrameTap = this.frameTapFps > 0 ? onFrame : undefined;
+  }
+
+  /** Read the current canvas back as a webp blob (throttled, non-blocking). */
+  private maybeTap(): void {
+    if (this.frameTapFps <= 0 || !this.onFrameTap || this.tapInFlight) return;
+    const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+    if (now - this.lastTapAt < 1000 / this.frameTapFps) return;
+    this.lastTapAt = now;
+    this.tapInFlight = true;
+    const { width, height } = this.canvas;
+    this.canvas
+      .convertToBlob({ type: "image/webp", quality: 0.8 })
+      .then((blob) => blob.arrayBuffer())
+      .then((bytes) => {
+        this.tapInFlight = false;
+        this.onFrameTap?.({ bytes, width, height, ts: now });
+      })
+      .catch(() => {
+        this.tapInFlight = false;
+      });
+  }
 
   private draw(camera: Camera): void {
     const ctx = this.ctx;
