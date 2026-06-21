@@ -1,0 +1,15 @@
+{
+  "$comment": "Live-demo script corpus. Each entry is a plain script driving the real editor via the unified globals (paged.* / editor.* / demo.*). Loaded by the playground (?script=<id>) which fetches /scripts/<id>.js and shows the source. These double as copy-pasteable scripting documentation.",
+  "scripts": [
+    {
+      "id": "draw-fill",
+      "title": "Draw & fill a frame",
+      "description": "Create a document, draw a frame, fill it, move it — narrated, every step is the script driving the real editor."
+    },
+    {
+      "id": "tour",
+      "title": "A guided tour",
+      "description": "Open panels and switch workflow modes with editor.*, narrated with demo.showInfo."
+    }
+  ]
+}

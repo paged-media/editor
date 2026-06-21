@@ -173,6 +173,7 @@ import {
   ReviewInspectorPanel,
   StoryInspectorPanel,
 } from "./panels/cockpit/mode-inspectors";
+import { PlaygroundController } from "./playground/PlaygroundController";
 import { useAnimatedCamera } from "./ui/useAnimatedCamera";
 import { useKeyboardShortcuts } from "./ui/useKeyboardShortcuts";
 import { documentBounds, fitCamera, layoutPages } from "./ui/layout";
@@ -1219,6 +1220,9 @@ function CanvasAppRoot() {
       <PluginBundles />
       <ConsentDialog controller={editorConsent.controller} />
       <SecretPromptDialog controller={editorSecrets.controller} />
+      {/* The live-demo playground UI — only in the `demo` build, only when a
+          ?script= is present (renders null otherwise). */}
+      {(import.meta.env.MODE === "demo" || !import.meta.env.PROD) && <PlaygroundController />}
     </PagedShell>
   );
 }

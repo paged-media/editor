@@ -623,9 +623,13 @@ function ShellChrome({
   // Vite's `import.meta.env.PROD` constant — typed loosely here so
   // shell's tsconfig (which doesn't include Vite's ambient types)
   // still passes.
-  const isProd =
-    (import.meta as unknown as { env?: { PROD?: boolean } }).env?.PROD === true;
-  if (!isProd) {
+  const viteEnv = (import.meta as unknown as { env?: { PROD?: boolean; MODE?: string } }).env;
+  const isProd = viteEnv?.PROD === true;
+  // The `demo` playground build (vite build --mode demo) is a production bundle
+  // that DELIBERATELY retains the automation handle so a script can drive the
+  // editor live. Everywhere else the handle stays dev-only.
+  const isDemoBuild = viteEnv?.MODE === "demo";
+  if (!isProd || isDemoBuild) {
     (globalThis as unknown as { __canvas?: unknown }).__canvas = {
       client,
       handle,

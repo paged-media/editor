@@ -31,6 +31,7 @@ export interface CanvasHandleLike {
   setMode?: (mode: string) => void;
   setElementSelection?: (ids: unknown[], mode: string) => void;
   elementSelection?: unknown[];
+  handle?: { pageIds?: string[]; pageCount?: number } | null;
 }
 
 export interface PagedScriptApi {
@@ -49,6 +50,8 @@ export interface EditorAutomationApi {
   setMode(mode: string): void;
   /** Replace the element selection. */
   select(ids: unknown[], mode?: string): void;
+  /** Page ids of the open document (empty until a document exists). */
+  pageIds(): string[];
   /** Set a property on the current selection (panel + document update together). */
   setProperty(path: string, value: unknown): Promise<void>;
   /**
@@ -97,6 +100,7 @@ export function buildAutomation(h: CanvasHandleLike): DemoGlobals {
     setTool: (tool) => h.setActiveTool?.(tool),
     setMode: (mode) => h.setMode?.(mode),
     select: (ids, mode = "replace") => h.setElementSelection?.(ids, mode),
+    pageIds: () => h.handle?.pageIds ?? [],
     async setProperty(path, value) {
       const sel = h.elementSelection ?? [];
       for (const elementId of sel) {

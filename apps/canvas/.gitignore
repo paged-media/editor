@@ -12,3 +12,6 @@ test-results/
 
 # demo-capture rrweb session output (uploaded as release assets, not committed)
 apps/canvas/tests/demo/out/
+
+# demo/playground build output (deployed to the playground host, not committed)
+dist-demo/
