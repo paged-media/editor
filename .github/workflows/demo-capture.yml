@@ -46,3 +46,22 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: gh release upload "$TAG" apps/canvas/tests/demo/out/*.rrweb.json --clobber
+
+      - name: notify docs to rebuild (pull the fresh demo sessions)
+        # On-release dispatch: ping docs.paged.media to rebuild so it pulls the
+        # just-uploaded *.rrweb.json release assets (docs pages.yml listens on
+        # repository_dispatch type=source-updated; sources.pin demos.enabled=true).
+        # DOCS_DISPATCH_TOKEN needs write/contents on paged-media/docs. Skips
+        # cleanly if the secret isn't set, so capture never fails on the ping.
+        env:
+          DOCS_DISPATCH_TOKEN: ${{ secrets.DOCS_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$DOCS_DISPATCH_TOKEN" ]; then
+            echo "DOCS_DISPATCH_TOKEN unset — skipping the docs rebuild ping."
+            exit 0
+          fi
+          curl -sS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $DOCS_DISPATCH_TOKEN" \
+            https://api.github.com/repos/paged-media/docs/dispatches \
+            -d '{"event_type":"source-updated","client_payload":{"repo":"editor","reason":"demo-capture"}}'
