@@ -72,7 +72,7 @@ import { EditContextController } from "./state/edit-context-controller";
 import { PagedEditorProvider } from "./state/paged-editor";
 import { useRegistries } from "./state/registries-context";
 import { CommandPalette } from "./chrome/CommandPalette";
-import { DemoOverlay } from "./demo/overlay";
+import { DemoOverlay, DemoSpotlight } from "./demo/overlay";
 import { runDemoScriptWithHandle } from "./demo/runner";
 import { ExportPdfDialog } from "./chrome/ExportPdfDialog";
 import { ToolRail } from "./chrome/ToolRail";
@@ -897,6 +897,7 @@ function ShellChrome({
       {modes && modes.length > 0 && !railHidden && <ModeSwitcher />}
 
       <CommandPalette />
+      <DemoSpotlight />
       <DemoOverlay />
       <ExportPdfDialog />
 

@@ -11,7 +11,7 @@
 // This is the host-side surface; the script-author API is identical whether it
 // runs here (main-thread runner) or, later, inside a host-extensible Boa.
 
-import { demoShowInfo } from "./overlay";
+import { demoShowInfo, demoHighlight } from "./overlay";
 
 /** The subset of the `__canvas` dev handle the automation needs. */
 export interface CanvasHandleLike {
@@ -68,6 +68,10 @@ export interface DemoNarrationApi {
   showInfo(title: string, body?: string, opts?: { autoMs?: number; cta?: string; index?: number; total?: number }): Promise<void>;
   /** Alias for showInfo with just a message. */
   pause(message: string): Promise<void>;
+  /** A chapter marker with no UI — names a step for the scrub bar / table of contents. */
+  step(label: string): Promise<void>;
+  /** Spotlight a UI target (CSS selector) — dims the editor + cuts out the target. Pass null to clear. */
+  highlight(target: string | null): Promise<void>;
   /** Sleep for ms (lets the canvas settle / pace a sequence). */
   wait(ms: number): Promise<void>;
 }
@@ -78,7 +82,14 @@ export interface DemoGlobals {
   demo: DemoNarrationApi;
 }
 
-export function buildAutomation(h: CanvasHandleLike): DemoGlobals {
+export interface AutomationOptions {
+  /** When true, demo.* narration/pacing is suppressed (used by the session's
+   *  silent replay/fast-forward when seeking to a chapter). */
+  isSilent?: () => boolean;
+}
+
+export function buildAutomation(h: CanvasHandleLike, opts: AutomationOptions = {}): DemoGlobals {
+  const silent = () => opts.isSilent?.() ?? false;
   const commandInvoke = (id: string, payload?: unknown): Promise<unknown> => {
     const c = h.registries.commands;
     const fn = c.invoke ?? c.execute ?? c.run;
@@ -111,9 +122,16 @@ export function buildAutomation(h: CanvasHandleLike): DemoGlobals {
   };
 
   const demo: DemoNarrationApi = {
-    showInfo: (title, body, opts) => demoShowInfo({ title, body, ...opts }),
-    pause: (message) => demoShowInfo({ title: message }),
-    wait: (ms) => new Promise((r) => setTimeout(r, ms)),
+    showInfo: (title, body, info) => (silent() ? Promise.resolve() : demoShowInfo({ title, body, ...info })),
+    pause: (message) => (silent() ? Promise.resolve() : demoShowInfo({ title: message })),
+    step: () => Promise.resolve(), // pure chapter marker; the scrub bar reads it from the source
+    // Apply highlights even during silent replay — a spotlight is persistent
+    // visual STATE (not a pause), so seeking must land on the correct one.
+    highlight: (target) => {
+      demoHighlight(target);
+      return Promise.resolve();
+    },
+    wait: (ms) => (silent() ? Promise.resolve() : new Promise((r) => setTimeout(r, ms))),
   };
 
   return { paged, editor, demo };

@@ -446,3 +446,33 @@ export {
   PAGED_LAYOUT_CLUSTER,
   PAGED_LABEL,
 } from "./catalog/built-in";
+
+// Live-demo / playground scripting surface (the demo build + the docs playground
+// consume these). The automation handle + narration overlay are dev/demo-gated
+// at the mount site (PagedShell).
+export {
+  DemoSession,
+  splitTopLevelStatements,
+  buildAutomation,
+  runDemoScript,
+  runDemoScriptWithHandle,
+  DemoOverlay,
+  DemoSpotlight,
+  demoShowInfo,
+  demoHighlight,
+  demoResetOverlay,
+} from "./demo";
+export type {
+  Statement,
+  SessionState,
+  SessionStatus,
+  DemoSessionOptions,
+  CanvasHandleLike,
+  DemoGlobals,
+  AutomationOptions,
+  PagedScriptApi,
+  EditorAutomationApi,
+  DemoNarrationApi,
+  DemoInfoRequest,
+  RunResult,
+} from "./demo";

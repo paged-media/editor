@@ -57,10 +57,72 @@ function advance(): void {
   c?.resolve();
 }
 
-/** Clear any open box without resolving (used on teardown / restart). */
+/** Clear any open box + spotlight (used on teardown / restart / seek). Resolves a
+ *  pending box so an orphaned (stale-token) run can unwind cleanly. */
 export function demoResetOverlay(): void {
+  const c = current;
   current = null;
   notify();
+  c?.resolve();
+  demoHighlight(null);
+}
+
+// ── Spotlight (demo.highlight) ────────────────────────────────────────────────
+// Dims the editor and cuts out a target element so a demo can point at a panel /
+// control while it narrates. Module-singleton, same pattern as the box.
+
+let spotlightSelector: string | null = null;
+const spotlightSubs = new Set<() => void>();
+function notifySpotlight(): void {
+  for (const fn of spotlightSubs) fn();
+}
+/** Spotlight the element matching `selector` (or clear with null). */
+export function demoHighlight(selector: string | null): void {
+  spotlightSelector = selector;
+  notifySpotlight();
+}
+
+/** Mount once near the shell root. Renders the dim + cutout when a target is set. */
+export function DemoSpotlight(): React.ReactElement | null {
+  const [, force] = useReducer((x: number) => x + 1, 0);
+  useEffect(() => {
+    spotlightSubs.add(force);
+    return () => {
+      spotlightSubs.delete(force);
+    };
+  }, []);
+  // re-measure on resize/scroll while active
+  useEffect(() => {
+    if (!spotlightSelector) return;
+    window.addEventListener("resize", force);
+    const t = setInterval(force, 250); // cheap re-measure (panels animate in)
+    return () => {
+      window.removeEventListener("resize", force);
+      clearInterval(t);
+    };
+  }, []);
+
+  if (!spotlightSelector) return null;
+  const el = document.querySelector(spotlightSelector);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  const pad = 6;
+  return (
+    <div data-demo-spotlight style={{ position: "fixed", inset: 0, zIndex: 8500, pointerEvents: "none" }}>
+      <div
+        style={{
+          position: "absolute",
+          left: r.left - pad,
+          top: r.top - pad,
+          width: r.width + pad * 2,
+          height: r.height + pad * 2,
+          borderRadius: 6,
+          boxShadow: "0 0 0 9999px rgba(0,0,0,0.55)",
+          outline: "2px solid var(--pg-primary, #6b5cff)",
+        }}
+      />
+    </div>
+  );
 }
 
 /**
