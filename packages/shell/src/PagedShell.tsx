@@ -72,6 +72,8 @@ import { EditContextController } from "./state/edit-context-controller";
 import { PagedEditorProvider } from "./state/paged-editor";
 import { useRegistries } from "./state/registries-context";
 import { CommandPalette } from "./chrome/CommandPalette";
+import { DemoOverlay } from "./demo/overlay";
+import { runDemoScriptWithHandle } from "./demo/runner";
 import { ExportPdfDialog } from "./chrome/ExportPdfDialog";
 import { ToolRail } from "./chrome/ToolRail";
 import { ScreenModeSelector } from "./chrome/ScreenModeSelector";
@@ -680,6 +682,17 @@ function ShellChrome({
       // across this object's per-render republish.
       debugContext: () => debugContextRef.current,
     };
+    // Demo/automation entry: run a demo script (paged.* + editor.* + demo.*)
+    // against the live handle. Trusted first-party scripts only (see runner).
+    // Exposed wherever the handle is — dev today; the `demo` playground build
+    // (Phase 2) un-gates the same block in a production bundle.
+    (globalThis as unknown as { __demo?: unknown }).__demo = {
+      run: (source: string) =>
+        runDemoScriptWithHandle(
+          source,
+          (globalThis as unknown as { __canvas: Parameters<typeof runDemoScriptWithHandle>[1] }).__canvas,
+        ),
+    };
   }
 
   // Consolidated worker-message subscribe. Routes the discrete
@@ -880,6 +893,7 @@ function ShellChrome({
       {modes && modes.length > 0 && !railHidden && <ModeSwitcher />}
 
       <CommandPalette />
+      <DemoOverlay />
       <ExportPdfDialog />
 
       {/* Canvas-app-specific integration: legacy hooks (keyboard
