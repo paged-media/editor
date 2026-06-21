@@ -1,0 +1,108 @@
+name: playground
+
+# Build the live-demo PLAYGROUND (apps/canvas `demo` build) and deploy it to
+# Cloudflare Pages at play.paged.media.
+#
+# Why this is a multi-repo checkout: the editor consumes the plugin bundles + SDK
+# as LOCAL sibling `link:` deps (link:../../../plugin-*), an incubation bridge that
+# is NOT published. So neither Cloudflare git-integration nor a lone-repo build can
+# resolve them — we reconstruct the ~/paged sibling layout here, then build where
+# the links resolve and upload the static dist (Actions → wrangler direct upload).
+#
+# Layout: editor at paged/editor, siblings at paged/plugin-* so the link paths
+# (../../../plugin-draw/… from apps/canvas) resolve. Private repos → SIBLING_REPOS_TOKEN.
+#
+# NOTE: the link-chain is fragile (install order matters; see root CLAUDE.md). The
+# first runs may need iteration on ordering / build-vs-source resolution.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  repository_dispatch:
+    # core can ping after publishing a new engine, to rebuild the playground.
+    types: [engine-updated]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playground
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout editor
+        uses: actions/checkout@v4
+        with:
+          path: paged/editor
+      - name: checkout plugin-sdk
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/plugin-sdk
+          token: ${{ secrets.SIBLING_REPOS_TOKEN }}
+          path: paged/plugin-sdk
+      - name: checkout plugin-draw
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/plugin-draw
+          token: ${{ secrets.SIBLING_REPOS_TOKEN }}
+          path: paged/plugin-draw
+      - name: checkout plugin-web
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/plugin-web
+          token: ${{ secrets.SIBLING_REPOS_TOKEN }}
+          path: paged/plugin-web
+      - name: checkout plugin-data
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/plugin-data
+          token: ${{ secrets.SIBLING_REPOS_TOKEN }}
+          path: paged/plugin-data
+      - name: checkout plugin-sheets
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/plugin-sheets
+          token: ${{ secrets.SIBLING_REPOS_TOKEN }}
+          path: paged/plugin-sheets
+      - name: checkout plugin-image
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/plugin-image
+          token: ${{ secrets.SIBLING_REPOS_TOKEN }}
+          path: paged/plugin-image
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Install in dependency order (root CLAUDE.md): editor first (symlinks the
+      # plugin dirs), then plugin-sdk, then the plugins (which link to plugin-sdk).
+      - name: install editor
+        working-directory: paged/editor
+        run: pnpm install
+      - name: install plugin-sdk
+        working-directory: paged/plugin-sdk
+        run: pnpm install
+      - name: install plugins
+        run: |
+          for p in plugin-draw plugin-web plugin-data plugin-sheets plugin-image; do
+            echo "── install $p"; (cd "paged/$p" && pnpm install)
+          done
+
+      - name: build playground (apps/canvas demo dist)
+        working-directory: paged/editor
+        run: pnpm --filter paged-canvas build:demo
+
+      - name: deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: paged/editor
+          # Create the project once:
+          #   wrangler pages project create paged-playground --production-branch=main
+          command: pages deploy apps/canvas/dist-demo --project-name=paged-playground --branch=main
