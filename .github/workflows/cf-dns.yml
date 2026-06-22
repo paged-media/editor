@@ -1,0 +1,41 @@
+name: cf-dns
+
+# One-shot: create the proxied CNAME records that activate the Pages custom
+# domains, via the Cloudflare API using CLOUDFLARE_API_TOKEN. Needs the token to
+# have Zone:Read + DNS:Edit on paged.media (the Pages-only token will fail at the
+# zone lookup — that's the signal to broaden the token's scope). Idempotent.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dns:
+    runs-on: ubuntu-latest
+    steps:
+      - name: create/update CNAMEs for the Pages custom domains
+        env:
+          T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -e
+          api="https://api.cloudflare.com/client/v4"
+          zid=$(curl -fsS "$api/zones?name=paged.media" -H "Authorization: Bearer $T" \
+            | python3 -c "import json,sys;r=json.load(sys.stdin).get('result') or [];print(r[0]['id'] if r else '')")
+          if [ -z "$zid" ]; then
+            echo "ERROR: cannot read zone paged.media — token lacks Zone:Read/DNS:Edit. Grant those scopes."; exit 1
+          fi
+          echo "zone paged.media = $zid"
+          for rec in "play.paged.media:paged-playground.pages.dev" "docs.paged.media:paged-docs.pages.dev"; do
+            name=${rec%%:*}; target=${rec##*:}
+            body="{\"type\":\"CNAME\",\"name\":\"$name\",\"content\":\"$target\",\"proxied\":true}"
+            rid=$(curl -fsS "$api/zones/$zid/dns_records?name=$name" -H "Authorization: Bearer $T" \
+              | python3 -c "import json,sys;r=json.load(sys.stdin).get('result') or [];print(r[0]['id'] if r else '')")
+            if [ -n "$rid" ]; then
+              echo "== update $name → $target"
+              curl -fsS -X PUT "$api/zones/$zid/dns_records/$rid" -H "Authorization: Bearer $T" -H "Content-Type: application/json" -d "$body"
+            else
+              echo "== create $name → $target"
+              curl -fsS -X POST "$api/zones/$zid/dns_records" -H "Authorization: Bearer $T" -H "Content-Type: application/json" -d "$body"
+            fi | python3 -c "import json,sys;d=json.load(sys.stdin);print('  ok' if d.get('success') else ('  ERR '+str(d.get('errors'))))"
+          done
