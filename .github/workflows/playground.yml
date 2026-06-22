@@ -70,6 +70,10 @@ jobs:
           path: paged/plugin-image
 
       - uses: pnpm/action-setup@v4
+        # Pinned explicitly: this job runs at the multi-repo workspace root, which
+        # has no package.json, so the action can't read `packageManager`.
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
