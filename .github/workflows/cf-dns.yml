@@ -16,7 +16,9 @@ jobs:
     steps:
       - name: create/update CNAMEs for the Pages custom domains
         env:
-          T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # A token with Zone:Read + DNS:Edit on paged.media. Falls back to the
+          # Pages token (which lacks DNS scope, so set CLOUDFLARE_DNS_TOKEN).
+          T: ${{ secrets.CLOUDFLARE_DNS_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           set -e
           api="https://api.cloudflare.com/client/v4"
