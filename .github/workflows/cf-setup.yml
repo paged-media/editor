@@ -34,4 +34,7 @@ jobs:
             echo "== $proj : register custom domain $dom"
             curl -sS -X POST "$base/$proj/domains" -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
               -d "{\"name\":\"$dom\"}" | show
+            echo "== $proj : domain status (what CF is waiting for)"
+            curl -fsS "$base/$proj/domains" -H "Authorization: Bearer $T" \
+              | python3 -c "import json,sys;[print('   ',d['name'],'status=',d.get('status'),'validation=',d.get('validation_data',{}).get('status'),d.get('verification_data',{}).get('status','')) for d in json.load(sys.stdin)['result']]"
           done
