@@ -1,14 +1,16 @@
 # paged-media/editor
 
-The commercial editor for **paged** — a pixel-faithful Adobe IDML
-renderer. This is the closed, proprietary frontend that sits on top of
-the open render engine (`paged-media/core`): a React canvas editor, an
-SDK client that binds the engine wasm, and the panel/shell machinery
-that turns the engine into an editable InDesign-class application.
+The editor for **paged** — a pixel-faithful Adobe IDML renderer. The
+frontend that sits on top of the open render engine (`paged-media/core`):
+a React canvas editor, an SDK client that binds the engine wasm, and the
+panel/shell machinery that turns the engine into an editable
+InDesign-class application.
 
-> **Proprietary — All Rights Reserved. © And The Next GmbH.**
-> Private repository. Not open source. No MPL headers live here
-> (those belong to `paged-media/core`, the dual-licensed engine).
+> **Dual-licensed: AGPL-3.0 OR the Paged Media Enterprise License (PMEL).**
+> © And The Next GmbH. (The engine, `paged-media/core`, is MPL-2.0 OR PMEL —
+> more permissive, for embedding.) See [`LICENSE.md`](./LICENSE.md),
+> [`LICENSE`](./LICENSE), and [`CONTRIBUTING.md`](./CONTRIBUTING.md)
+> (contributions are under a CLA).
 
 ## What this is
 
@@ -151,5 +153,17 @@ See `apps/canvas/tests/README.md` for the fidelity harness details and
 
 ## License
 
-Proprietary. All rights reserved. © And The Next GmbH. Internal use
-only; do not redistribute.
+Dual-licensed: **AGPL-3.0 OR the Paged Media Enterprise License (PMEL)**
+(commercial, from And The Next GmbH). The editor is a networked application,
+so the open-source option is the AGPL — its §13 network clause requires a
+modified hosted version to share its source. The PMEL is the commercial
+escape hatch (closed/hosted derivatives, warranty, support). The render
+engine it builds on (`paged-media/core`) is instead **MPL-2.0 OR PMEL** —
+deliberately more permissive, for embedding. See [`LICENSE.md`](./LICENSE.md),
+[`LICENSE`](./LICENSE), and [`CONTRIBUTING.md`](./CONTRIBUTING.md)
+(contributions are under a CLA).
+
+`SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-PMEL`
+
+Bundled third-party colour libraries retain their own licenses — see
+[`NOTICE`](./NOTICE).

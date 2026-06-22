@@ -2,6 +2,7 @@
   "name": "paged-monorepo",
   "private": true,
   "version": "0.0.0",
+  "license": "AGPL-3.0-only OR LicenseRef-PMEL",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "typecheck": "pnpm -r --filter=./apps/* run typecheck",

@@ -7,12 +7,15 @@ read the root `README.md` for the longer picture and
 
 ## What this is
 
-Private, **proprietary / All-Rights-Reserved (And The Next GmbH)**.
-The engine (`paged-media/core`) is the open, dual-licensed Rust render
-pipeline; this repo is the closed editor on top of it.
+Public, **dual-licensed AGPL-3.0 OR PMEL** (And The Next GmbH). The editor
+is a networked app, so the open side is **AGPL** (§13 network copyleft);
+the engine (`paged-media/core`) stays **MPL-2.0 OR PMEL** — more permissive,
+for embedding. (This repo was proprietary / All-Rights-Reserved and private
+until 2026-06-22, when it was opened.)
 
-- **No MPL headers here.** MPL-2.0-OR-PMEL is core-only. New files in
-  this repo get no license header.
+- **License headers apply to every source file** (AGPL Exhibit-style notice
+  + PMEL, pointing at LICENSE.md). New source files carry it — copy it
+  verbatim from the top of any existing source file, or see `CONTRIBUTING.md`.
 - This repo consumes the engine **across a package boundary** — the
   published `@paged-media` wasm/SDK packages — **never** a Rust path
   dependency, and never reaches into core's source tree.
