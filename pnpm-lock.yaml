@@ -33,23 +33,23 @@ importers:
         specifier: workspace:*
         version: link:../../packages/client
       '@paged-media/data-bundle':
-        specifier: link:../../../plugin-data/packages/data-bundle
-        version: link:../../../plugin-data/packages/data-bundle
+        specifier: 0.1.0-canary.0
+        version: 0.1.0-canary.0(react@18.3.1)
       '@paged-media/draw-bundle':
-        specifier: link:../../../plugin-draw/packages/draw-bundle
-        version: link:../../../plugin-draw/packages/draw-bundle
+        specifier: 0.2.0-canary.0
+        version: 0.2.0-canary.0(react@18.3.1)
       '@paged-media/image-glue':
-        specifier: link:../../../plugin-image/glue
-        version: link:../../../plugin-image/glue
+        specifier: 0.0.1-canary.0
+        version: 0.0.1-canary.0(react@18.3.1)
       '@paged-media/plugin-api':
-        specifier: link:../../../plugin-sdk/packages/plugin-api
-        version: link:../../../plugin-sdk/packages/plugin-api
+        specifier: 0.2.25-canary.0
+        version: 0.2.25-canary.0
       '@paged-media/plugin-sdk':
-        specifier: link:../../../plugin-sdk/packages/plugin-sdk
-        version: link:../../../plugin-sdk/packages/plugin-sdk
+        specifier: 0.2.25-canary.0
+        version: 0.2.25-canary.0(react@18.3.1)
       '@paged-media/sheet-bundle':
-        specifier: link:../../../plugin-sheets/packages/sheet-bundle
-        version: link:../../../plugin-sheets/packages/sheet-bundle
+        specifier: 0.1.0-canary.0
+        version: 0.1.0-canary.0(react@18.3.1)
       '@paged-media/shell':
         specifier: workspace:*
         version: link:../../packages/shell
@@ -60,8 +60,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@paged-media/web-bundle':
-        specifier: link:../../../plugin-web/packages/web-bundle
-        version: link:../../../plugin-web/packages/web-bundle
+        specifier: 0.1.0-canary.0
+        version: 0.1.0-canary.0(react@18.3.1)
       apache-arrow:
         specifier: ^17.0.0
         version: 17.0.0
@@ -326,8 +326,8 @@ importers:
         specifier: workspace:*
         version: link:../client
       '@paged-media/draw-geometry':
-        specifier: link:../../../plugin-draw/packages/draw-geometry
-        version: link:../../../plugin-draw/packages/draw-geometry
+        specifier: 0.1.0-canary.0
+        version: 0.1.0-canary.0
       '@paged-media/shell':
         specifier: workspace:*
         version: link:../shell
@@ -893,8 +893,60 @@ packages:
   '@paged-media/canvas-wasm@0.51.0':
     resolution: {integrity: sha512-UAUR93rq4joam/RjxH3dNjUcbhBi5w3pnv8BkzPHEE+xXvcgiwLf1R5tANwo4pTjxOIdVAUu2kup+bqIlkvUCw==}
 
+  '@paged-media/data-bundle@0.1.0-canary.0':
+    resolution: {integrity: sha512-aD4D/ZBFodoRUcVATl1j4y2p1g4i+eSSkAsxXLyS0hcwsCKmLxSpbaJOxYxp6+WyicQWA+O/pobOfO8fJGDHvg==}
+    peerDependencies:
+      react: ^18.3.0
+
+  '@paged-media/data-host-model@0.1.0-canary.0':
+    resolution: {integrity: sha512-39IASrMRmV899Lo1zvORYO3tElM1V5fgkpolhsrgF6CVG9Z0NAxF0FjlTjQzlUA8TBzPFS3cGoRYUYnoGv1H0g==}
+
+  '@paged-media/draw-bundle@0.2.0-canary.0':
+    resolution: {integrity: sha512-4Fs46sLDIuHLBRYJrGcNk+t1nN+dIERVcdPJPcQFv4iQ06CafhL342vDhtiGaMf0cwF1gMPFZFzr7+09S/FMEw==}
+
+  '@paged-media/draw-geometry@0.1.0-canary.0':
+    resolution: {integrity: sha512-Qk4JITAK7rTgTanvA/Zi9S651/SonzukBrS5gujQKEBgmki1ViT0x5cJA358n8LMlHDSeTjbDFPtnhgnISdOjw==}
+
+  '@paged-media/draw-tools@0.1.0-canary.0':
+    resolution: {integrity: sha512-HhHAd0stH0nSMx6BkOP1JxzTr46m5OyZaH+3YnIQkg0oEKxlaouLfeE2TCrL++ldO2ARBKc7JNw7s+rgLm2qLw==}
+
+  '@paged-media/image-glue@0.0.1-canary.0':
+    resolution: {integrity: sha512-7UY+noAKV/F027sbTsliWwayCaLA1Xrehu3nmEwHMMbgpG2glVyGKjhaRf+1vvstsfq55rsKHV6k91SIXHLdyA==}
+    peerDependencies:
+      react: ^18.3.0
+
+  '@paged-media/image-manifest@0.0.1-canary.0':
+    resolution: {integrity: sha512-MKgJC2Qj0nz3PBpmQWBEKYGt3Kl85+tTEhCkMkkly94jwpjagDamSOH2IlF20miAaWcbCYOe2HY7NP8rogh4Mg==}
+
   '@paged-media/introspect-wasm@0.51.0':
     resolution: {integrity: sha512-MkI2HyPWgByy3rjR5KKtb4+y4kMowc/8JQuDh6gDciuVPAv9SLA1IbJsjdj2NQ6fPummQp+pqOCUmos7RKM4oQ==}
+
+  '@paged-media/plugin-api@0.2.25-canary.0':
+    resolution: {integrity: sha512-yPB4aQ+/WWhipsSUdcCZt7Uzox4KG8r2c9WN0GXAUAhC2/+Oa8+li/adp9Ubx8pSdEtNBh13N0IiIPTBhc2eDQ==}
+
+  '@paged-media/plugin-sdk@0.2.25-canary.0':
+    resolution: {integrity: sha512-CAOG3q39foJCLJrowG//eKD5ORnufiAOmzT1sjOeHjtqHTkVe6MYc4ppFbdXMtPtrwfLddEx4g9YGWRmMclPLA==}
+    peerDependencies:
+      react: ^18.3.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+
+  '@paged-media/sheet-bundle@0.1.0-canary.0':
+    resolution: {integrity: sha512-b8hShB/utyL7P9uP2SXDC2m+fxIXjCw6VAy6BhgSge6A6d3Ue/KhdORmmZ6u9eTZtfy33j166v9DcXMWv7Wfkg==}
+    peerDependencies:
+      react: ^18.3.0
+
+  '@paged-media/sheet-host-model@0.1.0-canary.0':
+    resolution: {integrity: sha512-x+gtH/63psCntkQIcZMwESEWCo06ZBplsIQoJ9IkjBHDOK84xO4EkRWh72HtigF26whqxey2gb+pv98zsY1eHg==}
+
+  '@paged-media/web-bundle@0.1.0-canary.0':
+    resolution: {integrity: sha512-mw9HTYIE8JTiEDXEOw/Ltt3fBJgszKQ6KItMvKkgcdIfVyfnlV54EaXp9yQfCLpdDcnC6f6+OcolwJladtCDGw==}
+    peerDependencies:
+      react: ^18.3.0
+
+  '@paged-media/web-model@0.1.0-canary.0':
+    resolution: {integrity: sha512-1MOV8WxLEWb2CgUqUeE9A/oARh4E4Juco5Ds9lTwYqs7qT1efkj/2As0SAb1H1PdZ//svySOsgKouH3+qjKHEQ==}
 
   '@playwright/test@1.60.0':
     resolution: {integrity: sha512-O71yZIbAh/PxDMNGns37GHBIfrVkEVyn+AXyIa5dOTfb4/xNvRWV+Vv/NMbNCtODB/pO7vLlF2OTmMVLhmr7Ag==}
@@ -2941,7 +2993,73 @@ snapshots:
 
   '@paged-media/canvas-wasm@0.51.0': {}
 
+  '@paged-media/data-bundle@0.1.0-canary.0(react@18.3.1)':
+    dependencies:
+      '@paged-media/data-host-model': 0.1.0-canary.0
+      '@paged-media/plugin-api': 0.2.25-canary.0
+      '@paged-media/plugin-sdk': 0.2.25-canary.0(react@18.3.1)
+      react: 18.3.1
+
+  '@paged-media/data-host-model@0.1.0-canary.0':
+    dependencies:
+      '@paged-media/plugin-api': 0.2.25-canary.0
+
+  '@paged-media/draw-bundle@0.2.0-canary.0(react@18.3.1)':
+    dependencies:
+      '@paged-media/draw-geometry': 0.1.0-canary.0
+      '@paged-media/draw-tools': 0.1.0-canary.0
+      '@paged-media/plugin-api': 0.2.25-canary.0
+      '@paged-media/plugin-sdk': 0.2.25-canary.0(react@18.3.1)
+    transitivePeerDependencies:
+      - react
+
+  '@paged-media/draw-geometry@0.1.0-canary.0': {}
+
+  '@paged-media/draw-tools@0.1.0-canary.0':
+    dependencies:
+      '@paged-media/draw-geometry': 0.1.0-canary.0
+      '@paged-media/plugin-api': 0.2.25-canary.0
+
+  '@paged-media/image-glue@0.0.1-canary.0(react@18.3.1)':
+    dependencies:
+      '@paged-media/image-manifest': 0.0.1-canary.0
+      '@paged-media/plugin-api': 0.2.25-canary.0
+      '@paged-media/plugin-sdk': 0.2.25-canary.0(react@18.3.1)
+      react: 18.3.1
+
+  '@paged-media/image-manifest@0.0.1-canary.0': {}
+
   '@paged-media/introspect-wasm@0.51.0': {}
+
+  '@paged-media/plugin-api@0.2.25-canary.0':
+    dependencies:
+      '@types/react': 18.3.29
+
+  '@paged-media/plugin-sdk@0.2.25-canary.0(react@18.3.1)':
+    dependencies:
+      '@paged-media/plugin-api': 0.2.25-canary.0
+    optionalDependencies:
+      react: 18.3.1
+
+  '@paged-media/sheet-bundle@0.1.0-canary.0(react@18.3.1)':
+    dependencies:
+      '@paged-media/plugin-api': 0.2.25-canary.0
+      '@paged-media/plugin-sdk': 0.2.25-canary.0(react@18.3.1)
+      '@paged-media/sheet-host-model': 0.1.0-canary.0
+      react: 18.3.1
+
+  '@paged-media/sheet-host-model@0.1.0-canary.0':
+    dependencies:
+      '@paged-media/plugin-api': 0.2.25-canary.0
+
+  '@paged-media/web-bundle@0.1.0-canary.0(react@18.3.1)':
+    dependencies:
+      '@paged-media/plugin-api': 0.2.25-canary.0
+      '@paged-media/plugin-sdk': 0.2.25-canary.0(react@18.3.1)
+      '@paged-media/web-model': 0.1.0-canary.0
+      react: 18.3.1
+
+  '@paged-media/web-model@0.1.0-canary.0': {}
 
   '@playwright/test@1.60.0':
     dependencies:
