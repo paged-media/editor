@@ -1,0 +1,37 @@
+name: cf-setup
+
+# One-shot Cloudflare Pages configuration via the CF API, run in CI with the
+# CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID org secrets. Sets each project's
+# production branch to `main` and registers its custom domain. DNS records are
+# added separately (by a human) — registering the domain here just tells CF to
+# expect it. Idempotent: re-running is safe (domain add 409s harmlessly).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: configure paged-docs + paged-playground
+        env:
+          T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          A: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -e
+          base="https://api.cloudflare.com/client/v4/accounts/$A/pages/projects"
+          show() { python3 -c "import json,sys;d=json.load(sys.stdin);print('  ok' if d.get('success') else ('  '+str(d.get('errors'))))"; }
+          for entry in "paged-docs:docs.paged.media" "paged-playground:play.paged.media"; do
+            proj=${entry%%:*}; dom=${entry##*:}
+            echo "== $proj : current config"
+            curl -fsS "$base/$proj" -H "Authorization: Bearer $T" \
+              | python3 -c "import json,sys;r=json.load(sys.stdin)['result'];print('  production_branch=',r.get('production_branch'),'| domains=',r.get('domains'))"
+            echo "== $proj : set production_branch=main"
+            curl -fsS -X PATCH "$base/$proj" -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
+              -d '{"production_branch":"main"}' | show
+            echo "== $proj : register custom domain $dom"
+            curl -sS -X POST "$base/$proj/domains" -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
+              -d "{\"name\":\"$dom\"}" | show
+          done
