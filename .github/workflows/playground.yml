@@ -10,7 +10,8 @@ name: playground
 # the links resolve and upload the static dist (Actions → wrangler direct upload).
 #
 # Layout: editor at paged/editor, siblings at paged/plugin-* so the link paths
-# (../../../plugin-draw/… from apps/canvas) resolve. Private repos → SIBLING_REPOS_TOKEN.
+# (../../../plugin-draw/… from apps/canvas) resolve. All these repos are public,
+# so checkout needs no token.
 #
 # NOTE: the link-chain is fragile (install order matters; see root CLAUDE.md). The
 # first runs may need iteration on ordering / build-vs-source resolution.
@@ -41,37 +42,31 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: paged-media/plugin-sdk
-          token: ${{ secrets.SIBLING_REPOS_TOKEN }}
           path: paged/plugin-sdk
       - name: checkout plugin-draw
         uses: actions/checkout@v4
         with:
           repository: paged-media/plugin-draw
-          token: ${{ secrets.SIBLING_REPOS_TOKEN }}
           path: paged/plugin-draw
       - name: checkout plugin-web
         uses: actions/checkout@v4
         with:
           repository: paged-media/plugin-web
-          token: ${{ secrets.SIBLING_REPOS_TOKEN }}
           path: paged/plugin-web
       - name: checkout plugin-data
         uses: actions/checkout@v4
         with:
           repository: paged-media/plugin-data
-          token: ${{ secrets.SIBLING_REPOS_TOKEN }}
           path: paged/plugin-data
       - name: checkout plugin-sheets
         uses: actions/checkout@v4
         with:
           repository: paged-media/plugin-sheets
-          token: ${{ secrets.SIBLING_REPOS_TOKEN }}
           path: paged/plugin-sheets
       - name: checkout plugin-image
         uses: actions/checkout@v4
         with:
           repository: paged-media/plugin-image
-          token: ${{ secrets.SIBLING_REPOS_TOKEN }}
           path: paged/plugin-image
 
       - uses: pnpm/action-setup@v4
