@@ -23,8 +23,11 @@
 //
 // Protocol (origin-checked both ways):
 //   parent → frame : { type: "paged:run", id, source }
-//   frame  → parent : { type: "paged:ready" }                       (once the canvas is live)
+//   frame  → parent : { type: "paged:ready" }                       (canvas live + blank doc)
 //                     { type: "paged:result", id, output[], error } (after each run)
+//
+// On boot we open a blank document (the `file.new` command) so a script has
+// something to act on — otherwise paged.* calls fail with "no document loaded".
 //
 // Origin allowlist is the configured docs origin (VITE_DOCS_ORIGIN, default
 // https://docs.paged.media) plus localhost in dev — a message from anywhere else
@@ -34,6 +37,7 @@ import { useEffect } from "react";
 import { type CanvasHandleLike } from "@paged-media/shell";
 
 type ScriptClient = { executeScript(source: string): Promise<{ output: string[]; error: string | null }> };
+type Handle = CanvasHandleLike & { client?: ScriptClient };
 
 function allowedOrigins(): string[] {
   const configured = (import.meta.env.VITE_DOCS_ORIGIN as string | undefined) || "https://docs.paged.media";
@@ -42,9 +46,8 @@ function allowedOrigins(): string[] {
   return list;
 }
 
-function canvasClient(): ScriptClient | null {
-  const handle = (window as unknown as { __canvas?: CanvasHandleLike & { client?: ScriptClient } }).__canvas;
-  return handle?.client ?? null;
+function handle(): Handle | undefined {
+  return (window as unknown as { __canvas?: Handle }).__canvas;
 }
 
 export function IframeScriptBridge(): null {
@@ -55,11 +58,25 @@ export function IframeScriptBridge(): null {
     const allowed = allowedOrigins();
     const isAllowed = (origin: string) => allowed.includes(origin);
 
-    // Tell the embedder we're live, once the canvas client is wired up. The
-    // editor boots async (worker handshake), so poll briefly rather than assume.
+    // Open a blank document so scripts have a page to act on, mirroring how the
+    // command registry is invoked elsewhere (invoke ?? execute ?? run).
+    const newDocument = async () => {
+      const c = handle()?.registries?.commands as
+        | { invoke?: (id: string) => unknown; execute?: (id: string) => unknown; run?: (id: string) => unknown }
+        | undefined;
+      const fn = c?.invoke ?? c?.execute ?? c?.run;
+      if (fn) {
+        try {
+          await Promise.resolve(fn.call(c, "file.new"));
+        } catch {
+          /* a starter doc is best-effort — the bridge still works without one */
+        }
+      }
+    };
+
     let readySent = false;
-    const announce = () => {
-      if (readySent || !canvasClient()) return;
+    let booting = false;
+    const postReady = () => {
       readySent = true;
       for (const origin of allowed) {
         try {
@@ -69,9 +86,17 @@ export function IframeScriptBridge(): null {
         }
       }
     };
+
+    // The editor boots async (worker handshake); poll until the canvas client is
+    // wired, then open a blank doc and announce readiness exactly once.
     const poll = window.setInterval(() => {
-      announce();
-      if (readySent) window.clearInterval(poll);
+      if (readySent || booting || !handle()?.client) return;
+      booting = true;
+      void (async () => {
+        await newDocument();
+        postReady();
+        window.clearInterval(poll);
+      })();
     }, 150);
 
     const onMessage = async (event: MessageEvent) => {
@@ -87,7 +112,7 @@ export function IframeScriptBridge(): null {
         }
       };
 
-      const client = canvasClient();
+      const client = handle()?.client;
       if (!client) {
         reply({ output: [], error: "editor is still loading — try again in a moment" });
         return;
@@ -101,7 +126,6 @@ export function IframeScriptBridge(): null {
     };
 
     window.addEventListener("message", onMessage);
-    announce();
     return () => {
       window.clearInterval(poll);
       window.removeEventListener("message", onMessage);
