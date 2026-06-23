@@ -67,7 +67,8 @@ export function IframeScriptBridge(): null {
       const fn = c?.invoke ?? c?.execute ?? c?.run;
       if (fn) {
         try {
-          await Promise.resolve(fn.call(c, "file.new"));
+          // The registered id is namespaced `paged.file.new` (not `file.new`).
+          await Promise.resolve(fn.call(c, "paged.file.new"));
         } catch {
           /* a starter doc is best-effort — the bridge still works without one */
         }
