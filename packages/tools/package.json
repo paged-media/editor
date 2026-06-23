@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "@paged-media/client": "workspace:*",
-    "@paged-media/draw-geometry": "0.1.0-canary.0",
-    "@paged-media/shell": "workspace:*"
+    "@paged-media/shell": "workspace:*",
+    "@paged-media/draw": "0.1.0-canary.1"
   },
   "peerDependencies": {
     "react": "^18.3.0",

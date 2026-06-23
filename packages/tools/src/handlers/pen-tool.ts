@@ -41,7 +41,7 @@
 //   Escape            → cancel, zero mutation (DR-11)
 //
 // The geometry primitives (corner/mirror/constrain/flatten) come from
-// `@paged-media/draw-geometry` — the same host-free math the pencil
+// `@paged-media/draw/geometry` — the same host-free math the pencil
 // handler and the paged.draw PenMachine share, so the corner/smooth
 // shapes are identical across them. The small click→drag→close state
 // machine lives here because it's the editor's authoring loop, not
@@ -61,7 +61,7 @@ import {
   mirrorHandle,
   type AnchorTriple,
   type Vec2,
-} from "@paged-media/draw-geometry";
+} from "@paged-media/draw/geometry";
 
 import { beginPageDrag, endLocalFor, mutateAndSelect, pxToPt, type PageDrag } from "./shared";
 

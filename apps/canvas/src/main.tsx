@@ -62,11 +62,11 @@ import CanvasRenderWorker from "./worker/worker.ts?worker";
 import { BUILT_IN_TOOLS } from "@paged-media/tools";
 import { loadBundle, createDataProviderRegistry } from "@paged-media/plugin-sdk";
 import type { SchemaPanelRenderer as SchemaPanelRendererType } from "@paged-media/plugin-api";
-import { drawBundle } from "@paged-media/draw-bundle";
-import { webBundle } from "@paged-media/web-bundle";
-import { dataBundle } from "@paged-media/data-bundle";
-import { sheetBundle } from "@paged-media/sheet-bundle";
-import { imageBundle } from "@paged-media/image-glue";
+import { drawBundle } from "@paged-media/draw";
+import { webBundle } from "@paged-media/web";
+import { dataBundle } from "@paged-media/data";
+import { sheetBundle } from "@paged-media/sheet";
+import { imageBundle } from "@paged-media/image";
 import { createEditorAssetSource } from "./plugin-asset-source";
 import { createEditorBlobStore } from "./plugin-blob-store";
 import { createEditorClipboardBackend } from "./plugin-clipboard";
@@ -76,7 +76,7 @@ import { createEditorWorkerBackend } from "./plugin-worker";
 // editor maps the bundle's DECLARED module path ("workers/decode.js") to
 // this URL; the bundle can spawn only what the editor knows it ships.
 // @ts-ignore — `?worker&url` is a Vite affordance (string URL).
-import imageDecodeWorkerUrl from "@paged-media/image-glue/decode-worker?worker&url";
+import imageDecodeWorkerUrl from "@paged-media/image/decode-worker?worker&url";
 import { createEditorConsentBackend } from "./plugin-consent";
 import { ConsentDialog } from "./ConsentDialog";
 import { createEditorSecretStore } from "./plugin-secret-store";

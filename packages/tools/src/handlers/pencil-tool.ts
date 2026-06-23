@@ -27,7 +27,7 @@
 // is smooth cubics, not the jittery samples. One stroke per element —
 // lift-and-redraw starts a new path (v1 semantics).
 //
-// The RDP implementation moved to `@paged-media/draw-geometry`
+// The RDP implementation moved to `@paged-media/draw/geometry`
 // (plugin-draw milestone D1) — same algorithm, now shared with the
 // paged.draw machines and unit-tested there.
 //
@@ -45,7 +45,7 @@ import type {
   PagedEditor,
 } from "@paged-media/shell";
 
-import { simplifyRdp, strokeWidthFromPressure } from "@paged-media/draw-geometry";
+import { simplifyRdp, strokeWidthFromPressure } from "@paged-media/draw/geometry";
 
 import {
   beginPageDrag,
