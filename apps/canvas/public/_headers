@@ -35,6 +35,12 @@
   # requiring CORP — and the CSP below already walls fetches to same-origin, so
   # there are none. Lock-step with the dev header in apps/canvas/vite.config.ts.
   Cross-Origin-Embedder-Policy: credentialless
+  # Allow this document to be embedded as a cross-origin <iframe> by the docs
+  # scripting playground. A COEP parent (docs.paged.media) blocks a cross-origin
+  # iframe with ERR_BLOCKED_BY_RESPONSE unless the embedded document opts in with
+  # CORP — without this the iframe shows "refused to connect". `cross-origin` (vs
+  # `same-site`) keeps the open playground embeddable from anywhere.
+  Cross-Origin-Resource-Policy: cross-origin
   # D-03 network wall — bound EVERY page/worker fetch to same-origin + local
   # bytes; no external origin is reachable (every first-party bundle declares
   # `network: false`, so the consented set is empty). `connect-src` only — no

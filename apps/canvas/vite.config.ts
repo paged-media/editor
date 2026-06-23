@@ -73,6 +73,8 @@ const crossOriginIsolation = {
       // credentialless (lock-step with public/_headers) so the docs playground
       // can embed the dev server cross-origin; still crossOriginIsolated for SAB.
       res.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
+      // Opt in to cross-origin embedding (a COEP parent blocks the iframe otherwise).
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
       next();
     });
   },
