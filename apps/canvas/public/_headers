@@ -26,7 +26,15 @@
 
 /*
   Cross-Origin-Opener-Policy: same-origin
-  Cross-Origin-Embedder-Policy: require-corp
+  # `credentialless` (not `require-corp`) so this app can be embedded as a
+  # cross-origin <iframe> by the docs scripting playground (docs.paged.media ships
+  # COEP: credentialless, and Chrome will not nest a `require-corp` document inside
+  # a `credentialless` one — the modes must match). Both values yield
+  # crossOriginIsolated === true, so SharedArrayBuffer still works; credentialless
+  # just loads any cross-origin subresource without credentials instead of
+  # requiring CORP — and the CSP below already walls fetches to same-origin, so
+  # there are none. Lock-step with the dev header in apps/canvas/vite.config.ts.
+  Cross-Origin-Embedder-Policy: credentialless
   # D-03 network wall — bound EVERY page/worker fetch to same-origin + local
   # bytes; no external origin is reachable (every first-party bundle declares
   # `network: false`, so the consented set is empty). `connect-src` only — no

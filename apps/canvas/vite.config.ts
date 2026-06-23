@@ -70,7 +70,9 @@ const crossOriginIsolation = {
   configureServer(server: import("vite").ViteDevServer) {
     server.middlewares.use((_req, res, next) => {
       res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
-      res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+      // credentialless (lock-step with public/_headers) so the docs playground
+      // can embed the dev server cross-origin; still crossOriginIsolated for SAB.
+      res.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
       next();
     });
   },
