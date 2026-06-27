@@ -22,12 +22,19 @@
 // live editor over postMessage. Mounted only when the URL carries `?embed=script`.
 //
 // Protocol (origin-checked both ways):
-//   parent → frame : { type: "paged:run", id, source }
-//   frame  → parent : { type: "paged:ready" }                       (canvas live + blank doc)
+//   parent → frame : { type: "paged:run", id, source, reseed? }
+//   frame  → parent : { type: "paged:ready" }                       (canvas live + seeded doc)
 //                     { type: "paged:result", id, output[], error } (after each run)
 //
 // On boot we open a blank document (the `file.new` command) so a script has
 // something to act on — otherwise paged.* calls fail with "no document loaded".
+//
+// Seeded playgrounds: `?embed=script&seed=<name>` runs a named PURE-paged.*
+// prelude (see ./seeds) after `file.new` and before `paged:ready`, so a script
+// starts from real, addressable content with a frame selected. When a seed is
+// configured, each `paged:run` re-blanks + re-seeds first (unless `reseed:false`)
+// so a mutating snippet starts clean every time instead of stacking. No seed ⇒
+// the bridge behaves exactly as before (a blank doc, no reseed).
 //
 // Origin allowlist is the configured docs origin (VITE_DOCS_ORIGIN, default
 // https://docs.paged.media) plus localhost in dev — a message from anywhere else
@@ -35,6 +42,7 @@
 
 import { useEffect } from "react";
 import { type CanvasHandleLike } from "@paged-media/shell";
+import { seedPrelude } from "./seeds";
 
 type ScriptClient = { executeScript(source: string): Promise<{ output: string[]; error: string | null }> };
 type Handle = CanvasHandleLike & { client?: ScriptClient };
@@ -58,6 +66,9 @@ export function IframeScriptBridge(): null {
     const allowed = allowedOrigins();
     const isAllowed = (origin: string) => allowed.includes(origin);
 
+    // A named seed prelude (pure paged.* source) configured via ?seed=<name>.
+    const seedSource = seedPrelude(params.get("seed"));
+
     // Open a blank document so scripts have a page to act on, mirroring how the
     // command registry is invoked elsewhere (invoke ?? execute ?? run).
     const newDocument = async () => {
@@ -72,6 +83,19 @@ export function IframeScriptBridge(): null {
         } catch {
           /* a starter doc is best-effort — the bridge still works without one */
         }
+      }
+    };
+
+    // Blank the document, then run the configured seed prelude (if any). The
+    // seed is pure paged.* so it runs through the same executeScript path the
+    // user's snippet does — what seeds, ships and is what CI validates.
+    const resetAndSeed = async () => {
+      await newDocument();
+      if (!seedSource) return;
+      try {
+        await handle()?.client?.executeScript(seedSource);
+      } catch {
+        /* a seed is best-effort — the playground still runs without it */
       }
     };
 
@@ -94,7 +118,7 @@ export function IframeScriptBridge(): null {
       if (readySent || booting || !handle()?.client) return;
       booting = true;
       void (async () => {
-        await newDocument();
+        await resetAndSeed();
         postReady();
         window.clearInterval(poll);
       })();
@@ -102,7 +126,7 @@ export function IframeScriptBridge(): null {
 
     const onMessage = async (event: MessageEvent) => {
       if (!isAllowed(event.origin)) return;
-      const data = event.data as { type?: string; id?: number; source?: string };
+      const data = event.data as { type?: string; id?: number; source?: string; reseed?: boolean };
       if (data?.type !== "paged:run" || typeof data.source !== "string") return;
 
       const reply = (payload: { output: string[]; error: string | null }) => {
@@ -119,6 +143,12 @@ export function IframeScriptBridge(): null {
         return;
       }
       try {
+        // When a seed is configured, re-blank + re-seed before each run so a
+        // mutating snippet starts from identical content (Reset semantics),
+        // unless the embedder explicitly opts out with reseed:false.
+        if (seedSource && data.reseed !== false) {
+          await resetAndSeed();
+        }
         const result = await client.executeScript(data.source);
         reply({ output: result.output ?? [], error: result.error ?? null });
       } catch (err) {

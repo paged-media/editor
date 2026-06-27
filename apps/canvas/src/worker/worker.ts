@@ -560,6 +560,14 @@ async function dispatch(data: IncomingMessage): Promise<void> {
       if (renderer) {
         renderer.markDirty(reply.payload?.pageIds ?? []);
       }
+    } else if (reply.kind === "scriptResult") {
+      // A paged.* run may have mutated the model. Its reply carries no
+      // pageIds (a script can touch any page), so markDirty([]) clears all
+      // tiles + flags dirty — without this a pure paged.* mutation lands in
+      // the model but the canvas never repaints.
+      if (renderer) {
+        renderer.markDirty([]);
+      }
     }
   }
 }
