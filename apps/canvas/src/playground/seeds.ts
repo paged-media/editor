@@ -38,7 +38,14 @@ export type SeedId =
   | "styled-story"
   | "swatches-and-styles"
   | "image-frame"
-  | "a-table";
+  | "a-table"
+  // Rich DTP starter documents — realistic prefilled layouts so a snippet's
+  // change lands on real content, plus a furniture page for "create" snippets.
+  | "flyer"
+  | "article-spread"
+  | "report-page"
+  | "catalog"
+  | "starter-page";
 
 /** A seed: a short human label + the pure-`paged.*` prelude that builds it. */
 export interface Seed {
@@ -75,11 +82,13 @@ if (stories.length) {
 
   "two-frames": {
     title: "Two frames",
-    summary: "A text frame and a graphic frame — for grouping, threading, and z-order examples.",
+    summary: "A text frame and a filled graphic frame (selected) — for grouping, threading, and z-order examples.",
     prelude: `
 const pid = JSON.parse(paged.pages())[0].selfId;
 paged.insertTextFrame(pid, [72, 72, 300, 320]);
-paged.insertFrame(pid, [340, 72, 520, 320]);
+const box = paged.insertFrame(pid, [340, 72, 520, 320]);
+paged.set(box, "frameFillColor", "Color/Black");
+paged.set(box, "frameFillTint", 20);
 `.trim(),
   },
 
@@ -101,18 +110,28 @@ if (ps.length) {
 
   "swatches-and-styles": {
     title: "Swatches & styles",
-    summary: "The default palette plus a couple of named styles — for color/style reference reads.",
+    summary: "A row of swatch chips drawn from the default palette — for colour/style reference reads.",
     prelude: `
 const pid = JSON.parse(paged.pages())[0].selfId;
-paged.insertFrame(pid, [120, 120, 320, 420]);
+const colors = ["Color/Black", "Color/Red", "Color/Black", "Color/Black"];
+const tints = [100, 100, 50, 20];
+for (let i = 0; i < colors.length; i++) {
+  const left = 72 + i * 120;
+  const chip = paged.insertFrame(pid, [120, left, 240, left + 96]);
+  paged.set(chip, "frameFillColor", colors[i]);
+  paged.set(chip, "frameFillTint", tints[i]);
+}
 `.trim(),
   },
 
   "image-frame": {
     title: "An image frame",
-    summary: "A graphic frame ready for placeImage, selected.",
+    summary: "An empty picture frame (selected) under a header band — ready for placeImage in a real layout.",
     prelude: `
 const pid = JSON.parse(paged.pages())[0].selfId;
+const head = paged.insertFrame(pid, [54, 96, 96, 480]);
+paged.set(head, "frameFillColor", "Color/Black");
+paged.set(head, "frameFillTint", 12);
 paged.insertFrame(pid, [120, 96, 420, 480]);
 `.trim(),
   },
@@ -127,6 +146,121 @@ const sid = JSON.parse(paged.stories())[0].selfId;
 if (typeof paged.insertTable === "function") {
   paged.insertTable(sid, { rows: 3, cols: 3 });
 }
+`.trim(),
+  },
+
+  // ── Rich DTP templates ─────────────────────────────────────────────────────
+  // Realistic prefilled layouts so a snippet's change lands on real content.
+  // The text-bearing ones use addText() to map each new frame to ITS OWN story
+  // (story ids are diffed before/after insert), so multi-frame layouts are safe.
+
+  flyer: {
+    title: "Event flyer",
+    summary: "A poster page — colour banner, headline, subhead and a picture block; the headline is selected.",
+    prelude: `
+const pid = JSON.parse(paged.pages())[0].selfId;
+const addText = function (bounds, text) {
+  const before = JSON.parse(paged.stories()).map(function (s) { return s.selfId; });
+  const ref = paged.insertTextFrame(pid, bounds);
+  const after = JSON.parse(paged.stories());
+  for (let i = 0; i < after.length; i++) {
+    if (before.indexOf(after[i].selfId) === -1) {
+      paged.insertText(after[i].selfId, 0, text);
+      break;
+    }
+  }
+  return ref;
+};
+const banner = paged.insertFrame(pid, [54, 54, 150, 558]);
+paged.set(banner, "frameFillColor", "Color/Red");
+const title = addText([170, 54, 280, 558], "Summer Open House");
+addText([288, 54, 344, 558], "Saturday 14 June, 10am to 4pm, Studio 7");
+const photo = paged.insertFrame(pid, [360, 54, 720, 558]);
+paged.set(photo, "frameFillColor", "Color/Black");
+paged.set(photo, "frameFillTint", 18);
+paged.setElementSelection([title]);
+`.trim(),
+  },
+
+  "article-spread": {
+    title: "Magazine article",
+    summary: "A headline over a two-column story, a tinted pull-quote and a picture block; the body is selected.",
+    prelude: `
+const pid = JSON.parse(paged.pages())[0].selfId;
+const addText = function (bounds, text) {
+  const before = JSON.parse(paged.stories()).map(function (s) { return s.selfId; });
+  const ref = paged.insertTextFrame(pid, bounds);
+  const after = JSON.parse(paged.stories());
+  for (let i = 0; i < after.length; i++) {
+    if (before.indexOf(after[i].selfId) === -1) {
+      paged.insertText(after[i].selfId, 0, text);
+      break;
+    }
+  }
+  return ref;
+};
+addText([54, 54, 108, 558], "The Long Read");
+const body = addText([118, 54, 600, 558], "The body copy runs in two balanced columns beneath the headline, flowing from the left column into the right as one continuous story set at a steady reading size.");
+paged.set(body, "textFrameColumnCount", 2);
+paged.set(body, "textFrameColumnGutter", 16);
+const quote = addText([620, 54, 720, 320], "A pull quote lifts a line out of the story.");
+paged.set(quote, "frameFillColor", "Color/Black");
+paged.set(quote, "frameFillTint", 10);
+const photo = paged.insertFrame(pid, [620, 340, 720, 558]);
+paged.set(photo, "frameFillColor", "Color/Black");
+paged.set(photo, "frameFillTint", 25);
+paged.setElementSelection([body]);
+`.trim(),
+  },
+
+  "report-page": {
+    title: "Business report",
+    summary: "A header band, a heading and intro, and a figures table — a single content page.",
+    prelude: `
+const pid = JSON.parse(paged.pages())[0].selfId;
+const band = paged.insertFrame(pid, [48, 54, 96, 558]);
+paged.set(band, "frameFillColor", "Color/Black");
+paged.set(band, "frameFillTint", 12);
+paged.insertTextFrame(pid, [112, 54, 720, 558]);
+const sid = JSON.parse(paged.stories())[0].selfId;
+paged.insertText(sid, 0, "Quarterly Report\\nThe summary below introduces this quarter's figures.");
+if (typeof paged.insertTable === "function") {
+  paged.insertTable(sid, { rows: 4, cols: 3, headerRows: 1 });
+}
+`.trim(),
+  },
+
+  catalog: {
+    title: "Product catalog",
+    summary: "A 3x2 grid of product tiles — for grouping, selection and layout examples.",
+    prelude: `
+const pid = JSON.parse(paged.pages())[0].selfId;
+const lefts = [54, 222, 390];
+const tops = [96, 372];
+for (let r = 0; r < tops.length; r++) {
+  for (let c = 0; c < lefts.length; c++) {
+    const top = tops[r];
+    const left = lefts[c];
+    const tile = paged.insertFrame(pid, [top, left, top + 220, left + 144]);
+    paged.set(tile, "frameFillColor", "Color/Black");
+    paged.set(tile, "frameFillTint", 15 + (r * 3 + c) * 12);
+  }
+}
+`.trim(),
+  },
+
+  "starter-page": {
+    title: "Starter page",
+    summary: "Header and footer furniture with an open middle — visible context for elements a script creates. No stories, so a created frame owns the first story.",
+    prelude: `
+const pid = JSON.parse(paged.pages())[0].selfId;
+const head = paged.insertFrame(pid, [40, 54, 92, 558]);
+paged.set(head, "frameFillColor", "Color/Black");
+paged.set(head, "frameFillTint", 12);
+paged.insertLine(pid, [54, 740], [558, 740]);
+const foot = paged.insertFrame(pid, [748, 54, 762, 558]);
+paged.set(foot, "frameFillColor", "Color/Black");
+paged.set(foot, "frameFillTint", 8);
 `.trim(),
   },
 };
