@@ -19,5 +19,10 @@
     "eslint": "9.39.4",
     "globals": "15.15.0",
     "typescript-eslint": "8.60.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild@>=0.27.3 <0.28.1": "^0.28.1"
+    }
   }
 }
