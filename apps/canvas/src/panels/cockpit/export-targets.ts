@@ -39,13 +39,7 @@ import { useSyncExternalStore } from "react";
 import type { CanvasClient } from "@paged-media/client";
 import type { ExporterContribution } from "@paged-media/shell";
 
-export type ExportTargetId =
-  | "pdf-x4"
-  | "image"
-  | "idml"
-  | "web"
-  | "social"
-  | "package";
+export type ExportTargetId = "pdf-x4" | "image" | "web" | "social" | "package";
 
 export interface ExportTarget {
   id: ExportTargetId;
@@ -57,8 +51,9 @@ export interface ExportTarget {
   /** How a LIVE target runs (HONEST targets have no action).
    *  - "dialog": opens the ExportPdfDialog (settings live there)
    *  - "image":  runs the inline PNG page export (settings here)
-   *  - "idml":   serialises + downloads the IDML package */
-  action?: "dialog" | "image" | "idml";
+   *  (IDML export moved to the paged.publish plugin exporter — ADR-022
+   *  Phase 5 — so it's no longer a built-in target.) */
+  action?: "dialog" | "image";
 }
 
 export const EXPORT_TARGETS: ExportTarget[] = [
@@ -78,15 +73,16 @@ export const EXPORT_TARGETS: ExportTarget[] = [
     live: true,
     action: "image",
   },
+  // IDML export is now the paged.publish plugin's exporter (ADR-022 Phase 5)
+  // — it appears in the Export Center's plugin-exporters section via the
+  // registry, no longer a built-in static target.
   {
-    id: "idml",
-    icon: "ui-export",
-    title: "IDML package",
-    note: "Round-trip source · re-openable in InDesign",
-    live: true,
-    action: "idml",
+    id: "web",
+    icon: "ui-web",
+    title: "Web bundle",
+    note: "Responsive HTML",
+    live: false,
   },
-  { id: "web", icon: "ui-web", title: "Web bundle", note: "Responsive HTML", live: false },
   {
     id: "social",
     icon: "ui-social",
@@ -147,7 +143,10 @@ function loadImageSettings(): ImageSettings {
   try {
     const raw = localStorage.getItem(IMAGE_KEY);
     if (!raw) return IMAGE_DEFAULTS;
-    return { ...IMAGE_DEFAULTS, ...(JSON.parse(raw) as Partial<ImageSettings>) };
+    return {
+      ...IMAGE_DEFAULTS,
+      ...(JSON.parse(raw) as Partial<ImageSettings>),
+    };
   } catch {
     return IMAGE_DEFAULTS;
   }
@@ -201,7 +200,10 @@ export async function runImageExport(
     activePageIndex?: number;
     baseName?: string;
   },
-  triggerDownload: (bytes: Uint8Array, filename: string) => void = defaultDownload,
+  triggerDownload: (
+    bytes: Uint8Array,
+    filename: string,
+  ) => void = defaultDownload,
 ): Promise<ImageExportResult> {
   const { pageIds, pageSizesPt, settings } = args;
   if (pageIds.length === 0) return { files: 0 };
@@ -276,27 +278,5 @@ function pluginDownload(
   URL.revokeObjectURL(url);
 }
 
-/** LIVE IDML output — serialise the loaded document and download the
- *  `.idml` package (the same bytes Save As IDML produces). */
-export async function runIdmlExport(
-  client: Pick<CanvasClient, "exportIdml">,
-  baseName: string | undefined,
-  triggerDownload: (bytes: Uint8Array, filename: string) => void = (
-    bytes,
-    filename,
-  ) => {
-    const blob = new Blob([bytes.slice()], {
-      type: "application/vnd.adobe.indesign-idml-package",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  },
-): Promise<void> {
-  const bytes = await client.exportIdml();
-  const base = (baseName || "document").replace(/\.idml$/i, "");
-  triggerDownload(bytes, `${base}.idml`);
-}
+// runIdmlExport removed — IDML export is now the paged.publish plugin's
+// exporter (ADR-022 Phase 5), run through the shared runPluginExporter above.

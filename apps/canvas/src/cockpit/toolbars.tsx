@@ -408,7 +408,9 @@ export function PrepressToolbar(_props: ModeToolbarProps) {
       <Chip
         icon="ui-target"
         testId="output-profile"
-        title={profileActive ? "Working CMYK profile" : "No working CMYK profile"}
+        title={
+          profileActive ? "Working CMYK profile" : "No working CMYK profile"
+        }
         disabled
       >
         {profile}
@@ -437,7 +439,9 @@ export function PrepressToolbar(_props: ModeToolbarProps) {
       <Chip
         icon="ui-displays"
         testId="prepress-issues"
-        title={hasRun ? "Last preflight result" : "Run Validate to see findings"}
+        title={
+          hasRun ? "Last preflight result" : "Run Validate to see findings"
+        }
         disabled
       >
         {issueLabel}
@@ -457,9 +461,7 @@ export function PrepressToolbar(_props: ModeToolbarProps) {
         testId="prepress-bleed"
         on={bleedOn}
         title={bleedOn ? "Back to normal view" : "Show the bleed area"}
-        onClick={() =>
-          screenMode.setScreenMode(bleedOn ? "normal" : "bleed")
-        }
+        onClick={() => screenMode.setScreenMode(bleedOn ? "normal" : "bleed")}
       >
         Bleed
       </Chip>
@@ -545,15 +547,9 @@ export function ExportToolbar(_props: ModeToolbarProps) {
       >
         Page images
       </Chip>
-      <Chip
-        icon="ui-doc"
-        testId="export-idml"
-        disabled={!handle}
-        title="Set up IDML package export in the Export Center"
-        onClick={() => setSelectedExportTarget("idml")}
-      >
-        IDML
-      </Chip>
+      {/* IDML export moved to the paged.publish plugin exporter (ADR-022
+          Phase 5) — it lives in the Export Center's plugin-exporters section,
+          so there's no built-in IDML target chip here anymore. */}
       <Sep />
       <Soon icon="ui-web">Web</Soon>
     </>

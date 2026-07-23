@@ -70,6 +70,7 @@ import { webBundle } from "@paged-media/web";
 import { dataBundle } from "@paged-media/data";
 import { sheetBundle } from "@paged-media/sheet";
 import { imageBundle } from "@paged-media/image";
+import { publishBundle } from "@paged-media/publish";
 import { createEditorAssetSource } from "./plugin-asset-source";
 import { createEditorBlobStore } from "./plugin-blob-store";
 import { createEditorClipboardBackend } from "./plugin-clipboard";
@@ -1032,6 +1033,10 @@ function PluginBundles() {
       // in the bundle realm — I-07); a missing artifact / no WebGPU
       // degrades honestly in-panel.
       loadBundle(() => pagedRef.current, imageBundle, hostOptions),
+      // ADR-022 Phase 4/5 — paged.publish: the IDML importer (routes .idml to
+      // host.nativeDocument.open) + exporter (reuses the engine serializer).
+      // Replaces the Export Center's built-in static IDML target.
+      loadBundle(() => pagedRef.current, publishBundle, hostOptions),
     ];
     return () => {
       for (const l of loaded) l.dispose();
