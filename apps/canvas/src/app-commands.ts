@@ -41,6 +41,7 @@ import type {
 
 export const PAGED_EDITOR_UNDO = "paged.editor.undo";
 export const PAGED_EDITOR_REDO = "paged.editor.redo";
+export const PAGED_FILE_OPEN_PDF = "paged.file.openPdf";
 export const PAGED_FILE_SAVE_AS_IDML = "paged.file.saveAsIdml";
 export const PAGED_VIEW_ZOOM_IN = "paged.view.zoomIn";
 export const PAGED_VIEW_ZOOM_OUT = "paged.view.zoomOut";
@@ -50,6 +51,10 @@ export const PAGED_VIEW_ZOOM_FIT = "paged.view.zoomFit";
 export interface AppCommandHandlers {
   undo: () => void | Promise<void>;
   redo: () => void | Promise<void>;
+  /** Pick a `.pdf` and open it as an editable native document through the
+   *  paged.pdf importer (pdf.js reconstruction → host.nativeDocument.open).
+   *  The counterpart to the shell's "Open IDML…", for the plugin format. */
+  openPdf: () => void | Promise<void>;
   /** W3.B2 — serialise the loaded document to an `.idml` package and
    *  trigger a browser download (mirrors Export PDF's download). */
   saveAsIdml: () => void | Promise<void>;
@@ -78,6 +83,12 @@ export function buildAppCommands(
       title: "Redo",
       category: "Edit",
       handler: () => handlers.redo(),
+    },
+    {
+      id: PAGED_FILE_OPEN_PDF,
+      title: "Open PDF…",
+      category: "File",
+      handler: () => handlers.openPdf(),
     },
     {
       id: PAGED_FILE_SAVE_AS_IDML,
@@ -125,6 +136,14 @@ export const APP_MENU_ITEMS: Array<{
   order?: number;
   group?: string;
 }> = [
+  // File menu — "Open PDF…" sits right after the shell's "Open IDML…"
+  // (order 10, group "open"), the plugin-format sibling of the native open.
+  {
+    path: "File/Open PDF…",
+    command: PAGED_FILE_OPEN_PDF,
+    order: 15,
+    group: "open",
+  },
   // File menu — real "Save As IDML…" (W3.B2). Sits in the "save"
   // group just below the disabled "Save as…" kit seam.
   {

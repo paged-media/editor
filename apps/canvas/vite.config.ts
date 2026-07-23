@@ -130,7 +130,9 @@ function fontsRoute(): import("vite").Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if (!req.url || !req.url.startsWith("/fonts/")) return next();
-        const rel = decodeURIComponent(req.url.slice("/fonts/".length).split("?")[0]);
+        const rel = decodeURIComponent(
+          req.url.slice("/fonts/".length).split("?")[0],
+        );
         if (rel.includes("/") || rel.includes("..") || rel === "") {
           res.statusCode = 400;
           return res.end("bad path");
@@ -144,7 +146,12 @@ function fontsRoute(): import("vite").Plugin {
           return next();
         }
         const ext = abs.split(".").pop()?.toLowerCase() ?? "";
-        const mime = ext === "ttf" ? "font/ttf" : ext === "otf" ? "font/otf" : "application/octet-stream";
+        const mime =
+          ext === "ttf"
+            ? "font/ttf"
+            : ext === "otf"
+              ? "font/otf"
+              : "application/octet-stream";
         res.setHeader("Content-Type", mime);
         res.setHeader("Cache-Control", "no-cache");
         createReadStream(abs).pipe(res);
@@ -181,7 +188,11 @@ function corpusIdmlRoute(): import("vite").Plugin {
   const SAMPLES_DIR = resolve(CORPUS_ROOT, "samples");
   const MANIFEST = resolve(CORPUS_ENVATO, "manifest.json");
   const STAGE_RANK: Record<string, number> = { smoke: 0, gated: 1, skip: 2 };
-  const GROUP_RANK: Record<string, number> = { generated: 0, sample: 1, pack: 2 };
+  const GROUP_RANK: Record<string, number> = {
+    generated: 0,
+    sample: 1,
+    pack: 2,
+  };
   // List the *.idml basenames in a flat dir (generated / samples).
   const listIdml = (dir: string): string[] => {
     try {
@@ -197,7 +208,9 @@ function corpusIdmlRoute(): import("vite").Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if (!req.url || !req.url.startsWith("/corpus/idml/")) return next();
-        const rest = decodeURIComponent(req.url.slice("/corpus/idml/".length).split("?")[0]);
+        const rest = decodeURIComponent(
+          req.url.slice("/corpus/idml/".length).split("?")[0],
+        );
 
         if (rest === "list") {
           const entries: Array<{
@@ -208,10 +221,18 @@ function corpusIdmlRoute(): import("vite").Plugin {
           }> = [];
           // generated/* + samples/* — flat dirs of <base>.idml
           for (const base of listIdml(GENERATED_DIR)) {
-            entries.push({ id: `generated/${base}`, label: base, group: "generated" });
+            entries.push({
+              id: `generated/${base}`,
+              label: base,
+              group: "generated",
+            });
           }
           for (const base of listIdml(SAMPLES_DIR)) {
-            entries.push({ id: `samples/${base}`, label: base, group: "sample" });
+            entries.push({
+              id: `samples/${base}`,
+              label: base,
+              group: "sample",
+            });
           }
           // packs/* — <name>/template.idml, stage from the fidelity manifest
           const stageByName = new Map<string, string>();
@@ -228,7 +249,10 @@ function corpusIdmlRoute(): import("vite").Plugin {
           try {
             for (const name of readdirSync(PACKS_DIR)) {
               try {
-                if (!statSync(resolve(PACKS_DIR, name, "template.idml")).isFile()) continue;
+                if (
+                  !statSync(resolve(PACKS_DIR, name, "template.idml")).isFile()
+                )
+                  continue;
               } catch {
                 continue; // not a pack dir / no staged idml
               }
@@ -245,7 +269,8 @@ function corpusIdmlRoute(): import("vite").Plugin {
           entries.sort(
             (a, b) =>
               (GROUP_RANK[a.group] ?? 3) - (GROUP_RANK[b.group] ?? 3) ||
-              (STAGE_RANK[a.stage ?? ""] ?? 1) - (STAGE_RANK[b.stage ?? ""] ?? 1) ||
+              (STAGE_RANK[a.stage ?? ""] ?? 1) -
+                (STAGE_RANK[b.stage ?? ""] ?? 1) ||
               a.label.localeCompare(b.label),
           );
           res.setHeader("Content-Type", "application/json");
@@ -257,14 +282,17 @@ function corpusIdmlRoute(): import("vite").Plugin {
           const id = rest.slice("file/".length);
           const parts = id.split("/");
           // Accept "<group>/<name>" or legacy "<name>" (defaults to a pack).
-          const [group, name] = parts.length === 2 ? parts : ["packs", parts[0]];
-          const bad = (s: string) => s === "" || s.includes("..") || s.includes("\\");
+          const [group, name] =
+            parts.length === 2 ? parts : ["packs", parts[0]];
+          const bad = (s: string) =>
+            s === "" || s.includes("..") || s.includes("\\");
           let abs: string | null = null;
           if (bad(name)) {
             res.statusCode = 400;
             return res.end("bad name");
           }
-          if (group === "generated") abs = resolve(GENERATED_DIR, `${name}.idml`);
+          if (group === "generated")
+            abs = resolve(GENERATED_DIR, `${name}.idml`);
           else if (group === "samples" || group === "sample")
             abs = resolve(SAMPLES_DIR, `${name}.idml`);
           else if (group === "packs" || group === "pack")
@@ -329,14 +357,17 @@ function duckdbDistRoute(): import("vite").Plugin {
   // `.map` sourcemaps are matched too so the worker's lazy sourcemap fetch
   // doesn't trip the SPA fallback either.
   const isDuckDbAsset = (name: string): boolean =>
-    /^duckdb-(browser|coi|eh|mvp)[\w.-]*\.(js|cjs|mjs|wasm)(\.map)?$/.test(name);
+    /^duckdb-(browser|coi|eh|mvp)[\w.-]*\.(js|cjs|mjs|wasm)(\.map)?$/.test(
+      name,
+    );
   // The API-entry modules that carry the bare `apache-arrow` import (NOT the
   // worker IIFEs, which are self-contained). These get a body rewrite.
   const needsArrowRewrite = (name: string): boolean =>
     /^duckdb-browser\.(c?js|mjs)$/.test(name);
   const mimeFor = (name: string): string => {
     if (name.endsWith(".wasm")) return "application/wasm";
-    if (name.endsWith(".map") || name.endsWith(".json")) return "application/json";
+    if (name.endsWith(".map") || name.endsWith(".json"))
+      return "application/json";
     // .js / .cjs / .mjs — a worker script must be served as JS (a `<`-leading
     // HTML body is the exact failure this route fixes).
     return "text/javascript";
@@ -446,7 +477,10 @@ export default defineConfig({
     // Decision-B: the wasm loader ships in @paged-media/canvas-wasm.
     // Keep it out of the dep pre-bundle so the worker's dynamic import
     // + `?url` wasm asset resolve through Vite's module graph intact.
-    exclude: ["@paged-media/canvas-wasm"],
+    // @paged-media/pdf ships the same shape (the pdf-import wasm mapper +
+    // pdf.js worker, both loaded via `?url`); esbuild's dep-optimizer can't
+    // read a `?url` import, so exclude it too and let Vite resolve the assets.
+    exclude: ["@paged-media/canvas-wasm", "@paged-media/pdf"],
     // Pre-bundle apache-arrow at server startup. The DuckDB-WASM API entry's
     // bare `apache-arrow` import is rewritten to a virtual module (see
     // duckdbDistRoute) that pulls in apache-arrow; if Vite first discovers it
