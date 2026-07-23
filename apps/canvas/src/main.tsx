@@ -60,7 +60,10 @@ import { CanvasClient } from "@paged-media/client";
 // See CanvasClientOptions for the full rationale.
 import CanvasRenderWorker from "./worker/worker.ts?worker";
 import { BUILT_IN_TOOLS } from "@paged-media/tools";
-import { loadBundle, createDataProviderRegistry } from "@paged-media/plugin-sdk";
+import {
+  loadBundle,
+  createDataProviderRegistry,
+} from "@paged-media/plugin-sdk";
 import type { SchemaPanelRenderer as SchemaPanelRendererType } from "@paged-media/plugin-api";
 import { drawBundle } from "@paged-media/draw";
 import { webBundle } from "@paged-media/web";
@@ -81,6 +84,7 @@ import { createEditorConsentBackend } from "./plugin-consent";
 import { ConsentDialog } from "./ConsentDialog";
 import { createEditorSecretStore } from "./plugin-secret-store";
 import { SecretPromptDialog } from "./SecretPromptDialog";
+import { createEditorNativeDocumentBackend } from "./plugin-native-document";
 import { pickFiles } from "./shell-file-picker";
 
 // W3.1 — the schema-panel renderer the host injects. The shell renderer
@@ -101,9 +105,7 @@ function HostSchemaPanelRenderer(props: ShellSchemaPanelRendererProps) {
 // on either side fails THIS typecheck at the injection seam, never a
 // plugin author's build.
 type _AssertSchemaRenderer =
-  typeof HostSchemaPanelRenderer extends SchemaPanelRendererType
-    ? true
-    : never;
+  typeof HostSchemaPanelRenderer extends SchemaPanelRendererType ? true : never;
 const _schemaRendererCompat: _AssertSchemaRenderer = true;
 void _schemaRendererCompat;
 import { CodeEditor } from "@paged-media/ui";
@@ -923,8 +925,10 @@ function PluginBundles() {
       closePanel: (id: string) => cockpitActions.closeTab?.(id),
       // K-5 / S-11: the host file picker — a bundle gets the chosen files'
       // bytes (read at this boundary; no DOM File crosses the contract).
-      pickFile: (options?: { accept?: readonly string[]; multiple?: boolean }) =>
-        pickFiles(options),
+      pickFile: (options?: {
+        accept?: readonly string[];
+        multiple?: boolean;
+      }) => pickFiles(options),
     };
     // W-04: the host owns the code-editor widget (one editor across
     // every scripting-adjacent plugin). W-05: diagnostics fan out to
@@ -988,6 +992,17 @@ function PluginBundles() {
     // weaker pure-web tier), else session-only in-memory (refs die with the
     // tab). `set` PROMPTS via <SecretPromptDialog> — "via host UI only".
     const secrets = editorSecrets.backend;
+    // ADR-022 Phase 3: the whole-native-document door behind
+    // host.nativeDocument — lets an import/export plugin (paged.publish, the
+    // IDML adapter) read the core native parts (document.pgm / document.pgd)
+    // and REPLACE the active document by loading native bytes it produced
+    // (an importer's output), through the live engine client. Injecting it
+    // flips supports("document.readNative@1"/"…openNative@1") true; the SDK
+    // door owns the readNative/openNative capability gates. Absent it the
+    // door answers honest null/[]/reject.
+    const nativeDocument = createEditorNativeDocumentBackend(
+      () => pagedRef.current?.client ?? null,
+    );
     const hostOptions = {
       shell,
       widgets,
@@ -998,6 +1013,7 @@ function PluginBundles() {
       dataProviders,
       consent,
       secrets,
+      nativeDocument,
       diagnosticsSink: problemsSink,
       schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
     };
@@ -1242,8 +1258,12 @@ function CanvasAppRoot() {
       <SecretPromptDialog controller={editorSecrets.controller} />
       {/* The live-demo playground UI — only in the `demo` build, only when a
           ?script= is present (renders null otherwise). */}
-      {(import.meta.env.MODE === "demo" || !import.meta.env.PROD) && <PlaygroundController />}
-      {(import.meta.env.MODE === "demo" || !import.meta.env.PROD) && <IframeScriptBridge />}
+      {(import.meta.env.MODE === "demo" || !import.meta.env.PROD) && (
+        <PlaygroundController />
+      )}
+      {(import.meta.env.MODE === "demo" || !import.meta.env.PROD) && (
+        <IframeScriptBridge />
+      )}
     </PagedShell>
   );
 }
