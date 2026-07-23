@@ -25,6 +25,7 @@
     "@paged-media/plugin-api": "0.2.27-canary.0",
     "@paged-media/plugin-sdk": "0.2.27-canary.0",
     "@paged-media/publish": "0.1.0-canary.0",
+    "@paged-media/pdf": "0.2.0-canary.0",
     "@paged-media/shell": "workspace:*",
     "@paged-media/tools": "workspace:*",
     "@paged-media/ui": "workspace:*",
