@@ -77,7 +77,9 @@ test.describe("Cockpit — workflow modes", () => {
     );
   });
 
-  test("the active mode persists across reload @feat:editor-shell.cockpit-modes @level:happy", async ({ page }) => {
+  test("the active mode persists across reload @feat:editor-shell.cockpit-modes @level:happy", async ({
+    page,
+  }) => {
     await openCanvas(page);
     await page.locator('[data-mode-option="review"]').click();
     await page.reload();
@@ -169,7 +171,9 @@ test.describe("Cockpit — per-mode panel sets + toolbars (D3-D4)", () => {
     await page.evaluate(() => window.__canvas.setMode("design"));
   });
 
-  test("each mode renders its toolbar segment @feat:editor-shell.cockpit-modes @level:happy", async ({ page }) => {
+  test("each mode renders its toolbar segment @feat:editor-shell.cockpit-modes @level:happy", async ({
+    page,
+  }) => {
     await openCanvas(page);
     // Design: live tool pills — clicking Type activates the tool.
     await expect(
@@ -333,17 +337,15 @@ test.describe("Cockpit — per-mode REAL context-toolbar pills (W2.8)", () => {
     await setMode(page, "design");
   });
 
-  test("Export — image / IDML pills are honest-disabled with no document @feat:editor-shell.cockpit-modes @level:happy", async ({
+  test("Export — the image pill is honest-disabled with no document @feat:editor-shell.cockpit-modes @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
     await setMode(page, "export");
-    // No document open → the LIVE outputs honestly disable.
+    // No document open → the LIVE output honestly disables. (The IDML pill is
+    // gone — IDML is the paged.publish plugin exporter now, ADR-022 Phase 5.)
     await expect(
       page.locator('[data-cockpit-action="export-image"]'),
-    ).toBeDisabled();
-    await expect(
-      page.locator('[data-cockpit-action="export-idml"]'),
     ).toBeDisabled();
     await setMode(page, "design");
   });

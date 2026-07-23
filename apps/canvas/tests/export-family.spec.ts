@@ -73,7 +73,7 @@ async function setMode(page: Page, mode: string) {
 // Export Center — the centred readiness table (canvas main view).
 // ─────────────────────────────────────────────────────────────────
 test.describe("Export family — Export Center", () => {
-  test("six rows: three LIVE (PDF/image/IDML), three HONEST seams @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:happy", async ({
+  test("five rows: two LIVE (PDF/image), three HONEST seams @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -84,19 +84,18 @@ test.describe("Export family — Export Center", () => {
     await expect(center).toBeVisible();
 
     // The honest-or-live invariant: every row is one or the other.
-    await expect(page.locator("[data-export-target]")).toHaveCount(6);
-    await expect(page.locator("[data-export-target][data-export-live]")).toHaveCount(
-      3,
-    );
+    // (IDML is no longer a built-in target — it's the paged.publish plugin
+    // exporter now, ADR-022 Phase 5 — so the static grid is five rows/two LIVE.)
+    await expect(page.locator("[data-export-target]")).toHaveCount(5);
+    await expect(
+      page.locator("[data-export-target][data-export-live]"),
+    ).toHaveCount(2);
     // LIVE rows carry a real Export button; HONEST rows carry "soon".
     await expect(
       page.locator('[data-cockpit-action="export-center-pdf-x4"]'),
     ).toBeEnabled();
     await expect(
       page.locator('[data-cockpit-action="export-center-image"]'),
-    ).toBeEnabled();
-    await expect(
-      page.locator('[data-cockpit-action="export-center-idml"]'),
     ).toBeEnabled();
     // The web/social/package seams: no action button, a "soon" pill.
     await expect(
@@ -127,13 +126,22 @@ test.describe("Export family — Export Center", () => {
     await setMode(page, "design");
   });
 
-  test("LIVE — the IDML row downloads a real .idml package @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:happy", async ({ page }) => {
+  // TODO(ADR-022 Phase 5): IDML is now the paged.publish plugin exporter, not a
+  // built-in export-center row. Rewrite against the plugin-export flow (click
+  // `[data-plugin-export="media.paged.publish.exporter.idml"]` in the Outputs
+  // panel's "Plugin exports" section, assert the `.idml` download) — needs the
+  // plugin bundle loaded at runtime.
+  test.skip("LIVE — the IDML row downloads a real .idml package @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:happy", async ({
+    page,
+  }) => {
     await openCanvas(page);
     await loadDoc(page, CLEAN);
     await setMode(page, "export");
 
     const downloadPromise = page.waitForEvent("download");
-    await page.locator('[data-cockpit-action="export-center-idml"]').click();
+    await page
+      .locator('[data-plugin-export="media.paged.publish.exporter.idml"]')
+      .click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/\.idml$/);
 
@@ -154,15 +162,14 @@ test.describe("Export family — Outputs nav", () => {
 
     const nav = page.locator("[data-outputs-panel]");
     await expect(nav).toBeVisible();
-    await expect(page.locator("[data-output-nav]")).toHaveCount(6);
+    // IDML is no longer a built-in nav target (it's the paged.publish plugin
+    // exporter, in the "Plugin exports" section) — five rows, two LIVE.
+    await expect(page.locator("[data-output-nav]")).toHaveCount(5);
     await expect(
       page.locator("[data-output-nav][data-output-live]"),
-    ).toHaveCount(3);
+    ).toHaveCount(2);
 
-    // A clean doc → the IDML + image LIVE targets read a "ready" dot.
-    await expect(
-      page.locator('[data-output-nav="idml"] [data-output-dot="ready"]'),
-    ).toBeVisible();
+    // A clean doc → the image LIVE target reads a "ready" dot.
     await expect(
       page.locator('[data-output-nav="image"] [data-output-dot="ready"]'),
     ).toBeVisible();
@@ -222,21 +229,23 @@ test.describe("Export family — Export inspector", () => {
     await setMode(page, "design");
   });
 
-  test("LIVE IDML target — the run button downloads the package @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:happy", async ({
+  // TODO(ADR-022 Phase 5): IDML is now the paged.publish plugin exporter. Rewrite
+  // against the "Plugin exports" section (click
+  // `[data-plugin-export="media.paged.publish.exporter.idml"]`, assert the `.idml`
+  // download) — needs the plugin bundle loaded at runtime.
+  test.skip("LIVE IDML target — the run button downloads the package @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @feat:the-renderer.export-diagnostics @feat:the-renderer.pdf-export-marks @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
     await loadDoc(page, CLEAN);
     await setMode(page, "export");
 
-    await page.locator('[data-output-nav="idml"]').click();
     const downloadPromise = page.waitForEvent("download");
     await page
-      .locator('[data-cockpit-action="export-inspector-run-idml"]')
+      .locator('[data-plugin-export="media.paged.publish.exporter.idml"]')
       .click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/\.idml$/);
-    await expect(page.locator("[data-export-idml-done]")).toBeVisible();
 
     await setMode(page, "design");
   });
@@ -255,9 +264,6 @@ test.describe("Export family — Export inspector", () => {
     // No live run action for a seam target.
     await expect(
       page.locator('[data-cockpit-action="export-inspector-run-image"]'),
-    ).toHaveCount(0);
-    await expect(
-      page.locator('[data-cockpit-action="export-inspector-run-idml"]'),
     ).toHaveCount(0);
     await expect(
       page.locator('[data-cockpit-action="export-inspector-run"]'),
@@ -295,12 +301,14 @@ test.describe("Export family — Output readiness", () => {
       ).not.toHaveAttribute("data-seam", "");
     }
     // Links + PPI resolve cleanly on this fixture → those pass.
-    await expect(
-      page.locator('[data-readiness-row="links"]'),
-    ).toHaveAttribute("data-readiness-pass", "true");
-    await expect(
-      page.locator('[data-readiness-row="ppi"]'),
-    ).toHaveAttribute("data-readiness-pass", "true");
+    await expect(page.locator('[data-readiness-row="links"]')).toHaveAttribute(
+      "data-readiness-pass",
+      "true",
+    );
+    await expect(page.locator('[data-readiness-row="ppi"]')).toHaveAttribute(
+      "data-readiness-pass",
+      "true",
+    );
     // Bleed has no wire accessor → it's the one HONEST seam ("soon").
     await expect(
       page.locator('[data-readiness-row="bleed"][data-seam]'),
@@ -328,9 +336,9 @@ test.describe("Export family — Output readiness", () => {
       page.locator('[data-readiness-row="ppi"][data-readiness-pass="false"]'),
     ).toBeVisible();
     // The overall X-4 verdict flips to "Not ready".
-    await expect(
-      page.locator('[data-status-pill="readiness-x4"]'),
-    ).toHaveText(/Not ready/i);
+    await expect(page.locator('[data-status-pill="readiness-x4"]')).toHaveText(
+      /Not ready/i,
+    );
 
     await setMode(page, "design");
   });
