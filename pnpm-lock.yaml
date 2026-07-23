@@ -45,11 +45,11 @@ importers:
         specifier: 0.1.0-canary.0
         version: 0.1.0-canary.0(react@18.3.1)
       '@paged-media/plugin-api':
-        specifier: 0.2.25-canary.0
-        version: 0.2.25-canary.0
+        specifier: 0.2.27-canary.0
+        version: 0.2.27-canary.0
       '@paged-media/plugin-sdk':
-        specifier: 0.2.25-canary.0
-        version: 0.2.25-canary.0(react@18.3.1)
+        specifier: 0.2.27-canary.0
+        version: 0.2.27-canary.0(react@18.3.1)
       '@paged-media/sheet':
         specifier: 0.1.0-canary.1
         version: 0.1.0-canary.1(react@18.3.1)
@@ -915,8 +915,19 @@ packages:
   '@paged-media/plugin-api@0.2.25-canary.0':
     resolution: {integrity: sha512-yPB4aQ+/WWhipsSUdcCZt7Uzox4KG8r2c9WN0GXAUAhC2/+Oa8+li/adp9Ubx8pSdEtNBh13N0IiIPTBhc2eDQ==}
 
+  '@paged-media/plugin-api@0.2.27-canary.0':
+    resolution: {integrity: sha512-GHaRexHXfK7WcZBek8X8I7SVpAfZMYMXj8hhN90GezKdoz4re/Z7VCHBQDcWuBUx30RpLQ+Md65MxkuRDPyCqA==}
+
   '@paged-media/plugin-sdk@0.2.25-canary.0':
     resolution: {integrity: sha512-CAOG3q39foJCLJrowG//eKD5ORnufiAOmzT1sjOeHjtqHTkVe6MYc4ppFbdXMtPtrwfLddEx4g9YGWRmMclPLA==}
+    peerDependencies:
+      react: ^18.3.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+
+  '@paged-media/plugin-sdk@0.2.27-canary.0':
+    resolution: {integrity: sha512-2VIrsHG6Rsui83aVlW5ebqD5uuh4srMfaCpcguAHlY1+xtTuSwZkg4svZ3chdE8gqCywhSzORK9z6DpzxnEwyw==}
     peerDependencies:
       react: ^18.3.0
     peerDependenciesMeta:
@@ -3003,9 +3014,19 @@ snapshots:
     dependencies:
       '@types/react': 18.3.29
 
+  '@paged-media/plugin-api@0.2.27-canary.0':
+    dependencies:
+      '@types/react': 18.3.29
+
   '@paged-media/plugin-sdk@0.2.25-canary.0(react@18.3.1)':
     dependencies:
       '@paged-media/plugin-api': 0.2.25-canary.0
+    optionalDependencies:
+      react: 18.3.1
+
+  '@paged-media/plugin-sdk@0.2.27-canary.0(react@18.3.1)':
+    dependencies:
+      '@paged-media/plugin-api': 0.2.27-canary.0
     optionalDependencies:
       react: 18.3.1
 
