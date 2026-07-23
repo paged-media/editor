@@ -47,7 +47,6 @@ import {
 import {
   EXPORT_TARGETS,
   exportTargetById,
-  runIdmlExport,
   runImageExport,
   runPluginExporter,
   setImageSettings,
@@ -232,7 +231,10 @@ export function OutputsPanel(_props: PanelProps) {
                     {e.title}
                   </span>
                   {phase === "running" && (
-                    <span className="pg-ui-xs" style={{ color: "var(--pg-muted-fg)" }}>
+                    <span
+                      className="pg-ui-xs"
+                      style={{ color: "var(--pg-muted-fg)" }}
+                    >
                       …
                     </span>
                   )}
@@ -281,7 +283,8 @@ export function ExportInspectorPanel(_props: PanelProps) {
   const target = exportTargetById(selected);
   const image = useImageSettings();
   const [imagePhase, setImagePhase] = useState<ImagePhase>({ kind: "idle" });
-  const [idmlPhase, setIdmlPhase] = useState<ImagePhase>({ kind: "idle" });
+  // IDML export moved to the paged.publish plugin exporter (ADR-022 Phase 5) —
+  // it renders in the plugin-exporters section below, no longer a built-in target.
   const r = readiness(target, loaded, profileReady);
 
   const onRunImage = async () => {
@@ -303,22 +306,11 @@ export function ExportInspectorPanel(_props: PanelProps) {
     }
   };
 
-  const onRunIdml = async () => {
-    if (!handle) return;
-    setIdmlPhase({ kind: "running" });
-    try {
-      await runIdmlExport(client, meta?.documentName);
-      setIdmlPhase({ kind: "done", files: 1 });
-    } catch (err) {
-      setIdmlPhase({
-        kind: "error",
-        message: err instanceof Error ? err.message : String(err),
-      });
-    }
-  };
-
   return (
-    <div data-export-inspector-panel style={{ overflowY: "auto", height: "100%" }}>
+    <div
+      data-export-inspector-panel
+      style={{ overflowY: "auto", height: "100%" }}
+    >
       <CockpitPanelHeader title={target.title} />
       <div style={{ padding: "0 14px 12px" }}>
         <StatusPill tone={r.tone} testId="export-inspector-readiness">
@@ -419,47 +411,6 @@ export function ExportInspectorPanel(_props: PanelProps) {
                 style={{ marginTop: 8, color: "var(--status-error)" }}
               >
                 Export failed: {imagePhase.message}
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {target.action === "idml" && (
-        <>
-          <CockpitSection title="Settings">
-            <span className="pg-ui-xs" style={{ lineHeight: 1.45 }}>
-              The full document serialises back to an `.idml` package —
-              re-openable in InDesign and this editor, with every edit
-              preserved. No per-run options.
-            </span>
-          </CockpitSection>
-          <div style={{ padding: 14 }}>
-            <CockpitBtn
-              full
-              primary
-              disabled={!loaded || idmlPhase.kind === "running"}
-              testId="export-inspector-run-idml"
-              onClick={() => void onRunIdml()}
-            >
-              <Icon name="ui-export" size={15} />{" "}
-              {idmlPhase.kind === "running" ? "Packaging…" : "Export IDML"}
-            </CockpitBtn>
-            {idmlPhase.kind === "done" && (
-              <div
-                data-export-idml-done
-                className="pg-ui-xs"
-                style={{ marginTop: 8, color: "var(--status-approved)" }}
-              >
-                IDML package downloaded.
-              </div>
-            )}
-            {idmlPhase.kind === "error" && (
-              <div
-                className="pg-ui-xs"
-                style={{ marginTop: 8, color: "var(--status-error)" }}
-              >
-                Export failed: {idmlPhase.message}
               </div>
             )}
           </div>

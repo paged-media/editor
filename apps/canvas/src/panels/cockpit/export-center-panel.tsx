@@ -46,7 +46,6 @@ import {
 import {
   EXPORT_TARGETS,
   exportTargetById,
-  runIdmlExport,
   runImageExport,
   setSelectedExportTarget,
   useImageSettings,
@@ -97,9 +96,9 @@ export function ExportCenterPanel() {
           settings: image,
           baseName: meta?.documentName,
         });
-      } else if (t.action === "idml") {
-        await runIdmlExport(client, meta?.documentName);
       }
+      // IDML export is now the paged.publish plugin exporter (ADR-022 Phase 5),
+      // rendered via the plugin-exporters section, not a built-in target.
     } catch {
       /* surfaced in the inspector; the center row just clears busy */
     } finally {
@@ -235,7 +234,9 @@ export function ExportCenterPanel() {
           </CockpitBtn>
           <CockpitBtn
             primary
-            disabled={!loaded || busy != null || !exportTargetById(selected).live}
+            disabled={
+              !loaded || busy != null || !exportTargetById(selected).live
+            }
             testId="export-selected"
             onClick={() => void runTarget(selected)}
           >
