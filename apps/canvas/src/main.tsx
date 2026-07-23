@@ -71,6 +71,7 @@ import { dataBundle } from "@paged-media/data";
 import { sheetBundle } from "@paged-media/sheet";
 import { imageBundle } from "@paged-media/image";
 import { publishBundle } from "@paged-media/publish";
+import { pdfBundle } from "@paged-media/pdf";
 import { createEditorAssetSource } from "./plugin-asset-source";
 import { createEditorBlobStore } from "./plugin-blob-store";
 import { createEditorClipboardBackend } from "./plugin-clipboard";
@@ -1037,6 +1038,9 @@ function PluginBundles() {
       // host.nativeDocument.open) + exporter (reuses the engine serializer).
       // Replaces the Export Center's built-in static IDML target.
       loadBundle(() => pagedRef.current, publishBundle, hostOptions),
+      // paged.pdf — Phase 0: opens a .pdf as full-page image frames (pdf.js
+      // raster -> inline-image IDML -> host.nativeDocument.open).
+      loadBundle(() => pagedRef.current, pdfBundle, hostOptions),
     ];
     return () => {
       for (const l of loaded) l.dispose();
