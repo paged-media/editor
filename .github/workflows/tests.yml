@@ -44,11 +44,12 @@ name: tests
 # Sharding: playwright.config pins workers:1 (snapshot determinism), so
 # the ~20-25 min surface is split across 3 shards (~7-9 min each + setup)
 # via `--shard`, each emitting a `blob` report. A final job merges the
-# blobs into one Playwright JSON and hands it to the shared
-# `paged-media/state/actions/publish-results` action, which converts to
-# contract-v1, applies `ingest/test-map.yaml` (the editor specs carry no
-# @feat: tags yet), gates feature ids against the registry, and
-# repository_dispatches `results-published` at the state repo.
+# blobs into one Playwright JSON and uploads it as the `playwright-results`
+# artifact. The private `paged-media/state` repo PULLS that artifact
+# (siblings-pull.yml), converts it to contract-v1, applies
+# `ingest/test-map.yaml` (the editor specs carry no @feat: tags yet), and
+# gates feature ids against the registry. See the step comment at the
+# hand-off for why the direction is inverted.
 
 on:
   push:
@@ -595,18 +596,21 @@ jobs:
             > /dev/null
           test -s "${{ github.workspace }}/playwright-results.json"
 
-      # Convert → contract-v1, apply ingest/test-map.yaml (no @feat: tags
-      # in the editor yet), gate feature ids against the registry snapshot,
-      # upload the normalized artifact, and dispatch results-published.
-      # The editor surface registers as suite `playwright-e2e`
-      # (ingest/suites.yaml; per-result stages from test-map override the
-      # editor.canvas default so panel rows land on editor.panel etc.).
-      - name: publish results to paged-media/state
-        uses: paged-media/state/actions/publish-results@main
+      # Evidence hand-off, INVERTED (2026-07-25). This step used to call
+      # paged-media/state/actions/publish-results@main, but that action lives in the
+      # PRIVATE paged-media/state repo, and GitHub refuses to resolve a private
+      # repo's action from a public workflow ("Unable to resolve action
+      # paged-media/state, not found") — so the job died at SET-UP, before any step
+      # ran, and this lane never published a single result. Follow the inverted
+      # pattern core/ci.yml and plugin-doc use: upload the results as an artifact
+      # and let state PULL it (private state can read a public repo's artifacts).
+      # Consumer: state/.github/workflows/siblings-pull.yml (source=editor,
+      # suite=playwright-e2e, format=playwright-json).
+      - name: upload playwright-e2e results artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
         with:
-          source: editor
-          suite: playwright-e2e
-          format: playwright-json
+          name: playwright-results
           path: playwright-results.json
-          map: "true"
-          dispatch-token: ${{ secrets.STATE_DISPATCH_TOKEN }}
+          if-no-files-found: error
+          retention-days: 14
