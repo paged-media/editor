@@ -154,7 +154,6 @@ test.describe("journey · paged.data barcode symbology", () => {
     // ── 5. RENDER (HARD) — the lower's atomic batch (insertPath ×N +
     //    setPluginMetadata with the `{ v, data }` envelope) now applies, so the
     //    encoded VECTOR modules paint into the page. The render must change. ──
-    const after = await designer.renderBytes();
-    await designer.expectRenderChanged(before, after);
+    await designer.expectRenderChangesFrom(before);
   });
 });

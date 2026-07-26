@@ -123,8 +123,7 @@ test.describe("journey · paged.draw render output", () => {
         timeout: 6_000,
       })
       .toEqual(expect.stringContaining("Gradient/"));
-    const afterFill = await designer.renderBytes();
-    const fillChanged = await designer.expectRenderChanged(beforeFill, afterFill);
+    const fillChanged = await designer.expectRenderChangesFrom(beforeFill);
     expect(fillChanged, "the gradient fill rendered onto the frame").toBeGreaterThan(64);
 
     // ── 2. STROKE (plugin) — the Appearance command bakes the front-most
@@ -138,8 +137,7 @@ test.describe("journey · paged.draw render output", () => {
         return v?.type === "length" ? (v.value as number) ?? 0 : 0;
       }, { timeout: 6_000 })
       .toBeGreaterThan(0);
-    const afterStroke = await designer.renderBytes();
-    await designer.expectRenderChanged(beforeStroke, afterStroke);
+    await designer.expectRenderChangesFrom(beforeStroke);
 
     // ── 3. PATHFINDER UNITE (plugin, best-effort) — a second OVERLAPPING
     //    filled rectangle, then union the two. The merged silhouette renders

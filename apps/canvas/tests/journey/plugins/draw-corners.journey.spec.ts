@@ -133,8 +133,7 @@ test.describe("journey · paged.draw live corners", () => {
         return v?.type === "length" ? (v.value as number) ?? 0 : 0;
       }, { timeout: 6_000 })
       .toBeGreaterThan(0);
-    const rounded = await designer.renderBytes();
-    await designer.expectRenderChanged(squareA, rounded);
+    await designer.expectRenderChangesFrom(squareA);
 
     // ── 3. BEVEL / INVERSE / FANCY — assert each preset bakes its IDML
     //    corner-option token (the wire shape, read off the engine). ──

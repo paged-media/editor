@@ -119,11 +119,7 @@ test.describe("journey · paged.image levels / curves / white balance", () => {
     await nudgeSlider(page, SLIDER.tint, 10); // +0.20 tint
     await expect(applyBtn).toBeEnabled();
     await applyBtn.click();
-    const afterWb = await designer.renderBytes();
-    await designer.expectRenderChanged(
-      beforeWb,
-      afterWb,
-    );
+    await designer.expectRenderChangesFrom(beforeWb);
 
     // ── 3. LEVELS — pull In black up, In white down, lift Gamma
     //    (adjust.levels) and Apply. The page must change again. HARD. ──
@@ -132,11 +128,7 @@ test.describe("journey · paged.image levels / curves / white balance", () => {
     await nudgeSlider(page, SLIDER.gamma, 10); // +0.50 gamma
     await expect(applyBtn).toBeEnabled();
     await applyBtn.click();
-    const afterLevels = await designer.renderBytes();
-    await designer.expectRenderChanged(
-      beforeLevels,
-      afterLevels,
-    );
+    await designer.expectRenderChangesFrom(beforeLevels);
 
     // ── 4. CURVES — drag the SVG curve editor's mid control point up (the
     //    monotone-cubic LUT the curves stage consumes) and Apply. Dragging
@@ -179,11 +171,7 @@ test.describe("journey · paged.image levels / curves / white balance", () => {
 
     await expect(applyBtn).toBeEnabled();
     await applyBtn.click();
-    const afterCurve = await designer.renderBytes();
-    const curved = await designer.expectRenderChanged(
-      beforeCurve,
-      afterCurve,
-    );
+    const curved = await designer.expectRenderChangesFrom(beforeCurve);
     expect(
       curved,
       "the curve LUT pass changed the composited pixels",
@@ -246,7 +234,6 @@ test.describe("journey · paged.image levels / curves / white balance", () => {
     const applyBtn = page.getByRole("button", { name: "Apply", exact: true });
     await expect(applyBtn).toBeEnabled();
     await applyBtn.click();
-    const afterAuto = await designer.renderBytes();
-    await designer.expectRenderChanged(beforeAuto, afterAuto);
+    await designer.expectRenderChangesFrom(beforeAuto);
   });
 });

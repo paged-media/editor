@@ -215,8 +215,7 @@ test.describe("journey · paged.sheet xlsx round-trip", () => {
     await page.mouse.dblclick(at!.x, at!.y);
     await expect(breadcrumb).toBeVisible({ timeout: 10_000 });
     await page.waitForTimeout(800);
-    const inSession = await designer.renderBytes();
-    await designer.expectRenderChanged(before, inSession);
+    await designer.expectRenderChangesFrom(before);
     await page.keyboard.press("Escape");
     await expect(breadcrumb).toHaveCount(0);
 

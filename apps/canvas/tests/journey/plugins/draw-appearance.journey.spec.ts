@@ -139,8 +139,7 @@ test.describe("journey · paged.draw appearance stack", () => {
     await expect
       .poll(() => strokeWeight(page, ref), { timeout: 6_000 })
       .toBeGreaterThan(0);
-    const afterStroke = await designer.renderBytes();
-    await designer.expectRenderChanged(beforeFill, afterStroke);
+    await designer.expectRenderChangesFrom(beforeFill);
 
     // ── 4. CLEAR — drops the extra metadata layers. The bake is the
     //    top-layer-only contract, so the baked frame paint persists (the

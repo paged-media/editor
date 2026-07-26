@@ -252,8 +252,7 @@ test.describe("journey · paged.sheet calc + functions through the grid", () => 
     await page.mouse.dblclick(at!.x, at!.y);
     await expect(breadcrumb).toBeVisible({ timeout: 10_000 });
     await page.waitForTimeout(800);
-    const inSession = await designer.renderBytes();
-    const gridPx = await designer.expectRenderChanged(beforeEnter, inSession);
+    const gridPx = await designer.expectRenderChangesFrom(beforeEnter);
     expect(gridPx, "the in-frame grid (with computed cells) rendered onto the page").toBeGreaterThan(64);
     await page.keyboard.press("Escape");
     await expect(breadcrumb).toHaveCount(0);

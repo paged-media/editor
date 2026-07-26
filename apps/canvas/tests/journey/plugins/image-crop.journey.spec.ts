@@ -113,8 +113,7 @@ test.describe("journey · paged.image crop", () => {
     const applyBtn = page.getByRole("button", { name: "Apply", exact: true });
     await expect(applyBtn).toBeEnabled({ timeout: 10_000 });
     await applyBtn.click();
-    const afterComposite = await designer.renderBytes();
-    await designer.expectRenderChanged(beforeComposite, afterComposite);
+    await designer.expectRenderChangesFrom(beforeComposite);
 
     // ── 3. CROP TOOL — arm the crop tool the way a designer does (the
     //    transform-rail tool / "c" shortcut). The plugin tool registers its
@@ -154,8 +153,7 @@ test.describe("journey · paged.image crop", () => {
       .poll(() => sourceReadout(page), { timeout: 15_000 })
       .toEqual(expect.stringContaining("90×90"));
 
-    const afterCrop = await designer.renderBytes();
-    const recut = await designer.expectRenderChanged(beforeCrop, afterCrop);
+    const recut = await designer.expectRenderChangesFrom(beforeCrop);
     expect(
       recut,
       "the cropped image re-composited in-frame (geom.crop window → Stage-A)",

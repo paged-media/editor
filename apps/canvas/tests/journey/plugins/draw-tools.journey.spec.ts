@@ -133,8 +133,7 @@ test.describe("journey · paged.draw pro tools", () => {
       .poll(() => designer.count("polygon"), { timeout: 8_000 })
       .toBeGreaterThan(polysBefore);
     // The freehand path renders (it carries the document's default paint).
-    const afterPencil = await designer.renderBytes();
-    await designer.expectRenderChanged(before, afterPencil);
+    await designer.expectRenderChangesFrom(before);
 
     // ── 2. CURVATURE (collect) — clicks lay through-points; Enter
     //    commits one smooth path. ──

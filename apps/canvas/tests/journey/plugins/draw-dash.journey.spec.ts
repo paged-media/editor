@@ -131,8 +131,7 @@ test.describe("journey · paged.draw stroke dash", () => {
     await expect
       .poll(() => dashArrayOf(page, ref), { timeout: 6_000 })
       .toEqual([6, 3]);
-    const dashed = await designer.renderBytes();
-    await designer.expectRenderChanged(solid, dashed);
+    await designer.expectRenderChangesFrom(solid);
 
     // ── 4. DOTTED / DASH-DOT — assert each preset bakes its documented
     //    wire run (the §12.3 shape, read back from the engine). ──

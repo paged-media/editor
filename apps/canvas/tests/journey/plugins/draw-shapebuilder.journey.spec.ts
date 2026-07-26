@@ -119,7 +119,6 @@ test.describe("journey · paged.draw shape builder", () => {
 
     // ── 5. The merged silhouette renders differently from the two
     //    separate overlapping fills. ──
-    const after = await designer.renderBytes();
-    await designer.expectRenderChanged(before, after);
+    await designer.expectRenderChangesFrom(before);
   });
 });
