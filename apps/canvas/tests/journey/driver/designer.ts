@@ -521,6 +521,42 @@ export class Designer {
     return changed;
   }
 
+  /**
+   * Assert the page render changes from `before` — POLLING until it does.
+   *
+   * Prefer this over sampling once and calling {@link expectRenderChanged}.
+   * A single sample after a fixed `waitForTimeout` is a race: the wait was
+   * tuned on a warm engine, and on a COLD one (first run after the wasm
+   * compiles, GPU init, a plugin engine booting lazily) the composite has
+   * not landed yet, so the test reads 0 changed pixels and fails. That is
+   * how paged.image's adjust/curves journeys went red in CI while passing
+   * 3/3 locally once warm — a flake that reaches the state matrix as a
+   * FAILING feature, which is worse than a slow test.
+   *
+   * Polling cannot mask a real regression: a render that genuinely never
+   * changes still fails, just at the timeout instead of immediately.
+   */
+  async expectRenderChangesFrom(
+    before: Uint8Array,
+    opts: { minPixels?: number; timeout?: number } = {},
+  ): Promise<number> {
+    const minPixels = opts.minPixels ?? 64;
+    let changed = 0;
+    await expect
+      .poll(
+        async () => {
+          changed = await this.renderDiffPixels(before, await this.renderBytes());
+          return changed;
+        },
+        {
+          timeout: opts.timeout ?? 15_000,
+          message: `rendered page should change by >${minPixels}px`,
+        },
+      )
+      .toBeGreaterThan(minPixels);
+    return changed;
+  }
+
   /** Inverse of {@link expectRenderChanged}: assert the render did NOT
    *  change (a cleared preview, an undo, a no-op). `maxPixels` allows a
    *  small AA margin though the deterministic snapshot is usually exact. */

@@ -150,8 +150,7 @@ test.describe("journey · paged.draw SVG interchange", () => {
       .toBeGreaterThan(polysBefore);
 
     // ── 2. The imported vector RENDERS onto the page (filled shapes). ──
-    const after = await designer.renderBytes();
-    await designer.expectRenderChanged(before, after);
+    await designer.expectRenderChangesFrom(before);
 
     // ── 3. EXPORT — select an imported path and pull the SVG exporter;
     //    it serializes a non-empty <svg> document. ──

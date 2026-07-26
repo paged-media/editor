@@ -106,8 +106,7 @@ test.describe("journey · paged.image render output", () => {
     await expect(applyBtn).toBeEnabled();
     await applyBtn.click();
 
-    const afterApply = await designer.renderBytes();
-    const composited = await designer.expectRenderChanged(beforeApply, afterApply);
+    const composited = await designer.expectRenderChangesFrom(beforeApply);
     expect(
       composited,
       "the adjusted image composited onto the frame (real decode → GPU adjust → Stage-A)",

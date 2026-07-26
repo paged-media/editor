@@ -210,8 +210,7 @@ test.describe("journey · paged.sheet render output", () => {
     await page.mouse.dblclick(at!.x, at!.y);
     await expect(breadcrumb).toBeVisible({ timeout: 10_000 });
     await page.waitForTimeout(800);
-    const inSession = await designer.renderBytes();
-    const gridPx = await designer.expectRenderChanged(afterLower, inSession);
+    const gridPx = await designer.expectRenderChangesFrom(afterLower);
     expect(gridPx, "the in-frame grid sceneLayer rendered onto the page").toBeGreaterThan(64);
 
     // ── 3. CELL EDIT RE-RENDERS (best-effort) — recompute the point (the

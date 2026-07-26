@@ -131,8 +131,7 @@ test.describe("journey · paged.web render output", () => {
     //    tens of thousands of px; `expectRenderChanged`'s 64px floor sits
     //    far below that yet above the snapshot's 0px noise floor. ──
     await page.waitForTimeout(800);
-    const after = await designer.renderBytes();
-    const visiblePx = await designer.expectRenderChanged(before, after);
+    const visiblePx = await designer.expectRenderChangesFrom(before);
     // eslint-disable-next-line no-console
     console.log(
       `[web-render] editor end-to-end web render VISIBLE (${visiblePx}px changed)`,

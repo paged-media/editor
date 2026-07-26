@@ -121,8 +121,7 @@ test.describe("journey · paged.sheet chart engine", () => {
     // ── 3. RENDER (HARD, pixels) — the lowered chart vector art reaches the
     //    page; the blank-before snapshot now carries the chart. ──
     await page.waitForTimeout(500);
-    const afterChart = await designer.renderBytes();
-    const chartPx = await designer.expectRenderChanged(beforeChart, afterChart);
+    const chartPx = await designer.expectRenderChangesFrom(beforeChart);
     expect(chartPx, "the lowered chart vector art rendered onto the page").toBeGreaterThan(64);
 
     for (const note of collected) {
