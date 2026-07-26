@@ -22,21 +22,22 @@
     "@paged-media/canvas-wasm": "0.51.0",
     "@paged-media/catalog": "workspace:*",
     "@paged-media/client": "workspace:*",
+    "@paged-media/data": "0.1.0-canary.1",
+    "@paged-media/doc": "link:../../../plugin-doc/packages/doc-bundle",
+    "@paged-media/draw": "0.1.0-canary.1",
+    "@paged-media/image": "0.1.0-canary.0",
+    "@paged-media/pdf": "0.2.3-canary.0",
     "@paged-media/plugin-api": "0.2.27-canary.0",
     "@paged-media/plugin-sdk": "0.2.27-canary.0",
     "@paged-media/publish": "0.1.0-canary.0",
-    "@paged-media/pdf": "0.2.0-canary.0",
+    "@paged-media/sheet": "0.1.0-canary.1",
     "@paged-media/shell": "workspace:*",
     "@paged-media/tools": "workspace:*",
     "@paged-media/ui": "workspace:*",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "apache-arrow": "^17.0.0",
-    "@paged-media/draw": "0.1.0-canary.1",
     "@paged-media/web": "0.1.0-canary.1",
-    "@paged-media/data": "0.1.0-canary.1",
-    "@paged-media/sheet": "0.1.0-canary.1",
-    "@paged-media/image": "0.1.0-canary.0"
+    "apache-arrow": "^17.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
@@ -48,10 +49,10 @@
     "autoprefixer": "^10.5.0",
     "pngjs": "^7.0.0",
     "postcss": "^8.5.14",
+    "rrweb": "2.0.1",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.22.3",
     "typescript": "^5.6.3",
-    "vite": "^6.4.3",
-    "rrweb": "2.0.1"
+    "vite": "^6.4.3"
   }
 }

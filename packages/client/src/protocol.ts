@@ -40,7 +40,12 @@
 // matching Rust constant is in `paged-canvas/src/channel.rs` and
 // the published package must update in lockstep.
 
-export const PROTOCOL_VERSION = 51 as const;
+// LOCAL OVERRIDE — do not commit. Bumped 51 → 55 to run the locally built
+// canvas-wasm (core main: v52 InsertAnchoredFrame, v53 InsertHyperlink,
+// v54 RequestStoryContent, v55 ApplyStyle.cell) for the paged.doc save-back
+// round-trip. npm's latest is still 0.51.0, so committing this would break a
+// clean `pnpm install`. Revert with ~/paged/sync-wasm.sh --undo + git checkout.
+export const PROTOCOL_VERSION = 55 as const;
 
 export type {
   AnchorId,

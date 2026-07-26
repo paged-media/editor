@@ -36,6 +36,7 @@ import {
   snapLinesContribution,
   tableCellOverlayContribution,
   threadingPortsContribution,
+  loadDocumentFile,
   useCamera,
   useCanvasClient,
   useContentSelection,
@@ -72,6 +73,7 @@ import { sheetBundle } from "@paged-media/sheet";
 import { imageBundle } from "@paged-media/image";
 import { publishBundle } from "@paged-media/publish";
 import { pdfBundle } from "@paged-media/pdf";
+import { docBundle } from "@paged-media/doc";
 import { createEditorAssetSource } from "./plugin-asset-source";
 import { createEditorBlobStore } from "./plugin-blob-store";
 import { createEditorClipboardBackend } from "./plugin-clipboard";
@@ -918,6 +920,13 @@ function PluginBundles() {
   const paged = usePaged();
   const pagedRef = useRef(paged);
   pagedRef.current = paged;
+  // The document context (setHandle + snapshot sinks) so a plugin importer that
+  // opens a NEW document via host.nativeDocument.open activates it in the view,
+  // exactly like File▸Open. Held in a ref — the mount-once effect below reads
+  // the live setters (useState setters are stable across renders).
+  const doc = useDocument();
+  const docRef = useRef(doc);
+  docRef.current = doc;
   useEffect(() => {
     // Shell actions the host APP owns (the cockpit's panel
     // placement) — injected so the SDK's adapter stays a pure
@@ -1002,8 +1011,36 @@ function PluginBundles() {
     // flips supports("document.readNative@1"/"…openNative@1") true; the SDK
     // door owns the readNative/openNative capability gates. Absent it the
     // door answers honest null/[]/reject.
+    // The full document-open orchestration (loadDocumentFile: load with the
+    // default font, setHandle, snapshot) — the SAME flow File▸Open runs — so an
+    // importer-opened native document actually renders. Mirrors PagedShell's
+    // own drop handler; status/warnings go to the plugin's own log, so they no-op.
+    const openBytes = async (bytes: Uint8Array, name: string) => {
+      const client = pagedRef.current?.client;
+      if (!client) return;
+      const d = docRef.current;
+      // Copy into a fresh (non-shared) ArrayBuffer — the plugin bytes may be
+      // SharedArrayBuffer-backed, which isn't a valid BlobPart.
+      const ab = new ArrayBuffer(bytes.byteLength);
+      new Uint8Array(ab).set(bytes);
+      await loadDocumentFile(client, new File([ab], name), {
+        setHandle: d.setHandle,
+        setLoading: d.setLoading,
+        setStatus: () => {},
+        setSnapshotsReady: d.setSnapshotsReady,
+        addSnapshot: (pageId, url) =>
+          d.setSnapshots((prev) => {
+            const next = new Map(prev);
+            next.set(pageId, url);
+            return next;
+          }),
+        resetForNewDocument: d.resetForNewDocument,
+        pushWarning: () => {},
+      });
+    };
     const nativeDocument = createEditorNativeDocumentBackend(
       () => pagedRef.current?.client ?? null,
+      openBytes,
     );
     const hostOptions = {
       shell,
@@ -1041,6 +1078,13 @@ function PluginBundles() {
       // paged.pdf — Phase 0: opens a .pdf as full-page image frames (pdf.js
       // raster -> inline-image IDML -> host.nativeDocument.open).
       loadBundle(() => pagedRef.current, pdfBundle, hostOptions),
+      // paged.doc — a .docx lowered onto the NATIVE text stack (stories,
+      // paragraphs, runs, styles) rather than a forked layout engine, and
+      // saved back by a targeted byte-splice patch so every OOXML construct
+      // the plugin does not model survives verbatim. The edited save-back
+      // reads the story back through DOC-03 (host.document.storyContent,
+      // canvas-wasm v54) and degrades to the verbatim source without it.
+      loadBundle(() => pagedRef.current, docBundle, hostOptions),
     ];
     return () => {
       for (const l of loaded) l.dispose();
@@ -1129,6 +1173,21 @@ function CanvasAppIntegration() {
           return;
         }
         void client.redo();
+      },
+      // File ▸ Open PDF… — pick a `.pdf` and route it to the paged.pdf
+      // importer (pdf.js reconstruction → host.nativeDocument.open). The
+      // menu-driven counterpart to drag-drop; resolves the importer by the
+      // file's extension, so it degrades quietly if the plugin isn't loaded.
+      openPdf: async () => {
+        const [file] = await pickFiles({ accept: [".pdf", "application/pdf"] });
+        if (!file) return;
+        const importer = registries.importers.resolve(file.name);
+        if (!importer) return;
+        await importer.import({
+          name: file.name,
+          bytes: file.bytes,
+          mimeType: "application/pdf",
+        });
       },
       // W3.B2 — Save As IDML: serialise the loaded document to an
       // `.idml` package and trigger a browser download (mirrors the
