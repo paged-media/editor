@@ -148,7 +148,7 @@ function unzip(buf: Buffer): Map<string, Buffer> {
 }
 
 test.describe("journey · paged.doc docx round-trip", () => {
-  test("a designer opens a Word document, edits it, and saves it back with everything else intact @feat:doc.import.docx @feat:doc.saveback.edited @feat:doc.preservation.verbatim @feat:doc.plugin.bundle @level:happy", async ({
+  test("a designer opens a Word document, edits it, and saves it back with everything else intact @feat:plugin-doc.read-path @feat:plugin-doc.embedded-placement @feat:plugin-doc.save-back @feat:plugin-doc.opc-foundation @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
