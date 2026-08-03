@@ -614,7 +614,7 @@ function ShellChrome({
     const items = registries.menus;
     const handles = [
       items.register({
-        path: "File/Open IDML…",
+        path: "File/Open…",
         command: PAGED_FILE_OPEN_IDML,
         order: 10,
         group: "open",

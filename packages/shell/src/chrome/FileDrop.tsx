@@ -43,9 +43,11 @@ export function FileDrop(props: FileDropProps) {
     [props],
   );
   const input = (
+    // No `accept` filter: like canvas drag-drop, this routes through the
+    // importer registry, which claims every registered format (.idml, .svg,
+    // .xlsx, images, .docx, …) — a static .idml filter here silently lied.
     <input
       type="file"
-      accept=".idml,application/vnd.adobe.indesign-idml-package"
       onChange={(e) => {
         const file = e.target.files?.[0];
         if (file) props.onFile(file);

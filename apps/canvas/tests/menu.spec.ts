@@ -115,18 +115,18 @@ test.describe("Phase 4 — menu via commands", () => {
     await expect(page.getByRole("menuitem", { name: "Redo" })).toBeVisible();
   });
 
-  test("AC-MENU-5 — File menu lists 'Open IDML…' (registered by the shell, not the app)", async ({
+  test("AC-MENU-5 — File menu lists 'Open…' (registered by the shell, not the app)", async ({
     page,
   }) => {
     // The shell registers `paged.file.openIdml`; the app's menu
-    // projection maps it onto File/Open IDML…. This confirms the
+    // projection maps it onto File/Open…. This confirms the
     // convergence — same command id, different consumer surface.
     await page
       .locator('nav[aria-label="Main menu"]')
       .getByRole("button", { name: "File" })
       .click();
     await expect(
-      page.getByRole("menuitem", { name: "Open IDML…" }),
+      page.getByRole("menuitem", { name: "Open…" }),
     ).toBeVisible();
   });
 });

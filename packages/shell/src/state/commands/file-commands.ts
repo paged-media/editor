@@ -86,7 +86,11 @@ export function buildOpenIdmlCommand(options: {
 }): CommandContribution {
   return {
     id: PAGED_FILE_OPEN_IDML,
-    title: "Open IDML…",
+    // "Open…", not "Open IDML…": the picker's accept list is computed from
+    // the importer registry, so this door opens every registered format
+    // (.idml, .svg, .xlsx, images, .docx, …). Command id keeps the historic
+    // name for test/config stability.
+    title: "Open…",
     category: "File",
     handler: async (paged) => {
       const editor = paged as PagedEditor;
