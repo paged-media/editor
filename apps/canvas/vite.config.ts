@@ -47,18 +47,24 @@ const CORPUS_ENVATO = resolveCorpusSubdir("envato");
 // The vendored DuckDB-WASM dist (paged.data's query engine). The editor
 // consumes data-bundle through the pnpm `link:` chain, so the bundle's
 // `bootDuckDB` resolves the worker/wasm URLs relative to its own module at
-// `~/paged/plugin-data/packages/data-bundle/src/query/duckdb.ts` → the dist
-// at `~/paged/plugin-data/vendor/duckdb-wasm/dist/`.
-const DUCKDB_DIST = resolve(
-  __dirname,
-  "..",
-  "..",
-  "..",
-  "plugin-data",
-  "vendor",
-  "duckdb-wasm",
-  "dist",
-);
+// `plugin-data/packages/data-bundle/src/query/duckdb.ts` → the dist at
+// `plugin-data/vendor/duckdb-wasm/dist/`. Locally plugin repos live under
+// `~/paged/plugins/`; CI checks plugin-data out as a direct sibling.
+const DUCKDB_DIST = (() => {
+  const candidates = [
+    resolve(__dirname, "..", "..", "..", "plugins", "plugin-data"),
+    resolve(__dirname, "..", "..", "..", "plugin-data"),
+  ];
+  for (const dir of candidates) {
+    try {
+      if (statSync(dir).isDirectory())
+        return resolve(dir, "vendor", "duckdb-wasm", "dist");
+    } catch {
+      // try next candidate
+    }
+  }
+  return resolve(candidates[0], "vendor", "duckdb-wasm", "dist");
+})();
 
 // SharedArrayBuffer requires cross-origin isolation. Set the two
 // COOP / COEP headers Vite's dev server needs so the worker can
