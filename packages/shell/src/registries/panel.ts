@@ -66,6 +66,15 @@ export interface PanelContribution {
   /** Optional icon name for the tab header. */
   icon?: string;
 
+  /** K-8 — opt into the panel rail: the rail renders a launcher item
+   *  for this panel after the app's built-in items. Off by default. */
+  rail?: boolean;
+
+  /** K-8 — a self-contained SVG glyph (inner markup of a 24×24 viewBox,
+   *  currentColor, no script/event handlers). SANITIZED before render;
+   *  used when `icon` names no host glyph. */
+  iconSvg?: string;
+
   /** Optional visibility predicate against application state. */
   when?: VisibilityPredicate;
 
