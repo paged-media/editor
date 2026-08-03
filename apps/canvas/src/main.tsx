@@ -920,6 +920,11 @@ function PluginBundles() {
   const paged = usePaged();
   const pagedRef = useRef(paged);
   pagedRef.current = paged;
+  // Test affordance (like `__consent`/`__secrets`) — the aggregate
+  // PagedEditor handle, i.e. the object the plugin-sdk host reads via
+  // `getEditor()`. E2E specs probe the members capability flags gate
+  // on (`text` → text.measure@1, `sceneLayers` → rendering.sceneLayer@1).
+  (globalThis as unknown as { __paged?: unknown }).__paged = paged;
   // The document context (setHandle + snapshot sinks) so a plugin importer that
   // opens a NEW document via host.nativeDocument.open activates it in the view,
   // exactly like File▸Open. Held in a ref — the mount-once effect below reads

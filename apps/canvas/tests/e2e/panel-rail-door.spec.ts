@@ -56,11 +56,15 @@ test.describe("K-8 — panel rail + icon door", () => {
         component: () => null,
         rail: true,
         // A benign circle PLUS the attack surface the sanitizer must
-        // strip: a script block and an onclick handler.
+        // strip: a script block (with markup inside), a foreignObject
+        // subtree, a case-variant event handler, and a data: URL href.
         iconSvg:
           '<circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/>' +
-          '<script>window.__railDoorPwned = true<\/script>' +
-          '<rect x="1" y="1" width="4" height="4" onclick="window.__railDoorPwned = true"/>',
+          '<script>window.__railDoorPwned = true; var x = "<b>markup<\/b>"<\/script>' +
+          '<foreignObject x="0" y="0" width="24" height="24">' +
+          '<img src="x" onerror="window.__railDoorPwned = true"/><\/foreignObject>' +
+          '<rect x="1" y="1" width="4" height="4" ONClick="window.__railDoorPwned = true"/>' +
+          "<use href=\"data:image/svg+xml,<svg onload='window.__railDoorPwned = true'/>\"/>",
       });
       window.__railDoorDispose = () => handle.dispose();
     }, PANEL_ID);
@@ -69,11 +73,14 @@ test.describe("K-8 — panel rail + icon door", () => {
     const item = page.locator(`[data-panel-rail-item="${PANEL_ID}"]`);
     await expect(item).toBeVisible();
 
-    // The glyph rendered SANITIZED: the circle survives; no script node,
-    // no onclick attribute, and the payload never executed.
+    // The glyph rendered SANITIZED: the circle survives; script and
+    // foreignObject subtrees are gone, the case-variant handler and the
+    // data: href are dropped, and the payload never executed.
     await expect(item.locator("svg circle")).toHaveCount(1);
     await expect(item.locator("svg script")).toHaveCount(0);
+    await expect(item.locator("svg foreignObject, svg img")).toHaveCount(0);
     await expect(item.locator("svg rect[onclick]")).toHaveCount(0);
+    await expect(item.locator("svg use[href]")).toHaveCount(0);
     expect(
       await page.evaluate(
         () => (window as { __railDoorPwned?: boolean }).__railDoorPwned,
