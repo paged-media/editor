@@ -478,6 +478,11 @@ export default defineConfig({
       // reports duckdb-missing and data binding can't drive.
       "apache-arrow": resolve(__dirname, "node_modules/apache-arrow"),
     },
+    // One React only: a plugin bundle consumed through a local link:
+    // override resolves imports from ITS realpath (its own node_modules),
+    // which would mount panel components against a second React instance
+    // and break hooks. Harmless for registry installs (already deduped).
+    dedupe: ["react", "react-dom"],
   },
   optimizeDeps: {
     // Decision-B: the wasm loader ships in @paged-media/canvas-wasm.
@@ -486,7 +491,8 @@ export default defineConfig({
     // @paged-media/pdf ships the same shape (the pdf-import wasm mapper +
     // pdf.js worker, both loaded via `?url`); esbuild's dep-optimizer can't
     // read a `?url` import, so exclude it too and let Vite resolve the assets.
-    exclude: ["@paged-media/canvas-wasm", "@paged-media/pdf"],
+    // @paged-media/doc likewise (bin/docx_js_bg.wasm via `?url`).
+    exclude: ["@paged-media/canvas-wasm", "@paged-media/pdf", "@paged-media/doc"],
     // Pre-bundle apache-arrow at server startup. The DuckDB-WASM API entry's
     // bare `apache-arrow` import is rewritten to a virtual module (see
     // duckdbDistRoute) that pulls in apache-arrow; if Vite first discovers it

@@ -73,6 +73,7 @@ import { sheetBundle } from "@paged-media/sheet";
 import { imageBundle } from "@paged-media/image";
 import { publishBundle } from "@paged-media/publish";
 import { pdfBundle } from "@paged-media/pdf";
+import { docBundle } from "@paged-media/doc";
 import { createEditorAssetSource } from "./plugin-asset-source";
 import { createEditorBlobStore } from "./plugin-blob-store";
 import { createEditorClipboardBackend } from "./plugin-clipboard";
@@ -1077,6 +1078,11 @@ function PluginBundles() {
       // paged.pdf — Phase 0: opens a .pdf as full-page image frames (pdf.js
       // raster -> inline-image IDML -> host.nativeDocument.open).
       loadBundle(() => pagedRef.current, pdfBundle, hostOptions),
+      // paged.doc — Word/DOCX: .docx/.dotx importer + "Place Word document…"
+      // places lowered native stories into the OPEN document (no destructive
+      // open; the docx→native standalone producer is deferred). Save-back
+      // export needs the v54/v55 doors — degrades to verbatim on older hosts.
+      loadBundle(() => pagedRef.current, docBundle, hostOptions),
     ];
     return () => {
       for (const l of loaded) l.dispose();
