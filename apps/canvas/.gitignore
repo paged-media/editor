@@ -15,3 +15,8 @@ apps/canvas/tests/demo/out/
 
 # demo/playground build output (deployed to the playground host, not committed)
 dist-demo/
+
+# ad-hoc real-world PDF test documents (manual paged.pdf testing; some are
+# personal/third-party — never commit). The committed fixtures are
+# public/sample.pdf + public/report.pdf.
+public/pdfs/
