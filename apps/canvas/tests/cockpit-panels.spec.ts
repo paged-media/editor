@@ -60,10 +60,11 @@ test.describe("Cockpit — Export Center", () => {
 
     const center = page.locator("[data-export-center]");
     await expect(center).toBeVisible();
-    // W2.6 — six targets; three are LIVE (PDF/image/IDML). The
-    // honest-or-live invariant + per-target detail is covered in
+    // W2.6→ADR-022 Phase 5 — five built-in targets (two LIVE: PDF/image);
+    // IDML left the built-in set for the paged.publish plugin exporter.
+    // The honest-or-live invariant + per-target detail is covered in
     // export-family.spec.ts; here we just drive the PDF row through.
-    await expect(page.locator("[data-export-target]")).toHaveCount(6);
+    await expect(page.locator("[data-export-target]")).toHaveCount(5);
     await expect(
       page.locator('[data-status-pill="readiness-pdf-x4"]'),
     ).toBeVisible();
@@ -122,9 +123,9 @@ test.describe("Cockpit — Publication health + stubs", () => {
     ).toBeVisible();
 
     await page.evaluate(() => window.__canvas.setMode("data"));
-    await expect(
-      page.locator("[data-data-mapping-panel] [data-coming-soon]"),
-    ).toBeVisible();
+    // Data mode seeds the LIVE paged.data bindings panel (the mapping
+    // ComingSoon stub is off the mode surface, Window-menu only).
+    await expect(page.locator('text="Wire demo binding"')).toBeVisible();
 
     await page.evaluate(() => window.__canvas.setMode("design"));
   });
