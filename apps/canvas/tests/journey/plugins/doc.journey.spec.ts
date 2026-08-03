@@ -125,6 +125,23 @@ test.describe("journey · paged.doc plugin", () => {
       .poll(() => openPanels(page), { timeout: 15_000 })
       .toEqual(expect.arrayContaining([OUTLINE_PANEL]));
 
+    // The REAL outline/styles panel (not the old status stub): document
+    // summary, styles/diagnostics sections, and the honest save-back
+    // readiness line all render from the retained LoweredDoc.
+    await expect(page.locator('[data-doc-panel="ready"]')).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(page.locator("[data-doc-summary]")).toContainText("paragraphs");
+    await expect(page.locator("[data-doc-styles]")).toBeVisible();
+    await expect(page.locator("[data-doc-diagnostics]")).toBeVisible();
+    // Value depends on the host's readStory door — assert presence, log lane.
+    const readiness = await page
+      .locator("[data-doc-readiness]")
+      .getAttribute("data-doc-readiness");
+    expect(["live", "verbatim"]).toContain(readiness);
+    // eslint-disable-next-line no-console
+    console.log(`[journey] paged.doc save-back readiness=${readiness}`);
+
     // RENDER — the poured native story must actually paint. Poll a fresh
     // snapshot against the pre-place baseline (a single cold sample flakes;
     // see the journey-flake lesson) before pinning the count.
