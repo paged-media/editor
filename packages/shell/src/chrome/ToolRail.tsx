@@ -31,6 +31,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { useRegistries } from "../state/registries-context";
+import { useEditContextStack } from "../state/edit-context-stack";
 import { useTool } from "../state/tool-context";
 import { Icon, hasIcon } from "../icons";
 import { ToolOptionsPopover } from "./ToolOptionsPopover";
@@ -198,12 +199,27 @@ export function ToolRail({ foot }: { foot?: ReactNode }) {
     [lastUsed],
   );
 
+  // K-1 residual closed — an active edit context that declares `toolIds`
+  // restricts the rail: every other tool renders dimmed. Picking a dimmed
+  // tool is NOT trapped: it COMMITS the context first (the same gentle
+  // path as a press outside the frame), then activates — so the rail
+  // doubles as an exit, never a dead end. No restriction (empty/absent
+  // toolIds, e.g. the sheet grid session) leaves the rail untouched.
+  const editContexts = useEditContextStack();
+  const restrictedTools = useMemo(() => {
+    const ids = editContexts.active?.toolIds ?? [];
+    return ids.length > 0 ? new Set(ids) : null;
+  }, [editContexts.active]);
+
   const pick = useCallback(
     (tool: ToolContribution) => {
+      if (restrictedTools && !restrictedTools.has(tool.id)) {
+        editContexts.commit();
+      }
       setLastUsed((prev) => ({ ...prev, [tool.group]: tool.id }));
       setBaseTool(tool.id);
     },
-    [setBaseTool],
+    [setBaseTool, restrictedTools, editContexts],
   );
 
   return (
@@ -219,6 +235,7 @@ export function ToolRail({ foot }: { foot?: ReactNode }) {
                 face={faceToolOf(slot)}
                 activeGroup={groupOf.get(effectiveTool)}
                 effectiveTool={effectiveTool}
+                restricted={restrictedTools}
                 onPick={pick}
                 onTearOff={tearOff}
               />
@@ -342,6 +359,7 @@ function ToolSlot({
   face,
   activeGroup,
   effectiveTool,
+  restricted,
   onPick,
   onTearOff,
 }: {
@@ -349,6 +367,8 @@ function ToolSlot({
   face: ToolContribution;
   activeGroup: ToolGroupId | undefined;
   effectiveTool: string;
+  /** Active edit context's declared tool set — tools outside it dim. */
+  restricted?: Set<string> | null;
   onPick: (tool: ToolContribution) => void;
   onTearOff?: (group: ToolGroupId, pos: { x: number; y: number }) => void;
 }) {
@@ -447,6 +467,9 @@ function ToolSlot({
         data-tool-slot={slot.group}
         data-tool={face.id}
         data-active={isActive ? "true" : "false"}
+        data-context-dimmed={
+          restricted && !restricted.has(face.id) ? "true" : undefined
+        }
         onPointerDown={onPointerDown}
         onPointerUp={clearTimer}
         onPointerLeave={clearTimer}
@@ -464,7 +487,14 @@ function ToolSlot({
           e.preventDefault();
           openFlyout();
         }}
-        style={isActive ? { ...slotStyle, ...slotActiveStyle } : slotStyle}
+        style={{
+          ...(isActive ? { ...slotStyle, ...slotActiveStyle } : slotStyle),
+          // Context restriction — dimmed but CLICKABLE (a pick commits the
+          // context and activates; see the rail's pick handler).
+          ...(restricted && !restricted.has(face.id)
+            ? { opacity: 0.35 }
+            : null),
+        }}
       >
         <SlotGlyph tool={face} />
         {hasFlyout && <span style={flyoutMarkerStyle} aria-hidden />}
@@ -499,6 +529,7 @@ function ToolSlot({
             )}
             {slot.members.map((member) => {
             const memberActive = member.id === effectiveTool;
+            const memberDimmed = restricted ? !restricted.has(member.id) : false;
             return (
               <button
                 key={member.id}
@@ -510,15 +541,17 @@ function ToolSlot({
                     : member.title
                 }
                 data-tool={member.id}
+                data-context-dimmed={memberDimmed ? "true" : undefined}
                 onClick={() => {
                   setFlyoutOpen(false);
                   onPick(member);
                 }}
-                style={
-                  memberActive
+                style={{
+                  ...(memberActive
                     ? { ...flyoutItemStyle, ...slotActiveStyle }
-                    : flyoutItemStyle
-                }
+                    : flyoutItemStyle),
+                  ...(memberDimmed ? { opacity: 0.35 } : null),
+                }}
               >
                 <SlotGlyph tool={member} />
                 <span style={flyoutLabelStyle}>{member.title}</span>
