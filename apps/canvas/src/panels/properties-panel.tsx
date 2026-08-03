@@ -40,10 +40,12 @@ import {
   CockpitSection,
   CockpitValue,
   CompositionRenderer,
+  PanelHost,
   useContentSelection,
   useDocument,
   useOptionalCockpitState,
   useSelection,
+  useSelectionObjectType,
 } from "@paged-media/shell";
 
 import { appCatalogRegistry } from "./catalog-registry";
@@ -59,6 +61,11 @@ export function PropertiesPanel() {
   const { elementSelection, elementGeometry } = useSelection();
   const { contentSelection } = useContentSelection();
   const cockpit = useOptionalCockpitState();
+  // Plugin-owned content: SELECTING a classified object (webFrame,
+  // sheetFrame, wordDocument, …) now surfaces the owning bundle in the
+  // inspector — previously object types were consulted only on
+  // double-click (the edit-context entry chain).
+  const owned = useSelectionObjectType();
 
   const hasElement = elementSelection.length > 0;
   const hasContent = !!contentSelection;
@@ -77,8 +84,11 @@ export function PropertiesPanel() {
         ? "frame"
         : (cockpit?.inspectorContext ?? "none");
 
+  const ownedTitle =
+    kind === "frame" && owned ? humanizeType(owned.objectType.type) : null;
   const title =
-    kind === "text"
+    ownedTitle ??
+    (kind === "text"
       ? "Text"
       : kind === "image"
         ? "Image"
@@ -86,7 +96,7 @@ export function PropertiesPanel() {
           ? "Frame"
           : kind === "page"
             ? "Page"
-            : "Properties";
+            : "Properties");
 
   // The gallery's selection sub-header — "Text · 1 frame".
   const selectionLabel =
@@ -149,6 +159,26 @@ export function PropertiesPanel() {
         {kind === "page" && <PageSummary />}
 
         <div className="p-3 pt-0 flex flex-col gap-3">
+          {kind === "frame" && owned ? (
+            <div
+              data-properties-section="object-type"
+              data-object-type={owned.objectType.type}
+            >
+              {owned.editContext?.panelIds?.length ? (
+                // The owning bundle's inspector surface, inline — the
+                // same registered panel the edit context raises.
+                <PanelHost id={owned.editContext.panelIds[0]} />
+              ) : (
+                <div
+                  className="pg-ui-xs"
+                  style={{ padding: "4px 2px", opacity: 0.7, lineHeight: 1.5 }}
+                >
+                  {humanizeType(owned.objectType.type)} — double-click to edit
+                  in place.
+                </div>
+              )}
+            </div>
+          ) : null}
           {hasElement ? (
             <div data-properties-section="object">
               <CompositionRenderer composition={objectTransformComposition} />
@@ -180,6 +210,12 @@ export function PropertiesPanel() {
       </div>
     </CatalogRegistryProvider>
   );
+}
+
+/** "webFrame" → "Web frame" — the breadcrumb's title-casing rule. */
+function humanizeType(type: string): string {
+  const spaced = type.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 /** Page geometry summary (kit PageInspector). REAL: size from the

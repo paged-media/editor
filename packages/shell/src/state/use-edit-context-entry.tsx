@@ -54,7 +54,7 @@ export interface DoubleClickHit {
   groupChain: readonly string[];
 }
 
-type MetaEnvelope = {
+export type MetaEnvelope = {
   v: number;
   data: Record<string, unknown>;
   engine?: Record<string, string>;
@@ -62,8 +62,9 @@ type MetaEnvelope = {
 
 /** Parse the `x-paged:<key>` metadata envelope out of an element's
  *  property entries (the `pluginMetadata` typed value). Returns null
- *  when the key is absent or the stored JSON is unparseable. */
-function readEnvelope(
+ *  when the key is absent or the stored JSON is unparseable.
+ *  Exported for the selection-time classifier (useSelectionObjectType). */
+export function readEnvelope(
   entries: ReadonlyArray<{ value?: unknown }>,
   key: string,
 ): MetaEnvelope | null {

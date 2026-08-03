@@ -262,6 +262,10 @@ export {
   useEditContextEntry,
   type DoubleClickHit,
 } from "./state/use-edit-context-entry";
+export {
+  useSelectionObjectType,
+  type SelectionObjectType,
+} from "./state/use-selection-object-type";
 
 // ── Built-in commands ──────────────────────────────────────────
 export {
