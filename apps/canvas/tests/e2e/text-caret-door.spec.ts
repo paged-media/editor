@@ -90,7 +90,7 @@ test.describe("C-9 — the injected text-caret reader", () => {
       .toBe(true);
   });
 
-  test("surfaces the live caret as {storyId, offset}; range answers its start; clears to null @feat:plugin-platform.host-doors @level:happy", async ({
+  test("surfaces the live caret as {storyId, offset}; range answers its start; clears to null @feat:plugin-platform.text-caret-door @level:happy", async ({
     page,
   }) => {
     // No active text caret → the honest null.
@@ -121,7 +121,7 @@ test.describe("C-9 — the injected text-caret reader", () => {
     await expect.poll(() => readCaret(page), { timeout: 5_000 }).toBeNull();
   });
 
-  test("a cell-qualified caret answers null — cell-local offsets never leak as story-local @feat:plugin-platform.host-doors @level:edge", async ({
+  test("a cell-qualified caret answers null — cell-local offsets never leak as story-local @feat:plugin-platform.text-caret-door @level:edge", async ({
     page,
   }) => {
     // The v35 cell qualifier makes start/end CELL-LOCAL; handing them to
