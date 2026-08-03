@@ -30,8 +30,12 @@
 // mirror can't drift silently (a contract change fails the editor's
 // typecheck at the seam, exactly the plugin-api-compat discipline).
 //
-// Keep these shapes byte-identical to plugin-api/src/panel-schema.ts +
-// the `BindingsSurface` slice of host.ts.
+// Keep these shapes a structural SUPERSET of plugin-api/src/
+// panel-schema.ts + the `BindingsSurface` slice of host.ts: the v1
+// members stay byte-identical; editor-side schema extensions (the
+// B-01 list widget / G3 applyEntity members below) are ADDITIVE
+// OPTIONAL members only, so a contract-shaped schema remains
+// assignable and the seam assert keeps its teeth.
 
 import type { PropertyPath, Value } from "@paged-media/client";
 
@@ -51,10 +55,83 @@ export interface BindingRef {
 
 export type SchemaGate = boolean | BindingRef;
 
+// ---------------------------------------------------------------- lists
+//
+// B-01 list widget + G3 apply-entity write — the schema's COLLECTION
+// tier. All members below are ADDITIVE (schema v1.1): a v1 schema
+// (scalar rows only) parses and renders unchanged, and the widened
+// row shape stays a structural SUPERSET of the plugin-api contract,
+// so the injection-seam assert in apps/canvas main.tsx keeps passing
+// (a narrower v1 `PanelSchema` is assignable to this one).
+
+/** Where a `list` row's items come from. Two sources, mirroring the
+ *  two live-collection lanes the shell already has:
+ *    · `documentCollection` — a named engine collection (the same
+ *      D1 `useCollection` lane the editor's own panels read);
+ *    · `binding` — an ARRAY the plugin publishes through
+ *      `host.bindings.publish(name, rows)` (the B-01 published-
+ *      bindings door, now carrying rows instead of a boolean). */
+export type WidgetCollectionBinding =
+  | { kind: "documentCollection"; collection: string }
+  | { kind: "binding"; bind: string };
+
+/** G3 — a schema row ACTION. Either dispatches a registered command
+ *  with the row id as payload, or the `applyEntity` write kind:
+ *  apply the row's entity id (style / swatch self-id) to the current
+ *  selection through the SAME setElementProperty mutation channel
+ *  the scalar widgets commit on. `valueType` picks the wire payload
+ *  (`text` for applied-style paths, `colorRef` for swatch/gradient
+ *  paths) — exactly the collection-select leaf's convention. */
+export type SchemaRowAction =
+  | { kind: "command"; command: string }
+  | {
+      kind: "applyEntity";
+      /** Selection surface to write to (defaults to `"element"`). */
+      scope?: "element" | "content";
+      /** The applied-entity PropertyPath (e.g. `frameFillColor`,
+       *  `appliedParagraphStyle`). */
+      path: PropertyPath;
+      /** Wire payload variant; defaults to `"text"`. */
+      valueType?: "text" | "colorRef";
+    };
+
+/** One per-row action button on a `list` widget. */
+export interface SchemaListAction {
+  /** Button label (sentence case, no emoji — brand content rules). */
+  label: string;
+  action: SchemaRowAction;
+  /** Gate the button on a published binding (absent = enabled;
+   *  `applyEntity` actions additionally disable while the target
+   *  selection is empty — the honest no-write-path rule). */
+  enabled?: SchemaGate;
+}
+
+/** The `list` widget spec (widget id `paged.list`). Renders rows
+ *  from a collection binding; publishes the clicked row's id back
+ *  through `selectionBinding` so other rows/sections can gate on it. */
+export interface SchemaListSpec {
+  items: WidgetCollectionBinding;
+  /** Dot-path into a row object for the primary label ("name"). */
+  labelField: string;
+  /** Optional secondary line (mono), e.g. "kind". */
+  secondaryField?: string;
+  /** Dot-path carrying the row's stable id; defaults to "selfId"
+   *  (the summary-shape convention every document collection uses). */
+  idField?: string;
+  /** Published binding name that receives the selected row id on
+   *  click (string). Absent = the list keeps private selection. */
+  selectionBinding?: string;
+  /** Per-row action buttons. */
+  actions?: SchemaListAction[];
+}
+
 export interface PanelSchemaRow {
   widget: string;
   props?: Record<string, unknown>;
   value?: WidgetValueBinding;
+  /** ADDITIVE (v1.1) — present iff `widget` is the list widget
+   *  (`paged.list`). Scalar rows ignore it. */
+  list?: SchemaListSpec;
   visible?: SchemaGate;
   enabled?: SchemaGate;
 }

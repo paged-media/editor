@@ -49,6 +49,7 @@ import type {
   PagedEditor as RealPagedEditor,
   PanelContribution as RealPanelContribution,
   ToolContribution as RealToolContribution,
+  ToolPreviewShape as RealToolPreviewShape,
 } from "@paged-media/shell";
 
 type Assert<T extends true> = T;
@@ -57,6 +58,15 @@ type Extends<A, B> = A extends B ? true : false;
 // Handle direction: the live editor satisfies the published contract.
 export type _PagedEditorSatisfiesContract = Assert<
   Extends<RealPagedEditor, Api.PagedEditor>
+>;
+
+// Overlay vocabulary direction: every CONTRACT tool-preview variant must
+// be renderable by the editor (the editor union stays a SUPERSET of the
+// contract's). Explicit because the handle assertion above can't catch a
+// missing variant — `setToolPreview` is a method, and method bivariance
+// lets a narrower parameter slip through.
+export type _ToolPreviewVocabularyRenderable = Assert<
+  Extends<Api.ToolPreviewShape, RealToolPreviewShape>
 >;
 
 // Contribution direction: contract-authored contributions register

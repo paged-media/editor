@@ -102,12 +102,44 @@ export interface ToolPreviewPath {
   dashed?: boolean;
 }
 
+/**
+ * The overlay TEXT primitive (plugin RFI "overlay carries shapes only")
+ * — an on-canvas readout in the tool-preview family (paged.draw's
+ * Measure tool HUD; future: Dimension tool, crop HUDs, Ruler markers).
+ * `x`/`y` are page-local pt (the text BASELINE anchor); the overlay
+ * shifts by the page origin and renders at constant SCREEN size (the
+ * page-caption idiom), so `size` is screen px, not document pt.
+ * PLAIN TEXT ONLY — the renderer sanitizes (control chars stripped,
+ * no markup). Mirrors the plugin-api `ToolPreviewText` variant; the
+ * editor's union must stay a superset of the contract so the handle
+ * assigns (plugin-api-compat).
+ */
+export interface ToolPreviewText {
+  /** Explicit discriminant (the vocabulary's first — older variants
+   *  discriminate structurally). */
+  kind: "text";
+  pageId: PageId;
+  /** Text anchor x, page-local pt. */
+  x: number;
+  /** Text BASELINE y, page-local pt. */
+  y: number;
+  /** The label. Plain text; the renderer sanitizes + truncates. */
+  text: string;
+  /** Font size in screen px (constant under zoom). Default 11. */
+  size?: number;
+  /** Horizontal anchoring relative to `x` (SVG text-anchor). Default "start". */
+  anchor?: "start" | "middle" | "end";
+  /** Render a small backing plate behind the label for legibility. */
+  background?: boolean;
+}
+
 /** What a tool handler can publish as its in-progress preview. */
 export type ToolPreviewShape =
   | MarqueeRectPageLocal
   | ToolPreviewPolyline
   | ToolPreviewGrid
-  | ToolPreviewPath;
+  | ToolPreviewPath
+  | ToolPreviewText;
 
 interface OverlaySignalsValue {
   /** Last click hit-result. Cleared when the user clicks empty space. */

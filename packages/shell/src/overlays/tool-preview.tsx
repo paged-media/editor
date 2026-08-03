@@ -20,6 +20,22 @@
 import type { OverlayContribution, OverlayProps } from "../registries/overlay";
 import { useOptionalOverlaySignals } from "../state/overlay-signals-context";
 
+/** Longest label the text preview renders — a readout HUD, not a
+ *  paragraph; the cap also keeps the plate-width estimate sane. */
+const TEXT_PREVIEW_MAX_CHARS = 160;
+
+/** Plain text only: strip control characters (incl. newlines — SVG
+ *  <text> has no line breaking) and cap the length. React escapes the
+ *  text child, so no markup ever executes; this strip is the rest of
+ *  the plain-text guarantee for a plugin-supplied string. */
+function sanitizePreviewText(raw: string): string {
+  return String(raw)
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
+    .trim()
+    .slice(0, TEXT_PREVIEW_MAX_CHARS);
+}
+
 /**
  * Concept 1 — the active tool handler's in-progress preview (the
  * Rectangle rubber-band today; a future Pen path / Line preview reuses
@@ -87,6 +103,58 @@ function ToolPreviewRender(props: OverlayProps) {
         vectorEffect="non-scaling-stroke"
         pointerEvents="none"
       />
+    );
+  }
+  // The overlay TEXT primitive (plugin RFI "overlay carries shapes
+  // only") — an on-canvas readout (paged.draw's Measure HUD). Rendered
+  // at constant SCREEN size via the page-caption idiom (translate to
+  // the doc-space anchor, then scale by 1/camera so the label never
+  // zooms). Colours ride the snap-teal preview family; the fill
+  // attribute is the globals.css re-apply hook (SVG presentation
+  // attributes can't resolve var() — the attribute IS the hook).
+  // `kind` exists only on the text variant today, so the presence check
+  // alone narrows BOTH branches (a compound `p.kind === "text"` check
+  // would leave the rect fallback un-narrowed).
+  if ("kind" in p) {
+    const label = sanitizePreviewText(p.text);
+    if (!label) return null;
+    const size = Math.min(48, Math.max(6, p.size ?? 11));
+    const anchor = p.anchor ?? "start";
+    const inv = 1 / props.camera.scale;
+    // Conservative plate sizing — no measurement pass for a transient
+    // HUD: ~0.62em average advance + 4px pads (page-decorations' badge
+    // idiom). textAnchor moves the TEXT; the plate x follows it.
+    const textW = label.length * size * 0.62;
+    const plateW = textW + 8;
+    const plateX =
+      anchor === "middle" ? -plateW / 2 : anchor === "end" ? -(textW + 4) : -4;
+    return (
+      <g
+        transform={`translate(${pr.x + p.x}, ${pr.y + p.y}) scale(${inv})`}
+        pointerEvents="none"
+      >
+        {p.background ? (
+          <rect
+            x={plateX}
+            y={-(size * 0.8 + 3)}
+            width={plateW}
+            height={size + 6}
+            rx={3}
+            fill="var(--overlay-snap)"
+            fillOpacity={0.92}
+          />
+        ) : null}
+        <text
+          textAnchor={anchor}
+          fontSize={size}
+          fontFamily="var(--font-sans)"
+          // On the teal plate the label is white (the anchor-badge
+          // contrast idiom); bare text is the snap-teal token itself.
+          fill={p.background ? "white" : "var(--overlay-snap)"}
+        >
+          {label}
+        </text>
+      </g>
     );
   }
   // Editor-ops — polyline variant (Line drag, Pencil stroke,

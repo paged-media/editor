@@ -114,6 +114,7 @@ export {
   type ToolPreviewPath,
   type ToolPreviewPolyline,
   type ToolPreviewShape,
+  type ToolPreviewText,
 } from "./state/overlay-signals-context";
 
 // W2.8 — guide creation/drag state (rulers + overlay + controller).
@@ -416,8 +417,17 @@ export type {
   SchemaGate as ShellSchemaGate,
   BindingsSurface as ShellBindingsSurface,
   SchemaPanelRendererProps as ShellSchemaPanelRendererProps,
+  // B-01/G3 (schema v1.1, additive) — the list widget + applyEntity
+  // vocabulary.
+  WidgetCollectionBinding as ShellWidgetCollectionBinding,
+  SchemaRowAction as ShellSchemaRowAction,
+  SchemaListAction as ShellSchemaListAction,
+  SchemaListSpec as ShellSchemaListSpec,
 } from "./catalog/schema-panel-types";
-export { TogglePill, displayName } from "./catalog/leaves";
+// Editor-side BindingsSurface for host-owned schema panels (demo /
+// consumer-proof panels, specs).
+export { createLocalBindingsSurface } from "./catalog/local-bindings";
+export { TogglePill, displayName, type ListLeafAction } from "./catalog/leaves";
 export { useBindings, type ResolvedBinding } from "./catalog/binding-hook";
 export {
   useCollection,
@@ -465,6 +475,7 @@ export {
   PAGED_INPUT_SELECT,
   PAGED_INPUT_TOGGLE_SWITCH,
   PAGED_READOUT,
+  PAGED_LIST,
   PAGED_LAYOUT_SECTION,
   PAGED_LAYOUT_CLUSTER,
   PAGED_LABEL,

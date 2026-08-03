@@ -872,3 +872,205 @@ export function LabelLeaf({ props }: LeafProps) {
     </span>
   );
 }
+
+// ---------------------------------------------------------------- list
+
+/**
+ * Honest render cap (B-01 list widget). `packages/ui` ships NO
+ * virtualized list primitive today, so the leaf plain-renders its
+ * rows and CAPS the count, surfacing the truncation as a visible
+ * `data-list-overflow` row ("showing N of M") — never a silent
+ * drop. When a virtualized primitive lands in `@paged-media/ui`,
+ * this cap goes away and the leaf swaps onto it.
+ */
+const LIST_ROW_RENDER_CAP = 500;
+
+/** A resolved per-row action the renderer (or an expert composition)
+ *  hands the leaf via props — label + invoke callback; the SCHEMA
+ *  side (`SchemaListAction` command/applyEntity dispatch) is resolved
+ *  by the schema-panel renderer before it reaches the leaf. */
+export interface ListLeafAction {
+  /** Stable key; the row button's `data-list-action` hook. */
+  key: string;
+  label: string;
+  disabled?: boolean;
+  onInvoke: (rowId: string) => void;
+}
+
+/** Reads a dot-path ("name", "meta.kind") out of a row object. */
+function fieldAt(row: unknown, path: string): unknown {
+  let cur: unknown = row;
+  for (const seg of path.split(".")) {
+    if (cur == null || typeof cur !== "object") return undefined;
+    cur = (cur as Record<string, unknown>)[seg];
+  }
+  return cur;
+}
+
+function fieldText(row: unknown, path: string | undefined): string | null {
+  if (!path) return null;
+  const v = fieldAt(row, path);
+  if (v == null) return null;
+  return displayName(String(v));
+}
+
+function parseListActions(props: Record<string, unknown>): ListLeafAction[] {
+  const raw = Array.isArray(props.actions) ? props.actions : null;
+  if (!raw) return [];
+  return (raw as ListLeafAction[]).filter(
+    (a): a is ListLeafAction =>
+      !!a &&
+      typeof a === "object" &&
+      typeof a.key === "string" &&
+      typeof a.label === "string" &&
+      typeof a.onInvoke === "function",
+  );
+}
+
+/**
+ * B-01 — the `paged.list` collection-list leaf. Renders rows from a
+ * COLLECTION (props.items pre-resolved by the schema renderer, or
+ * self-resolved from `props.collectionName` through the same
+ * `useCollection` lane the collection-select leaf uses), with the
+ * kit list-row grammar (12.5px primary, 10.5px mono secondary,
+ * `--selected-bg` selection) and optional per-row action buttons.
+ *
+ * NOT built on the cockpit `ListRows` archetype on purpose: its
+ * interactive row IS a `<button>`, so per-row action buttons would
+ * nest buttons (invalid HTML). The leaf renders a div row with a
+ * select button + sibling action buttons instead, speaking the same
+ * visual vocabulary.
+ *
+ * Selection is CONTROLLED when `props.onSelect` is supplied (the
+ * schema renderer publishes the id back through the panel's
+ * bindings); otherwise the leaf keeps private selection state.
+ */
+export function ListLeaf({ props }: LeafProps) {
+  const collectionName =
+    typeof props.collectionName === "string" &&
+    !Array.isArray(props.items)
+      ? (props.collectionName as CollectionName)
+      : null;
+  // Hook must run unconditionally — same safe-fallback idiom as
+  // CollectionSelectLeaf.
+  const fetched = useCollection<Record<string, unknown>>(
+    (collectionName ?? "swatches") as CollectionName,
+  );
+  const [privateSelected, setPrivateSelected] = useState<string | null>(null);
+
+  const items: unknown[] = Array.isArray(props.items)
+    ? (props.items as unknown[])
+    : collectionName
+      ? (fetched ?? [])
+      : [];
+  const labelField =
+    typeof props.labelField === "string" ? props.labelField : "name";
+  const secondaryField =
+    typeof props.secondaryField === "string" ? props.secondaryField : undefined;
+  const idField = typeof props.idField === "string" ? props.idField : "selfId";
+  const onSelect =
+    typeof props.onSelect === "function"
+      ? (props.onSelect as (id: string) => void)
+      : null;
+  const selectedId = onSelect
+    ? typeof props.selectedId === "string"
+      ? (props.selectedId as string)
+      : null
+    : privateSelected;
+  const actions = parseListActions(props);
+
+  const visible = items.slice(0, LIST_ROW_RENDER_CAP);
+  return (
+    <LeafRow {...rowProps(props)}>
+      <div className="flex flex-col" data-list={collectionName ?? "items"}>
+        {visible.length === 0 && (
+          <div
+            className="pg-ui-xs px-[9px] py-[7px]"
+            style={{ color: "var(--pg-muted-fg)", fontStyle: "italic" }}
+            data-list-empty
+          >
+            No entries
+          </div>
+        )}
+        {visible.map((row, i) => {
+          const id = fieldText(row, idField) ?? String(i);
+          const label = fieldText(row, labelField) ?? id;
+          const secondary = fieldText(row, secondaryField);
+          const selected = selectedId === id;
+          return (
+            <div
+              key={id}
+              className="mb-px flex items-center gap-[6px] rounded-[7px] pr-[6px]"
+              data-list-row={id}
+              data-selected={selected ? "true" : undefined}
+              style={{
+                background: selected ? "var(--selected-bg)" : "transparent",
+              }}
+            >
+              <button
+                type="button"
+                className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent px-[9px] py-[6px] text-left"
+                data-list-row-select
+                onClick={() => {
+                  if (onSelect) onSelect(id);
+                  else setPrivateSelected(id);
+                }}
+              >
+                <span
+                  className="block truncate text-[12.5px]"
+                  style={{
+                    fontFamily: "var(--font-sans)",
+                    color: selected ? "var(--pg-primary)" : "var(--pg-fg)",
+                  }}
+                >
+                  {label}
+                </span>
+                {secondary != null && (
+                  <span
+                    className="block truncate text-[10.5px]"
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      color: "var(--pg-muted-fg)",
+                    }}
+                    data-list-secondary
+                  >
+                    {secondary}
+                  </span>
+                )}
+              </button>
+              {actions.map((a) => (
+                <button
+                  key={a.key}
+                  type="button"
+                  disabled={a.disabled}
+                  aria-label={`${a.label}: ${label}`}
+                  data-list-action={a.key}
+                  className="shrink-0 cursor-pointer rounded-[6px] border px-[7px] text-[11px] leading-[22px] disabled:cursor-default"
+                  style={{
+                    fontFamily: "var(--font-sans)",
+                    borderColor: "var(--pg-border)",
+                    background: "var(--pg-bg)",
+                    color: "var(--pg-muted-fg)",
+                    opacity: a.disabled ? 0.45 : 1,
+                  }}
+                  onClick={() => a.onInvoke(id)}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          );
+        })}
+        {items.length > LIST_ROW_RENDER_CAP && (
+          <div
+            className="pg-ui-xs px-[9px] py-[5px]"
+            style={{ color: "var(--pg-muted-fg)" }}
+            data-list-overflow={items.length}
+          >
+            showing {LIST_ROW_RENDER_CAP} of {items.length}
+          </div>
+        )}
+      </div>
+    </LeafRow>
+  );
+}

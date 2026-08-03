@@ -164,6 +164,7 @@ import { PagesListPanel } from "./panels/pages-list-panel";
 import { SpreadsPanel } from "./panels/spreads-panel";
 import { TableStylesPanel } from "./panels/table-styles-panel";
 import { SwatchesPanel } from "./panels/swatches-panel";
+import { SchemaListDemoPanel } from "./panels/schema-list-demo-panel";
 import { TextFrameOptionsPanel } from "./panels/text-frame-options-panel";
 import { TextWrapPanel } from "./panels/text-wrap-panel";
 import { ParagraphPanel } from "./panels/paragraph-panel";
@@ -613,6 +614,19 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultGroup: "styles",
   },
   {
+    // B-01/G3 (schema v1.1) — the list-widget + applyEntity CONSUMER
+    // PROOF: a schema-driven panel over the REAL swatches collection
+    // (row selection published back as a binding; Fill = applyEntity
+    // write, Stroke = command dispatch with the row id as payload).
+    // Rendered through the SAME SchemaPanelRenderer the bundle host
+    // injects. Driven by tests/e2e/schema-list-panel.spec.ts.
+    id: "paged.schema-list-demo",
+    title: "Swatch List (schema)",
+    component: SchemaListDemoPanel,
+    defaultDock: "right",
+    defaultGroup: "styles",
+  },
+  {
     // SDK Phase 5 (v1 sweep) — Color editor. Fill swatch picker
     // + fill tint scrub. Complements Swatches (the palette
     // browser) per `panel-catalog-and-sdk-extension.md` §6
@@ -972,6 +986,35 @@ function PluginBundles() {
     // lands a real grid. Flips supports("clipboard@1") true; the SDK door owns
     // the "full"/"vector"/"none" capability tiers.
     const clipboard = createEditorClipboardBackend();
+    // C-9: the caret reader behind host.text.caret() — lets a
+    // text-inserting bundle (paged.data first-insert placement) target
+    // the user's insertion point instead of story start. The caret lives
+    // in EDITOR state, not the engine: this reads the LIVE
+    // content-selection ref (the same state useTextEditing writes), so
+    // the value tracks typing/clicks without re-render lag. The answered
+    // offset is the engine text-op convention (`ContentSelection`
+    // story-local offsets — exactly what `insertText.offset` consumes).
+    // Collapsed caret → its offset; RANGE → its start (where a replace
+    // inserts); cell-qualified (table cell) → null — cell-local offsets
+    // must not leak as story-local (the documented v1 gap). Flips
+    // supports("text.caret@1") true once the pinned plugin-sdk knows the
+    // `textCaret` option; until that canary bump the option rides along
+    // inert (loadBundle ignores unknown options).
+    const textCaret = {
+      read: (): { storyId: string; offset: number } | null => {
+        const sel =
+          pagedRef.current?.contentSelection.contentSelectionRef.current ??
+          null;
+        if (!sel || sel.cell) return null;
+        return { storyId: sel.storyId, offset: sel.start };
+      },
+    };
+    if (!import.meta.env.PROD) {
+      // Test affordance (like `__consent`/`__secrets`): e2e asserts the
+      // injected reader's shape without needing a caret-consuming bundle.
+      (globalThis as unknown as { __textCaret?: unknown }).__textCaret =
+        textCaret;
+    }
     // K-3 / S-07 / I-02: the worker backend behind host.workers — lets a
     // bundle (paged.image's decode pool) spawn an off-main-thread worker.
     // The SDK door owns the capability gate, the count cap, the SAB byte
@@ -1053,6 +1096,7 @@ function PluginBundles() {
       assetSource,
       blobStore,
       clipboard,
+      textCaret,
       workers,
       dataProviders,
       consent,

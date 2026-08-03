@@ -50,7 +50,14 @@
 import { useEffect, useReducer } from "react";
 
 import type { Binding, CompositionNode } from "@paged-media/catalog";
+import type { CollectionName, ElementId, Value } from "@paged-media/client";
 
+import { useCanvasClient } from "../state/canvas-client-context";
+import { useContentSelection } from "../state/content-selection-context";
+import { useRegistries } from "../state/registries-context";
+import { useSelection } from "../state/selection-context";
+import { PAGED_LIST } from "./built-in";
+import type { ListLeafAction } from "./leaves";
 import { CompositionRenderer } from "./render";
 import { resolveGate } from "./schema-gate";
 import type {
@@ -59,8 +66,10 @@ import type {
   PanelSchemaRow,
   PanelSchemaSection,
   SchemaGate,
+  SchemaRowAction,
   WidgetValueBinding,
 } from "./schema-panel-types";
+import { useCollection } from "./use-collection";
 
 /** Map a schema `WidgetValueBinding` onto a catalog `Binding`. The
  *  shapes are structurally identical (panel-schema.ts mirrors the
@@ -95,6 +104,148 @@ function gate(g: SchemaGate | undefined, bindings: BindingsSurface): boolean {
   return resolveGate(g, (name) => bindings.get(name));
 }
 
+// ---------------------------------------------------------------- list rows
+//
+// B-01 list widget + G3 applyEntity — the schema's COLLECTION tier
+// (schema v1.1, additive). A row carrying `list` renders through the
+// `paged.list` catalog leaf with:
+//   · its ROWS resolved host-side from the spec's collection binding —
+//     `documentCollection` reads the same `useCollection` lane the
+//     editor's own panels use; `binding` reads an ARRAY the plugin
+//     published (live via the panel-wide bindings tick);
+//   · SELECTION published BACK through `selectionBinding`
+//     (`bindings.publish(name, rowId)`), so other rows/sections can
+//     gate on it — the B-01 derived-bound-value direction, unchanged;
+//   · per-row ACTIONS dispatching either a registered COMMAND with the
+//     row id as payload, or the G3 `applyEntity` write: the row's
+//     entity id applied to the current selection through the SAME
+//     per-id setElementProperty mutations the scalar binding hook
+//     commits (`makeOnCommitMany`'s shape) — text payload for applied-
+//     style paths, colorRef for swatch/gradient paths. An applyEntity
+//     button disables while its target selection is empty (the honest
+//     no-write-path rule the scalar leaves follow).
+
+function SchemaListRow({
+  row,
+  bindings,
+}: {
+  row: PanelSchemaRow;
+  bindings: BindingsSurface;
+}) {
+  const spec = row.list!;
+  const registries = useRegistries();
+  const client = useCanvasClient();
+  const { elementSelection } = useSelection();
+  const { contentSelection } = useContentSelection();
+
+  const collectionName =
+    spec.items.kind === "documentCollection" ? spec.items.collection : null;
+  // Hook must run unconditionally (safe fallback — same idiom as the
+  // collection-select leaf); the published-binding branch ignores it.
+  const fetched = useCollection<Record<string, unknown>>(
+    (collectionName ?? "swatches") as CollectionName,
+  );
+  let items: unknown[];
+  if (spec.items.kind === "binding") {
+    const published = bindings.get(spec.items.bind);
+    items = Array.isArray(published) ? published : [];
+  } else {
+    items = fetched ?? [];
+  }
+
+  const selBind = spec.selectionBinding;
+  const selectedRaw = selBind ? bindings.get(selBind) : undefined;
+  const selectedId = typeof selectedRaw === "string" ? selectedRaw : null;
+  const onSelect = selBind
+    ? (id: string) => bindings.publish(selBind, id)
+    : undefined;
+
+  const runApplyEntity = (
+    action: Extract<SchemaRowAction, { kind: "applyEntity" }>,
+    rowId: string,
+  ) => {
+    const value = (
+      action.valueType === "colorRef"
+        ? { type: "colorRef", value: rowId === "" ? null : rowId }
+        : { type: "text", value: rowId }
+    ) as Value;
+    if ((action.scope ?? "element") === "content") {
+      if (!contentSelection) return;
+      const id = {
+        kind: "storyRange",
+        id: {
+          story_id: contentSelection.storyId,
+          start: contentSelection.start,
+          end: contentSelection.end,
+        },
+      } as ElementId;
+      void client.mutate({
+        op: "setElementProperty",
+        args: { elementId: id, path: action.path as never, value },
+      });
+      return;
+    }
+    // Element scope — fan out to every selected id, one SetProperty
+    // each (the scalar hook's multi-commit shape; same undo grain).
+    for (const id of elementSelection) {
+      void client.mutate({
+        op: "setElementProperty",
+        args: { elementId: id, path: action.path as never, value },
+      });
+    }
+  };
+
+  const seenKeys = new Set<string>();
+  const actions: ListLeafAction[] = (spec.actions ?? []).map((a, i) => {
+    const base =
+      a.action.kind === "command"
+        ? a.action.command
+        : `apply:${a.action.path}`;
+    const key = seenKeys.has(base) ? `${base}-${i}` : base;
+    seenKeys.add(key);
+    const gateOpen = gate(a.enabled, bindings);
+    const applyTargetEmpty =
+      a.action.kind === "applyEntity" &&
+      ((a.action.scope ?? "element") === "element"
+        ? elementSelection.length === 0
+        : contentSelection == null);
+    const act = a.action;
+    return {
+      key,
+      label: a.label,
+      disabled: !gateOpen || applyTargetEmpty,
+      onInvoke: (rowId: string) => {
+        if (act.kind === "command") {
+          // Row id IS the payload — the G3 command dispatch contract.
+          void registries.commands.invoke(act.command, rowId).catch((err) => {
+            console.warn(
+              `schema list action: command "${act.command}" failed`,
+              err,
+            );
+          });
+        } else {
+          runApplyEntity(act, rowId);
+        }
+      },
+    };
+  });
+
+  const node: CompositionNode = {
+    catalogId: row.widget || PAGED_LIST,
+    props: {
+      ...(row.props ?? {}),
+      items,
+      labelField: spec.labelField,
+      ...(spec.secondaryField ? { secondaryField: spec.secondaryField } : {}),
+      ...(spec.idField ? { idField: spec.idField } : {}),
+      ...(onSelect ? { selectedId, onSelect } : {}),
+      actions,
+    },
+    bindings: {},
+  };
+  return <CompositionRenderer composition={node} />;
+}
+
 function SchemaRow({
   row,
   bindings,
@@ -104,8 +255,11 @@ function SchemaRow({
 }) {
   if (!gate(row.visible, bindings)) return null;
   const enabled = gate(row.enabled, bindings);
-  const node = rowToNode(row);
-  const rendered = <CompositionRenderer composition={node} />;
+  const rendered = row.list ? (
+    <SchemaListRow row={row} bindings={bindings} />
+  ) : (
+    <CompositionRenderer composition={rowToNode(row)} />
+  );
   if (enabled) return rendered;
   // Disabled gate — neutralise pointer + dim. The leaf's own
   // no-write-path disable still applies underneath.
