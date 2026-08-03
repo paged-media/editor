@@ -100,17 +100,30 @@ export const COCKPIT_MODES: ModeContribution[] = [
   {
     id: "data",
     toolbarLeft: DataToolbar,
+    paletteSuggestions: [
+      "media.paged.data.command.importData",
+      "media.paged.data.command.lowerBinding",
+    ],
     title: "Data layout",
     icon: "ui-database",
     order: 40,
     blurb: "Structured data → repeatable pages",
+    // The paged.data bundle's LIVE panels, not the ComingSoon stubs the
+    // mode shipped with: sources = the record/field intake, bindings = the
+    // field mapping. No canvas override — lowered bindings render INTO the
+    // document, so the real canvas IS the generated-layout preview.
+    // NOTE: `tabs` wins over `inspector` when both are set
+    // (cockpit-state-context seeds tabs ?? [inspector]) — declare the
+    // seeded dock as tabs, bindings first (the active tab).
     slots: {
-      left: "paged.data-source",
-      inspector: "paged.data-mapping",
-      canvas: "panel:paged.data-grid",
+      left: "media.paged.data.panel.sources",
+      tabs: [
+        "media.paged.data.panel.bindings",
+        "media.paged.data.panel.dataset",
+      ],
     },
     panelSet: {
-      left: ["paged.data-mapping"],
+      left: ["media.paged.data.panel.bindings"],
       right: ["paged.inspector"],
     },
   },
@@ -178,7 +191,14 @@ export const PANEL_RAIL: PanelRailItem[] = [
     icon: "panel-object-styles",
   },
   { panelId: "paged.swatches", title: "Swatches", icon: "panel-swatches" },
-  { panelId: "paged.data-mapping", title: "Data", icon: "ui-database" },
+  // The live paged.data bindings panel (the rail's first plugin panel);
+  // the ComingSoon mapping stub it replaces stays registered for legacy
+  // access via the Window menu.
+  {
+    panelId: "media.paged.data.panel.bindings",
+    title: "Data",
+    icon: "ui-database",
+  },
   {
     panelId: "paged.properties",
     title: "Pages",

@@ -311,14 +311,20 @@ test.describe("Cockpit — per-mode REAL context-toolbar pills (W2.8)", () => {
     await setMode(page, "data");
     const mapping = page.locator('[data-cockpit-action="data-mapping"]');
     await expect(mapping).toBeEnabled();
-    // The mapping dock is Data mode's seeded inspector, so the pill
-    // reads as the active panel and its content renders — a REAL,
-    // observable focus state (`data-on` + the panel body present).
+    // The LIVE paged.data bindings panel is Data mode's seeded inspector,
+    // so the pill reads as the active panel and its content renders — a
+    // REAL, observable focus state (`data-on` + the panel body present).
     await mapping.click();
     await expect(mapping).toHaveAttribute("data-on", "");
-    await expect(page.locator("[data-data-mapping-panel]")).toBeVisible();
-    // The source/generate seams are HONEST — visibly disabled.
-    await expect(page.locator('text="Connect source"')).toBeVisible();
+    await expect(page.locator('text="Wire demo binding"')).toBeVisible();
+    // Connect source / Generate are REAL pills now (they raise the live
+    // sources / dataset panels), not ComingSoon seams.
+    await expect(
+      page.locator('[data-cockpit-action="data-sources"]'),
+    ).toBeEnabled();
+    await expect(
+      page.locator('[data-cockpit-action="data-generate"]'),
+    ).toBeEnabled();
     await setMode(page, "design");
   });
 

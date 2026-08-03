@@ -472,22 +472,45 @@ export function PrepressToolbar(_props: ModeToolbarProps) {
 // ── Data layout — REAL mapping raise + honest source/generate ──
 
 export function DataToolbar(_props: ModeToolbarProps) {
-  const { raise, active } = usePanelRaise("paged.data-mapping");
+  // All three pills raise the LIVE paged.data bundle panels (the mode's
+  // ComingSoon era is over): bindings = field mapping, sources = connect,
+  // dataset = the batch-generate catalog.
+  const mapping = usePanelRaise("media.paged.data.panel.bindings");
+  const sources = usePanelRaise("media.paged.data.panel.sources");
+  const dataset = usePanelRaise("media.paged.data.panel.dataset");
   return (
     <>
       <Chip
         icon="ui-database"
         testId="data-mapping"
-        on={active}
-        disabled={!raise}
+        on={mapping.active}
+        disabled={!mapping.raise}
         title="Field mapping"
-        onClick={raise}
+        onClick={mapping.raise}
       >
         Field mapping
       </Chip>
       <Sep />
-      <Soon icon="ui-flow">Connect source</Soon>
-      <Soon icon="ui-bolt">Generate</Soon>
+      <Chip
+        icon="ui-flow"
+        testId="data-sources"
+        on={sources.active}
+        disabled={!sources.raise}
+        title="Connect source"
+        onClick={sources.raise}
+      >
+        Connect source
+      </Chip>
+      <Chip
+        icon="ui-bolt"
+        testId="data-generate"
+        on={dataset.active}
+        disabled={!dataset.raise}
+        title="Generate"
+        onClick={dataset.raise}
+      >
+        Generate
+      </Chip>
     </>
   );
 }
