@@ -10,24 +10,15 @@ name: tests
 # server process and works headless, so the chromium runner gets a
 # cross-origin-isolated context with no extra flags.
 #
-# Plugin link chain (W3+): `apps/canvas/package.json` pulls seven bundles
-# in via pnpm `link:` — draw-bundle (../../../plugin-draw/…), plugin-api
-# + plugin-sdk (../../../plugin-sdk/…), web-bundle (../../../plugin-web/…),
-# data-bundle (../../../plugin-data/…), sheet-bundle
-# (../../../plugin-sheets/…), and image-glue (../../../plugin-image/glue).
-# Those `../../..` paths are relative to `apps/canvas/`, so they resolve
-# to SIBLINGS of the editor repo root. We mirror the local ~/paged layout:
-# check the editor out under `editor/` and the six plugin repos under their
-# bare names, so e.g.
-# `editor/apps/canvas/../../../plugin-draw` == `$GITHUB_WORKSPACE/plugin-draw`.
-# The plugin repos are private; `STATE_DISPATCH_TOKEN` carries read scope
-# across the paged-media org (same token plugin-draw's vitest.yml uses
-# for its sdk checkout), with a github.token fallback for same-org runs.
-# Install order is the workspace rule (plugin-sdk → plugin-draw →
-# plugin-web → plugin-data → plugin-sheets → plugin-image → editor): each
-# plugin repo's own internal `link:`s point at plugin-sdk, and the editor's
-# `link:`s need all six sibling dirs present + installed before its own
-# `--frozen-lockfile` install resolves.
+# Plugin bundles: `apps/canvas/package.json` consumes every plugin package
+# (@paged-media/plugin-api, plugin-sdk, draw, web, data, sheet, image,
+# publish, pdf) as PUBLISHED npm versions — the historical pnpm `link:`
+# sibling chain is gone, so `pnpm install` alone resolves all plugins with
+# no sibling checkouts.
+# LEGACY: several jobs below still check out plugin sibling repos and
+# carry link:-era comments; those checkouts are dead weight pending
+# removal. The one that still does real work is `build-image-wasm`'s
+# plugin-image checkout (it builds the image-js Rust crate from source).
 #
 # Scope: the behaviour surface (panels + gesture + e2e op-sandwiches),
 # NOT the Envato fidelity gate. That gate needs the 4.4 GB
