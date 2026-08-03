@@ -22,7 +22,7 @@
 // anything…" pill · collaboration cluster (visible, inert — no
 // backend yet) · theme toggle · zoom dropdown.
 //
-// File intake has no header widget (kit): File ▸ Open IDML…, canvas
+// File intake has no header widget (kit): File ▸ Open…, canvas
 // drag-drop, and a hidden `<input type="file">` for the Playwright
 // suite cover it.
 

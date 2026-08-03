@@ -27,7 +27,7 @@ export interface FileDropProps {
   onFile: (file: File) => void;
   compact?: boolean;
   /** Cockpit — render only the invisible `<input type="file">`.
-   *  File intake then runs through File ▸ Open IDML…, canvas
+   *  File intake then runs through File ▸ Open…, canvas
    *  drag-drop, and the Playwright `setInputFiles` hook; the kit
    *  header carries no file widget. */
   hidden?: boolean;

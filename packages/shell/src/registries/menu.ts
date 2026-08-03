@@ -21,7 +21,7 @@ import type { Disposable, VisibilityPredicate } from "./types";
 
 /**
  * Declarative menu item. Items contribute themselves to a path-based
- * tree — `"File/Open IDML…"` → File menu, "Open IDML…" leaf. The
+ * tree — `"File/Open…"` → File menu, "Open…" leaf. The
  * shell renders top-level path segments as drop-down menus; nested
  * paths nest as sub-menus.
  *
@@ -31,7 +31,7 @@ import type { Disposable, VisibilityPredicate } from "./types";
  * same command id.
  */
 export interface MenuItemContribution {
-  /** Slash-separated path. `"File/Open IDML…"`, `"View/Show: Pages"`. */
+  /** Slash-separated path. `"File/Open…"`, `"View/Show: Pages"`. */
   path: string;
 
   /** Command id this item invokes when selected. */
