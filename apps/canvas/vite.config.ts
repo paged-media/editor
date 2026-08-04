@@ -492,7 +492,22 @@ export default defineConfig({
     // pdf.js worker, both loaded via `?url`); esbuild's dep-optimizer can't
     // read a `?url` import, so exclude it too and let Vite resolve the assets.
     // @paged-media/doc likewise (bin/docx_js_bg.wasm via `?url`).
-    exclude: ["@paged-media/canvas-wasm", "@paged-media/pdf", "@paged-media/doc"],
+    //
+    // @paged-media/plugin-sdk for a different reason, and it is worth
+    // stating because it will bite the next canary bump: the SDK's
+    // React-optional fallbacks (`schema-panel.tsx`, `widgets-fallback.tsx`)
+    // do a TOP-LEVEL `await import("react")`, which its own tsup build
+    // emits verbatim at target es2022. Vite's dep-optimizer compiles
+    // pre-bundled deps down to the browserslist floor (chrome87 …), where
+    // top-level await does not exist, so pre-bundling it fails the dev
+    // server outright. Excluding it lets Vite serve the module through
+    // the normal graph, where the app's own es2022 target applies.
+    exclude: [
+      "@paged-media/canvas-wasm",
+      "@paged-media/pdf",
+      "@paged-media/doc",
+      "@paged-media/plugin-sdk",
+    ],
     // Pre-bundle apache-arrow at server startup. The DuckDB-WASM API entry's
     // bare `apache-arrow` import is rewritten to a virtual module (see
     // duckdbDistRoute) that pulls in apache-arrow; if Vite first discovers it

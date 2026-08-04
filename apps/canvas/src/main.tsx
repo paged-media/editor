@@ -64,6 +64,7 @@ import { BUILT_IN_TOOLS } from "@paged-media/tools";
 import {
   loadBundle,
   createDataProviderRegistry,
+  createBindingProviderRegistry,
 } from "@paged-media/plugin-sdk";
 import type { SchemaPanelRenderer as SchemaPanelRendererType } from "@paged-media/plugin-api";
 import { drawBundle } from "@paged-media/draw";
@@ -931,6 +932,32 @@ if (!import.meta.env.PROD) {
 // — a plugin never reads a secret back (the no-get trust line; the SDK surface
 // has no get). Module scope so the two stay in sync across StrictMode remounts.
 const editorSecrets = createEditorSecretStore();
+
+// ADR 023 phase C — THE binding-provider registry. ONE per app, module
+// scope, for the same two reasons `dataProviders` is shared: resolution
+// is CROSS-BUNDLE (a host panel asks "who resolves `layers` right now?"
+// without knowing which bundles exist), and the shell needs the SAME
+// instance the bundle hosts were built with.
+//
+// It is handed to TWO places and they must be the same object:
+//   · every `createBundleHost` call, as `bindingProviders` — that wires
+//     `contribute.bindingProvider` AND makes the SDK adapter wrap each
+//     edit context's own `onEnter`/`onExit`, which is where a provider's
+//     lifetime comes from (borrowed from the shell's context stack, so
+//     there is exactly one notion of "who is active");
+//   · `<PagedShell bindingProviders>`, so host panels can read it.
+const bindingProviders = createBindingProviderRegistry();
+if (!import.meta.env.PROD) {
+  // Test affordance (the `__shellDoors` / `__consent` pattern): an e2e
+  // spec can observe the ACTIVE provider stack — the thing the retarget
+  // proof is actually about — without a bundle of its own.
+  (globalThis as unknown as { __bindingProviders?: unknown }).__bindingProviders =
+    {
+      active: () => bindingProviders.activeProviders(),
+      readCollection: (collection: string) =>
+        bindingProviders.readCollection({ collection: collection as never }),
+    };
+}
 if (!import.meta.env.PROD) {
   // Test affordance: drive a synthetic set prompt + observe/resolve it, and
   // flip the persistence tier by setting a passphrase, without a
@@ -1129,6 +1156,8 @@ function PluginBundles() {
       textCaret,
       workers,
       dataProviders,
+      // ADR 023 phase A/C — see the module-scope registry above.
+      bindingProviders,
       consent,
       secrets,
       nativeDocument,
@@ -1409,6 +1438,7 @@ function CanvasAppRoot() {
       panelRail={PANEL_RAIL}
       canvasComponent={CanvasPanel}
       headerExtras={<CorpusPicker />}
+      bindingProviders={bindingProviders}
     >
       <CanvasAppIntegration />
       <PluginBundles />
