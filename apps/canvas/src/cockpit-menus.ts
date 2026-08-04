@@ -61,9 +61,15 @@ export const COCKPIT_MENU_SEAMS: MenuItemContribution[] = [
   soon("Type/Tabs…", 20),
   soon("Type/Insert special character", 30),
   // ── Object ──
+  //
+  // `Arrange` and `Group` were seams here until the `paged.object.*`
+  // command layer landed; they are now REAL entries registered from
+  // `object-commands.ts` (Bring to front / Bring forward / Send
+  // backward / Send to back, and Group / Ungroup / Select parent
+  // group), so the stubs are gone rather than duplicated — the
+  // MenuRegistry treats a path as its dedupe key and would throw on
+  // the collision anyway.
   soon("Object/Transform", 10),
-  soon("Object/Arrange", 11),
-  soon("Object/Group", 20),
   soon("Object/Effects…", 30),
   // ── Data (the data-publishing surface) ──
   soon("Data/Connect source…", 10),

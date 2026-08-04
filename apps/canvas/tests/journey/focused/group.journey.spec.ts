@@ -19,8 +19,16 @@
 
 // Journey: group objects.
 //
-// Draw two shapes (real pointer drags) and group them (Object ▸ Group).
-// Asserts a group element appears in the scene tree.
+// Draw two shapes (real pointer drags), select them, and group them
+// through the REAL Object ▸ Group command — then ungroup through
+// Object ▸ Ungroup. Asserts a group element appears in (and leaves)
+// the scene tree.
+//
+// The command is `paged.object.group`, a HOST command: this journey
+// runs with no dependence on the vector plugin. It used to drive the
+// raw `createGroup` mutation because the only Group COMMAND in the
+// product lived in paged.draw — the gap that put the `paged.object.*`
+// layer in the editor.
 //
 // (Previously fixme'd: the engine-synthesised blank doc kept an empty
 // `frames_in_order` z-table, so the group op rejected the members. Fixed
@@ -33,7 +41,7 @@ import { expect, test } from "@playwright/test";
 import { Designer } from "../driver/designer";
 
 test.describe("journey · group", () => {
-  test("grouping two shapes creates a group in the scene tree @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @feat:frames-paths.frame.insert @feat:frames-paths.groups @level:happy", async ({
+  test("grouping two shapes creates a group in the scene tree @feat:editor-shell.context-toolbars @feat:editor-shell.panels.properties @feat:editor-shell.menus @feat:frames-paths.frame.insert @feat:frames-paths.groups @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -46,13 +54,30 @@ test.describe("journey · group", () => {
     expect(b).toBeTruthy();
 
     const groupsBefore = await designer.count("group");
-    const applied = await designer.createGroup([
+    await designer.selectElements([
       { kind: "rectangle", id: a },
       { kind: "rectangle", id: b },
     ]);
-    expect(applied, "createGroup should apply").toBe(true);
+    await expect.poll(() => designer.elementSelection()).toHaveLength(2);
+
+    // Object ▸ Group — the menu verb, not the raw op.
+    await designer.runCommand("paged.object.group");
     await expect
       .poll(() => designer.count("group"), { timeout: 6000 })
       .toBe(groupsBefore + 1);
+    // The minted group is what the user now has selected, so the next
+    // verb (move, Arrange, Ungroup) addresses it.
+    const selected = await designer.elementSelection();
+    expect(selected).toHaveLength(1);
+    expect(selected[0].kind).toBe("group");
+
+    // Object ▸ Ungroup — the exact inverse, back to two loose shapes.
+    await designer.runCommand("paged.object.ungroup");
+    await expect
+      .poll(() => designer.count("group"), { timeout: 6000 })
+      .toBe(groupsBefore);
+    expect(
+      (await designer.elementSelection()).map((s) => s.id).sort(),
+    ).toEqual([a, b].sort());
   });
 });

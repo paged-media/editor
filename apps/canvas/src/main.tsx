@@ -43,6 +43,7 @@ import {
   useDocument,
   usePaged,
   useRegistries,
+  useSelection,
   useEditContextStack,
   SchemaPanelRenderer,
   CatalogRegistryProvider,
@@ -122,6 +123,17 @@ import {
   APP_MENU_ITEMS,
   buildAppCommands,
 } from "./app-commands";
+import {
+  arrangeSelection,
+  buildObjectCommands,
+  groupSelection,
+  OBJECT_DIAGNOSTIC_SOURCE,
+  OBJECT_KEYBINDINGS,
+  OBJECT_MENU_ITEMS,
+  selectParentGroup,
+  ungroupSelection,
+  type ObjectCommandDeps,
+} from "./object-commands";
 import { COCKPIT_MODES, PANEL_RAIL } from "./cockpit-modes";
 import { COCKPIT_MENU_SEAMS } from "./cockpit-menus";
 import { appCatalogRegistry } from "./panels/catalog-registry";
@@ -1234,6 +1246,12 @@ function CanvasAppIntegration() {
   const editContextStack = useEditContextStack();
   const editContextRef = useRef(editContextStack);
   editContextRef.current = editContextStack;
+  // `paged.object.*` reads the LIVE element selection. Through a ref
+  // for the same reason the edit-context stack is: the command effect
+  // must not re-register on every click.
+  const selection = useSelection();
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
 
   const animateCamera = useAnimatedCamera(camera, setCamera);
   useKeyboardShortcuts({
@@ -1374,11 +1392,54 @@ function CanvasAppIntegration() {
         animateCamera(fitCamera(vw, vh, documentBounds(rects)));
       },
     });
-    const cmdDisposables = commands.map((c) => registries.commands.register(c));
-    const menuDisposables = [...APP_MENU_ITEMS, ...COCKPIT_MENU_SEAMS].map(
-      (m) => registries.menus.register(m),
+    // `paged.object.*` — the structural verbs (Arrange ×4, Group,
+    // Ungroup, Select parent group). The deps bag is the ONLY place the
+    // module touches the app: the live selection through the ref, the
+    // worker-first selection write the overlays key on, and a report
+    // channel that lands in the Problems panel rather than the console.
+    const objectDeps: ObjectCommandDeps = {
+      client,
+      getSelection: () => selectionRef.current.elementSelection,
+      setSelection: async (ids) => {
+        const applied = await client.setElementSelection(ids, "replace");
+        selectionRef.current.setElementSelection(applied);
+        try {
+          selectionRef.current.setElementGeometry(
+            await client.elementGeometry(applied),
+          );
+        } catch {
+          /* geometry is selection CHROME — its absence never blocks the edit. */
+        }
+      },
+      report: (severity, message) =>
+        problemsSink.publish(OBJECT_DIAGNOSTIC_SOURCE, "object", [
+          { severity, message, source: "object" },
+        ]),
+    };
+    // Every object verb starts from a clean slate, so the panel shows
+    // the LAST invocation's outcome and never a stale one.
+    const fresh = (run: () => Promise<void>) => async () => {
+      problemsSink.clear(OBJECT_DIAGNOSTIC_SOURCE);
+      await run();
+    };
+    const objectCommands = buildObjectCommands({
+      bringToFront: fresh(() => arrangeSelection(objectDeps, "front")),
+      bringForward: fresh(() => arrangeSelection(objectDeps, "forward")),
+      sendBackward: fresh(() => arrangeSelection(objectDeps, "backward")),
+      sendToBack: fresh(() => arrangeSelection(objectDeps, "back")),
+      group: fresh(() => groupSelection(objectDeps)),
+      ungroup: fresh(() => ungroupSelection(objectDeps)),
+      selectParentGroup: fresh(() => selectParentGroup(objectDeps)),
+    });
+    const cmdDisposables = [...commands, ...objectCommands].map((c) =>
+      registries.commands.register(c),
     );
-    const keyDisposables = APP_KEYBINDINGS.map((k) =>
+    const menuDisposables = [
+      ...APP_MENU_ITEMS,
+      ...OBJECT_MENU_ITEMS,
+      ...COCKPIT_MENU_SEAMS,
+    ].map((m) => registries.menus.register(m));
+    const keyDisposables = [...APP_KEYBINDINGS, ...OBJECT_KEYBINDINGS].map((k) =>
       registries.keybindings.register(k),
     );
     return () => {

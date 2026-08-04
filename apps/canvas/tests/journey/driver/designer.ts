@@ -860,8 +860,35 @@ export class Designer {
     return after.find((g) => !before.some((b) => b.selfId === g.selfId))?.selfId ?? "";
   }
 
+  /** Invoke a registered command the way the menu, the palette and the
+   *  keybinding all do — through the command registry. The DTP verbs a
+   *  user reaches from a menu (Object ▸ Group, Object ▸ Arrange …) are
+   *  driven this way rather than by their underlying mutation. */
+  async runCommand(id: string): Promise<void> {
+    await this.page.evaluate(async (commandId) => {
+      const cmd = (globalThis as unknown as CanvasGlobal).__canvas.registries
+        .commands;
+      const fn = cmd.invoke ?? cmd.execute ?? cmd.run;
+      await fn?.call(cmd, commandId);
+    }, id);
+  }
+
+  /** The element selection the shell holds (what a command reads). */
+  async elementSelection(): Promise<Array<{ kind: string; id: string }>> {
+    return this.page.evaluate(
+      () =>
+        (
+          globalThis as unknown as {
+            __canvas: { elementSelection: Array<{ kind: string; id: string }> };
+          }
+        ).__canvas.elementSelection,
+    );
+  }
+
   /** Group several page items into one group; returns true when applied.
-   *  `members` are ElementId refs ({kind,id}), the form the op expects. */
+   *  `members` are ElementId refs ({kind,id}), the form the op expects.
+   *  The RAW op — for setup. The user-facing verb is
+   *  `runCommand("paged.object.group")`. */
   async createGroup(
     members: Array<{ kind: string; id: string }>,
   ): Promise<boolean> {
