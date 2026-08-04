@@ -39,6 +39,8 @@ import { useSyncExternalStore } from "react";
 import type { CanvasClient } from "@paged-media/client";
 import type { ExporterContribution } from "@paged-media/shell";
 
+import { downloadBytes } from "../../shell-file-saver";
+
 export type ExportTargetId = "pdf-x4" | "image" | "web" | "social" | "package";
 
 export interface ExportTarget {
@@ -235,13 +237,7 @@ export async function runImageExport(
 }
 
 function defaultDownload(bytes: Uint8Array, filename: string): void {
-  const blob = new Blob([bytes.slice()], { type: "image/png" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBytes(bytes, filename, "image/png");
 }
 
 /** K-2 / S-06 — run a plugin-registered exporter: pull its bytes and
@@ -262,21 +258,10 @@ export async function runPluginExporter(
   return true;
 }
 
-function pluginDownload(
-  bytes: Uint8Array,
-  filename: string,
-  mimeType?: string,
-): void {
-  const blob = new Blob([bytes.slice()], {
-    type: mimeType || "application/octet-stream",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+// K-10 — plugin bytes leave the app through ONE mechanism: the exporter
+// registry's delivery here and the bundle-driven `host.shell.saveFile` door
+// are the same `downloadBytes` call, so the two paths cannot drift.
+const pluginDownload = downloadBytes;
 
 // runIdmlExport removed — IDML export is now the paged.publish plugin's
 // exporter (ADR-022 Phase 5), run through the shared runPluginExporter above.

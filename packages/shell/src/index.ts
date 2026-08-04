@@ -114,6 +114,8 @@ export {
   type ToolPreviewPath,
   type ToolPreviewPolyline,
   type ToolPreviewShape,
+  // K-9 — what the tool-preview slot holds: one shape or a list.
+  type ToolPreviewSlot,
   type ToolPreviewText,
 } from "./state/overlay-signals-context";
 

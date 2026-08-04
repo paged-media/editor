@@ -17,8 +17,13 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
+import type { ReactNode } from "react";
+
 import type { OverlayContribution, OverlayProps } from "../registries/overlay";
-import { useOptionalOverlaySignals } from "../state/overlay-signals-context";
+import {
+  useOptionalOverlaySignals,
+  type ToolPreviewShape,
+} from "../state/overlay-signals-context";
 
 /** Longest label the text preview renders — a readout HUD, not a
  *  paragraph; the cap also keeps the plate-width estimate sane. */
@@ -42,11 +47,43 @@ function sanitizePreviewText(raw: string): string {
  * the same signal). Solid stroke — visually distinct from the dashed
  * selection marquee. The writer is the gesture handler via
  * `paged.overlaySignals.setToolPreview`.
+ *
+ * K-9 — the slot may hold a LIST (`setToolPreviews`): a plugin tool
+ * showing geometry AND a readout at once, or shading every collected
+ * region. Each shape resolves its OWN page rect, so a list may span
+ * pages; they draw in array order, first = bottom-most.
  */
 function ToolPreviewRender(props: OverlayProps) {
   const signals = useOptionalOverlaySignals();
-  if (!signals?.toolPreview) return null;
-  const p = signals.toolPreview;
+  const slot = signals?.toolPreview;
+  if (!slot) return null;
+  const shapes: readonly ToolPreviewShape[] = Array.isArray(slot)
+    ? (slot as readonly ToolPreviewShape[])
+    : [slot as ToolPreviewShape];
+  if (shapes.length === 0) return null;
+  // The single-shape case renders EXACTLY the node it always did — no
+  // wrapper — so every existing preview keeps its DOM.
+  if (shapes.length === 1) return renderPreviewShape(shapes[0], props);
+  return (
+    <>
+      {shapes.map((shape, i) => (
+        // Positional key: the list is republished wholesale on every
+        // pointermove, so there is no identity to preserve across
+        // renders.
+        // eslint-disable-next-line react/no-array-index-key
+        <g key={i}>{renderPreviewShape(shape, props)}</g>
+      ))}
+    </>
+  );
+}
+
+/** One preview shape → its SVG node (or null when its page is off
+ *  screen). Split out of the component so the single- and multi-shape
+ *  paths share one renderer — the vocabulary must not fork. */
+function renderPreviewShape(
+  p: ToolPreviewShape,
+  props: OverlayProps,
+): ReactNode {
   const pr = props.pageRects.get(p.pageId);
   if (!pr) return null;
   // Editor-ops — gridify variant (W2.7): the N×M cell outlines a

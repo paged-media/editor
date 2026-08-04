@@ -90,6 +90,7 @@ import { createEditorSecretStore } from "./plugin-secret-store";
 import { SecretPromptDialog } from "./SecretPromptDialog";
 import { createEditorNativeDocumentBackend } from "./plugin-native-document";
 import { pickFiles } from "./shell-file-picker";
+import { saveFileBytes } from "./shell-file-saver";
 
 // W3.1 — the schema-panel renderer the host injects. The shell renderer
 // walks a `PanelSchema` through the catalog's `CompositionRenderer`,
@@ -959,6 +960,20 @@ function PluginBundles() {
         accept?: readonly string[];
         multiple?: boolean;
       }) => pickFiles(options),
+      // K-10: the WRITE half of the file door — a bundle hands bytes +
+      // a suggested name and the host delivers them through the same
+      // anchor-download the Export Center uses for plugin exporters
+      // (shell-file-saver.ts owns that mechanism now). Answers false
+      // rather than throwing when delivery fails. Flips
+      // supports("shell.saveFile@1") true once the pinned plugin-sdk
+      // knows the member; until that canary bump it rides along inert
+      // (the SDK's shell wrapper simply never calls it), exactly like
+      // `textCaret` did.
+      saveFile: (options: {
+        suggestedName: string;
+        bytes: Uint8Array;
+        mimeType?: string;
+      }) => saveFileBytes(options),
     };
     // W-04: the host owns the code-editor widget (one editor across
     // every scripting-adjacent plugin). W-05: diagnostics fan out to
@@ -1105,6 +1120,17 @@ function PluginBundles() {
       diagnosticsSink: problemsSink,
       schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
     };
+    // Test affordance (the `__overlaySignals` pattern): the shell doors the
+    // host app injects, reachable so an E2E spec can drive them as a bundle
+    // would. K-10's saveFile is only reachable this way until the pinned
+    // plugin-sdk canary knows the member. Dev-only — stripped in PROD.
+    const isProd =
+      (import.meta as unknown as { env?: { PROD?: boolean } }).env?.PROD ===
+      true;
+    if (!isProd) {
+      (globalThis as unknown as { __shellDoors?: unknown }).__shellDoors =
+        shell;
+    }
     const loaded = [
       loadBundle(() => pagedRef.current, drawBundle, hostOptions),
       loadBundle(() => pagedRef.current, webBundle, hostOptions),
@@ -1135,6 +1161,8 @@ function PluginBundles() {
     ];
     return () => {
       for (const l of loaded) l.dispose();
+      delete (globalThis as unknown as { __shellDoors?: unknown })
+        .__shellDoors;
     };
     // Mount-once by design; the ref keeps the handle live.
     // eslint-disable-next-line react-hooks/exhaustive-deps
