@@ -41,6 +41,26 @@
 //     an emitted-set guard, and every row the depth-first walk could
 //     not reach is appended at depth 0 in source order. Truncating the
 //     cycle instead would hide document corruption behind a short list.
+//
+// DISPLAY ORDER vs SIBLING INDEX (added for ADR 023 phase C, the host
+// Layers panel — the knob v1.2 deliberately left out until a real
+// consumer needed it, and now one does).
+//
+// The engine's sibling order is BACK-TO-FRONT: index 0 is the backmost
+// layer / the first-painted element (`paged_scene::layer` — "IDML lists
+// layers bottom-first; layers[0] is the backmost"). Every DTP Layers
+// panel — InDesign's, Illustrator's, and plugin-draw's own — shows the
+// FRONTMOST row at the TOP, which is the reverse. Rendering engine
+// order verbatim, as the editor's hand-rolled panel did, puts the
+// backmost layer at the top of the list: not a preference, a defect.
+//
+// `reverseSiblings` therefore reverses the WALK order within each
+// sibling group — per group, not over the flat output, so a child never
+// floats above its parent — while `siblingIndex` keeps naming the
+// SOURCE position. That separation is the whole point: the reorder lane
+// writes `siblingIndex`, so a drop on the visually-lowest row still
+// resolves to engine index 0 and the write needs no arithmetic and no
+// knowledge of which way the panel is drawn.
 
 /** One flattened tree row: the source row plus the structure the leaf
  *  needs to indent it and the renderer needs to reorder it. */
@@ -57,6 +77,13 @@ export interface SchemaTreeRow<T> {
   hasChildren: boolean;
 }
 
+/** Flattening options. Absent = the v1.2 behaviour, unchanged. */
+export interface SchemaTreeOptions {
+  /** Draw each sibling group front-first (see the module header).
+   *  `siblingIndex` still names the SOURCE position either way. */
+  reverseSiblings?: boolean;
+}
+
 /**
  * Flatten parent-id rows into depth-first order.
  *
@@ -69,6 +96,7 @@ export function buildSchemaTreeRows<T>(
   items: readonly T[],
   idOf: (row: T, index: number) => string,
   parentOf: (row: T) => string | null,
+  options?: SchemaTreeOptions,
 ): SchemaTreeRow<T>[] {
   const ids = items.map((row, i) => idOf(row, i));
   const known = new Set(ids);
@@ -92,10 +120,20 @@ export function buildSchemaTreeRows<T>(
   const out: SchemaTreeRow<T>[] = [];
   const emitted = new Set<number>();
 
+  const reverse = options?.reverseSiblings === true;
   const walk = (indices: number[], depth: number) => {
-    indices.forEach((index, siblingIndex) => {
+    // The DRAW order may be reversed; the sibling INDEX never is — it
+    // is the engine's own position and the only number the reorder lane
+    // is allowed to write. Pairing them up front keeps that promise
+    // impossible to lose further down.
+    const ordered = indices.map((index, siblingIndex) => ({
+      index,
+      siblingIndex,
+    }));
+    if (reverse) ordered.reverse();
+    for (const { index, siblingIndex } of ordered) {
       // Cycle guard — a row already placed is not placed twice.
-      if (emitted.has(index)) return;
+      if (emitted.has(index)) continue;
       emitted.add(index);
       const id = ids[index];
       const kids = children.get(id) ?? [];
@@ -108,7 +146,7 @@ export function buildSchemaTreeRows<T>(
         hasChildren: kids.length > 0,
       });
       if (kids.length > 0) walk(kids, depth + 1);
-    });
+    }
   };
   walk(children.get(ROOT) ?? [], 0);
 
@@ -161,8 +199,9 @@ export function visibleSchemaTreeRows<T>(
 export function flatSchemaTreeRows<T>(
   items: readonly T[],
   idOf: (row: T, index: number) => string,
+  options?: SchemaTreeOptions,
 ): SchemaTreeRow<T>[] {
-  return items.map((row, i) => ({
+  const rows = items.map((row, i) => ({
     id: idOf(row, i),
     row,
     depth: 0,
@@ -170,4 +209,5 @@ export function flatSchemaTreeRows<T>(
     siblingIndex: i,
     hasChildren: false,
   }));
+  return options?.reverseSiblings === true ? rows.reverse() : rows;
 }

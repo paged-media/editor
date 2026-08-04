@@ -435,6 +435,33 @@ export type {
   SchemaRenameAction as ShellSchemaRenameAction,
   SchemaRenamePayload as ShellSchemaRenamePayload,
 } from "./catalog/schema-panel-types";
+// ── ADR 023 phase C — the HOST side of the binding-provider seam: the
+//    hooks a host-owned panel uses to read/write through the shared
+//    registry, with fall-through to core. The app builds the ONE
+//    registry (plugin-sdk `createBindingProviderRegistry`) and injects
+//    it here; the shell keeps a structural MIRROR of its host-facing
+//    slice for the same reason schema-panel-types.ts mirrors the schema
+//    contract (the shell does not depend on plugin-api).
+export {
+  BindingProviderProvider,
+  useBindingProviderHost,
+  useActiveBindingProviders,
+  useCollectionPathOffered,
+  useProvidedCollection,
+  useProviderProperty,
+  useProviderFirstMutate,
+  type ShellBindingProviderHost,
+  type ShellActiveBindingProvider,
+  type ShellBindingProviderScope,
+  type ShellBindingTarget,
+  type ShellBindingResolved,
+  type ShellBindingReadResult,
+  type ShellBindingWriteResult,
+  type ShellBindingCollectionResult,
+  type ProvidedCollection,
+  type ProvidedProperty,
+  type ProvidedWrite,
+} from "./catalog/binding-providers";
 // The tree arithmetic is pure and exported so a panel (or a future
 // virtualized primitive) can flatten the same way the renderer does.
 export {

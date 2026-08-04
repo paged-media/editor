@@ -259,6 +259,24 @@ export interface SchemaListSpec {
   actions?: SchemaListAction[];
   /** ADDITIVE (v1.2) — render the rows as a TREE. */
   tree?: SchemaTreeSpec;
+  /** ADDITIVE (v1.2) — which end of the engine's sibling order is drawn
+   *  FIRST.
+   *
+   *  `"source"` (the default, and the v1.2 shipping behaviour) draws the
+   *  collection verbatim: index 0 at the top. That is the ENGINE's
+   *  back-to-front order — `layers[0]` is the BACKMOST layer, the first
+   *  element in a sibling list paints first.
+   *
+   *  `"frontFirst"` reverses each sibling group, which is what every DTP
+   *  Layers panel does (InDesign, Illustrator, and plugin-draw's own
+   *  panel all sort front-to-back). v1.2 shipped without this knob and
+   *  told a panel that wanted it to use the `command` reorder lane and
+   *  do its own arithmetic; the host Layers panel is the real consumer
+   *  that makes it worth having, and the arithmetic is exactly what it
+   *  removes — `SchemaReorderPayload` still carries SOURCE sibling
+   *  indices, so a reorder command is written once and is correct in
+   *  both orders. */
+  displayOrder?: "source" | "frontFirst";
   /** ADDITIVE (v1.2) — drag rows to reorder. */
   reorder?: SchemaListReorder;
   /** ADDITIVE (v1.2) — double-click a row label to rename it. */

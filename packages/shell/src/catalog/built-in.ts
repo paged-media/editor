@@ -245,6 +245,11 @@ const ENTRIES: CatalogEntry[] = [
       tree: "JsonValue",
       reorder: "JsonValue",
       rename: "JsonValue",
+      // ADR 023 phase C — the plugin id that ANSWERED this collection
+      // through the binding-provider seam (absent = core). Declared so
+      // the catalog audit shows the seam exists; it is a DOM hook, not
+      // a binding.
+      provider: "string",
     },
     bindings: {
       reads: ["documentCollection:swatches"],

@@ -88,6 +88,10 @@ import {
   useOptionalEditContextStack,
 } from "./state/edit-context-stack";
 import { EditContextController } from "./state/edit-context-controller";
+import {
+  BindingProviderProvider,
+  type ShellBindingProviderHost,
+} from "./catalog/binding-providers";
 import { PagedEditorProvider } from "./state/paged-editor";
 import { useRegistries } from "./state/registries-context";
 import { CommandPalette } from "./chrome/CommandPalette";
@@ -165,6 +169,14 @@ export interface PagedShellProps {
    * CanvasPanel). Required for the fixed cockpit layout: the canvas
    * is a SLOT, not a dockview panel. */
   canvasComponent?: ComponentType<PanelProps>;
+  /** ADR 023 phase C — the app's ONE shared binding-provider registry
+   *  (built with plugin-sdk's `createBindingProviderRegistry` and
+   *  injected into every bundle host). Published to the panel tree so a
+   *  HOST-owned panel can resolve its values through the ACTIVE plugin
+   *  edit context, falling through to core. Omitted/null = every panel
+   *  reads core, which is exactly right for a shell that loads no
+   *  bundles. */
+  bindingProviders?: ShellBindingProviderHost | null;
 }
 
 /**
@@ -182,6 +194,7 @@ export function PagedShell({
   modes,
   panelRail,
   canvasComponent,
+  bindingProviders,
   children,
 }: PropsWithChildren<PagedShellProps>) {
   return (
@@ -220,6 +233,15 @@ export function PagedShell({
                                         chrome + canvas integration can
                                         read it. */}
                                     <EditContextStackProvider>
+                                    {/* ADR 023 phase C — the binding-
+                                        provider seam. Deliberately
+                                        INSIDE the edit-context stack:
+                                        a provider's lifetime is that
+                                        stack's, and reading them in
+                                        that order is the point. */}
+                                    <BindingProviderProvider
+                                      host={bindingProviders ?? null}
+                                    >
                                     <PagedEditorProvider>
                                       <ShellChrome
                                         panels={panels}
@@ -233,6 +255,7 @@ export function PagedShell({
                                         {children}
                                       </ShellChrome>
                                     </PagedEditorProvider>
+                                    </BindingProviderProvider>
                                     </EditContextStackProvider>
                                     </InstrumentationProvider>
                                   </TableSelectionProvider>

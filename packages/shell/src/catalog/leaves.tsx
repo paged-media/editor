@@ -1080,10 +1080,22 @@ export function ListLeaf({ props }: LeafProps) {
   const rename = parseListRename(props);
   const draggable = reorder != null && !reorder.disabled;
 
+  // ADR 023 phase C — WHO answered this collection. The schema renderer
+  // resolves `documentCollection` lists through the binding-provider
+  // seam and passes the answering plugin id down; absent = core. The
+  // leaf renders provider rows and core rows with the SAME renderer (the
+  // vocabulary rule is what makes that possible), so this is a DOM hook
+  // and a diagnostic — it must never reach a conditional.
+  const provider =
+    typeof props.provider === "string" ? (props.provider as string) : null;
   const visible = items.slice(0, shown);
   return (
     <LeafRow {...rowProps(props)}>
-      <div className="flex flex-col" data-list={collectionName ?? "items"}>
+      <div
+        className="flex flex-col"
+        data-list={collectionName ?? "items"}
+        data-list-provider={provider ?? "core"}
+      >
         {visible.length === 0 && (
           <div
             className="pg-ui-xs px-[9px] py-[7px]"

@@ -56,6 +56,7 @@ import { useCanvasClient } from "../state/canvas-client-context";
 import { useContentSelection } from "../state/content-selection-context";
 import { useRegistries } from "../state/registries-context";
 import { useSelection } from "../state/selection-context";
+import { useProvidedCollection } from "./binding-providers";
 import { PAGED_LIST } from "./built-in";
 import { displayName } from "./leaves";
 import type {
@@ -83,7 +84,6 @@ import {
   visibleSchemaTreeRows,
   type SchemaTreeRow,
 } from "./schema-tree";
-import { useCollection } from "./use-collection";
 
 /** Map a schema `WidgetValueBinding` onto a catalog `Binding`. The
  *  shapes are structurally identical (panel-schema.ts mirrors the
@@ -203,33 +203,50 @@ function SchemaListRow({
     spec.items.kind === "documentCollection" ? spec.items.collection : null;
   // Hook must run unconditionally (safe fallback — same idiom as the
   // collection-select leaf); the published-binding branch ignores it.
-  const fetched = useCollection<Record<string, unknown>>(
-    (collectionName ?? "swatches") as CollectionName,
+  //
+  // ADR 023 phase C: a `documentCollection` list resolves through the
+  // BINDING-PROVIDER SEAM — the active plugin edit context answers if it
+  // owns this collection, and core answers otherwise. The declaration
+  // does not change (a panel still says `collection: "layers"`); only
+  // WHO answers does. Nothing here — and nothing downstream — may branch
+  // on which plugin that was; `provider` is carried for the DOM hook and
+  // for diagnostics only.
+  const provided = useProvidedCollection<Record<string, unknown>>(
+    collectionName as CollectionName | null,
   );
   let items: unknown[];
+  let provider: string | null = null;
   if (spec.items.kind === "binding") {
     const published = bindings.get(spec.items.bind);
     items = Array.isArray(published) ? published : [];
   } else {
-    items = fetched ?? [];
+    items = provided.rows ?? [];
+    provider = provided.provider;
   }
 
   const idField = spec.idField ?? "selfId";
   const treeSpec = spec.tree;
   const parentField = treeSpec?.parentField;
+  const reverseSiblings = spec.displayOrder === "frontFirst";
 
   // Flatten once per items/spec change — depth-first, orphans as
   // roots, cycles surfaced rather than dropped (see schema-tree.ts).
   const treeRows: SchemaTreeRow<unknown>[] = useMemo(() => {
     const idOf = (r: unknown, i: number) => rowKeyOf(r, idField, i);
-    if (!parentField) return flatSchemaTreeRows(items, idOf);
-    return buildSchemaTreeRows(items, idOf, (r) => {
-      const p = fieldAt(r, parentField);
-      return p == null ? null : displayName(String(p));
-    });
+    const opts = { reverseSiblings };
+    if (!parentField) return flatSchemaTreeRows(items, idOf, opts);
+    return buildSchemaTreeRows(
+      items,
+      idOf,
+      (r) => {
+        const p = fieldAt(r, parentField);
+        return p == null ? null : displayName(String(p));
+      },
+      opts,
+    );
     // `items` identity changes on every collection re-fetch, which is
     // exactly when the tree must be rebuilt.
-  }, [items, idField, parentField]);
+  }, [items, idField, parentField, reverseSiblings]);
 
   // Expansion is tracked as a DIFF from the declared default, not as
   // an absolute id set, so `defaultExpanded` and the user's toggles
@@ -468,6 +485,11 @@ function SchemaListRow({
       // render window meaningful over a deep tree.
       items: visibleRows.map((r) => r.row),
       labelField: spec.labelField,
+      // Which authority answered — `null` = core. A DOM hook and a
+      // diagnostic, never a control-flow input (ADR 023: a host panel
+      // that branches on plugin identity has failed regardless of
+      // whether its tests pass).
+      ...(provider ? { provider } : {}),
       ...(tree ? { tree } : {}),
       ...(reorder ? { reorder } : {}),
       ...(rename ? { rename } : {}),
