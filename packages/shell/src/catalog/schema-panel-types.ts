@@ -33,9 +33,12 @@
 // Keep these shapes a structural SUPERSET of plugin-api/src/
 // panel-schema.ts + the `BindingsSurface` slice of host.ts: the v1
 // members stay byte-identical; editor-side schema extensions (the
-// B-01 list widget / G3 applyEntity members below) are ADDITIVE
-// OPTIONAL members only, so a contract-shaped schema remains
-// assignable and the seam assert keeps its teeth.
+// B-01 list widget / G3 applyEntity members, and the v1.2 tree /
+// reorder / rename members below) are ADDITIVE OPTIONAL members only,
+// so a contract-shaped schema remains assignable and the seam assert
+// keeps its teeth. plugin-api adopts the v1.2 members when a bundle
+// needs them — that is a plugin-sdk change, and the superset rule is
+// what lets the two land out of step.
 
 import type { PropertyPath, Value } from "@paged-media/client";
 
@@ -106,6 +109,137 @@ export interface SchemaListAction {
   enabled?: SchemaGate;
 }
 
+// ------------------------------------------------------- v1.2: tree rows
+//
+// The three things B-01/G3 recorded as still absent after the list
+// tier — TREE ROWS, DRAG-REORDER, INLINE RENAME. All three hang off
+// `SchemaListSpec` rather than minting rival widgets: a tree IS a list
+// with parentage, and a panel that declares one should not have to
+// re-declare its rows, fields, selection and actions to get it.
+//
+// Additive and optional throughout, so schema v1.1 (and the narrower
+// `plugin-api` contract, which has not adopted these yet) stays
+// assignable and the injection-seam assert in apps/canvas main.tsx
+// keeps its teeth.
+
+/** Tree rows. The row set stays FLAT — each row names its parent —
+ *  which is the shape the engine hands us (`LayerSummary.parentId`,
+ *  protocol 60) rather than a nested wire form every producer would
+ *  have to build and the widget would immediately re-flatten.
+ *
+ *  A row whose parent field is absent/null, or names an id that is not
+ *  in the row set (an ORPHAN — a partial collection, one layer's
+ *  items), renders as a ROOT. Rows are never dropped for structural
+ *  reasons; see `schema-tree.ts` for the cycle rule. */
+export interface SchemaTreeSpec {
+  /** Dot-path into a row object carrying its PARENT row's id. */
+  parentField: string;
+  /** Whether rows with children start expanded (default `true` — a
+   *  fully-collapsed tree over the common 3-layer document reads as
+   *  broken; a panel over a deep tree opts out, and a collapsed
+   *  subtree costs no rendered rows at all). */
+  defaultExpanded?: boolean;
+  // NO `expansionBinding`. Expansion is panel-local UI state and is
+  // NOT published, which has one honest consequence worth stating:
+  // closing and reopening the dock tab resets it. A published lane
+  // (the `selectionBinding` shape) would fix that and let sibling
+  // rows gate on expansion — it is left out until a panel asks,
+  // rather than shipped untested on the guess that one will.
+}
+
+// ---------------------------------------------------- v1.2: drag-reorder
+
+/** What a completed drag WRITES.
+ *
+ *  `reorderElement` is the engine's own z-order op (protocol 59) —
+ *  deliberately NOT a reorder path invented here. Its `{ index }` form
+ *  is the absolute one: `to` is the row's FINAL slot after the drag,
+ *  which is exactly what a drop position means. Inherited limits,
+ *  stated rather than rediscovered:
+ *
+ *    · it reorders WITHIN the sibling list the element already belongs
+ *      to — it cannot reparent. A drop across parents is therefore
+ *      REJECTED by the renderer, never silently flattened into a
+ *      same-parent move;
+ *    · an out-of-range index is rejected by the engine, never clamped.
+ *      The renderer does not pre-clamp either — a stale row set should
+ *      produce a loud rejection, not a plausible wrong move;
+ *    · index 0 is the BACKMOST slot. The declaring panel's row order
+ *      IS the engine's sibling order; a panel that wants front-at-top
+ *      display uses the `command` kind and does its own arithmetic
+ *      (there is no display-order knob until a real consumer needs
+ *      one).
+ *
+ *  `command` is the escape hatch for everything the element z-order op
+ *  does not model — layer order (`layerMove`), plugin-owned row sets —
+ *  and receives a `SchemaReorderPayload`. */
+export type SchemaReorderAction =
+  | { kind: "command"; command: string }
+  | {
+      kind: "reorderElement";
+      /** Dot-path into the row carrying its `ElementId` KIND
+       *  ("rectangle", "textFrame", …); defaults to "kind". A row
+       *  whose kind is missing or not an element kind is not
+       *  draggable — the honest no-write-path rule. */
+      elementKindField?: string;
+    };
+
+/** Payload handed to a `command` reorder. Sibling indices, so the
+ *  numbers mean the same thing for a flat list and for a tree. */
+export interface SchemaReorderPayload {
+  /** The dragged row's id. */
+  id: string;
+  /** Its sibling index before the drag. */
+  fromIndex: number;
+  /** Its sibling index after the drag (the FINAL slot). */
+  toIndex: number;
+  /** The shared parent id, or `null` at the root. */
+  parentId: string | null;
+}
+
+/** Drag-to-reorder on a `list` widget. Absent = rows are not
+ *  draggable (unchanged v1.1 behaviour). */
+export interface SchemaListReorder {
+  action: SchemaReorderAction;
+  /** Gate dragging on a published binding (absent = enabled). */
+  enabled?: SchemaGate;
+}
+
+// --------------------------------------------------- v1.2: inline rename
+
+/** What a committed rename WRITES.
+ *
+ *  COMMAND-ONLY, and that is a measurement, not a shortcut: every
+ *  rename the engine models is a dedicated mutation, not a property
+ *  write. `layerSetName` needs `NodeId::Layer`, which the wire
+ *  `ElementId` cannot even express; `editSwatch` takes a whole
+ *  `SwatchSpec`; `renameParagraphStyle` and its four siblings are
+ *  their own ops. There is no element-name `PropertyPath` to bind to,
+ *  so an `applyEntity`-style typed write would have nothing to write.
+ *  Vector-valued or op-shaped writes stay commands — the same line the
+ *  list tier already drew. */
+export type SchemaRenameAction = { kind: "command"; command: string };
+
+/** Payload handed to a rename command. */
+export interface SchemaRenamePayload {
+  id: string;
+  /** The committed text, trimmed. Never empty and never equal to the
+   *  previous value — the renderer swallows both as no-ops rather than
+   *  spending an undo step on nothing. */
+  name: string;
+}
+
+/** Double-click-to-rename on a `list` widget. Absent = rows are not
+ *  renameable (unchanged v1.1 behaviour). */
+export interface SchemaListRename {
+  action: SchemaRenameAction;
+  /** Dot-path the editor seeds its draft from; defaults to the list's
+   *  `labelField`. */
+  field?: string;
+  /** Gate renaming on a published binding (absent = enabled). */
+  enabled?: SchemaGate;
+}
+
 /** The `list` widget spec (widget id `paged.list`). Renders rows
  *  from a collection binding; publishes the clicked row's id back
  *  through `selectionBinding` so other rows/sections can gate on it. */
@@ -123,6 +257,12 @@ export interface SchemaListSpec {
   selectionBinding?: string;
   /** Per-row action buttons. */
   actions?: SchemaListAction[];
+  /** ADDITIVE (v1.2) — render the rows as a TREE. */
+  tree?: SchemaTreeSpec;
+  /** ADDITIVE (v1.2) — drag rows to reorder. */
+  reorder?: SchemaListReorder;
+  /** ADDITIVE (v1.2) — double-click a row label to rename it. */
+  rename?: SchemaListRename;
 }
 
 export interface PanelSchemaRow {

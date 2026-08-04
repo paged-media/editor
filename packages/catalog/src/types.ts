@@ -176,13 +176,21 @@ export type ReadSpec =
  * application state (Pages drives camera; Tools writes activeTool;
  * Align rewrites selection). They are mutation-of-state, not
  * mutation-of-document.
+ *
+ * `"zOrder"` is the same kind of audit-only tag for stacking-order
+ * commits — `paged.mutate(Operation::ReorderNode{…})`, the engine op
+ * behind `reorderElement` (protocol 59). It exists because the schema
+ * v1.2 list widget's drag-reorder is a real write that is neither a
+ * `selectionProperty` nor geometry, and folding it into either would
+ * make the audit surface lie about what the widget touches.
  */
 export type WriteSpec =
   | `selectionProperty:${string}`
   | "selection"
   | "camera"
   | "geometry"
-  | "collection";
+  | "collection"
+  | "zOrder";
 
 // ---------------------------------------------------------------- entries
 

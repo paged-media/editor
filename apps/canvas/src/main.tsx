@@ -166,6 +166,7 @@ import { SpreadsPanel } from "./panels/spreads-panel";
 import { TableStylesPanel } from "./panels/table-styles-panel";
 import { SwatchesPanel } from "./panels/swatches-panel";
 import { SchemaListDemoPanel } from "./panels/schema-list-demo-panel";
+import { SchemaTreeDemoPanel } from "./panels/schema-tree-demo-panel";
 import { TextFrameOptionsPanel } from "./panels/text-frame-options-panel";
 import { TextWrapPanel } from "./panels/text-wrap-panel";
 import { ParagraphPanel } from "./panels/paragraph-panel";
@@ -624,6 +625,20 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     id: "paged.schema-list-demo",
     title: "Swatch List (schema)",
     component: SchemaListDemoPanel,
+    defaultDock: "right",
+    defaultGroup: "styles",
+  },
+  {
+    // Schema v1.2 — the TREE ROWS / DRAG-REORDER / INLINE RENAME
+    // consumer proof (ADR 023 phase B). Two declared lists: the real
+    // scene outline as a tree whose drag emits the engine's
+    // `reorderElement`, and the live `layers` collection whose rename
+    // and reorder go through commands (`layerSetName` / `layerMove`
+    // are dedicated ops, not property writes). NOT the Layers panel —
+    // phase C owns that. Driven by tests/e2e/schema-tree-panel.spec.ts.
+    id: "paged.schema-tree-demo",
+    title: "Structure (schema tree)",
+    component: SchemaTreeDemoPanel,
     defaultDock: "right",
     defaultGroup: "styles",
   },

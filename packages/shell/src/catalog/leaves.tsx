@@ -876,14 +876,21 @@ export function LabelLeaf({ props }: LeafProps) {
 // ---------------------------------------------------------------- list
 
 /**
- * Honest render cap (B-01 list widget). `packages/ui` ships NO
- * virtualized list primitive today, so the leaf plain-renders its
- * rows and CAPS the count, surfacing the truncation as a visible
- * `data-list-overflow` row ("showing N of M") — never a silent
- * drop. When a virtualized primitive lands in `@paged-media/ui`,
- * this cap goes away and the leaf swaps onto it.
+ * Render WINDOW, not a cap (schema v1.2 revision of the B-01 rule).
+ *
+ * `packages/ui` still ships NO virtualized list primitive, and this
+ * pass deliberately does not add one — see the note on `ListLeaf`. But
+ * a hard cap and a paged window are not the same honesty: a cap makes
+ * row 501 UNREACHABLE, which a tree makes worse rather than better,
+ * while a window makes it one click away. The leaf renders this many
+ * rows, then offers a "Show N more" button that adds another window's
+ * worth, and keeps the `data-list-overflow` marker so the truncation
+ * stays machine-visible.
+ *
+ * For a TREE the window applies to the VISIBLE (expanded) rows —
+ * collapsing is the tree's own answer to size, and the two compose.
  */
-const LIST_ROW_RENDER_CAP = 500;
+const LIST_ROW_PAGE = 500;
 
 /** A resolved per-row action the renderer (or an expert composition)
  *  hands the leaf via props — label + invoke callback; the SCHEMA
@@ -895,6 +902,39 @@ export interface ListLeafAction {
   label: string;
   disabled?: boolean;
   onInvoke: (rowId: string) => void;
+}
+
+/** Resolved TREE structure for the rows the leaf was handed. The
+ *  schema renderer owns the flattening (`schema-tree.ts`) and hands
+ *  down only what the leaf needs to draw: how far to indent, which
+ *  rows own a disclosure control, and which are open. `items` arrives
+ *  pre-flattened in visible order. */
+export interface ListLeafTree {
+  /** Indent level by row id (0 = root). */
+  depth: Map<string, number>;
+  /** Rows that own a disclosure twisty. */
+  expandable: Set<string>;
+  /** Rows currently open. */
+  expanded: Set<string>;
+  onToggle: (rowId: string) => void;
+}
+
+/** Resolved DRAG-REORDER. The leaf owns only the pointer mechanics
+ *  and reports "row A was dropped on row B"; ALL index arithmetic —
+ *  sibling resolution, the same-parent rule, which op to emit — stays
+ *  in the schema renderer, which is the layer that knows the tree. */
+export interface ListLeafReorder {
+  onDrop: (draggedId: string, targetId: string) => void;
+  disabled?: boolean;
+}
+
+/** Resolved INLINE RENAME. `field` seeds the draft (defaults to the
+ *  label the leaf already computed); `onCommit` fires only for a
+ *  non-empty, changed value. */
+export interface ListLeafRename {
+  field?: string;
+  onCommit: (rowId: string, name: string) => void;
+  disabled?: boolean;
 }
 
 /** Reads a dot-path ("name", "meta.kind") out of a row object. */
@@ -927,6 +967,43 @@ function parseListActions(props: Record<string, unknown>): ListLeafAction[] {
   );
 }
 
+// The v1.2 props arrive as RESOLVED objects carrying callbacks (the
+// `actions` convention) rather than schema data, because the tree
+// arithmetic and the op choice belong to the schema renderer. Each
+// parser is a structural guard so a malformed expert composition
+// degrades to "no tree / no drag / no rename" instead of throwing
+// mid-render.
+
+function parseListTree(props: Record<string, unknown>): ListLeafTree | null {
+  const t = props.tree as ListLeafTree | undefined;
+  if (
+    !t ||
+    typeof t !== "object" ||
+    !(t.depth instanceof Map) ||
+    !(t.expandable instanceof Set) ||
+    !(t.expanded instanceof Set) ||
+    typeof t.onToggle !== "function"
+  ) {
+    return null;
+  }
+  return t;
+}
+
+function parseListReorder(
+  props: Record<string, unknown>,
+): ListLeafReorder | null {
+  const r = props.reorder as ListLeafReorder | undefined;
+  if (!r || typeof r !== "object" || typeof r.onDrop !== "function") return null;
+  return r;
+}
+
+function parseListRename(props: Record<string, unknown>): ListLeafRename | null {
+  const r = props.rename as ListLeafRename | undefined;
+  if (!r || typeof r !== "object" || typeof r.onCommit !== "function")
+    return null;
+  return r;
+}
+
 /**
  * B-01 — the `paged.list` collection-list leaf. Renders rows from a
  * COLLECTION (props.items pre-resolved by the schema renderer, or
@@ -944,6 +1021,21 @@ function parseListActions(props: Record<string, unknown>): ListLeafAction[] {
  * Selection is CONTROLLED when `props.onSelect` is supplied (the
  * schema renderer publishes the id back through the panel's
  * bindings); otherwise the leaf keeps private selection state.
+ *
+ * v1.2 adds the three things B-01/G3 left open — TREE indentation +
+ * disclosure (`props.tree`), DRAG-REORDER (`props.reorder`) and
+ * INLINE RENAME (`props.rename`) — all optional, all off by default,
+ * so a v1.1 list renders byte-identically.
+ *
+ * NOT VIRTUALIZED, deliberately. `@paged-media/ui` has no windowing
+ * primitive, and one that stays correct while a drag auto-scrolls,
+ * while row heights vary with the secondary line, and while a rename
+ * input must survive its row scrolling out is a bigger, separately
+ * testable piece of work than these three capabilities. What this
+ * pass DOES fix is the honesty of the limit: the old hard cap made
+ * row 501 unreachable, which a tree would have made worse; the window
+ * plus "Show N more" makes it one click away, and a collapsed subtree
+ * costs no rows at all.
  */
 export function ListLeaf({ props }: LeafProps) {
   const collectionName =
@@ -957,6 +1049,11 @@ export function ListLeaf({ props }: LeafProps) {
     (collectionName ?? "swatches") as CollectionName,
   );
   const [privateSelected, setPrivateSelected] = useState<string | null>(null);
+  const [shown, setShown] = useState(LIST_ROW_PAGE);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropId, setDropId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
 
   const items: unknown[] = Array.isArray(props.items)
     ? (props.items as unknown[])
@@ -978,8 +1075,12 @@ export function ListLeaf({ props }: LeafProps) {
       : null
     : privateSelected;
   const actions = parseListActions(props);
+  const tree = parseListTree(props);
+  const reorder = parseListReorder(props);
+  const rename = parseListRename(props);
+  const draggable = reorder != null && !reorder.disabled;
 
-  const visible = items.slice(0, LIST_ROW_RENDER_CAP);
+  const visible = items.slice(0, shown);
   return (
     <LeafRow {...rowProps(props)}>
       <div className="flex flex-col" data-list={collectionName ?? "items"}>
@@ -997,47 +1098,175 @@ export function ListLeaf({ props }: LeafProps) {
           const label = fieldText(row, labelField) ?? id;
           const secondary = fieldText(row, secondaryField);
           const selected = selectedId === id;
+          const depth = tree?.depth.get(id) ?? 0;
+          const expandable = tree?.expandable.has(id) ?? false;
+          const expanded = tree?.expanded.has(id) ?? false;
+          const editing = editingId === id;
+          const commitRename = () => {
+            const next = draft.trim();
+            setEditingId(null);
+            // No-ops are swallowed rather than spending an undo step.
+            if (next === "" || next === label) return;
+            rename?.onCommit(id, next);
+          };
           return (
             <div
               key={id}
               className="mb-px flex items-center gap-[6px] rounded-[7px] pr-[6px]"
               data-list-row={id}
+              data-list-depth={tree ? depth : undefined}
               data-selected={selected ? "true" : undefined}
+              data-drop-target={dropId === id ? "true" : undefined}
+              draggable={draggable && !editing}
+              onDragStart={
+                draggable
+                  ? (e) => {
+                      // Firefox refuses to start a drag without payload;
+                      // the id itself rides in React state (the drop
+                      // handler needs it synchronously anyway).
+                      e.dataTransfer.setData("text/plain", id);
+                      e.dataTransfer.effectAllowed = "move";
+                      setDragId(id);
+                    }
+                  : undefined
+              }
+              onDragEnd={
+                draggable
+                  ? () => {
+                      setDragId(null);
+                      setDropId(null);
+                    }
+                  : undefined
+              }
+              onDragOver={
+                draggable
+                  ? (e) => {
+                      // Without preventDefault the browser never fires
+                      // `drop` — the classic HTML5 DnD footgun.
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (dropId !== id) setDropId(id);
+                    }
+                  : undefined
+              }
+              onDragLeave={
+                draggable
+                  ? () => setDropId((cur) => (cur === id ? null : cur))
+                  : undefined
+              }
+              onDrop={
+                draggable
+                  ? (e) => {
+                      e.preventDefault();
+                      const from =
+                        dragId ?? e.dataTransfer.getData("text/plain") ?? null;
+                      setDragId(null);
+                      setDropId(null);
+                      if (from && from !== id) reorder.onDrop(from, id);
+                    }
+                  : undefined
+              }
               style={{
                 background: selected ? "var(--selected-bg)" : "transparent",
+                outline:
+                  dropId === id && dragId !== id
+                    ? "1px solid var(--pg-primary)"
+                    : undefined,
+                opacity: dragId === id ? 0.5 : undefined,
               }}
             >
-              <button
-                type="button"
-                className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent px-[9px] py-[6px] text-left"
-                data-list-row-select
-                onClick={() => {
-                  if (onSelect) onSelect(id);
-                  else setPrivateSelected(id);
-                }}
-              >
-                <span
-                  className="block truncate text-[12.5px]"
+              {tree && (
+                <button
+                  type="button"
+                  data-list-twisty={id}
+                  data-expanded={expandable ? String(expanded) : undefined}
+                  aria-label={
+                    expandable
+                      ? `${expanded ? "Collapse" : "Expand"}: ${label}`
+                      : undefined
+                  }
+                  disabled={!expandable}
+                  className="shrink-0 cursor-pointer border-0 bg-transparent disabled:cursor-default"
+                  style={{
+                    // Indent lives on the twisty so the label column
+                    // stays a single truncating flex child.
+                    marginLeft: depth * 12,
+                    width: 16,
+                    height: 16,
+                    opacity: expandable ? 1 : 0,
+                    color: "var(--pg-muted-fg)",
+                  }}
+                  onClick={() => expandable && tree.onToggle(id)}
+                >
+                  <Icon
+                    name={expanded ? "ui-chevron-down" : "ui-chevron-right"}
+                    size={13}
+                  />
+                </button>
+              )}
+              {editing ? (
+                <input
+                  autoFocus
+                  data-list-rename={id}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onBlur={commitRename}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      (e.target as HTMLInputElement).blur();
+                    } else if (e.key === "Escape") {
+                      setEditingId(null);
+                    }
+                  }}
+                  className="min-w-0 flex-1 rounded-[6px] border px-[8px] py-[5px] text-[12.5px] outline-none"
                   style={{
                     fontFamily: "var(--font-sans)",
-                    color: selected ? "var(--pg-primary)" : "var(--pg-fg)",
+                    borderColor: "var(--pg-primary)",
+                    background: "var(--pg-bg)",
+                    color: "var(--pg-fg)",
                   }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent px-[9px] py-[6px] text-left"
+                  data-list-row-select
+                  onClick={() => {
+                    if (onSelect) onSelect(id);
+                    else setPrivateSelected(id);
+                  }}
+                  onDoubleClick={
+                    rename && !rename.disabled
+                      ? () => {
+                          setDraft(fieldText(row, rename.field) ?? label);
+                          setEditingId(id);
+                        }
+                      : undefined
+                  }
                 >
-                  {label}
-                </span>
-                {secondary != null && (
                   <span
-                    className="block truncate text-[10.5px]"
+                    className="block truncate text-[12.5px]"
                     style={{
-                      fontFamily: "var(--font-mono)",
-                      color: "var(--pg-muted-fg)",
+                      fontFamily: "var(--font-sans)",
+                      color: selected ? "var(--pg-primary)" : "var(--pg-fg)",
                     }}
-                    data-list-secondary
                   >
-                    {secondary}
+                    {label}
                   </span>
-                )}
-              </button>
+                  {secondary != null && (
+                    <span
+                      className="block truncate text-[10.5px]"
+                      style={{
+                        fontFamily: "var(--font-mono)",
+                        color: "var(--pg-muted-fg)",
+                      }}
+                      data-list-secondary
+                    >
+                      {secondary}
+                    </span>
+                  )}
+                </button>
+              )}
               {actions.map((a) => (
                 <button
                   key={a.key}
@@ -1061,14 +1290,22 @@ export function ListLeaf({ props }: LeafProps) {
             </div>
           );
         })}
-        {items.length > LIST_ROW_RENDER_CAP && (
-          <div
-            className="pg-ui-xs px-[9px] py-[5px]"
-            style={{ color: "var(--pg-muted-fg)" }}
+        {items.length > visible.length && (
+          <button
+            type="button"
+            className="cursor-pointer border-0 bg-transparent px-[9px] py-[5px] text-left"
             data-list-overflow={items.length}
+            data-list-more
+            onClick={() => setShown((n) => n + LIST_ROW_PAGE)}
           >
-            showing {LIST_ROW_RENDER_CAP} of {items.length}
-          </div>
+            <span
+              className="pg-ui-xs"
+              style={{ color: "var(--pg-muted-fg)" }}
+            >
+              Show {Math.min(LIST_ROW_PAGE, items.length - visible.length)}{" "}
+              more ({visible.length} of {items.length})
+            </span>
+          </button>
         )}
       </div>
     </LeafRow>

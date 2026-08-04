@@ -39,6 +39,12 @@
 //   AC-LIST-4  the "Stroke" action dispatches the registered command
 //              with the ROW ID as payload — proven by the handler's
 //              observable effect (`frameStrokeColor` = the row id).
+//   AC-LIST-5  (schema v1.2) the 500-row limit is a WINDOW, not a cap:
+//              over a document with more swatches than that, the leaf
+//              renders 500 rows plus a "Show N more" control that adds
+//              the rest. Row 501 is one click away, not unreachable —
+//              which is what makes shipping without virtualization
+//              honest rather than a silent truncation.
 //
 // Document: the in-test minimal rect+polygon IDML (no corpus
 // dependency), same as draw-schema-panel.spec.ts.
@@ -230,5 +236,45 @@ test.describe("E2E schema-list-panel (B-01 list widget + G3 applyEntity)", () =>
         propertyValue(page, RECT, "frameStrokeColor").then((v) => v?.value),
       )
       .toBe(id);
+  });
+
+  test("AC-LIST-5 — past 500 rows the list windows and offers the rest", async ({
+    page,
+  }) => {
+    const panel = page.locator(`[data-schema-panel="${PANEL_ID}"]`);
+    // Real swatches in a real document, minted in ONE batch (one undo
+    // step) — not a fabricated row array, because the window has to
+    // hold up against the collection lane the panels actually read.
+    const total = await page.evaluate(async () => {
+      const c = (globalThis as unknown as { __canvas: CanvasGlobal }).__canvas;
+      const before = await c.client.collection("swatches");
+      const wanted = 540 - before.length;
+      const ops = Array.from({ length: wanted }, (_v, i) => ({
+        op: "createSwatch",
+        args: {
+          spec: {
+            name: `Bulk ${i}`,
+            space: "RGB",
+            value: [i % 256, 0, 0],
+            model: "Process",
+          },
+        },
+      }));
+      await c.client.mutate({ op: "batch", args: { ops } });
+      const after = await c.client.collection("swatches");
+      return after.length;
+    });
+    expect(total).toBeGreaterThan(500);
+
+    // The window renders 500; the remainder is OFFERED, never dropped.
+    await expect(panel.locator("[data-list-row]")).toHaveCount(500);
+    const more = panel.locator("[data-list-more]");
+    await expect(more).toBeVisible();
+    await expect(more).toHaveAttribute("data-list-overflow", String(total));
+    await expect(more).toContainText(`500 of ${total}`);
+
+    await more.click();
+    await expect(panel.locator("[data-list-row]")).toHaveCount(total);
+    await expect(panel.locator("[data-list-more]")).toHaveCount(0);
   });
 });

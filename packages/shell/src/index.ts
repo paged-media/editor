@@ -426,11 +426,34 @@ export type {
   SchemaRowAction as ShellSchemaRowAction,
   SchemaListAction as ShellSchemaListAction,
   SchemaListSpec as ShellSchemaListSpec,
+  // Schema v1.2 (additive) — tree rows / drag-reorder / inline rename.
+  SchemaTreeSpec as ShellSchemaTreeSpec,
+  SchemaListReorder as ShellSchemaListReorder,
+  SchemaReorderAction as ShellSchemaReorderAction,
+  SchemaReorderPayload as ShellSchemaReorderPayload,
+  SchemaListRename as ShellSchemaListRename,
+  SchemaRenameAction as ShellSchemaRenameAction,
+  SchemaRenamePayload as ShellSchemaRenamePayload,
 } from "./catalog/schema-panel-types";
+// The tree arithmetic is pure and exported so a panel (or a future
+// virtualized primitive) can flatten the same way the renderer does.
+export {
+  buildSchemaTreeRows,
+  visibleSchemaTreeRows,
+  flatSchemaTreeRows,
+  type SchemaTreeRow,
+} from "./catalog/schema-tree";
 // Editor-side BindingsSurface for host-owned schema panels (demo /
 // consumer-proof panels, specs).
 export { createLocalBindingsSurface } from "./catalog/local-bindings";
-export { TogglePill, displayName, type ListLeafAction } from "./catalog/leaves";
+export {
+  TogglePill,
+  displayName,
+  type ListLeafAction,
+  type ListLeafTree,
+  type ListLeafReorder,
+  type ListLeafRename,
+} from "./catalog/leaves";
 export { useBindings, type ResolvedBinding } from "./catalog/binding-hook";
 export {
   useCollection,

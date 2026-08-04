@@ -224,6 +224,14 @@ const ENTRIES: CatalogEntry[] = [
     // `documentCollection:swatches` read; the write surface is the
     // G3 applyEntity path — `selectionProperty:*` through the same
     // setElementProperty channel the scalar widgets commit on.
+    //
+    // Schema v1.2 adds `tree` / `reorder` / `rename` — RESOLVED
+    // objects the schema renderer builds (depth maps, drop and commit
+    // callbacks), declared `JsonValue` on the same footing as
+    // `actions`, which has carried callbacks since B-01. The audit
+    // declaration gains `zOrder` because a v1.2 drag can emit
+    // `reorderElement` — a real write surface that is NOT a
+    // `selectionProperty`, so recording it as one would be false.
     id: PAGED_LIST,
     kind: "leaf",
     props: {
@@ -234,10 +242,13 @@ const ENTRIES: CatalogEntry[] = [
       idField: "string",
       items: "JsonValue",
       actions: "JsonValue",
+      tree: "JsonValue",
+      reorder: "JsonValue",
+      rename: "JsonValue",
     },
     bindings: {
       reads: ["documentCollection:swatches"],
-      writes: ["selectionProperty:*"],
+      writes: ["selectionProperty:*", "zOrder"],
     },
     leaf: ListLeaf,
   },
