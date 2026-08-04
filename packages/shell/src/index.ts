@@ -204,6 +204,7 @@ export {
   type ToolId,
   type ToolGroupId,
   type ToolSectionId,
+  type ToolStatus,
   type ToolRegistry,
   type ToolRegistryEvent,
   type VisibilityPredicate,

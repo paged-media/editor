@@ -63,6 +63,11 @@ export function buildToolbarContributions(
   const keybindings: KeybindingContribution[] = [];
 
   for (const tool of tools) {
+    // Honest stubs contribute NOTHING executable: no activation
+    // command (a palette entry that does nothing is the same lie the
+    // rail slot was) and no keybinding. A `shortcut` on a planned tool
+    // is an INV-REG-1 reservation, not a binding — see `ToolStatus`.
+    if (tool.status === "planned") continue;
     const command = TOOL_ACTIVATE_COMMAND_PREFIX + tool.id;
     commands.push({
       id: command,

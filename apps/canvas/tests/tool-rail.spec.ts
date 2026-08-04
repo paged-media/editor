@@ -25,7 +25,8 @@
 // guard (AC-4), spring-loaded Space → momentary Hand (AC-5), flyout
 // reveal + promote (AC-2), Alt+click group cycling, the screen-mode
 // selector (AC-8, view state only), the fill/stroke cluster mount
-// (AC-7 surface), and Tab / Shift+Tab chrome hide.
+// (AC-7 surface), Tab / Shift+Tab chrome hide, and the honest-stub
+// contract for `status: "planned"` tools (AC-RAIL-11).
 
 import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
@@ -221,5 +222,95 @@ test.describe("Concept 1 — tool rail", () => {
     ).toBeVisible();
     await palette.locator("[data-tool-palette-close]").click();
     await expect(palette).toBeHidden();
+  });
+
+  test("AC-RAIL-11 — planned tools are visible stubs, never silent no-ops @feat:editor-shell.tool-rail @level:happy", async ({
+    page,
+  }) => {
+    // The rail still SHOWS the not-yet-built tools (the toolbox reads
+    // complete and the eventual home of each is visible) …
+    const gap = page.locator('[data-tool-slot="gap"]');
+    await expect(gap).toBeVisible();
+    // … but marks them as stubs rather than accepting a click and then
+    // doing nothing, which reads to the user as a bug in their input.
+    await expect(gap).toHaveAttribute("data-tool-status", "planned");
+    await expect(gap).toHaveAttribute("aria-disabled", "true");
+    await expect(gap).toHaveAttribute("title", /coming soon/i);
+
+    // Clicking one does NOT become the active tool. `force` because
+    // `aria-disabled` already makes Playwright's actionability check
+    // refuse the click — which is itself the point: the affordance
+    // reads as disabled to automation and assistive tech. A real
+    // pointer still reaches the React handler, so force the click and
+    // assert the handler declines it.
+    await gap.click({ force: true });
+    await expect(gap).toHaveAttribute("data-active", "false");
+    await expect(
+      page.locator('[data-tool-slot="select"][data-active="true"]'),
+    ).toBeVisible();
+
+    // A planned tool contributes no activation command either — a
+    // command-palette entry that does nothing is the same lie.
+    const hasCommand = await page.evaluate(() =>
+      Boolean(
+        (
+          globalThis as unknown as {
+            __canvas: {
+              registries: { commands: { get: (id: string) => unknown } };
+            };
+          }
+        ).__canvas.registries.commands.get(
+          "paged.tool.activate.paged.tool.gap",
+        ),
+      ),
+    );
+    expect(hasCommand).toBe(false);
+
+    // A planned member never takes the slot FACE from a working
+    // sibling: Free Transform is planned, so the transform slot faces
+    // Rotate (which drives the engine's rotate gesture arm).
+    await expect(
+      page.locator('[data-tool-slot="transform"]'),
+    ).toHaveAttribute("data-tool", "paged.tool.rotate");
+  });
+
+  test("AC-RAIL-12 — the frame slot draws (its three tools are wired) @feat:editor-shell.tool-rail @feat:editor-tools.draw.rectangle @level:happy", async ({
+    page,
+  }) => {
+    // Rectangle Frame is the slot's group default and carries a real
+    // gesture — the rail's `f` promise. Alt+click cycles to the other
+    // two, which are wired to the Ellipse / Polygon handlers.
+    const frame = page.locator('[data-tool-slot="frame"]');
+    await frame.click();
+    await expect(
+      page.locator(
+        '[data-tool-slot="frame"][data-tool="paged.tool.rectangleFrame"][data-active="true"]',
+      ),
+    ).toBeVisible();
+    const hasGesture = (id: string) =>
+      page.evaluate(
+        (toolId) =>
+          Boolean(
+            (
+              globalThis as unknown as {
+                __canvas: {
+                  registries: {
+                    tools: { get: (id: string) => { gesture?: unknown } | undefined };
+                  };
+                };
+              }
+            ).__canvas.registries.tools.get(toolId)?.gesture,
+          ),
+        id,
+      );
+    expect(await hasGesture("paged.tool.rectangleFrame")).toBe(true);
+    expect(await hasGesture("paged.tool.ellipseFrame")).toBe(true);
+    expect(await hasGesture("paged.tool.polygonFrame")).toBe(true);
+    await frame.click({ modifiers: ["Alt"] });
+    await expect(
+      page.locator(
+        '[data-tool-slot="frame"][data-tool="paged.tool.ellipseFrame"]',
+      ),
+    ).toBeVisible();
   });
 });

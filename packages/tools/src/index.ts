@@ -38,3 +38,10 @@ export { createPolygonHandler } from "./handlers/polygon-tool";
 export { createRectangleHandler } from "./handlers/rectangle-tool";
 export { createScissorsHandler } from "./handlers/scissors-tool";
 export { createShearHandler } from "./handlers/shear-tool";
+export { createSmoothHandler } from "./handlers/smooth-tool";
+export {
+  createRotateHandler,
+  createScaleHandler,
+  createTransformGestureHandler,
+  type TransformGestureKind,
+} from "./handlers/transform-tools";

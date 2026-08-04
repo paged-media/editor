@@ -69,6 +69,7 @@ export {
   type ToolId,
   type ToolGroupId,
   type ToolSectionId,
+  type ToolStatus,
   type ToolRegistry,
   type ToolRegistryEvent,
 } from "./tool";

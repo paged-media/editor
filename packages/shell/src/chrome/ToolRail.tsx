@@ -47,6 +47,13 @@ import type {
 // `ToolRegistry.groups()` (one slot per flyout group) and the A–D
 // section dividers from each group's `section`. Reads/writes the
 // effective tool via the ToolContext stack. Zero hardcoded tools.
+//
+// Honest stubs — a contribution with `status: "planned"` renders as a
+// dimmed, non-activating entry (`data-tool-status="planned"`, tooltip
+// "… — coming soon") instead of a slot that accepts a click and then
+// does nothing. The silent no-op is worse than an empty rail: it reads
+// as a bug in the user's own input. A planned tool also never takes
+// the slot FACE while a working sibling exists.
 
 const SECTION_ORDER: ToolSectionId[] = [
   "selection",
@@ -57,6 +64,22 @@ const SECTION_ORDER: ToolSectionId[] = [
 
 const LONG_PRESS_MS = 240;
 const LAST_USED_STORAGE_KEY = "paged.toolRail.lastUsed";
+
+/** An honest stub (`status: "planned"`) — rendered, dimmed, inert. */
+function isPlanned(tool: ToolContribution): boolean {
+  return tool.status === "planned";
+}
+
+/** Tooltip text. A planned tool says so and does NOT advertise its
+ *  reserved key — the key is held for the real implementation, not
+ *  bound (see `ToolStatus`), so showing it would promise a keystroke
+ *  that does nothing. */
+function tooltipFor(tool: ToolContribution): string {
+  if (isPlanned(tool)) return `${tool.title} — coming soon`;
+  return tool.shortcut
+    ? `${tool.title} (${formatShortcut(tool.shortcut)})`
+    : tool.title;
+}
 
 interface SlotModel {
   group: ToolGroupId;
@@ -86,8 +109,16 @@ function deriveSections(
   for (const [group, members] of groups) {
     if (members.length === 0) continue;
     const section = members[0].section;
+    // A planned tool never takes the slot FACE while a working sibling
+    // exists — otherwise the slot would read as dead even though the
+    // group has live members one flyout away. A slot whose members are
+    // ALL planned does show a planned face: that is the honest signal.
+    const ready = members.filter((m) => !isPlanned(m));
     const defaultTool =
-      members.find((m) => m.isGroupDefault) ?? members[0];
+      ready.find((m) => m.isGroupDefault) ??
+      ready[0] ??
+      members.find((m) => m.isGroupDefault) ??
+      members[0];
     const slot: SlotModel = { group, members, defaultTool };
     const hinted = members
       .map((m) => m.slotOrder)
@@ -194,7 +225,12 @@ export function ToolRail({ foot }: { foot?: ReactNode }) {
   const faceToolOf = useCallback(
     (slot: SlotModel): ToolContribution => {
       const id = lastUsed[slot.group];
-      return slot.members.find((m) => m.id === id) ?? slot.defaultTool;
+      // `pick` refuses planned tools, so a planned id here can only be
+      // stale localStorage (a tool that was live when it was parked).
+      return (
+        slot.members.find((m) => m.id === id && !isPlanned(m)) ??
+        slot.defaultTool
+      );
     },
     [lastUsed],
   );
@@ -213,6 +249,9 @@ export function ToolRail({ foot }: { foot?: ReactNode }) {
 
   const pick = useCallback(
     (tool: ToolContribution) => {
+      // Honest stub — the click is acknowledged by the disabled
+      // affordance, never by a tool switch that then does nothing.
+      if (isPlanned(tool)) return;
       if (restrictedTools && !restrictedTools.has(tool.id)) {
         editContexts.commit();
       }
@@ -335,16 +374,17 @@ function FloatingToolPalette({
           <button
             key={m.id}
             type="button"
-            title={
-              m.shortcut ? `${m.title} (${formatShortcut(m.shortcut)})` : m.title
-            }
+            title={tooltipFor(m)}
             data-tool={m.id}
+            data-tool-status={isPlanned(m) ? "planned" : undefined}
+            aria-disabled={isPlanned(m) ? true : undefined}
             onClick={() => onPick(m)}
-            style={
-              m.id === effectiveTool
+            style={{
+              ...(m.id === effectiveTool
                 ? { ...slotStyle, ...slotActiveStyle }
-                : slotStyle
-            }
+                : slotStyle),
+              ...(isPlanned(m) ? plannedStyle : null),
+            }}
           >
             <SlotGlyph tool={m} />
           </button>
@@ -427,10 +467,16 @@ function ToolSlot({
       // Alt+click cycles the slot through its group's hidden tools —
       // the non-conflicting form of "cycle within a group" (the
       // Shift+key combos are real tool shortcuts of their own).
+      // Planned members are skipped: cycling onto one would park the
+      // slot on an inert face.
       if (e.altKey && hasFlyout) {
-        const idx = slot.members.findIndex((m) => m.id === face.id);
-        const next = slot.members[(idx + 1) % slot.members.length];
-        onPick(next);
+        const start = slot.members.findIndex((m) => m.id === face.id);
+        for (let step = 1; step <= slot.members.length; step++) {
+          const next = slot.members[(start + step) % slot.members.length];
+          if (isPlanned(next)) continue;
+          onPick(next);
+          return;
+        }
         return;
       }
       onPick(face);
@@ -458,14 +504,12 @@ function ToolSlot({
     <div ref={containerRef} style={{ position: "relative" }}>
       <button
         type="button"
-        title={
-          face.shortcut
-            ? `${face.title} (${formatShortcut(face.shortcut)})`
-            : face.title
-        }
+        title={tooltipFor(face)}
         aria-pressed={isActive}
+        aria-disabled={isPlanned(face) ? true : undefined}
         data-tool-slot={slot.group}
         data-tool={face.id}
+        data-tool-status={isPlanned(face) ? "planned" : undefined}
         data-active={isActive ? "true" : "false"}
         data-context-dimmed={
           restricted && !restricted.has(face.id) ? "true" : undefined
@@ -494,6 +538,7 @@ function ToolSlot({
           ...(restricted && !restricted.has(face.id)
             ? { opacity: 0.35 }
             : null),
+          ...(isPlanned(face) ? plannedStyle : null),
         }}
       >
         <SlotGlyph tool={face} />
@@ -530,19 +575,19 @@ function ToolSlot({
             {slot.members.map((member) => {
             const memberActive = member.id === effectiveTool;
             const memberDimmed = restricted ? !restricted.has(member.id) : false;
+            const memberPlanned = isPlanned(member);
             return (
               <button
                 key={member.id}
                 type="button"
                 role="menuitem"
-                title={
-                  member.shortcut
-                    ? `${member.title} (${formatShortcut(member.shortcut)})`
-                    : member.title
-                }
+                title={tooltipFor(member)}
                 data-tool={member.id}
+                data-tool-status={memberPlanned ? "planned" : undefined}
+                aria-disabled={memberPlanned ? true : undefined}
                 data-context-dimmed={memberDimmed ? "true" : undefined}
                 onClick={() => {
+                  if (memberPlanned) return;
                   setFlyoutOpen(false);
                   onPick(member);
                 }}
@@ -551,14 +596,19 @@ function ToolSlot({
                     ? { ...flyoutItemStyle, ...slotActiveStyle }
                     : flyoutItemStyle),
                   ...(memberDimmed ? { opacity: 0.35 } : null),
+                  ...(memberPlanned ? plannedStyle : null),
                 }}
               >
                 <SlotGlyph tool={member} />
                 <span style={flyoutLabelStyle}>{member.title}</span>
-                {member.shortcut && (
-                  <span style={flyoutShortcutStyle}>
-                    {formatShortcut(member.shortcut)}
-                  </span>
+                {memberPlanned ? (
+                  <span style={flyoutShortcutStyle}>Coming soon</span>
+                ) : (
+                  member.shortcut && (
+                    <span style={flyoutShortcutStyle}>
+                      {formatShortcut(member.shortcut)}
+                    </span>
+                  )
                 )}
               </button>
             );
@@ -672,6 +722,13 @@ const slotStyle: CSSProperties = {
   color: "var(--chrome-icon)",
   cursor: "pointer",
   padding: 0,
+};
+
+/** Honest-stub presentation: dimmed, no pointer affordance. Mirrors
+ *  the `ComingSoon` panel stub's muted treatment at rail scale. */
+const plannedStyle: CSSProperties = {
+  opacity: 0.35,
+  cursor: "default",
 };
 
 const slotActiveStyle: CSSProperties = {
