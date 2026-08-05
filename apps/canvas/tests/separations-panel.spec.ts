@@ -205,10 +205,10 @@ test.describe("§21 — Separations & Ink Limit panel", () => {
     await loadIdml(page, FIXTURE);
     await openSeparations(page);
 
-    // Measured, not assumed: this fixture separates (`separationAvailable`
-    // is true even with no NAMED CMYK working profile — K decomposes
-    // regardless), and Black is the only plate carrying area. So the
-    // "activate a profile" affordance must NOT be showing.
+    // Measured: this fixture's designmap declares FOGRA39 and the editor
+    // has it registered, so a CMYK working profile IS active and Black is
+    // the only plate carrying area. The "activate a profile" affordance
+    // must therefore not be showing.
     await expect(page.locator("[data-separations-unavailable]")).toHaveCount(0);
     await expect(page.locator("[data-separations-no-plates]")).toHaveCount(0);
 
