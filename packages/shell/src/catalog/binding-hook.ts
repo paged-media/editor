@@ -77,6 +77,11 @@ import {
   type SelectionResolution,
   type ShellBindingProviderHost,
 } from "./binding-providers";
+import { useReportBindingSurface } from "./panel-binding-surface";
+
+/** Stable empty literal — this hook reports PATHS only; a composition leaf
+ *  never binds a collection. */
+const NO_COLLECTIONS: readonly never[] = [];
 
 /**
  * What a binding resolved to, beyond its value. FOUR states, because
@@ -150,6 +155,16 @@ export function useBindings(
 
   const [snapshot, setSnapshot] = useState<Map<string, ElementProperties | null>>(
     new Map(),
+  );
+
+  // ADR 023 follow-up — report the PATHS this composition node binds, so
+  // the shell can tell whether entering an edit context would displace a
+  // panel that context serves. Every Character / Paragraph / Properties
+  // leaf goes through here, so the whole VALUE axis is covered by one
+  // call and no panel declares anything (panel-binding-surface.tsx).
+  useReportBindingSurface(
+    NO_COLLECTIONS,
+    selectionPaths(bindings).map(([, path]) => path),
   );
 
   // Fetch the snapshot for every distinct ElementId referenced by

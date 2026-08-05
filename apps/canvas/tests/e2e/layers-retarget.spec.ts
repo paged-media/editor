@@ -54,6 +54,20 @@
 //                  same drag becomes `reorderElement` on the element,
 //                  proven by the engine's own frame order moving. Two
 //                  ops, one panel vocabulary, no branch in between.
+//   AC-NO-DISPLACE-1  entering the context does NOT take the shared panel
+//                  off screen. `EditContextContribution.panelIds` raises
+//                  the context's OWN panels, and this dock renders one at
+//                  a time — so before the fix the retarget happened while
+//                  the panel was unmounted, and all three phase-C slices
+//                  re-raised the tab in their specs to work around it.
+//                  The shell now withholds the raise when the entering
+//                  context's providers SERVE what is on screen, and only
+//                  then: with Character up instead, Stroke still raises.
+//   AC-NO-DISPLACE-2  a shared panel that is genuinely NOT on screen
+//                  retargets on its next mount. Resolution is pull-based,
+//                  so an unmounted panel cannot error and cannot go
+//                  stale — the answer to "what happens when the panel is
+//                  closed / behind another tab".
 //
 // The panel contains no `if (pluginId === …)` and neither does the
 // platform seam it reads through; `data-list-provider` is a DOM hook and
@@ -230,21 +244,17 @@ async function elementScreenCenter(
 /** Enter paged.draw's vectorGraphic context by double-clicking a path,
  *  waiting for the shell's breadcrumb (the user-visible proof).
  *
- *  THEN RE-RAISE THE LAYERS TAB, and that step is a finding rather than
- *  a workaround. `EditContextContribution.panelIds` lets a context
- *  EMPHASIZE panels on enter, and paged.draw's declares
- *  `[media.paged.draw.panel.stroke]` — which the cockpit raises into the
- *  same right-hand dock group, making Layers an inactive tab. dockview
- *  unmounts inactive tabs, so the shared panel is not on screen at the
- *  exact moment it retargets. Clicking the tab back (what a user does)
- *  restores it and everything below holds.
- *
- *  The panel is not broken; the interaction between `panelIds` and a
- *  HOST panel that retargets is unresolved. `panelIds` was written when
- *  every plugin surface was the plugin's own, so "raise mine" and "keep
- *  the shared one visible" could not conflict. Worth an ADR-023 follow-up
- *  (a context declaring which SHARED panels it serves, so the shell can
- *  keep them up) rather than being silently absorbed here. */
+ *  NO RE-RAISE. An earlier revision of this helper clicked the Layers tab
+ *  back after entering, because `EditContextContribution.panelIds` raised
+ *  paged.draw's Stroke panel into the same one-panel-at-a-time dock and
+ *  took Layers off screen at the exact moment it retargets. That is now
+ *  fixed in the shell rather than worked around here: a context does not
+ *  displace a panel its own binding providers SERVE (draw declares
+ *  `collections: ["layers"]`, the panel on screen is bound to `layers`,
+ *  so the raise is withheld and Stroke opens as a background tab). If the
+ *  fix regresses, every test below fails on the panel not being visible —
+ *  which is the point of not papering over it here. AC-NO-DISPLACE-1
+ *  asserts it directly. */
 async function enterVectorGraphic(page: Page): Promise<void> {
   const path = await firstOfKind(page, "rectangle");
   expect(path).not.toBeNull();
@@ -256,7 +266,6 @@ async function enterVectorGraphic(page: Page): Promise<void> {
       "[data-edit-context-breadcrumb] [data-edit-context-crumb='vectorGraphic']",
     ),
   ).toBeVisible({ timeout: 5_000 });
-  await openPanel(page, PANEL_ID);
   await expect(page.locator(`[data-schema-panel="${PANEL_ID}"]`)).toBeVisible();
 }
 
@@ -365,6 +374,95 @@ test.describe("E2E layers-retarget (ADR 023 — one panel, many providers)", () 
       timeout: 5_000,
     });
     expect(await renderedRowIds(page)).toEqual(coreRows);
+  });
+
+  test("AC-NO-DISPLACE-1 — entering a context does not take the panel it SERVES off screen", async ({
+    page,
+  }) => {
+    // The defect this closes: `panelIds` raises the entering context's OWN
+    // panels, this dock renders ONE panel at a time, so the shared panel
+    // went off screen at the exact moment it retargeted — the one moment
+    // ADR 023 exists to produce. All three phase-C slices hit it and all
+    // three worked around it by re-raising the tab in the spec.
+    const STROKE_TAB = `${DRAW_PLUGIN}.panel.stroke`;
+    await expect(
+      page.locator(`[data-dock-tab="${PANEL_ID}"][data-active]`),
+    ).toBeVisible();
+
+    await enterVectorGraphic(page);
+
+    // The context's own panel DID open — the emphasis is not discarded,
+    // only the RAISE is withheld. It is one click away in the tab strip.
+    await expect(page.locator(`[data-dock-tab="${STROKE_TAB}"]`)).toBeVisible({
+      timeout: 5_000,
+    });
+    // …and Layers is still the panel on screen, retargeted in place.
+    await expect(
+      page.locator(`[data-dock-tab="${PANEL_ID}"][data-active]`),
+    ).toBeVisible();
+    await expect(list(page)).toHaveAttribute(
+      "data-list-provider",
+      DRAW_PLUGIN,
+      { timeout: 5_000 },
+    );
+
+    // The withholding is TARGETED, not a blanket "never steal focus" —
+    // otherwise the panel-set swap would simply be dead. With a panel on
+    // screen that draw's providers answer NOTHING for (Character binds
+    // `character*` paths; draw declares `layers` + `layerVisible` /
+    // `layerLocked`), the same enter raises Stroke exactly as before.
+    await page.keyboard.press("Escape");
+    await expect(list(page)).toHaveAttribute("data-list-provider", "core", {
+      timeout: 5_000,
+    });
+    await openPanel(page, "paged.character");
+    await expect(
+      page.locator('[data-dock-tab="paged.character"][data-active]'),
+    ).toBeVisible();
+    const path = await firstOfKind(page, "rectangle");
+    const at = await elementScreenCenter(page, path!);
+    await page.mouse.dblclick(at!.x, at!.y);
+    await expect(
+      page.locator(
+        "[data-edit-context-breadcrumb] [data-edit-context-crumb='vectorGraphic']",
+      ),
+    ).toBeVisible({ timeout: 5_000 });
+    await expect(
+      page.locator(`[data-dock-tab="${STROKE_TAB}"][data-active]`),
+    ).toBeVisible({ timeout: 5_000 });
+  });
+
+  test("AC-NO-DISPLACE-2 — a shared panel that is NOT on screen retargets on the next mount", async ({
+    page,
+  }) => {
+    // The other half of the answer: what happens to a shared panel that is
+    // genuinely not visible. Resolution through the seam is PULL-based at
+    // mount, not a push to a subscriber — so an unmounted panel cannot
+    // error, cannot go stale, and cannot silently show core rows the user
+    // reads as a broken retarget. It resolves the instant it is mounted.
+    const STROKE_TAB = `${DRAW_PLUGIN}.panel.stroke`;
+    await enterVectorGraphic(page);
+    await expect(list(page)).toHaveAttribute(
+      "data-list-provider",
+      DRAW_PLUGIN,
+      { timeout: 5_000 },
+    );
+    const drawRows = await renderedRowIds(page);
+
+    // Take Layers off screen entirely (the tab stays, the panel unmounts —
+    // this dock renders only the active one), then bring it back.
+    await page.locator(`[data-dock-tab="${STROKE_TAB}"]`).click();
+    await expect(page.locator(`[data-schema-panel="${PANEL_ID}"]`)).toHaveCount(
+      0,
+    );
+    await page.locator(`[data-dock-tab="${PANEL_ID}"]`).click();
+    await expect(page.locator(`[data-schema-panel="${PANEL_ID}"]`)).toBeVisible();
+    await expect(list(page)).toHaveAttribute(
+      "data-list-provider",
+      DRAW_PLUGIN,
+      { timeout: 5_000 },
+    );
+    expect(await renderedRowIds(page)).toEqual(drawRows);
   });
 
   test("AC-RETARGET-4 — rename follows the ACTIVE provider's declared paths", async ({

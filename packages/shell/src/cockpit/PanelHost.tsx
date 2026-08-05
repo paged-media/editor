@@ -23,6 +23,7 @@
 // registered later resolve the same way — the registry stays the
 // single source of truth.
 
+import { PanelBindingScope } from "../catalog/panel-binding-surface";
 import { usePaged } from "../state/paged-editor";
 import { useRegistries } from "../state/registries-context";
 
@@ -38,5 +39,16 @@ export function PanelHost({ id }: { id: string }) {
     );
   }
   const Component = contribution.component;
-  return <Component paged={paged} api={{ id }} />;
+  // ADR 023 follow-up — name the panel a subtree belongs to, so the
+  // binding-seam hooks can report WHAT this panel asks the seam about.
+  // That report is what lets the shell decide whether entering an edit
+  // context would displace a panel the context SERVES (see
+  // catalog/panel-binding-surface.tsx). Scoping here rather than in the
+  // dock covers every mount point at once — dock tab, the Properties
+  // panel's embedded plugin surface, a test harness.
+  return (
+    <PanelBindingScope panelId={id}>
+      <Component paged={paged} api={{ id }} />
+    </PanelBindingScope>
+  );
 }

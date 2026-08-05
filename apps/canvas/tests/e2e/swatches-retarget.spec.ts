@@ -254,21 +254,36 @@ async function importAndLower(page: Page, range: string): Promise<ElementRef> {
   return frame!;
 }
 
-/** Enter paged.sheet's `sheet` context by double-clicking the lowered
- *  frame, then RE-RAISE the Swatches tab.
+/** Raise the Swatches tab, THEN enter paged.sheet's `sheet` context by
+ *  double-clicking the lowered frame — and assert the entry did not take
+ *  the panel off screen.
  *
- *  Re-raising is what a user does, and it is here for the same reason
- *  the Layers spec records: entering a plugin context relayouts the
- *  right-hand dock, and dockview unmounts inactive tabs — so a shared
- *  panel can be off screen at the exact moment it retargets. */
+ *  The raise moved ABOVE the entry, and the reason is a correction. This
+ *  helper used to raise the tab AFTERWARDS, described (here and in the
+ *  Character/Paragraph spec) as the same `EditContextContribution.panelIds`
+ *  workaround the Layers spec recorded. That diagnosis was wrong for this
+ *  spec: paged.sheet's `sheet` context declares NO `panelIds`, so entering
+ *  it never displaced anything. What displaces Swatches is `importAndLower`
+ *  — the fixture arrives through the WORKBOOK panel's own file picker,
+ *  which necessarily puts the workbook panel on screen. Raising Swatches is
+ *  therefore the user walking back to the panel under test, not a defect
+ *  being papered over; doing it BEFORE the double-click makes that visible
+ *  and turns the entry itself into an assertion. */
 async function enterSheetContext(page: Page, frame: ElementRef) {
+  await openPanel(page, PANEL_ID);
+  await expect(
+    page.locator(`[data-dock-tab="${PANEL_ID}"][data-active]`),
+  ).toBeVisible({ timeout: 10_000 });
   const at = await elementScreenCenter(page, frame);
   expect(at).not.toBeNull();
   await page.mouse.dblclick(at!.x, at!.y);
   await expect(page.locator("[data-edit-context-breadcrumb]")).toBeVisible({
     timeout: 10_000,
   });
-  await openPanel(page, PANEL_ID);
+  // The entry did NOT displace the panel that is about to retarget.
+  await expect(
+    page.locator(`[data-dock-tab="${PANEL_ID}"][data-active]`),
+  ).toBeVisible();
   await expect(grid(page)).toBeVisible();
 }
 

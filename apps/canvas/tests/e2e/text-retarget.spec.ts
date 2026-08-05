@@ -362,27 +362,39 @@ async function importAndLower(page: Page, range: string): Promise<ElementRef> {
   return frame!;
 }
 
-/** Enter paged.sheet's `sheet` context by double-clicking the lowered
- *  frame, then RE-RAISE `panel`.
+/** Raise `panel`, THEN enter paged.sheet's `sheet` context by
+ *  double-clicking the lowered frame — and assert the entry did not take
+ *  the panel off screen.
  *
- *  Re-raising is what a user does, and it is here for the reason both
- *  earlier retarget specs record: entering a plugin context relayouts
- *  the right-hand dock and dockview unmounts inactive tabs, so a shared
- *  panel can be off screen at the exact moment it retargets. That
- *  `EditContextContribution.panelIds` fights a retargeting panel is an
- *  open ADR-023 follow-up, not something this spec papers over. */
+ *  The raise moved ABOVE the entry, and the reason is a correction. This
+ *  helper used to raise `panel` afterwards, described as the same
+ *  `EditContextContribution.panelIds` workaround the Layers spec recorded.
+ *  Wrong diagnosis for this spec: paged.sheet's `sheet` context declares
+ *  NO `panelIds`, so entering it never displaced anything. What displaces
+ *  the panel is `importAndLower` — the fixture arrives through the
+ *  WORKBOOK panel's own file picker, which necessarily puts that panel on
+ *  screen. Raising it back is the user walking to the panel under test,
+ *  not a defect being papered over; doing it BEFORE the double-click makes
+ *  that visible and turns the entry itself into an assertion. */
 async function enterSheetContext(
   page: Page,
   frame: ElementRef,
   panel: string,
 ): Promise<void> {
+  await openPanel(page, panel);
+  await expect(
+    page.locator(`[data-dock-tab="${panel}"][data-active]`),
+  ).toBeVisible({ timeout: 10_000 });
   const at = await elementScreenCenter(page, frame);
   expect(at).not.toBeNull();
   await page.mouse.dblclick(at!.x, at!.y);
   await expect(page.locator("[data-edit-context-breadcrumb]")).toBeVisible({
     timeout: 10_000,
   });
-  await openPanel(page, panel);
+  // The entry did NOT displace the panel that is about to retarget.
+  await expect(
+    page.locator(`[data-dock-tab="${panel}"][data-active]`),
+  ).toBeVisible();
 }
 
 test.describe("E2E text-retarget (ADR 023 — the VALUE axis)", () => {

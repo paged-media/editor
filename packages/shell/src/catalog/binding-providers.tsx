@@ -74,6 +74,12 @@ import type {
 
 import { useCanvasClient } from "../state/canvas-client-context";
 import { useCollection } from "./use-collection";
+import { useReportBindingSurface } from "./panel-binding-surface";
+
+/** Stable empty literals — `useReportBindingSurface` keys off CONTENT, but
+ *  a fresh `[]` every render is still garbage nobody needs. */
+const NO_COLLECTIONS: readonly CollectionName[] = [];
+const NO_PATHS: readonly PropertyPath[] = [];
 
 // --------------------------------------------------------------- mirror
 //
@@ -299,6 +305,12 @@ export function useProvidedCollection<T>(
   // but NO provider is consulted, because asking one for rows the panel
   // will discard is how a seam starts doing work nobody can see.
   const core = useCollection<T>((name ?? "swatches") as CollectionName);
+  // ADR 023 follow-up — tell the shell that the panel this hook renders
+  // inside is bound to `name`. That is what makes "does entering this
+  // context displace a panel it serves?" answerable from the SAME
+  // vocabulary the provider declares, with nothing for a panel author to
+  // remember (panel-binding-surface.tsx).
+  useReportBindingSurface(name === null ? NO_COLLECTIONS : [name], NO_PATHS);
   const host = useBindingProviderHost();
   const tick = useProviderTick(host);
   const [claim, setClaim] = useState<{

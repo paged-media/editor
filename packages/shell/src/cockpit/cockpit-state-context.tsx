@@ -61,8 +61,14 @@ export interface CockpitState {
   /** Active tab id (member of `rightTabs`; null when empty). */
   activeTab: string | null;
   /** Tabs seeded by the mode's slots — closing them is allowed, but
-   *  they re-seed on a fresh visit when no persisted state exists. */
-  openPanel(id: string): void;
+   *  they re-seed on a fresh visit when no persisted state exists.
+   *
+   *  `activate: false` OPENS the tab without raising it — the ADR 023
+   *  follow-up lane. This dock shows one panel at a time, so raising IS
+   *  hiding; a context that serves the panel currently on screen must be
+   *  able to add its own tab without taking the shared panel off screen
+   *  at the exact moment it retargets. Default stays `true`. */
+  openPanel(id: string, options?: { activate?: boolean }): void;
   activateTab(id: string): void;
   closeTab(id: string): void;
   inspectorContext: InspectorContext | null;
@@ -77,9 +83,13 @@ const CockpitStateContext = createContext<CockpitState | null>(null);
  *  the cockpit without context plumbing. Null while no cockpit
  *  provider is mounted (the legacy dockview path). */
 export const cockpitActions: {
-  openPanel: ((id: string) => void) | null;
+  openPanel: ((id: string, options?: { activate?: boolean }) => void) | null;
   closeTab: ((id: string) => void) | null;
-} = { openPanel: null, closeTab: null };
+  /** The tab currently ON SCREEN (this dock renders only that one), or
+   *  null. Read by the edit-context controller to decide whether raising
+   *  a context's own panels would displace a panel it serves. */
+  activeTab: (() => string | null) | null;
+} = { openPanel: null, closeTab: null, activeTab: null };
 
 /** Seed a mode's tab list from its registered slots. */
 function seedTabs(
@@ -148,15 +158,23 @@ export function CockpitStateProvider({ children }: PropsWithChildren) {
   );
 
   const openPanel = useCallback(
-    (id: string) => {
+    (id: string, options?: { activate?: boolean }) => {
       // Any REGISTERED panel may open; unknown ids are ignored so a
       // stale persisted tab or a disposed plugin panel can't wedge
       // the dock.
       if (!registries.panels.get(id)) return;
-      const rightTabs = current.rightTabs.includes(id)
+      const activate = options?.activate ?? true;
+      const alreadyOpen = current.rightTabs.includes(id);
+      // Background-open an already-open tab: nothing to change, and
+      // committing anyway would churn the persisted layout.
+      if (alreadyOpen && !activate) return;
+      const rightTabs = alreadyOpen
         ? current.rightTabs
         : [...current.rightTabs, id];
-      commit({ rightTabs, activeTab: id });
+      // A background open still needs SOMETHING active — an empty dock
+      // would otherwise render "No panel open." next to a live tab.
+      const activeTab = activate ? id : (current.activeTab ?? id);
+      commit({ rightTabs, activeTab });
     },
     [commit, current, registries.panels],
   );
@@ -176,14 +194,17 @@ export function CockpitStateProvider({ children }: PropsWithChildren) {
   );
 
   // Keep the module-level dispatch pointed at the live actions.
+  const activeTab = current.activeTab;
   useEffect(() => {
     cockpitActions.openPanel = openPanel;
     cockpitActions.closeTab = closeTab;
+    cockpitActions.activeTab = () => activeTab;
     return () => {
       cockpitActions.openPanel = null;
       cockpitActions.closeTab = null;
+      cockpitActions.activeTab = null;
     };
-  }, [closeTab, openPanel]);
+  }, [activeTab, closeTab, openPanel]);
 
   const value = useMemo<CockpitState>(
     () => ({

@@ -24,7 +24,8 @@
 //   · Esc POPS one level (the global keydown, skipped when an editable
 //     field has focus — same guard as usePathEditMode);
 //   · on the ACTIVE frame change → EMPHASIZE the context's panels
-//     (cockpit `openPanel` raises each) and FOCUS the first restricted
+//     (cockpit `openPanel` raises each — UNLESS the panel on screen is
+//     one this context SERVES, see below) and FOCUS the first restricted
 //     tool ("anchor tools focused" — the tool-set swap, v1 depth);
 //   · selection cleared / shrunk away from the scope root → EXIT ALL
 //     (a marquee elsewhere or an empty-pasteboard click leaves no
@@ -35,6 +36,8 @@
 
 import { useEffect, useRef } from "react";
 
+import { useBindingProviderHost } from "../catalog/binding-providers";
+import { panelServedBy } from "../catalog/panel-binding-surface";
 import { cockpitActions } from "../cockpit/cockpit-state-context";
 import { useEditContextStack } from "./edit-context-stack";
 import { useSelection } from "./selection-context";
@@ -53,6 +56,12 @@ export function EditContextController() {
     useEditContextStack();
   const { elementSelection } = useSelection();
   const tool = useOptionalTool();
+  // ADR 023 follow-up — held in a ref because the enter effect below is
+  // keyed on the frame identity and must NOT re-run because the registry
+  // emitted (entering a context emits, by construction).
+  const providerHost = useBindingProviderHost();
+  const providerHostRef = useRef(providerHost);
+  providerHostRef.current = providerHost;
 
   // K-1 — keyboard routing while a context is active (capture phase so the
   // context wins over the palette / path-edit; the editable-target guard
@@ -146,12 +155,52 @@ export function EditContextController() {
     : null;
   const lastEnteredRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!active || enteredKey === lastEnteredRef.current) return;
+    if (!active) {
+      // FORGET the last entry when the stack empties. Without this the
+      // guard also suppresses a genuine RE-entry: leave a context with Esc
+      // and double-click the SAME element again and the key is unchanged,
+      // so neither the panel emphasis nor the tool focus ever ran a second
+      // time. Found while testing the ADR 023 non-displacement rule; the
+      // defect predates it.
+      lastEnteredRef.current = null;
+      return;
+    }
+    if (enteredKey === lastEnteredRef.current) return;
     lastEnteredRef.current = enteredKey;
     // Panel emphasis — raise each declared panel (cockpit owns
     // placement; openPanel is a no-op when the cockpit isn't mounted).
+    //
+    // ADR 023 follow-up — EXCEPT when raising would displace a panel this
+    // context SERVES. `panelIds` was written when every panel belonged to
+    // one owner, so "raise mine" and "keep the shared one visible" could
+    // not conflict; with a host panel that retargets they do, and the
+    // dock shows one panel at a time — so the shared panel would go off
+    // screen at the exact moment it retargets, which is the one moment
+    // the whole design exists to produce.
+    //
+    // The answer is NOT a second declaration beside `panelIds` (that
+    // would put host panel ids in plugin code and could drift from
+    // `provides`). It is inferred from what the context's own providers
+    // ALREADY declare, intersected with what the panel on screen actually
+    // asks the seam about — see catalog/panel-binding-surface.tsx. The
+    // authority is purely NEGATIVE: it can only withhold the raise, never
+    // open or close anything on the plugin's behalf.
+    const onScreen = cockpitActions.activeTab?.() ?? null;
+    const host = providerHostRef.current;
+    const serving =
+      onScreen !== null &&
+      host !== null &&
+      panelServedBy(
+        onScreen,
+        host
+          .activeProviders()
+          .filter((p) => p.contextType === active.type)
+          .map((p) => p.provides),
+      );
     for (const panelId of active.panelIds) {
-      cockpitActions.openPanel?.(panelId);
+      // Still OPENED either way — the context's own surface reaches the
+      // tab strip and is one click away; only the raise is withheld.
+      cockpitActions.openPanel?.(panelId, { activate: !serving });
     }
     // Tool-set swap (v1 depth): focus the first restricted tool. Full
     // rail graying-out of non-context tools is the documented residual;
