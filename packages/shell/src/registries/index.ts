@@ -31,6 +31,9 @@ export {
 export {
   createCommandRegistry,
   type CommandContribution,
+  type CommandInvocation,
+  type CommandInvocationEvent,
+  type CommandObserver,
   type CommandRegistry,
 } from "./command";
 

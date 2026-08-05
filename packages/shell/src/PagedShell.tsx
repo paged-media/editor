@@ -94,6 +94,7 @@ import {
 } from "./catalog/binding-providers";
 import { PagedEditorProvider } from "./state/paged-editor";
 import { useRegistries } from "./state/registries-context";
+import { ActionsProvider } from "./actions/actions-context";
 import { CommandPalette } from "./chrome/CommandPalette";
 import { DemoOverlay, DemoSpotlight } from "./demo/overlay";
 import { runDemoScriptWithHandle } from "./demo/runner";
@@ -243,6 +244,16 @@ export function PagedShell({
                                       host={bindingProviders ?? null}
                                     >
                                     <PagedEditorProvider>
+                                    {/* Actions — the command recorder.
+                                        INSIDE PagedEditorProvider (it
+                                        needs the registries) and OUTSIDE
+                                        ShellChrome, because the right
+                                        dock unmounts inactive tabs: a
+                                        recorder living in its own panel
+                                        would stop recording the moment
+                                        the user switched tabs to do the
+                                        thing they were recording. */}
+                                    <ActionsProvider>
                                       <ShellChrome
                                         panels={panels}
                                         overlays={overlays}
@@ -254,6 +265,7 @@ export function PagedShell({
                                       >
                                         {children}
                                       </ShellChrome>
+                                    </ActionsProvider>
                                     </PagedEditorProvider>
                                     </BindingProviderProvider>
                                     </EditContextStackProvider>

@@ -469,4 +469,15 @@ export const PANEL_GLYPHS: Record<string, ReactNode> = {
       <path d="M13.5 6 L10.5 18" {...LINE} />
     </>
   ),
+
+  // A record dot beside a play triangle, over a baseline — actions
+  // (record a command sequence, replay it).
+  "panel-actions": (
+    <>
+      <circle cx={7.5} cy={9} r={3} {...LINE} />
+      <path d="M14 6 L20 9 L14 12 Z" {...LINE} />
+      <path d="M4 16.5 L20 16.5" {...LINE} />
+      <path d="M4 20 L14 20" {...LINE} />
+    </>
+  ),
 };

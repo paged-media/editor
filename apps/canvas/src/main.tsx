@@ -189,6 +189,7 @@ import { InspectorPanel } from "./panels/inspector-panel";
 import { LayersPanel } from "./panels/layers-panel";
 import { NavigatorPanel } from "./panels/navigator-panel";
 import { OutlinePanel } from "./panels/outline-panel";
+import { ActionsPanel } from "./panels/actions-panel";
 import { ReplPanel } from "./panels/repl-panel";
 import { ScriptEditorPanel } from "./panels/script-editor";
 import { ProblemsPanel } from "./panels/problems-panel";
@@ -818,6 +819,18 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     component: ScriptEditorPanel,
     defaultDock: "bottom",
     defaultGroup: "console",
+  },
+  {
+    // Actions — record/replay a command sequence. Sits beside the REPL
+    // and the script editor because it is the third member of the
+    // automation family (Illustrator's "scripting / actions / plugins"
+    // row); the recorder itself lives in the shell, above the dock.
+    id: "paged.actions",
+    title: "Actions",
+    component: ActionsPanel,
+    defaultDock: "right",
+    defaultGroup: "console",
+    icon: "panel-actions",
   },
   {
     // paged.web W-05 — the host problems panel: consumes

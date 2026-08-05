@@ -180,6 +180,9 @@ export {
 // ── Registry primitives ────────────────────────────────────────
 export {
   type CommandContribution,
+  type CommandInvocation,
+  type CommandInvocationEvent,
+  type CommandObserver,
   type CommandRegistry,
   type DockEdge,
   type Disposable,
@@ -572,3 +575,6 @@ export type {
   DemoInfoRequest,
   RunResult,
 } from "./demo";
+
+// ── Actions — record / replay a command sequence ────────────────
+export * from "./actions";
