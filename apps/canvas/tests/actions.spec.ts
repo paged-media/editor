@@ -76,11 +76,11 @@ const action = (
 });
 
 test.describe("Actions — payload classification (pure)", () => {
-  test("AC-ACT-1 — no payload is contextual: it replays against the replay-time selection @feat:editor-shell.actions @level:happy", () => {
+  test("AC-ACT-1 — no payload is contextual: it replays against the replay-time selection @feat:editor-shell.panels.actions @level:happy", () => {
     expect(classifyPayload(undefined)).toEqual({ verdict: "contextual" });
   });
 
-  test("AC-ACT-2 — a plain payload is portable and is CLONED off the caller @feat:editor-shell.actions @level:happy", () => {
+  test("AC-ACT-2 — a plain payload is portable and is CLONED off the caller @feat:editor-shell.panels.actions @level:happy", () => {
     const payload = { amount: 12, unit: "pt" };
     const out = classifyPayload(payload);
     expect(out.verdict).toBe("portable");
@@ -91,7 +91,7 @@ test.describe("Actions — payload classification (pure)", () => {
     expect(out.payload).toEqual(payload);
   });
 
-  test("AC-ACT-3 — an ElementId anywhere in the payload makes the step document-bound @feat:editor-shell.actions @level:edge", () => {
+  test("AC-ACT-3 — an ElementId anywhere in the payload makes the step document-bound @feat:editor-shell.panels.actions @level:edge", () => {
     expect(classifyPayload({ kind: "rectangle", id: "ua365e1" }).verdict).toBe(
       "documentBound",
     );
@@ -101,7 +101,7 @@ test.describe("Actions — payload classification (pure)", () => {
     ).toBe("documentBound");
   });
 
-  test("AC-ACT-4 — engine self-id STRINGS are document-bound; ordinary words are not @feat:editor-shell.actions @level:edge", () => {
+  test("AC-ACT-4 — engine self-id STRINGS are document-bound; ordinary words are not @feat:editor-shell.panels.actions @level:edge", () => {
     // The three shapes that actually appear on the wire.
     expect(looksLikeDocumentId("u0f396d")).toBe(true); // PageId
     expect(looksLikeDocumentId("textFrame:ua365e1")).toBe(true);
@@ -117,7 +117,7 @@ test.describe("Actions — payload classification (pure)", () => {
     expect(looksLikeDocumentId(42)).toBe(false);
   });
 
-  test("AC-ACT-5 — an unserializable payload is recorded as unreplayable, not dropped @feat:editor-shell.actions @level:edge", () => {
+  test("AC-ACT-5 — an unserializable payload is recorded as unreplayable, not dropped @feat:editor-shell.panels.actions @level:edge", () => {
     expect(classifyPayload(() => {}).verdict).toBe("unserializable");
     const cycle: Record<string, unknown> = {};
     cycle.self = cycle;
@@ -126,7 +126,7 @@ test.describe("Actions — payload classification (pure)", () => {
 });
 
 test.describe("Actions — replay plan (pure)", () => {
-  test("AC-ACT-6 — document-bound steps are skipped by default and named @feat:editor-shell.actions @level:happy", () => {
+  test("AC-ACT-6 — document-bound steps are skipped by default and named @feat:editor-shell.panels.actions @level:happy", () => {
     const plan = planReplay(
       action([
         step(),
@@ -141,7 +141,7 @@ test.describe("Actions — replay plan (pure)", () => {
     expect(plan.skip[0].reason).toBe("documentBound");
   });
 
-  test("AC-ACT-7 — the opt-in runs them @feat:editor-shell.actions @level:edge", () => {
+  test("AC-ACT-7 — the opt-in runs them @feat:editor-shell.panels.actions @level:edge", () => {
     const plan = planReplay(
       action(
         [
@@ -157,7 +157,7 @@ test.describe("Actions — replay plan (pure)", () => {
     expect(plan.skip).toHaveLength(0);
   });
 
-  test("AC-ACT-8 — disabled, failed and unserializable steps never replay @feat:editor-shell.actions @level:edge", () => {
+  test("AC-ACT-8 — disabled, failed and unserializable steps never replay @feat:editor-shell.panels.actions @level:edge", () => {
     const plan = planReplay(
       action([
         step({ disabled: true }),
@@ -175,7 +175,7 @@ test.describe("Actions — replay plan (pure)", () => {
 });
 
 test.describe("Actions — projections + persistence (pure)", () => {
-  test("AC-ACT-9 — an action projects onto the shipped automation surface @feat:editor-shell.actions @level:happy", () => {
+  test("AC-ACT-9 — an action projects onto the shipped automation surface @feat:editor-shell.panels.actions @level:happy", () => {
     // `editor.runCommand` is the demo/automation layer's real entry
     // point (packages/shell/src/demo/automation.ts), so the emitted
     // script is executable, not illustrative.
@@ -189,7 +189,7 @@ test.describe("Actions — projections + persistence (pure)", () => {
     expect(src).toContain('await editor.runCommand("paged.view.zoomFit");');
   });
 
-  test("AC-ACT-10 — the script states what the recording could not capture @feat:editor-shell.actions @level:edge", () => {
+  test("AC-ACT-10 — the script states what the recording could not capture @feat:editor-shell.panels.actions @level:edge", () => {
     const src = toDemoScript(
       action([step()], { uncaptured: { gestures: 3, directEdits: 5 } }),
     );
@@ -197,7 +197,7 @@ test.describe("Actions — projections + persistence (pure)", () => {
     expect(src).toContain("5 direct edit(s)");
   });
 
-  test("AC-ACT-11 — a malformed stored library is DROPPED, never repaired @feat:editor-shell.actions @level:edge", () => {
+  test("AC-ACT-11 — a malformed stored library is DROPPED, never repaired @feat:editor-shell.panels.actions @level:edge", () => {
     expect(parseLibrary({ schema: 999, actions: [] }).actions).toEqual([]);
     expect(parseLibrary(null).actions).toEqual([]);
     expect(
@@ -231,7 +231,7 @@ test.describe("Actions — the command tap (browser)", () => {
     await expect(page.locator('[data-actions-panel="ready"]')).toBeVisible();
   });
 
-  test("AC-ACT-12 — record → stop → play captures and replays command invocations @feat:editor-shell.actions @level:journey", async ({
+  test("AC-ACT-12 — record → stop → play captures and replays command invocations @feat:editor-shell.panels.actions @level:happy", async ({
     page,
   }) => {
     await page.locator('[data-cockpit-action="actions-record"]').click();
@@ -274,7 +274,7 @@ test.describe("Actions — the command tap (browser)", () => {
     );
   });
 
-  test("AC-ACT-13 — an edit that bypasses the command registry is COUNTED, not silently dropped @feat:editor-shell.actions @level:edge", async ({
+  test("AC-ACT-13 — an edit that bypasses the command registry is COUNTED, not silently dropped @feat:editor-shell.panels.actions @level:edge", async ({
     page,
   }) => {
     // The load-bearing honesty test. `client.mutate` is the door
@@ -301,7 +301,7 @@ test.describe("Actions — the command tap (browser)", () => {
     await expect(page.locator("[data-actions-step-count]")).toHaveText("0");
   });
 
-  test("AC-ACT-14 — record/stop/play are themselves commands, and the recorder does not record them @feat:editor-shell.actions @level:edge", async ({
+  test("AC-ACT-14 — record/stop/play are themselves commands, and the recorder does not record them @feat:editor-shell.panels.actions @level:edge", async ({
     page,
   }) => {
     // Without the deny-list, starting a recording from the command
