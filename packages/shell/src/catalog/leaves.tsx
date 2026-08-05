@@ -215,11 +215,17 @@ export function NumericScrubLeaf({ value, onCommit, props }: LeafProps) {
  *  write path). */
 export function ColorSwatchLeaf({ value, onCommit, props }: LeafProps) {
   const { resolved, ref } = unwrapColorRef(value);
+  const seam = isSeam(props);
   if (!resolved) {
     return (
       <LeafRow {...rowProps(props)}>
         <span
-          data-mixed
+          // A SEAM is not mixed — it is a control that cannot work here.
+          // Every other leaf already made that distinction; this one
+          // stamped `data-mixed` unconditionally, which the ADR-023
+          // `absent` state (rendered as a seam) turned into a live lie.
+          data-mixed={seam ? undefined : ""}
+          data-seam={seam ? "true" : undefined}
           className="flex h-[28px] w-full items-center gap-2 rounded-[6px] border border-input bg-background px-2 opacity-55"
         >
           <span className="h-4 w-4 shrink-0 rounded border border-input" />

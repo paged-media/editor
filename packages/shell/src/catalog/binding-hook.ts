@@ -23,17 +23,81 @@
 // `onCommit` callback that writes through the apply layer. The
 // hook subscribes to selection changes + `mutationApplied` so the
 // rendered leaf stays live.
+//
+// ADR 023 phase C/D — AND THIS IS WHERE THE VALUE AXIS RETARGETS.
+//
+// The Layers slice put the collection retarget in the PLATFORM rather
+// than in the panel, so every schema list inherited it from one change.
+// The same applies here, one layer down and with more reach: every
+// `selectionProperty` binding in the app resolves through this hook, so
+// routing it through the binding-provider seam retargets Character,
+// Paragraph and every other composition panel WITHOUT ONE LINE CHANGING
+// IN ANY OF THEM. The declaration is unchanged (`path:
+// "characterFontSize"`, `scope: "content"`); only WHO ANSWERS moves.
+//
+// Three rules this file must hold, all from phase A:
+//
+//   1. FALL-THROUGH ON A REFUSAL. `{source:"core"}` means nobody
+//      claimed, and the core lane below answers exactly as it always
+//      has. It runs UNCONDITIONALLY so it is warm the instant a context
+//      exits.
+//   2. `absent` MUST NOT FALL THROUGH. A provider that owns the
+//      selection and has no such property is ANSWERING. The two
+//      selections are independent — entering a plugin's edit context
+//      does not clear the text caret — so falling through here shows a
+//      spreadsheet cell the leading of whatever text was last touched.
+//      That is the expensive conflation this axis exists to prevent.
+//   3. MIXED IS NOT ABSENT AND NEITHER IS "NO SELECTION". See
+//      `ResolvedBinding.state`.
+//
+// NO IDENTITY BRANCHING, here or in any panel downstream: nothing in
+// this file asks WHICH plugin answered. `provider` is carried for the
+// DOM hook and tests only.
 
 import { useEffect, useMemo, useState } from "react";
 import type {
   Binding,
   SelectionPropertyBinding,
 } from "@paged-media/catalog";
-import type { CanvasClient, ElementId, ElementProperties, Value } from "@paged-media/client";
+import type {
+  CanvasClient,
+  ElementId,
+  ElementProperties,
+  PropertyPath,
+  Value,
+} from "@paged-media/client";
 
 import { useCanvasClient } from "../state/canvas-client-context";
 import { useSelection } from "../state/selection-context";
 import { useContentSelection } from "../state/content-selection-context";
+import {
+  resolveSelectionProperty,
+  useBindingProviderHost,
+  writeSelectionProperty,
+  type SelectionResolution,
+  type ShellBindingProviderHost,
+} from "./binding-providers";
+
+/**
+ * What a binding resolved to, beyond its value. FOUR states, because
+ * every pair of them is a different thing to show a user and collapsing
+ * any two produces a lie:
+ *
+ *   · `value`  — a definite value.
+ *   · `mixed`  — the target spans SEVERAL values (a multi-format
+ *     character range, a multi-element selection). Show "mixed"; never
+ *     pick a winner. Core signals this too — `PropertyEntry.value` is
+ *     `Value | null` and its own wire comment says `None` means "a
+ *     StoryRange whose CharacterRuns carry conflicting values".
+ *   · `absent` — an ACTIVE PROVIDER owns the selection and this path
+ *     does not apply to it. The control is read-only and BLANK, and
+ *     core is not consulted (rule 2 above).
+ *   · `none`   — nothing addressable is selected at all.
+ *
+ * `mixed` (the boolean) is kept for the Concept-2 colour wells that
+ * already read it; `state` is the full verdict.
+ */
+export type BindingState = "value" | "mixed" | "absent" | "none";
 
 /** Result of resolving a binding: `null` value = mixed /
  *  indeterminate / no selection. */
@@ -46,6 +110,12 @@ export interface ResolvedBinding {
    *  selection". Colour wells render a split-diagonal mixed face on
    *  this; a commit still write-replaces across the selection. */
   mixed?: boolean;
+  /** The full verdict — see {@link BindingState}. */
+  state?: BindingState;
+  /** ADR 023 — which plugin ANSWERED, or `null`/absent for core.
+   *  Diagnostics + the DOM hook ONLY: no control flow anywhere may
+   *  branch on it. */
+  provider?: string | null;
 }
 
 /**
@@ -68,6 +138,7 @@ export function useBindings(
   const client = useCanvasClient();
   const { elementSelection } = useSelection();
   const { contentSelection } = useContentSelection();
+  const providerHost = useBindingProviderHost();
 
   // Compute the canonical address for each binding's scope. Cache
   // the JSON-stringified shape so the dependency arrays don't
@@ -121,9 +192,73 @@ export function useBindings(
     };
   }, [client, addressesJson(addresses)]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ADR 023 — the PROVIDER lane, resolved beside the core one.
+  //
+  // It is deliberately INDEPENDENT of `addresses`: a provider answers
+  // `{kind:"selection"}` in ITS OWN realm — it already knows which cell
+  // / raster layer / DOCX run is selected — so it must be consulted even
+  // when core can address nothing at all. That case is not exotic; it is
+  // the normal one inside a plugin's modal edit session, where there is
+  // no core text caret and these panels are dead today.
+  const [claims, setClaims] = useState<Map<string, SelectionResolution>>(
+    new Map(),
+  );
+  const providerPathsKey = JSON.stringify(selectionPaths(bindings));
+  const [providerTick, setProviderTick] = useState(0);
+  useEffect(() => {
+    if (!providerHost) return;
+    const d = providerHost.onDidChange(() => setProviderTick((n) => n + 1));
+    return () => d.dispose();
+  }, [providerHost]);
+  useEffect(() => {
+    const wanted = JSON.parse(providerPathsKey) as Array<
+      [string, PropertyPath, "element" | "content"]
+    >;
+    if (!providerHost || wanted.length === 0) {
+      setClaims((prev) => (prev.size === 0 ? prev : new Map()));
+      return;
+    }
+    let cancelled = false;
+    void Promise.all(
+      wanted.map(
+        async ([name, path, scope]) =>
+          [
+            name,
+            await resolveSelectionProperty(providerHost, path, scope),
+          ] as const,
+      ),
+    ).then((pairs) => {
+      if (cancelled) return;
+      const claimed = pairs.filter(([, r]) => r.source === "provider");
+      // Keep the SAME empty map when nobody claims. That is the common
+      // case — no plugin context active — and it runs on every applied
+      // mutation for every mounted panel, so minting a fresh Map here
+      // would cost a wasted re-render of the whole composition each time.
+      setClaims((prev) =>
+        claimed.length === 0 && prev.size === 0 ? prev : new Map(claimed),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+    // `snapshot` is in the deps for the reason `useProvidedCollection`
+    // keeps `core` in its own: a provider whose values derive from
+    // engine state has no other signal on a plain mutation, and
+    // `invalidate()` (→ `providerTick`) covers only the changes the
+    // engine never sees. `elementSelection`/`contentSelection` likewise
+    // — a provider may narrow ITS selection from the host's.
+  }, [
+    providerHost,
+    providerPathsKey,
+    providerTick,
+    snapshot,
+    elementSelection,
+    contentSelection,
+  ]);
+
   return useMemo(
-    () => buildResolved(bindings, addresses, snapshot, client),
-    [bindings, addresses, snapshot, client],
+    () => buildResolved(bindings, addresses, snapshot, client, claims, providerHost),
+    [bindings, addresses, snapshot, client, claims, providerHost],
   );
 }
 
@@ -206,17 +341,50 @@ function addressesJson(addresses: Record<string, Address>): string {
   return JSON.stringify(addresses);
 }
 
+/** ADR 023 — the `(name, path, scope)` triples the provider lane asks
+ *  about: every `selectionProperty` binding, literals excluded (they
+ *  address nothing, so consulting a provider about one would be work
+ *  nobody can see). Stringified by the caller as an effect key. */
+function selectionPaths(
+  bindings: Record<string, Binding>,
+): Array<[string, PropertyPath, "element" | "content"]> {
+  const out: Array<[string, PropertyPath, "element" | "content"]> = [];
+  for (const [name, binding] of Object.entries(bindings)) {
+    if (binding.kind === "literal") continue;
+    const sb = binding as SelectionPropertyBinding;
+    out.push([name, sb.path as PropertyPath, sb.scope ?? "element"]);
+  }
+  return out;
+}
+
 function buildResolved(
   bindings: Record<string, Binding>,
   addresses: Record<string, Address>,
   snapshot: Map<string, ElementProperties | null>,
   client: CanvasClient,
+  claims: Map<string, SelectionResolution>,
+  providerHost: ShellBindingProviderHost | null,
 ): Record<string, ResolvedBinding> {
   const out: Record<string, ResolvedBinding> = {};
   for (const [name, binding] of Object.entries(bindings)) {
     const addr = addresses[name];
+    // ADR 023 — a CLAIM wins over everything below, including the
+    // "nothing addressable" short-circuit: the provider addressed the
+    // selection in its own realm, which is the whole point of the
+    // `{kind:"selection"}` target.
+    const claim = claims.get(name);
+    if (claim && claim.source === "provider" && binding.kind !== "literal") {
+      const sb = binding as SelectionPropertyBinding;
+      out[name] = providerBinding(
+        claim,
+        sb.path as PropertyPath,
+        sb.scope ?? "element",
+        providerHost,
+      );
+      continue;
+    }
     if (!addr) {
-      out[name] = { value: null };
+      out[name] = { value: null, state: "none", provider: null };
       continue;
     }
     if (addr.kind === "literal") {
@@ -239,22 +407,77 @@ function buildResolved(
       // layer treats the writes as a Batch implicitly (each id
       // gets its own SetProperty); a future polish can wrap them
       // in an explicit Operation::Batch for one undo entry.
+      const mixed = valuesAreMixed(values);
       out[name] = {
         value: collapsed,
         onCommit: makeOnCommitMany(client, addr.ids, sb.path),
-        mixed: valuesAreMixed(values),
+        mixed,
+        state: mixed ? "mixed" : collapsed === null ? "none" : "value",
+        provider: null,
       };
     } else {
-      // content scope — single StoryRange address
+      // Content scope — a single StoryRange address, and the one place
+      // core's own MIXED signal lives.
+      //
+      // The distinction is on the wire and was being thrown away here.
+      // `story_range_properties` builds a FIXED entry list and fills
+      // each value with `collapse_uniform(...)`, so for a range:
+      //   · an ENTRY with a null value  = the runs DISAGREE (mixed) —
+      //     core's wire comment says exactly this;
+      //   · NO ENTRY at all             = the range is empty / models
+      //     nothing (an empty StoryRange returns `entries: []`).
+      // `entry?.value ?? null` collapsed both to the same em-dash. They
+      // are different facts and this axis is where it shows.
       const props = snapshot.get(JSON.stringify(addr.id));
       const entry = props?.entries.find((e) => e.path === sb.path);
+      const mixed = entry != null && entry.value == null;
       out[name] = {
         value: entry?.value ?? null,
         onCommit: makeOnCommit(client, addr.id, sb.path),
+        mixed,
+        state: mixed ? "mixed" : entry == null ? "none" : "value",
+        provider: null,
       };
     }
   }
   return out;
+}
+
+/**
+ * ADR 023 — turn one provider CLAIM into a resolved binding.
+ *
+ * The two rules that make this more than a mapping:
+ *
+ *   · `absent` yields NO value and NO commit, and core is never
+ *     consulted. A control that cannot work here renders read-only and
+ *     blank, rather than showing the value of something the user is not
+ *     looking at.
+ *   · a claimed path whose provider does not declare it WRITABLE gets no
+ *     `onCommit` either. Not because writing is hard, but because the
+ *     alternative — offering the control and letting the write fall
+ *     through on refusal — lands the commit on core's selection. Same
+ *     lie, write side.
+ */
+function providerBinding(
+  claim: Extract<SelectionResolution, { source: "provider" }>,
+  path: PropertyPath,
+  scope: "element" | "content",
+  host: ShellBindingProviderHost | null,
+): ResolvedBinding {
+  const base = { provider: claim.provider } as const;
+  if (claim.read.kind === "absent") {
+    return { ...base, value: null, state: "absent" };
+  }
+  const commit =
+    claim.writable && host
+      ? (next: Value) => {
+          void writeSelectionProperty(host, path, scope, next);
+        }
+      : undefined;
+  if (claim.read.kind === "mixed") {
+    return { ...base, value: null, mixed: true, state: "mixed", onCommit: commit };
+  }
+  return { ...base, value: claim.read.value, state: "value", onCommit: commit };
 }
 
 /** Collapse a list of `Value | null` to a single representative or

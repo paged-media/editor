@@ -451,6 +451,9 @@ export {
   useProvidedCollection,
   useProviderProperty,
   useProviderFirstMutate,
+  useSelectionPathWritable,
+  resolveSelectionProperty,
+  writeSelectionProperty,
   type ShellBindingProviderHost,
   type ShellActiveBindingProvider,
   type ShellBindingProviderScope,
@@ -462,6 +465,7 @@ export {
   type ProvidedCollection,
   type ProvidedProperty,
   type ProvidedWrite,
+  type SelectionResolution,
 } from "./catalog/binding-providers";
 // The tree arithmetic is pure and exported so a panel (or a future
 // virtualized primitive) can flatten the same way the renderer does.
@@ -482,7 +486,11 @@ export {
   type ListLeafReorder,
   type ListLeafRename,
 } from "./catalog/leaves";
-export { useBindings, type ResolvedBinding } from "./catalog/binding-hook";
+export {
+  useBindings,
+  type ResolvedBinding,
+  type BindingState,
+} from "./catalog/binding-hook";
 export {
   useCollection,
   useDocumentMeta,

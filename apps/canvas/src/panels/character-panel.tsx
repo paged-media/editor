@@ -34,6 +34,24 @@
 //     `characterOtfFeatures` — an opaque space-separated tag string
 //     owned by the mutate API. A chip toggles the presence of its tag
 //     (e.g. Frac ⇒ `frac`) in that string, preserving any other tags.
+//
+// ADR 023 phase C/D — THE VALUE AXIS. This panel is REWIRED, not
+// rewritten, and the rewiring is not in this file: `useBindings`
+// resolves every `selectionProperty` through the binding-provider seam
+// now, so the composition fields retarget with ZERO change here. What
+// IS here is the two BESPOKE surfaces reading the seam's verdict, since
+// they render their own chrome rather than a catalog leaf:
+//
+//   · a claim of `absent` is NOT `mixed`. A provider that owns the
+//     selection and has no such property is answering, and painting the
+//     em-dash "mixed" face over that answer says the values disagree
+//     when in truth there is nothing to disagree about;
+//   · a claim the provider will not take WRITES for is read-only, which
+//     the missing `onCommit` already produces.
+//
+// There is not one `if (pluginId === …)` in this panel and there must
+// never be. It does not learn who answered — `data-binding-source` is a
+// DOM hook for tests and diagnostics, nothing reads it as control flow.
 
 import {
   CatalogRegistryProvider,
@@ -79,6 +97,7 @@ function OpenTypeChips() {
   const { otf } = useBindings(OTF_BINDING);
   const active = parseTags(otf.value);
   const disabled = otf.onCommit == null;
+  const absent = otf.state === "absent";
   const commit = (tag: string) => {
     if (disabled) return;
     const next = new Set(active);
@@ -94,7 +113,15 @@ function OpenTypeChips() {
     otf.onCommit?.({ type: "text", value: ordered.join(" ") } as Value);
   };
   return (
-    <div className="-mx-3 border-t border-input px-3 pt-2" data-opentype-seam>
+    <div
+      className="-mx-3 border-t border-input px-3 pt-2"
+      data-opentype-seam
+      data-control="characterOtfFeatures"
+      data-binding-source={otf.provider ?? "core"}
+      data-binding-state={otf.state}
+      data-seam={absent ? "true" : undefined}
+      style={{ opacity: absent ? 0.55 : 1 }}
+    >
       <div className="pg-label mb-2">Opentype</div>
       <div className="flex gap-[6px]">
         {OPENTYPE_CHIPS.map(({ label, tag }) => {
@@ -151,8 +178,18 @@ function FamilySelect() {
   const resolved = current !== null && current !== "";
   const families = fonts ?? [];
   const known = families.some((f) => f.family === current);
+  // ADR 023 — an owned-but-inapplicable path is a SEAM, not a mixed
+  // value. The em-dash stays (there is still nothing to show) but the
+  // `data-mixed` claim does not.
+  const absent = family.state === "absent";
   return (
-    <div className="mb-px" data-character-family>
+    <div
+      className="mb-px"
+      data-character-family
+      data-control="characterFontFamily"
+      data-binding-source={family.provider ?? "core"}
+      data-binding-state={family.state}
+    >
       <div
         className="text-[11.5px] mb-[5px]"
         style={{ color: "var(--pg-muted-fg)" }}
@@ -163,7 +200,8 @@ function FamilySelect() {
         value={resolved ? current : "__mixed__"}
         soft={!resolved}
         disabled={family.onCommit == null}
-        data-mixed={resolved ? undefined : ""}
+        data-seam={absent ? "true" : undefined}
+        data-mixed={resolved || absent ? undefined : ""}
         onChange={(e) => {
           if (e.target.value === "__mixed__") return;
           family.onCommit?.({ type: "text", value: e.target.value } as Value);

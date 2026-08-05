@@ -107,11 +107,22 @@ function Node({ node }: { node: CompositionNode }): ReactElement {
             <Node key={`${child.catalogId}-${idx}`} node={child} />
           ))
         : undefined;
+    // ADR 023 — an ABSENT claim renders as an HONEST SEAM, and that is a
+    // reuse rather than a new presentation vocabulary. `seam: true`
+    // already means, in every leaf: disabled, NEUTRAL (no active
+    // segment, pills off), placeholder text instead of state, and —
+    // load-bearing here — `data-mixed` SUPPRESSED. That is exactly the
+    // right rendering for "an active provider owns this selection and
+    // has no such property": it cannot work, and it is not mixed.
+    // Reusing the flag means every existing leaf handles the new state
+    // with no change, and the leaves stay ignorant of the seam entirely.
+    const absent = resolved.value?.state === "absent";
     const leafProps: LeafProps = {
       value,
       onCommit,
       props: {
         ...node.props,
+        ...(absent ? { seam: true } : {}),
         ...(childElements ? { children: <>{childElements}</> } : {}),
         // Layout leaves that wrap EACH child (the cluster's
         // sub-labelled cells) need the array, not the opaque
@@ -137,8 +148,29 @@ function Node({ node }: { node: CompositionNode }): ReactElement {
         ? valueBinding.path
         : undefined;
     const leaf = <Leaf {...leafProps} />;
+    // ADR 023 — the platform-level truth about this control, on the
+    // wrapper the renderer already stamps. Two facts the leaf cannot
+    // carry because it never learns them:
+    //
+    //   · `data-binding-source` — CORE or the plugin id that answered.
+    //     Provenance, exactly like the Layers list's
+    //     `data-list-provider`. A DOM hook and a diagnostic; the only
+    //     thing that reads it is a test.
+    //   · `data-binding-state`  — value | mixed | absent | none. The
+    //     leaves' own `data-mixed` means "no definite value to show",
+    //     which is three of those four; this says which.
+    //
+    // Stamped for CORE-answered controls too, on purpose: a signal that
+    // appears only when a plugin is active would make "core answered"
+    // indistinguishable from "the seam is not wired".
+    const bound = resolved.value;
     return controlPath ? (
-      <span data-control={controlPath} className="contents">
+      <span
+        data-control={controlPath}
+        data-binding-source={bound ? (bound.provider ?? "core") : undefined}
+        data-binding-state={bound?.state}
+        className="contents"
+      >
         {leaf}
       </span>
     ) : (

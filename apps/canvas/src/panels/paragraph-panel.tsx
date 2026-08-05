@@ -29,6 +29,16 @@
 // and the indented fields patch Weight + Offset on the struct.
 // Content-scope bindings; the apply layer rounds the range to whole
 // paragraphs (paragraphs are atomic).
+//
+// ADR 023 phase C/D — REWIRED, not rewritten. Every composition field
+// retargets through `useBindings`, which now resolves through the
+// binding-provider seam; nothing in the composition changed. The
+// bespoke rule rows read the seam's verdict for the same reason the
+// Character panel's do: `absent` (an active provider owns the selection
+// and has no paragraph rule) is a SEAM, not a mixed value, and it must
+// never be answered from core — the text caret is independent of a
+// plugin's edit context, so falling through would show whatever
+// paragraph was last touched.
 
 import {
   CatalogRegistryProvider,
@@ -82,14 +92,20 @@ const DEFAULT_RULE: ParagraphRuleSpec = {
 function RuleRow({
   name,
   testId,
+  path,
   spec,
   disabled,
+  source,
+  state,
   onCommit,
 }: {
   name: string;
   testId: string;
+  path: string;
   spec: ParagraphRuleSpec | null;
   disabled?: boolean;
+  source?: string | null;
+  state?: string;
   onCommit?: (next: Value) => void;
 }) {
   const on = ruleIsOn(spec);
@@ -101,7 +117,14 @@ function RuleRow({
     } as Value);
   };
   return (
-    <div data-rule-row={testId}>
+    <div
+      data-rule-row={testId}
+      data-control={path}
+      data-binding-source={source ?? "core"}
+      data-binding-state={state}
+      data-seam={state === "absent" ? "true" : undefined}
+      style={{ opacity: state === "absent" ? 0.55 : 1 }}
+    >
       <div className="flex items-center gap-[9px] py-[5px]">
         <TogglePill
           checked={on}
@@ -179,15 +202,21 @@ export function ParagraphPanel() {
           <RuleRow
             name="Rule above"
             testId="rule-above"
+            path="paragraphRuleAbove"
             spec={above}
             disabled={rules.above.onCommit == null}
+            source={rules.above.provider}
+            state={rules.above.state}
             onCommit={rules.above.onCommit}
           />
           <RuleRow
             name="Rule below"
             testId="rule-below"
+            path="paragraphRuleBelow"
             spec={below}
             disabled={rules.below.onCommit == null}
+            source={rules.below.provider}
+            state={rules.below.state}
             onCommit={rules.below.onCommit}
           />
         </div>

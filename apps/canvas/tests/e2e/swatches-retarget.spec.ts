@@ -363,14 +363,28 @@ test.describe("E2E swatches-retarget (ADR 023 — the DOCUMENT-SCOPED axis)", ()
       (
         globalThis as unknown as {
           __bindingProviders: {
-            active: () => { plugin: string; contextType: string }[];
+            active: () => {
+              plugin: string;
+              contextType: string;
+              provides?: { collections?: string[] };
+            }[];
           };
         }
       ).__bindingProviders.active(),
     );
+    // TWO entries since ADR 023's third proof consumer landed: paged.sheet
+    // registers a SWATCHES provider (this one) and a CHARACTER/PARAGRAPH
+    // one on the SAME context — different lanes about the same selection,
+    // one borrowed lifetime. Which of them answers a given question is a
+    // matter of what each DECLARES, never of order or identity.
     expect(active.map((a) => [a.plugin, a.contextType])).toEqual([
       [SHEET_PLUGIN, "sheet"],
+      [SHEET_PLUGIN, "sheet"],
     ]);
+    // …and exactly one of them owns the `swatches` collection.
+    expect(
+      active.filter((a) => a.provides?.collections?.includes("swatches")),
+    ).toHaveLength(1);
 
     // --- core answers again -------------------------------------------
     await page.keyboard.press("Escape");

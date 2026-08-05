@@ -112,6 +112,9 @@ export type ShellBindingCollectionResult =
 /** What a provider declares it serves. Mirrors `BindingProviderScope`. */
 export interface ShellBindingProviderScope {
   paths?: readonly PropertyPath[];
+  /** The subset of `paths` that accepts WRITES. Omitted ⇒ all of them.
+   *  See {@link useSelectionPathWritable}. */
+  writablePaths?: readonly PropertyPath[];
   collections?: readonly CollectionName[];
   ops?: readonly string[];
 }
@@ -342,6 +345,151 @@ export function useProvidedCollection<T>(
 export type ProvidedProperty =
   | { source: "provider"; provider: string; read: ShellBindingResolved }
   | { source: "core" };
+
+// ------------------------------------------------ the SELECTION lane
+//
+// ADR 023's THIRD proof consumer — Character/Paragraph, the VALUE axis.
+// The other two resolve by ROW identity (`layers`) or by no target at
+// all (`swatches`); this one resolves `{kind:"selection"}`, which is the
+// lane a `WidgetValueBinding`'s `scope` maps to 1:1. It is deliberately
+// NOT a hook: `useBindings` resolves a WHOLE binding record in one
+// effect, and hooks may not run in a loop.
+
+/** One selection-lane resolution. `writable` rides ALONG with the claim
+ *  rather than being asked separately, so no caller ever has to look up
+ *  a provider's declaration — the seam does it once, here.
+ *
+ *  On `provider`: it names WHO answered, for the DOM hook, diagnostics
+ *  and tests. `writablePaths` is then read off THAT provider's own
+ *  declaration — which is the opposite of identity branching, not an
+ *  instance of it: nothing is compared to a known plugin id, and the
+ *  answer is a boolean. The rule this module forbids is a caller
+ *  deciding what to do because the answer came from "image"; asking
+ *  "whoever answered — do you take writes for this path?" is the
+ *  capability question in its selection-lane form. */
+export type SelectionResolution =
+  | { source: "core" }
+  | {
+      source: "provider";
+      provider: string;
+      read: ShellBindingResolved;
+      /** Does the CLAIMING provider accept writes for this path?
+       *  `writablePaths` omitted ⇒ true (every declared path writable —
+       *  the behaviour before that member existed). */
+      writable: boolean;
+    };
+
+/**
+ * Does the entry that answered accept writes for `path`, per its own
+ * declaration?
+ *
+ * The match is (plugin AND declares-the-path), not plugin alone, and the
+ * difference is not theoretical: ONE plugin may register SEVERAL
+ * providers on one context — paged.sheet registers two, a swatches one
+ * and a text one, because they answer different lanes about the same
+ * selection. Keying on the plugin id alone reads the wrong entry's
+ * declaration and hands back the wrong answer, which is one more reason
+ * the identity is not the key here. The CAPABILITY is.
+ */
+function writableByDeclaration(
+  active: readonly ShellActiveBindingProvider[],
+  provider: string,
+  path: PropertyPath,
+): boolean {
+  const entry = active.find(
+    (p) => p.plugin === provider && (p.provides.paths?.includes(path) ?? false),
+  );
+  if (!entry) return false;
+  const w = entry.provides.writablePaths;
+  if (w === undefined) return true;
+  return w.includes(path);
+}
+
+/**
+ * Resolve ONE path on the current selection through the seam.
+ *
+ * `{source:"core"}` means nobody claimed — the caller reads the engine,
+ * which is the whole of the fall-through rule. Everything else is a
+ * CLAIM, including `absent`: a provider that owns the selection and has
+ * no such property is answering, not abstaining, and re-reading core at
+ * that point shows a spreadsheet cell the leading of whatever text the
+ * caret last touched. That conflation is the single most expensive one
+ * on this axis, because the two selections are independent — entering a
+ * plugin's edit context does not clear the text caret.
+ */
+export async function resolveSelectionProperty(
+  host: ShellBindingProviderHost,
+  path: PropertyPath,
+  scope: "element" | "content",
+): Promise<SelectionResolution> {
+  let r: ShellBindingReadResult;
+  try {
+    r = await host.readProperty({ path, target: { kind: "selection", scope } });
+  } catch {
+    // A throwing provider must not wedge the panel; core answers.
+    return { source: "core" };
+  }
+  if (!r.resolved) return { source: "core" };
+  return {
+    source: "provider",
+    provider: r.provider,
+    read: r.read,
+    writable: writableByDeclaration(host.activeProviders(), r.provider, path),
+  };
+}
+
+/**
+ * Write ONE path on the current selection through the seam. `false`
+ * means NOBODY claimed it and the caller writes core.
+ *
+ * The caller must NOT treat `false` as "core, then" for a path a
+ * provider CLAIMED on the read — that is the write-side form of the
+ * `absent` lie, and it is why `writablePaths` exists: a read-only
+ * provider says so up front, the control renders read-only, and this
+ * function is never reached for it.
+ */
+export async function writeSelectionProperty(
+  host: ShellBindingProviderHost,
+  path: PropertyPath,
+  scope: "element" | "content",
+  value: Value,
+): Promise<boolean> {
+  try {
+    const w = await host.writeProperty({
+      path,
+      target: { kind: "selection", scope },
+      value,
+    });
+    return w.handled;
+  } catch {
+    // The provider owned it and threw. Reporting "not handled" here
+    // would send the same write to core behind its back.
+    return true;
+  }
+}
+
+/**
+ * The selection-lane sibling of {@link useCollectionPathOffered} /
+ * {@link useCollectionOpOffered}: may a control bound to `path` WRITE,
+ * given who is active? `true` when no active provider declares the path
+ * (core answers, and core writes everything it models).
+ *
+ * Exported for panels with bespoke controls that resolve their own
+ * bindings; the composition-rendered leaves get this for free, because
+ * `useBindings` withholds `onCommit` and the leaves already render a
+ * missing commit path as read-only.
+ */
+export function useSelectionPathWritable(path: PropertyPath): boolean {
+  const active = useActiveBindingProviders();
+  // The owner is the entry that DECLARES the path — see
+  // `writableByDeclaration`: one plugin may register several providers on
+  // one context, so "the first entry from that plugin" is a different
+  // question and sometimes a different answer.
+  const owner = active.find((p) => p.provides.paths?.includes(path));
+  if (!owner) return true;
+  const w = owner.provides.writablePaths;
+  return w === undefined ? true : w.includes(path);
+}
 
 /** Resolve one typed path at one target through the seam. Returns
  *  `{source:"core"}` when no active provider claims it — the caller then
