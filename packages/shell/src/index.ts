@@ -447,6 +447,7 @@ export {
   useBindingProviderHost,
   useActiveBindingProviders,
   useCollectionPathOffered,
+  useCollectionOpOffered,
   useProvidedCollection,
   useProviderProperty,
   useProviderFirstMutate,

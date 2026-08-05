@@ -218,6 +218,52 @@ export function useCollectionPathOffered(
   return owner.provides.paths?.includes(path) ?? false;
 }
 
+/**
+ * The OP-shaped sibling of {@link useCollectionPathOffered}: does the
+ * ACTIVE owner of `collection` take first refusal on `op`?
+ *
+ * WHY BOTH EXIST, and why one was not enough — this is the phase-C gap
+ * the SWATCHES consumer found, and it is a consequence of the SHAPE
+ * difference ADR 023 chose the three proof consumers for.
+ *
+ * A Layers row's editable state IS core `PropertyPath`s (`layerName`,
+ * `layerVisible`, `layerLocked`), so "may this control work?" is a
+ * question about `provides.paths` and `useCollectionPathOffered`
+ * answers it. A SWATCH's editable state is not: the `PropertyPath`
+ * union has no `swatchName`, no swatch colour — core models a swatch's
+ * whole mutable surface as the STRUCTURAL ops `createSwatch` /
+ * `editSwatch` / `deleteSwatch`, each carrying a complete `SwatchSpec`.
+ * So over a document RESOURCE collection there is no path to ask about,
+ * and asking the path question would answer `false` for every control
+ * on the panel.
+ *
+ * The information was already in the contract — `provides.ops` rides on
+ * `ActiveBindingProvider` exactly like `provides.paths` — so this is a
+ * missing HOST HOOK, not a missing contract member. Phase A needed no
+ * change.
+ *
+ * Same three rules as its sibling: the question is a CAPABILITY
+ * question, the answer is a boolean, and no plugin id reaches the
+ * caller's control flow.
+ *
+ *   · no active owner of the collection → `true` (core answers, and
+ *     core serves every op it models)
+ *   · an owner that declares the op → `true`
+ *   · an owner that does NOT → `false`. Disable the control. Do NOT
+ *     let the op fall through to core: it would apply to the DOCUMENT's
+ *     resource list while the panel is showing somebody else's, which
+ *     is the write-side form of the `absent` lie.
+ */
+export function useCollectionOpOffered(
+  collection: CollectionName,
+  op: string,
+): boolean {
+  const active = useActiveBindingProviders();
+  const owner = active.find((p) => p.provides.collections?.includes(collection));
+  if (!owner) return true;
+  return owner.provides.ops?.includes(op) ?? false;
+}
+
 // ---------------------------------------------------------- collections
 
 /** A collection read resolved through the seam. `provider` is `null`
