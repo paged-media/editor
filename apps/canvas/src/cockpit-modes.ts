@@ -94,7 +94,14 @@ export const COCKPIT_MODES: ModeContribution[] = [
     },
     panelSet: {
       left: ["paged.preflight"],
-      right: ["paged.ink-manager", "paged.color-settings", "paged.links"],
+      right: [
+        "paged.ink-manager",
+        // §21 — the Ink Manager decides which plates exist; Separations
+        // reports what actually lands on them. They belong side by side.
+        "paged.separations",
+        "paged.color-settings",
+        "paged.links",
+      ],
     },
   },
   {

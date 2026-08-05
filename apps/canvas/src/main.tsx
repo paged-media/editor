@@ -198,6 +198,7 @@ import { TreePanel } from "./panels/tree-panel";
 import { ExportCenterPanel } from "./panels/cockpit/export-center-panel";
 import { PreflightPanel } from "./panels/cockpit/preflight-panel";
 import { PublicationHealthPanel } from "./panels/cockpit/publication-health-panel";
+import { SeparationsPanel } from "./panels/cockpit/separations-panel";
 import {
   CommentsPanel,
   ComponentLibraryPanel,
@@ -279,6 +280,14 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultDock: "left",
     defaultGroup: "cockpit",
     icon: "ui-target",
+  },
+  {
+    id: "paged.separations",
+    title: "Separations",
+    component: SeparationsPanel,
+    defaultDock: "right",
+    defaultGroup: "cockpit",
+    icon: "ui-swatch-fill",
   },
   {
     id: "paged.publication-health",
