@@ -23,8 +23,8 @@
     "@paged-media/catalog": "workspace:*",
     "@paged-media/client": "workspace:*",
     "@paged-media/doc": "0.1.0-canary.0",
-    "@paged-media/plugin-api": "0.2.28-canary.0",
-    "@paged-media/plugin-sdk": "0.2.28-canary.0",
+    "@paged-media/plugin-api": "0.2.29-canary.0",
+    "@paged-media/plugin-sdk": "0.2.29-canary.0",
     "@paged-media/publish": "0.1.0-canary.0",
     "@paged-media/pdf": "0.2.5-canary.0",
     "@paged-media/shell": "workspace:*",
@@ -33,11 +33,11 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "apache-arrow": "^17.0.0",
-    "@paged-media/draw": "0.1.0-canary.1",
-    "@paged-media/web": "0.1.0-canary.1",
-    "@paged-media/data": "0.1.0-canary.3",
-    "@paged-media/sheet": "0.1.0-canary.1",
-    "@paged-media/image": "0.1.0-canary.0"
+    "@paged-media/draw": "0.1.0-canary.6",
+    "@paged-media/web": "0.1.0-canary.4",
+    "@paged-media/data": "0.1.0-canary.4",
+    "@paged-media/sheet": "0.1.0-canary.4",
+    "@paged-media/image": "0.1.0-canary.4"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
