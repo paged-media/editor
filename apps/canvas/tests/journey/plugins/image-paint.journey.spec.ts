@@ -110,6 +110,39 @@ async function runExporter(
   }, id);
 }
 
+/** Ingest by PLACING an image into a frame and adjusting the selection.
+ *
+ *  This is deliberately NOT `designer.importImage()`, and the difference
+ *  cost an afternoon: both routes put pixels in the session, but only this
+ *  one binds `source.elementId` to a page element. Every frame-fit tool —
+ *  brush, pencil, eraser, crop — resolves its page↔image transform through
+ *  `resolveFrameFit(host, session.state().source)`, which returns null
+ *  without that id, and the gesture's `onPointerDown` then returns early.
+ *  A stroke driven after a bare `importImage` is silently dropped: no
+ *  error, no dab, a 0-pixel diff. */
+async function place(
+  designer: Designer,
+  page: Page,
+  id: string | null = null,
+): Promise<string> {
+  await designer.open();
+  await designer.newDocument();
+  const frame =
+    id ?? (await designer.drawRectangle({ x0: 90, y0: 120, x1: 350, y1: 320 }));
+  expect(frame, "drew a target frame").not.toBe("");
+  expect(await designer.placeImageLink(frame), "placed a real image link").toBe(
+    true,
+  );
+  await designer.serveTiledImage(frame);
+  await designer.selectElement("rectangle", frame);
+  await designer.runCommand("media.paged.image.command.adjustSelected");
+  await designer.openPanel(ADJ_PANEL);
+  return frame;
+}
+
+/** The session-only route: decodes into the panel without binding an
+ *  element. Fine for panel-driven work (adjust, fill, layers), wrong for
+ *  anything that needs a frame fit — see {@link place}. */
 async function ingest(
   designer: Designer,
   page: Page,
@@ -161,33 +194,49 @@ test.describe("journey · paged.image paint", () => {
     }
   });
 
-  // NOT YET PASSING, and left visible rather than deleted or left red.
+  // NOT YET PASSING — left visible rather than deleted or left red, now
+  // with the diagnosis rather than a list of suspects.
   //
-  // What was measured (2026-08-06, `--project=journeys-gpu`, a real WebGPU
-  // adapter): the drag below runs, the run is green up to the assertion,
-  // and the page composite changes by **0 pixels**. So the failure is not
-  // "no GPU" and not a flaky differ — a stroke is being dispatched and
-  // nothing lands on the page.
+  // MEASURED (2026-08-06, `--project=journeys-gpu`, real WebGPU adapter):
+  // the brush gesture is never entered at all. The panel's Stroke row
+  // (`data-image-brush-stats`, rendered only while `strokeActive`) never
+  // appears during the drag, so `onPointerDown` returns before opening a
+  // stroke — it is not a dab that fails to land, it is a gesture that
+  // never starts.
   //
-  // What was ruled out: the activation command id is right — the registry
-  // does carry `paged.tool.activate.<toolId>` for contributed tools (probed
-  // directly). The render helper is right — the same before/Apply/after
-  // shape verifies the fill in image-selection and the crop in image-crop.
-  // The baseline composite exists (a missing one fails differently, with
-  // "source image could not be decoded", which is how the fill assertion
-  // failed before it got its Apply).
+  // WHY, and this is the useful part: the brush needs BOTH pixels in the
+  // session AND `source.elementId` bound to a page element, because
+  // `resolveFrameFit(host, session.state().source)` needs the id to build
+  // the page↔image transform and `onPointerDown` returns early while
+  // `fit` is null. Neither ingest route the journey driver offers
+  // provides both:
   //
-  // What is left to find: whether the pointer drag reaches the bundle's
-  // gesture at all (the legacy `__canvas.activeTool` mirror does not
-  // surface plugin tools, so arming cannot be asserted directly — see the
-  // note in image-crop), whether painting needs an explicitly targeted
-  // active layer, and whether a painted stroke composites through Apply at
-  // all or pushes its own Stage-A update. Start from those three.
+  //   * `designer.importImage()` — the K-2 raster importer. Decodes into
+  //     the session (the Source readout shows the file name), but binds no
+  //     element, so `fit` stays null. This is why the drag is silently
+  //     dropped with no error and a 0-pixel diff.
+  //   * `placeImageLink()` + `serveTiledImage()` + `adjustSelected` — the
+  //     C-5 path `image.journey.spec.ts` uses. Binds the element, but the
+  //     session never ingests here: the Source readout reads "none" after
+  //     it. Note that image.journey asserts only that the PANEL MOUNTS,
+  //     never that a source arrived, so this gap was invisible.
+  //
+  // RULED OUT: the activation command (`paged.tool.activate.<toolId>` is
+  // registered for all eight image tools — probed), rail registration (all
+  // eight present), the async `void ensureFit()` race (a 750ms hover
+  // settle changes nothing), and the render helper (the same shape
+  // verifies the fill in image-selection and the crop in image-crop).
+  //
+  // NEXT: make one route provide both. Either the raster importer binds
+  // the selected frame's element id when it decodes, or `adjustSelected`
+  // is made to actually ingest a placed link's bytes in this harness —
+  // the second is the more interesting question, because a designer who
+  // places an image and reaches for the brush is on exactly that path.
   test.fixme("a painted stroke changes the image @feat:image.editor.paint @feat:image.editor.layers @level:gesture", async ({
     page,
   }) => {
     const designer = new Designer(page);
-    await ingest(designer, page, "stroke-sample.png");
+    await place(designer, page);
 
     if (!(await designer.gpuActive())) {
       test.skip(
@@ -196,13 +245,9 @@ test.describe("journey · paged.image paint", () => {
       );
     }
 
-    // Baseline composite, then arm the brush and drag across the frame the
-    // way a designer paints — pointer down, several moves (the machine
-    // carries leftover arc length between samples so a fast drag still
-    // paints a stroke rather than dots), pointer up.
-    const applyBtn = page.getByRole("button", { name: "Apply", exact: true });
-    await expect(applyBtn).toBeEnabled({ timeout: 10_000 });
-    await applyBtn.click();
+    // The placed image already renders (placeImageLink + serveTiledImage),
+    // so the baseline needs no Apply — and Apply is DISABLED here anyway,
+    // since it commits pending adjustments and a stroke is not one.
     const before = await designer.renderBytes();
 
     // A plugin tool is armed through its contributed activation command
@@ -212,16 +257,27 @@ test.describe("journey · paged.image paint", () => {
     await designer
       .runCommand(`paged.tool.activate.${TOOL.brush}`)
       .catch(() => {});
-    await page.mouse.move(140, 170);
+
+    // `onActivate` resolves the frame fit ASYNCHRONOUSLY (`void
+    // ensureFit()`) and `onPointerDown` returns early while it is null, so
+    // hover first and let it land before pressing.
+    await page.mouse.move(200, 200);
+    await page.waitForTimeout(750);
+
     await page.mouse.down();
-    for (const x of [180, 220, 260, 300])
-      await page.mouse.move(x, 200 + (x % 40));
+    for (const x of [210, 230, 250, 270, 290])
+      await page.mouse.move(x, 200 + (x % 30));
     await page.mouse.up();
 
-    await expect(applyBtn).toBeEnabled({ timeout: 10_000 });
-    await applyBtn.click();
-    const after = await designer.renderBytes();
-    await designer.expectRenderChanged(before, after);
+    // The stroke commits per GESTURE (Stage-B per-drag is deferred by
+    // ADR-018), so the composite lands after pointer-up.
+    await expect
+      .poll(
+        async () =>
+          designer.renderDiffPixels(before, await designer.renderBytes()),
+        { timeout: 20_000 },
+      )
+      .toBeGreaterThan(64);
   });
 
   test("the save-back exporters re-encode the source, and PSD declines a non-PSD source @feat:image.io.save-back @feat:editor-shell.plugin-bundles @level:gesture", async ({
