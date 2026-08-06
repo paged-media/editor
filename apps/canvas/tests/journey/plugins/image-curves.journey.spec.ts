@@ -46,7 +46,7 @@ async function sourceReadout(page: Page): Promise<string> {
   return page.evaluate(() => {
     const spans = Array.from(document.querySelectorAll("span"));
     const i = spans.findIndex((e) => e.textContent === "Source");
-    return i >= 0 ? spans[i + 1]?.textContent ?? "?" : "Source row not found";
+    return i >= 0 ? (spans[i + 1]?.textContent ?? "?") : "Source row not found";
   });
 }
 
@@ -54,7 +54,11 @@ async function sourceReadout(page: Page): Promise<string> {
  *  sliders in a fixed order): focus + ArrowRight × n = genuine keyboard
  *  input through the real <input type=range> onChange, the way a designer
  *  nudges a slider. */
-async function nudgeSlider(page: Page, index: number, steps: number): Promise<void> {
+async function nudgeSlider(
+  page: Page,
+  index: number,
+  steps: number,
+): Promise<void> {
   const slider = page.locator("input[type=range]").nth(index);
   await expect(slider).toBeEnabled({ timeout: 10_000 });
   await slider.focus();
@@ -83,11 +87,16 @@ test.describe("journey · paged.image levels / curves / white balance", () => {
     if (!(await designer.gpuActive())) {
       test.skip(
         true,
-        "paged.image kernels are GPU-only (no CPU path) — levels/curves/WB render-verified on the journeys-gpu lane",
+        "paged.image kernels are GPU-only (no CPU path). This is NOT verified elsewhere in CI: the `journeys-gpu` lane needs real Chrome + Metal and no workflow runs it — verify locally with `pnpm --filter paged-canvas test:journeys:gpu` — levels / curves / white balance are render-verified there",
       );
     }
 
-    const frame = await designer.drawRectangle({ x0: 90, y0: 120, x1: 360, y1: 320 });
+    const frame = await designer.drawRectangle({
+      x0: 90,
+      y0: 120,
+      x1: 360,
+      y1: 320,
+    });
     expect(frame, "drew a target frame").not.toBe("");
     await designer.selectElement("rectangle", frame);
 
@@ -120,10 +129,7 @@ test.describe("journey · paged.image levels / curves / white balance", () => {
     await expect(applyBtn).toBeEnabled();
     await applyBtn.click();
     const afterWb = await designer.renderBytes();
-    await designer.expectRenderChanged(
-      beforeWb,
-      afterWb,
-    );
+    await designer.expectRenderChanged(beforeWb, afterWb);
 
     // ── 3. LEVELS — pull In black up, In white down, lift Gamma
     //    (adjust.levels) and Apply. The page must change again. HARD. ──
@@ -133,10 +139,7 @@ test.describe("journey · paged.image levels / curves / white balance", () => {
     await expect(applyBtn).toBeEnabled();
     await applyBtn.click();
     const afterLevels = await designer.renderBytes();
-    await designer.expectRenderChanged(
-      beforeLevels,
-      afterLevels,
-    );
+    await designer.expectRenderChanged(beforeLevels, afterLevels);
 
     // ── 4. CURVES — drag the SVG curve editor's mid control point up (the
     //    monotone-cubic LUT the curves stage consumes) and Apply. Dragging
@@ -175,15 +178,14 @@ test.describe("journey · paged.image levels / curves / white balance", () => {
       const cy = mid ? Number(mid.getAttribute("cy")) : 70;
       return cy < 68; // identity mid sits at cy≈70 (1-0.5)*140; lifted ⇒ smaller
     });
-    expect(curveLutSet, "the curve mid control point moved off identity").toBe(true);
+    expect(curveLutSet, "the curve mid control point moved off identity").toBe(
+      true,
+    );
 
     await expect(applyBtn).toBeEnabled();
     await applyBtn.click();
     const afterCurve = await designer.renderBytes();
-    const curved = await designer.expectRenderChanged(
-      beforeCurve,
-      afterCurve,
-    );
+    const curved = await designer.expectRenderChanged(beforeCurve, afterCurve);
     expect(
       curved,
       "the curve LUT pass changed the composited pixels",
@@ -207,11 +209,16 @@ test.describe("journey · paged.image levels / curves / white balance", () => {
     if (!(await designer.gpuActive())) {
       test.skip(
         true,
-        "paged.image kernels are GPU-only (no CPU path) — auto-enhance render-verified on the journeys-gpu lane",
+        "paged.image kernels are GPU-only (no CPU path). This is NOT verified elsewhere in CI: the `journeys-gpu` lane needs real Chrome + Metal and no workflow runs it — verify locally with `pnpm --filter paged-canvas test:journeys:gpu` — auto-enhance is render-verified there",
       );
     }
 
-    const frame = await designer.drawRectangle({ x0: 90, y0: 120, x1: 360, y1: 320 });
+    const frame = await designer.drawRectangle({
+      x0: 90,
+      y0: 120,
+      x1: 360,
+      y1: 320,
+    });
     await designer.selectElement("rectangle", frame);
     const importer = await designer.importImage({ name: "auto-sample.png" });
     expect(importer, "the raster importer resolved + ran").toContain(
@@ -229,7 +236,10 @@ test.describe("journey · paged.image levels / curves / white balance", () => {
     // flows from the kernel into the In white slider (identity 1 → below 1
     // for this full-range gradient), and Apply composites the change.
     const autoBtn = page.locator("[data-image-auto-enhance]");
-    await expect(autoBtn, "the Auto-enhance affordance is wired + enabled").toBeEnabled({
+    await expect(
+      autoBtn,
+      "the Auto-enhance affordance is wired + enabled",
+    ).toBeEnabled({
       timeout: 6_000,
     });
     const beforeAuto = await designer.renderBytes();

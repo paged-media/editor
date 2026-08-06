@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint src vite.config.ts",
     "test:fidelity": "playwright test --config=playwright.config.ts",
+    "test:journeys": "playwright test --project=journeys",
+    "test:journeys:gpu": "playwright test --project=journeys-gpu",
     "test:fidelity:capture": "FIDELITY_MODE=capture playwright test --config=playwright.config.ts",
     "test:fidelity:ui": "playwright test --config=playwright.config.ts --ui",
     "test:fidelity:dashboard": "open ${FIDELITY_OUT:-/tmp/paged-canvas-fidelity}/dashboard.html",

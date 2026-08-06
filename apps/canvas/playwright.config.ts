@@ -157,6 +157,21 @@ export default defineConfig({
       // The FULL DTP journey surface on the editor's real default backend
       // (WebGPU/Vello) — proving every workflow runs on GPU, not just the CPU
       // fallback the bundled-Chromium `journeys` lane exercises.
+      //
+      // LOCAL LANE, GATING NOTHING — say so plainly, because the specs that
+      // defer to it used to read as though it were a CI gate. It needs real
+      // Chrome (`channel: "chrome"`) and `--use-angle=metal`, so it cannot
+      // run on the Linux CI runners, and no workflow invokes it. Anything
+      // that skips with "verified on journeys-gpu" is therefore verified
+      // only when a human runs it on a Mac:
+      //
+      //     pnpm --filter paged-canvas test:journeys:gpu
+      //
+      // Keep it — it works, and it is the only place paged.image's GPU-only
+      // kernels are render-verified end-to-end — but do not treat a green
+      // `journeys` run as covering anything that defers here. Standing up a
+      // GPU-capable CI lane (scheduled macOS runner, or Linux + a software
+      // adapter) is the open follow-up.
       testMatch: "**/*.journey.spec.ts",
       snapshotPathTemplate:
         "{testDir}/__screenshots__/{testFileName}/{arg}-{projectName}-{platform}{ext}",
@@ -168,7 +183,11 @@ export default defineConfig({
         // an arg; `headless:false` keeps Playwright from forcing old headless.
         headless: false,
         launchOptions: {
-          args: ["--headless=new", "--enable-unsafe-webgpu", "--use-angle=metal"],
+          args: [
+            "--headless=new",
+            "--enable-unsafe-webgpu",
+            "--use-angle=metal",
+          ],
         },
       },
     },
@@ -220,7 +239,11 @@ export default defineConfig({
         deviceScaleFactor: 1,
         headless: false,
         launchOptions: {
-          args: ["--headless=new", "--enable-unsafe-webgpu", "--use-angle=metal"],
+          args: [
+            "--headless=new",
+            "--enable-unsafe-webgpu",
+            "--use-angle=metal",
+          ],
         },
       },
     },
