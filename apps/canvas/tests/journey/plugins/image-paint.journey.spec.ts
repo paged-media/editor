@@ -34,6 +34,7 @@
 
 import { expect, test } from "@playwright/test";
 
+import { screenPoint } from "../../e2e/harness/viewport";
 import { Designer } from "../driver/designer";
 
 type Page = import("@playwright/test").Page;
@@ -194,49 +195,30 @@ test.describe("journey · paged.image paint", () => {
     }
   });
 
-  // NOT YET PASSING — left visible rather than deleted or left red, now
-  // with the diagnosis rather than a list of suspects.
+  // This test was a `fixme` for a while and cost two real findings, both
+  // worth keeping because each failed SILENTLY — no error, no dab, a
+  // 0-pixel diff:
   //
-  // MEASURED (2026-08-06, `--project=journeys-gpu`, real WebGPU adapter):
-  // the brush gesture is never entered at all. The panel's Stroke row
-  // (`data-image-brush-stats`, rendered only while `strokeActive`) never
-  // appears during the drag, so `onPointerDown` returns before opening a
-  // stroke — it is not a dab that fails to land, it is a gesture that
-  // never starts.
+  //   1. A PLUGIN BUG, now fixed. `importBytes` decoded with
+  //      `elementId: null`, so the session held pixels no page element
+  //      owned. Every frame-fit tool (brush, pencil, eraser, crop)
+  //      resolves through `resolveFrameFit(host, session.state().source)`,
+  //      which returns null without that id, and `onPointerDown` then
+  //      returns before opening a stroke. The importer now binds the
+  //      selected frame the way `ingestSelection` always did.
+  //   2. A TEST BUG. `drawRectangle` takes DOCUMENT pt and converts
+  //      through `screenPoint`; driving the mouse with raw page
+  //      coordinates paints somewhere else entirely. Any journey mixing
+  //      the two spaces measures a confident zero.
   //
-  // WHY, and this is the useful part: the brush needs BOTH pixels in the
-  // session AND `source.elementId` bound to a page element, because
-  // `resolveFrameFit(host, session.state().source)` needs the id to build
-  // the page↔image transform and `onPointerDown` returns early while
-  // `fit` is null. Neither ingest route the journey driver offers
-  // provides both:
-  //
-  //   * `designer.importImage()` — the K-2 raster importer. Decodes into
-  //     the session (the Source readout shows the file name), but binds no
-  //     element, so `fit` stays null. This is why the drag is silently
-  //     dropped with no error and a 0-pixel diff.
-  //   * `placeImageLink()` + `serveTiledImage()` + `adjustSelected` — the
-  //     C-5 path `image.journey.spec.ts` uses. Binds the element, but the
-  //     session never ingests here: the Source readout reads "none" after
-  //     it. Note that image.journey asserts only that the PANEL MOUNTS,
-  //     never that a source arrived, so this gap was invisible.
-  //
-  // RULED OUT: the activation command (`paged.tool.activate.<toolId>` is
-  // registered for all eight image tools — probed), rail registration (all
-  // eight present), the async `void ensureFit()` race (a 750ms hover
-  // settle changes nothing), and the render helper (the same shape
-  // verifies the fill in image-selection and the crop in image-crop).
-  //
-  // NEXT: make one route provide both. Either the raster importer binds
-  // the selected frame's element id when it decodes, or `adjustSelected`
-  // is made to actually ingest a placed link's bytes in this harness —
-  // the second is the more interesting question, because a designer who
-  // places an image and reaches for the brush is on exactly that path.
-  test.fixme("a painted stroke changes the image @feat:image.editor.paint @feat:image.editor.layers @level:gesture", async ({
+  // The hover-settle below is real too: `onActivate` resolves the fit with
+  // a non-awaited `void ensureFit()`, so a drag issued immediately after
+  // arming can still be dropped.
+  test("a painted stroke changes the image @feat:image.editor.paint @feat:image.editor.layers @level:gesture", async ({
     page,
   }) => {
     const designer = new Designer(page);
-    await place(designer, page);
+    await ingest(designer, page, "stroke-sample.png");
 
     if (!(await designer.gpuActive())) {
       test.skip(
@@ -258,15 +240,32 @@ test.describe("journey · paged.image paint", () => {
       .runCommand(`paged.tool.activate.${TOOL.brush}`)
       .catch(() => {});
 
+    // COORDINATES: `drawRectangle` takes DOCUMENT pt and converts through
+    // `screenPoint`, so driving the mouse with raw page coordinates paints
+    // somewhere else entirely — which is what made the first version of
+    // this test measure 0 pixels. Convert the same way, and stay well
+    // inside the frame's 90,120-360,320 pt rect.
+    const path = await Promise.all(
+      [
+        [150, 180],
+        [190, 210],
+        [230, 190],
+        [270, 220],
+        [300, 200],
+      ].map(([x, y]) => screenPoint(page, x, y)),
+    );
+
     // `onActivate` resolves the frame fit ASYNCHRONOUSLY (`void
     // ensureFit()`) and `onPointerDown` returns early while it is null, so
     // hover first and let it land before pressing.
-    await page.mouse.move(200, 200);
+    await page.mouse.move(path[0].x, path[0].y);
     await page.waitForTimeout(750);
 
     await page.mouse.down();
-    for (const x of [210, 230, 250, 270, 290])
-      await page.mouse.move(x, 200 + (x % 30));
+    for (const pt of path.slice(1)) {
+      await page.mouse.move(pt.x, pt.y);
+      await page.waitForTimeout(60);
+    }
     await page.mouse.up();
 
     // The stroke commits per GESTURE (Stage-B per-drag is deferred by
