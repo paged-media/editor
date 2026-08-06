@@ -19,7 +19,7 @@
     "fonts:resolve": "tsx scripts/fonts-resolve.ts"
   },
   "dependencies": {
-    "@paged-media/canvas-wasm": "0.51.0",
+    "@paged-media/canvas-wasm": "0.61.0",
     "@paged-media/catalog": "workspace:*",
     "@paged-media/client": "workspace:*",
     "@paged-media/doc": "0.1.0-canary.0",
