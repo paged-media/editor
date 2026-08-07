@@ -714,11 +714,21 @@ export class CanvasClient {
   /** C-1 — submit (replace) a plugin vector scene layer rendered inside
    *  the frame `elementId` (its `Self` id). The worker stores it + rebuilds
    *  so compose lowers it inside the frame; the next snapshot reflects it. */
-  async submitSceneLayer(elementId: string, layer: SceneLayer): Promise<void> {
+  async submitSceneLayer(
+    elementId: string,
+    layer: SceneLayer,
+    caller?: string,
+  ): Promise<void> {
     const reply = await this.send({
       kind: "submitSceneLayer",
-      payload: { elementId, layer },
-    });
+      // C-34 — `caller` names the plugin whose render this is. The
+      // engine records the frame's owner and refuses a foreign replace;
+      // a frame's in-frame render belongs to ONE content type and this
+      // door used to be an unconditional insert. OMITTED is the prior
+      // behaviour exactly (no owner recorded, nothing enforced), so
+      // this is additive and needs no protocol bump.
+      payload: caller ? { elementId, layer, caller } : { elementId, layer },
+    } as never);
     if (reply.kind === "sceneLayerApplied") return;
     throw new Error(`unexpected reply: ${reply.kind}`);
   }

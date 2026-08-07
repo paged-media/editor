@@ -113,7 +113,14 @@ export interface PagedEditor {
    * plugin-sdk host calls from `host.contribute.sceneLayer()`.
    */
   sceneLayers: {
-    submit(elementId: string, layer: SceneLayer): Promise<void>;
+    /** `caller` (C-34) — the plugin whose render this is, filled by the
+     *  SDK adapter from the manifest id. Optional: omitting it records
+     *  no owner and enforces nothing, which is the prior behaviour. */
+    submit(
+      elementId: string,
+      layer: SceneLayer,
+      caller?: string,
+    ): Promise<void>;
     clear(elementId: string): Promise<void>;
   };
 
@@ -250,7 +257,8 @@ function PagedEditorBinder({
           client.measureText(family, style, str, sizePt),
       },
       sceneLayers: {
-        submit: (elementId, layer) => client.submitSceneLayer(elementId, layer),
+        submit: (elementId, layer, caller) =>
+          client.submitSceneLayer(elementId, layer, caller),
         clear: (elementId) => client.clearSceneLayer(elementId),
       },
       images: {
