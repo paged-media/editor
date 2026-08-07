@@ -86,20 +86,33 @@ test.describe("journey · paged.image retouching", () => {
     // ── 2. NO ANCHOR YET is a state with its own text, not a blank. ──
     await expect.poll(() => anchor(page), { timeout: 10_000 }).toBe("not set");
 
-    // ── 3. The limit, stated where the designer is standing. This is the
-    //    assertion this journey exists for: a mean match is not a Poisson
-    //    solve, and someone healing across a gradient needs to know that
-    //    from the panel rather than from a changelog. ──
+    // ── 3. What the tool does and where it stops, stated where the
+    //    designer is standing. This row used to warn that a mean match
+    //    seams across a ramp; the gradient-domain solve removed that
+    //    limit and the warning went with it, because keeping it would be
+    //    its own kind of lie. What is left is the real edge case. ──
     const limit = page.locator("[data-image-heal-limit]");
-    await expect(limit).toContainText("MEAN tone");
-    await expect(limit).toContainText("Poisson");
-    await expect(limit).toContainText("still shows a seam");
+    await expect(limit).toContainText("gradient domain");
+    await expect(limit).toContainText("follows a ramp");
+    await expect(limit).toContainText("falls back to a plain clone");
 
-    // ── 4. And content-aware fill's ABSENCE is stated too, rather than
-    //    offered as a button that would smear. ──
-    await expect(
-      page.getByText("Content-aware fill is not offered"),
-    ).toBeVisible();
+    // ── 4. CONTENT-AWARE FILL is offered, and disabled until there is
+    //    something to fill — a button that did nothing would read as
+    //    broken rather than as "select first". ──
+    const caf = page.locator("[data-image-content-aware-fill]");
+    await expect(caf).toBeVisible();
+    await expect(caf).toBeDisabled();
+    await expect(page.getByText("select an area first")).toBeVisible();
+
+    // Its two real limits are stated where a retoucher will read them.
+    const note = page.locator("[data-image-caf-note]");
+    await expect(note).toContainText("copied from real image data");
+    await expect(note).toContainText("windowed and single-scale");
+
+    // With a selection it becomes available — the CPU search needs no
+    // device, so this holds on the lane that actually runs in CI.
+    await designer.runCommand("media.paged.image.command.selectAll");
+    await expect(caf).toBeEnabled({ timeout: 15_000 });
   });
 
   test("alt-click sets the clone source without painting @feat:image.editor.clone-stamp @level:gesture", async ({
