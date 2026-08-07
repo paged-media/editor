@@ -107,7 +107,7 @@ test.describe("journey · paged.image retouching", () => {
     // Its two real limits are stated where a retoucher will read them.
     const note = page.locator("[data-image-caf-note]");
     await expect(note).toContainText("copied from real image data");
-    await expect(note).toContainText("windowed and single-scale");
+    await expect(note).toContainText("coarse to fine");
 
     // With a selection it becomes available — the CPU search needs no
     // device, so this holds on the lane that actually runs in CI.
