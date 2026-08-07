@@ -31,6 +31,8 @@ import {
 import { Icon } from "../icons";
 import type { CommandContribution } from "../registries";
 import { useRegistries } from "../state/registries-context";
+import { useOptionalPaged } from "../state/paged-editor";
+import { isEnabled } from "../registries/types";
 import { useOptionalWorkflowMode } from "../state/workflow-mode-context";
 
 /**
@@ -95,12 +97,24 @@ function looksLikePrompt(query: string): boolean {
 
 /**
  * Cmd+K-driven command bar. Reads from the active `CommandRegistry`
- * and invokes through the registry so visibility predicates + the
- * editor handle wiring apply uniformly. Cockpit additions: a Recent
- * group (localStorage), a "Suggested in <Mode>" group from the
- * active ModeContribution, and the AI-prompt affordance.
+ * and invokes through the registry.
+ *
+ * CORRECTED 2026-08-07: this comment used to say that invoking through
+ * the registry meant "visibility predicates apply uniformly". They did
+ * not — `invoke` never read `when`, and this list was unfiltered, so
+ * the palette offered every registered command in every context and ran
+ * whatever was picked. The claim was plausible enough that nobody
+ * checked, which is the more useful half of the lesson: a comment
+ * asserting a guarantee is worth exactly as much as the test pinning
+ * it. The gate now exists in `CommandRegistry.invoke`; the filtering
+ * below is noise reduction on top of it, not the safety.
+ *
+ * Cockpit additions: a Recent group (localStorage), a "Suggested in
+ * <Mode>" group from the active ModeContribution, and the AI-prompt
+ * affordance.
  */
 export function CommandPalette() {
+  const paged = useOptionalPaged();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const { commands, modes } = useRegistries();
@@ -132,7 +146,16 @@ export function CommandPalette() {
     if (open) setQuery("");
   }, [open]);
 
-  const all = useMemo(() => commands.list(), [commands, open]);
+  // ADR 024 — HIDDEN, not greyed, and that differs from the menu on
+  // purpose. A menu has stable positions a user learns, so an
+  // inapplicable item greys in place; a palette is a SEARCH surface
+  // with no positions to preserve, and a dead hit is just a wrong
+  // answer to a query. `paged` supplies both the predicate's state and
+  // the re-render, since the handle is memoized on the active context.
+  const all = useMemo(
+    () => commands.list().filter((c) => isEnabled(c.when, () => paged)),
+    [commands, open, paged],
+  );
   const byId = useMemo(
     () => new Map(all.map((c) => [c.id, c] as const)),
     [all],

@@ -17,6 +17,7 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
+import { isEnabled } from "./types";
 import type { Disposable, VisibilityPredicate } from "./types";
 
 /**
@@ -127,6 +128,21 @@ export function createCommandRegistry(
         throw new Error(`CommandRegistry: unknown command "${id}"`);
       }
       const editor = getEditor();
+      // ADR 024 — THE GATE, here rather than in each caller.
+      //
+      // `when` was declared on this contribution type with the comment
+      // "Disabled commands appear greyed" and then never read, so a
+      // command could declare itself inapplicable and still run. Every
+      // entry point funnels through `invoke` — palette, menu, keybinding,
+      // toolbar, a plugin calling `runCommand` — so gating once here is
+      // what makes the declaration mean something everywhere instead of
+      // in whichever surface remembered to ask.
+      //
+      // REFUSED, not thrown. A command that does not apply right now is
+      // an ordinary answer to an ordinary question; throwing would turn
+      // every stale menu click into an error dialog. Observers still see
+      // nothing, because nothing ran.
+      if (!isEnabled(cmd.when, getEditor)) return undefined;
       if (observers.size === 0) return await cmd.handler(editor, payload);
 
       // Emit `started` BEFORE the handler so recorded order is call
