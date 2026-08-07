@@ -136,3 +136,49 @@ test.describe("CommandRegistry — the `when` gate", () => {
     expect(seen, "no started/settled pair for a refusal").toHaveLength(0);
   });
 });
+
+// ── ADR 024 — `toolIds`: declared-empty is not the same as absent ────
+//
+// These pin a SEMANTIC that used to collapse. `contribution.toolIds ??
+// []` then `length > 0 ? … : null` made an explicit `toolIds: []` mean
+// "unrestricted" — the exact opposite of what an author writing it
+// intends, and it left a plugin no way to say "no canvas tool edits
+// this content" (which is the truth for a spreadsheet, a Word document
+// and a web frame: you edit them by keyboard and panel).
+//
+// The frame now carries `readonly string[] | null`, and the rail reads
+// the distinction directly. Pure assertions over that reading — the
+// React wiring is exercised by tool-rail.spec.ts.
+
+/** The rail's rule, extracted verbatim from `ToolRail.tsx`. */
+const restrictionOf = (toolIds: readonly string[] | null): Set<string> | null =>
+  toolIds ? new Set(toolIds) : null;
+
+test.describe("edit context — toolIds semantics", () => {
+  test("AC-CTX-TOOLS-1 — ABSENT leaves the rail untouched @level:happy", () => {
+    // The permissive default: a context that has not thought about
+    // tools does not take any away.
+    expect(restrictionOf(null)).toBeNull();
+  });
+
+  test("AC-CTX-TOOLS-2 — DECLARED-EMPTY restricts to nothing @level:edge", () => {
+    // The statement the old collapse made unsayable.
+    const r = restrictionOf([]);
+    expect(r, "an empty declaration IS a restriction").not.toBeNull();
+    expect(r!.size).toBe(0);
+    expect(r!.has("paged.tool.select"), "no tool is inside it").toBe(false);
+  });
+
+  test("AC-CTX-TOOLS-3 — a declared list restricts to exactly it @level:happy", () => {
+    const r = restrictionOf(["a", "b"]);
+    expect(r!.has("a")).toBe(true);
+    expect(r!.has("c")).toBe(false);
+  });
+
+  test("AC-CTX-TOOLS-4 — the two empties are DISTINGUISHABLE @level:edge", () => {
+    // The whole point, stated as one assertion: if this ever fails,
+    // the collapse is back and a plugin has lost the ability to say
+    // "nothing applies here".
+    expect(restrictionOf(null)).not.toEqual(restrictionOf([]));
+  });
+});

@@ -243,8 +243,11 @@ export function ToolRail({ foot }: { foot?: ReactNode }) {
   // toolIds, e.g. the sheet grid session) leaves the rail untouched.
   const editContexts = useEditContextStack();
   const restrictedTools = useMemo(() => {
-    const ids = editContexts.active?.toolIds ?? [];
-    return ids.length > 0 ? new Set(ids) : null;
+    // `null` (nothing declared) leaves the rail untouched; a DECLARED
+    // list restricts to it, and a declared EMPTY list restricts to
+    // nothing — every tool greys, and picking one is still the exit.
+    const ids = editContexts.active?.toolIds;
+    return ids ? new Set(ids) : null;
   }, [editContexts.active]);
 
   const pick = useCallback(

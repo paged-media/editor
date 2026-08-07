@@ -154,6 +154,11 @@ export function EditContextController() {
     ? `${active.type}:${JSON.stringify(active.scopeRoot)}`
     : null;
   const lastEnteredRef = useRef<string | null>(null);
+  /** The tool in hand as this entry began — see the leave-by-tool rule. */
+  const toolAtEntryRef = useRef<string | null>(null);
+  /** The live tool, readable from the entry effect without making that
+   *  effect depend on it (it is keyed on the frame, not the tool). */
+  const activeToolRef = useRef<string | null>(null);
   useEffect(() => {
     if (!active) {
       // FORGET the last entry when the stack empties. Without this the
@@ -205,9 +210,17 @@ export function EditContextController() {
     // Tool-set swap (v1 depth): focus the first restricted tool. Full
     // rail graying-out of non-context tools is the documented residual;
     // focusing the primary anchor tool is the user-visible swap.
-    if (active.toolIds.length > 0 && tool) {
-      tool.setBaseTool(active.toolIds[0] as ToolId);
-    }
+    // Focus the context's primary tool. A declared-empty list has no
+    // primary and must not fall back to the host's — the context said
+    // no tool applies.
+    const primary = active.toolIds?.[0];
+    if (primary && tool) tool.setBaseTool(primary as ToolId);
+    // The tool this entry STARTS from. The leave-by-tool rule below
+    // fires on a CHANGE away from it, never on the tool that was
+    // already in hand — otherwise a context declaring `toolIds: []`
+    // would exit itself the instant it opened, since every tool is
+    // outside an empty set including the one the user already held.
+    toolAtEntryRef.current = (primary ?? activeToolRef.current) ?? null;
   }, [active, enteredKey, tool]);
 
   // ADR 024 — LEAVING BY TOOL, derived rather than wired per entry point.
@@ -230,8 +243,11 @@ export function EditContextController() {
   // The `enteredKey` guard is shared for the same reason it exists
   // there — a re-entry on the same element must not be suppressed.
   const activeTool = tool?.effectiveTool;
+  activeToolRef.current = activeTool ?? null;
   useEffect(() => {
-    if (!active || active.toolIds.length === 0 || !activeTool) return;
+    if (!active || !active.toolIds || !activeTool) return;
+    // Unchanged since entry — the user has not reached for anything.
+    if (activeTool === toolAtEntryRef.current) return;
     // Not yet swapped for this entry — the enter effect owns the first
     // tool and has not run. Acting now would exit the context we are in
     // the middle of entering.
