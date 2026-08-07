@@ -111,6 +111,40 @@ export interface ObjectCommandDeps {
    *  and the geometry the overlays key on (the `tree-panel` chain). */
   setSelection: (ids: ElementId[]) => Promise<void>;
   report: ObjectReport;
+  /**
+   * ADR 024 — the edit context the user is inside, or `null` at the
+   * document root.
+   *
+   * These seven verbs are DOCUMENT-STRUCTURE operations: they reorder
+   * and group PAGE ITEMS. Inside a plugin content type there are no
+   * page items to arrange — the content is a raster stack, a grid, a
+   * DOM — and the host element selection is the FRAME the user entered.
+   * So every one of them read that frame and silently reordered or
+   * grouped it in the document while the user believed they were
+   * editing what was inside it. Ungroup was the destructive one.
+   */
+  activeEditContext: () => { type: string } | null;
+}
+
+/**
+ * The single guard for all seven verbs. Returns true when the command
+ * must NOT run, having already told the user why.
+ *
+ * A REPORT, not a silent return: the command was reachable (a menu can
+ * be open across a context change, a shortcut has no menu at all), so
+ * the user pressed something and is owed an answer. Silence here is
+ * what made the original defect invisible — the mutation landed on the
+ * wrong target and nothing said anything either way.
+ */
+function blockedByEditContext(deps: ObjectCommandDeps, verb: string): boolean {
+  const ctx = deps.activeEditContext();
+  if (!ctx) return false;
+  deps.report(
+    "info",
+    `${verb} arranges page items, and you are editing inside a ${ctx.type}. ` +
+      "Leave the frame (Esc) to arrange it in the document.",
+  );
+  return true;
 }
 
 /** The seven closures a host binds to the seven commands. */
@@ -337,6 +371,7 @@ export async function arrangeSelection(
   deps: ObjectCommandDeps,
   target: ArrangeTarget,
 ): Promise<void> {
+  if (blockedByEditContext(deps, "Arrange")) return;
   const selection = [...deps.getSelection()];
   if (selection.length === 0) return;
 
@@ -390,6 +425,7 @@ async function reportLayerLimit(deps: ObjectCommandDeps): Promise<void> {
 /** Wrap the selection (≥ 2 page items — the InDesign floor) in a new
  *  group and select it. */
 export async function groupSelection(deps: ObjectCommandDeps): Promise<void> {
+  if (blockedByEditContext(deps, "Group")) return;
   const memberIds = [...deps.getSelection()];
   if (memberIds.length < 2) return;
 
@@ -412,6 +448,7 @@ export async function groupSelection(deps: ObjectCommandDeps): Promise<void> {
 /** Dissolve every selected GROUP back into its members and select
  *  those members. A selection holding no group is a no-op. */
 export async function ungroupSelection(deps: ObjectCommandDeps): Promise<void> {
+  if (blockedByEditContext(deps, "Ungroup")) return;
   const selection = [...deps.getSelection()];
   const groups = selection.filter((id) => id.kind === "group");
   if (groups.length === 0) return;
@@ -454,6 +491,7 @@ export async function ungroupSelection(deps: ObjectCommandDeps): Promise<void> {
 export async function selectParentGroup(
   deps: ObjectCommandDeps,
 ): Promise<void> {
+  if (blockedByEditContext(deps, "Select parent group")) return;
   const selection = deps.getSelection();
   if (selection.length === 0) return;
   const roots = await deps.client.sceneTree();
@@ -468,6 +506,22 @@ export async function selectParentGroup(
 /** Build the object command set. `handlers` is the bag of closures
  *  owned by `CanvasAppIntegration` — the same shape `buildAppCommands`
  *  takes, so both register through one path. */
+/**
+ * ADR 024 — these seven arrange PAGE ITEMS, so they do not apply while
+ * the user is inside a plugin content type. Declared here so the menu
+ * and palette GREY them rather than offering a click that reports a
+ * refusal; the runner guard stays as well, because a shortcut reaches
+ * the handler with no menu in between and a menu can be open across a
+ * context change.
+ *
+ * The predicate reads the handle every command handler already
+ * receives. It could not be written before `PagedEditor.editContext`
+ * existed — which is why `when` was declared on five contribution
+ * types and honoured by one: there was nothing useful to ask.
+ */
+const notInsideAnEditContext = (state: unknown): boolean =>
+  !(state as { editContext?: unknown } | null)?.editContext;
+
 export function buildObjectCommands(
   handlers: ObjectCommandHandlers,
 ): CommandContribution[] {
@@ -476,42 +530,49 @@ export function buildObjectCommands(
       id: PAGED_OBJECT_BRING_TO_FRONT,
       title: "Bring to front",
       category: "Object",
+      when: notInsideAnEditContext,
       handler: () => handlers.bringToFront(),
     },
     {
       id: PAGED_OBJECT_BRING_FORWARD,
       title: "Bring forward",
       category: "Object",
+      when: notInsideAnEditContext,
       handler: () => handlers.bringForward(),
     },
     {
       id: PAGED_OBJECT_SEND_BACKWARD,
       title: "Send backward",
       category: "Object",
+      when: notInsideAnEditContext,
       handler: () => handlers.sendBackward(),
     },
     {
       id: PAGED_OBJECT_SEND_TO_BACK,
       title: "Send to back",
       category: "Object",
+      when: notInsideAnEditContext,
       handler: () => handlers.sendToBack(),
     },
     {
       id: PAGED_OBJECT_GROUP,
       title: "Group",
       category: "Object",
+      when: notInsideAnEditContext,
       handler: () => handlers.group(),
     },
     {
       id: PAGED_OBJECT_UNGROUP,
       title: "Ungroup",
       category: "Object",
+      when: notInsideAnEditContext,
       handler: () => handlers.ungroup(),
     },
     {
       id: PAGED_OBJECT_SELECT_PARENT_GROUP,
       title: "Select parent group",
       category: "Object",
+      when: notInsideAnEditContext,
       handler: () => handlers.selectParentGroup(),
     },
   ];

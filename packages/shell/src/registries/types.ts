@@ -48,3 +48,35 @@ export type DockEdge = "left" | "right" | "top" | "bottom" | "center";
 export type VisibilityPredicate =
   | string
   | ((state: unknown) => boolean);
+
+/**
+ * Evaluate a {@link VisibilityPredicate} against application state.
+ *
+ * THE ONE EVALUATOR. It lived inside `keybinding.ts` and was therefore
+ * the reason `when` was honoured by exactly one of the five registries
+ * that declare it — the other four had no way to ask without copying
+ * it. Sharing it is what lets `when` mean the same thing everywhere,
+ * which is the only way a contribution author can trust it.
+ *
+ * Absent ⇒ enabled: a contribution that says nothing is available.
+ * A THROWING predicate ⇒ DISABLED, deliberately. A predicate that
+ * cannot decide has not established that the command is safe to offer,
+ * and offering it anyway is how a broken guard becomes a live command.
+ *
+ * The string DSL form is inert (always false) until an evaluator lands
+ * — the same posture the type documents.
+ */
+export function isEnabled(
+  when: VisibilityPredicate | undefined,
+  getState: (() => unknown) | undefined,
+): boolean {
+  if (when === undefined) return true;
+  if (typeof when === "function") {
+    try {
+      return Boolean(when(getState?.()));
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}

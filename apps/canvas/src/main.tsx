@@ -1422,6 +1422,9 @@ function CanvasAppIntegration() {
     const objectDeps: ObjectCommandDeps = {
       client,
       getSelection: () => selectionRef.current.elementSelection,
+      // ADR 024 — read through the SAME ref the undo routing uses, so
+      // the two cannot disagree about which context is active.
+      activeEditContext: () => editContextRef.current.active,
       setSelection: async (ids) => {
         const applied = await client.setElementSelection(ids, "replace");
         selectionRef.current.setElementSelection(applied);

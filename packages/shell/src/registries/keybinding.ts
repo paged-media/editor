@@ -18,6 +18,7 @@
  */
 
 import type { CommandRegistry } from "./command";
+import { isEnabled } from "./types";
 import type { Disposable, VisibilityPredicate } from "./types";
 
 /**
@@ -128,21 +129,6 @@ function eventMatches(combo: KeyCombo, event: KeyboardEvent): boolean {
  *  function form is called with the state snapshot; the string DSL
  *  form is inert (treated as disabled) until an evaluator lands —
  *  matching `VisibilityPredicate`'s documented contract. */
-function isEnabled(
-  when: VisibilityPredicate | undefined,
-  getState: (() => unknown) | undefined,
-): boolean {
-  if (when === undefined) return true;
-  if (typeof when === "function") {
-    try {
-      return Boolean(when(getState?.()));
-    } catch {
-      return false;
-    }
-  }
-  return false;
-}
-
 /**
  * Backing for `register` / dispatch. Takes the command registry so
  * matched keybindings can invoke their target command; the optional

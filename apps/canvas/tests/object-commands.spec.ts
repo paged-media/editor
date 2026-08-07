@@ -39,11 +39,15 @@ import type { ElementId, SceneTreeNode } from "@paged-media/client";
 
 import {
   arrangePlan,
+  arrangeSelection,
   elementKey,
   groupMembersOf,
+  groupSelection,
   parentGroupOf,
+  ungroupSelection,
   zSlots,
   type ArrangeTarget,
+  type ObjectCommandDeps,
 } from "../src/object-commands";
 
 const rect = (id: string): ElementId => ({ kind: "rectangle", id });
@@ -311,5 +315,101 @@ test.describe("paged.object — the parentage + membership reads", () => {
     ]);
     expect(groupMembersOf(roots, "gInner")).toEqual([rect("deep")]);
     expect(groupMembersOf(roots, "nope")).toEqual([]);
+  });
+});
+
+
+// ── ADR 024 — the verbs must not reach the document from inside a
+//    plugin edit context ────────────────────────────────────────────
+//
+// THE DEFECT THIS PINS. These seven arrange and group PAGE ITEMS. They
+// read the host element selection — which, inside an edit context, IS
+// the frame the user entered (the shell selects the scope root on
+// entry). So editing a raster image or a spreadsheet and picking
+// `Object ▸ Send to back` silently reordered THE FRAME in the
+// document, and `Ungroup` on a group-backed plugin object destroyed
+// its structure. Live, undimmed, and silent either way.
+//
+// The assertion that matters is `mutate` NOT being called. A test that
+// only checked the report would pass while the mutation still landed.
+
+interface Recorded {
+  mutations: number;
+  reports: Array<{ severity: string; message: string }>;
+}
+
+function depsWith(
+  context: { type: string } | null,
+  selection: ElementId[] = [rect("a"), rect("b")],
+): {
+  deps: ObjectCommandDeps;
+  rec: Recorded;
+} {
+  const rec: Recorded = { mutations: 0, reports: [] };
+  const deps: ObjectCommandDeps = {
+    client: {
+      mutate: async () => {
+        rec.mutations += 1;
+        return {
+          kind: "mutationApplied",
+          payload: { createdId: null, pageIds: [] },
+        } as never;
+      },
+      sceneTree: async () => [group("g1", [leaf("a"), leaf("b")])],
+      setElementSelection: async (ids) => ids,
+      elementGeometry: async () => [],
+      layers: async () => [],
+    } as unknown as ObjectCommandDeps["client"],
+    getSelection: () => selection,
+    setSelection: async () => {},
+    report: (severity, message) => rec.reports.push({ severity, message }),
+    activeEditContext: () => context,
+  };
+  return { deps, rec };
+}
+
+/** Each verb with a selection it would actually act on — ungroup needs
+ *  a GROUP selected, so a shared selection would make its control case
+ *  pass for the wrong reason (nothing to ungroup, hence no mutation). */
+const VERBS: Array<
+  [string, (d: ObjectCommandDeps) => Promise<void>, ElementId[]]
+> = [
+  [
+    "arrange",
+    (d) => arrangeSelection(d, "front" as ArrangeTarget),
+    [rect("a"), rect("b")],
+  ],
+  ["group", groupSelection, [rect("a"), rect("b")]],
+  ["ungroup", ungroupSelection, [{ kind: "group", id: "g1" }]],
+];
+
+test.describe("paged.object — the edit-context guard", () => {
+  test("AC-OBJ-CTX-1 — at the document root the verbs reach the engine @feat:editor-tools.select.group-descent @level:happy", async () => {
+    // The CONTROL. Without it the guard tests below would pass just as
+    // well against a function that never mutates at all.
+    for (const [name, run, sel] of VERBS) {
+      const { deps, rec } = depsWith(null, sel);
+      await run(deps);
+      expect(rec.mutations, `${name} reached the engine`).toBeGreaterThan(0);
+    }
+  });
+
+  test("AC-OBJ-CTX-2 — inside a context NOTHING reaches the engine @feat:editor-tools.select.group-descent @level:edge", async () => {
+    for (const [name, run, sel] of VERBS) {
+      const { deps, rec } = depsWith({ type: "rasterImage" }, sel);
+      await run(deps);
+      expect(rec.mutations, `${name} sent no mutation`).toBe(0);
+    }
+  });
+
+  test("AC-OBJ-CTX-3 — and the user is TOLD, naming the context @level:edge", async () => {
+    // Silence is what made the original defect invisible. The command
+    // was reachable — a shortcut has no menu to grey — so the user
+    // pressed something and is owed an answer.
+    const { deps, rec } = depsWith({ type: "sheet" });
+    await ungroupSelection(deps);
+    expect(rec.reports).toHaveLength(1);
+    expect(rec.reports[0]!.message).toContain("sheet");
+    expect(rec.reports[0]!.message).toContain("Esc");
   });
 });
