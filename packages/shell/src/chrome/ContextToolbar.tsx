@@ -30,6 +30,10 @@ import type { ReactNode } from "react";
 import { Icon } from "../icons";
 import { useRegistries } from "../state/registries-context";
 import { useWorkflowMode } from "../state/workflow-mode-context";
+import {
+  useOptionalEditContextStack,
+  type EditContextFrame,
+} from "../state/edit-context-stack";
 
 export interface ContextToolbarProps {
   /** Editor handle threaded into the mode's toolbar segment. */
@@ -43,11 +47,35 @@ export function ContextToolbar({ paged, right }: ContextToolbarProps) {
   const { modes, commands } = useRegistries();
   const contribution = modes.get(mode);
   const Left = contribution?.toolbarLeft;
+  // ADR 024 — the toolbar follows the CONTEXT when there is one.
+  //
+  // Its left segment is the workflow MODE's, and a mode is a
+  // workspace-level choice while a context is a content-level fact —
+  // two different axes, of which only one was wired. So editing a
+  // spreadsheet kept the host's design-tool pills on the bar directly
+  // above the canvas: controls for page items, over content that has
+  // none.
+  //
+  // This does NOT decide the larger question ADR 024 leaves open (may a
+  // context CONTRIBUTE toolbar segments?). It needs no new contribution
+  // surface at all — the context already declares `toolIds`, and the
+  // tool registry already knows their titles. When a context is active
+  // the bar states where you are and what applies; otherwise nothing
+  // changes.
+  const editContexts = useOptionalEditContextStack();
+  const active = editContexts?.active ?? null;
 
   return (
-    <div data-context-toolbar data-mode={mode} style={barStyle}>
+    <div
+      data-context-toolbar
+      data-mode={mode}
+      data-edit-context={active?.type ?? undefined}
+      style={barStyle}
+    >
       <div style={leftStyle}>
-        {Left ? (
+        {active ? (
+          <ContextSegment frame={active} />
+        ) : Left ? (
           <Left paged={paged} />
         ) : (
           <span className="pg-ui-xs" style={{ paddingLeft: 2 }}>
@@ -68,6 +96,37 @@ export function ContextToolbar({ paged, right }: ContextToolbarProps) {
         />
       </div>
     </div>
+  );
+}
+
+/**
+ * What the bar says while a plugin content type is being edited: the
+ * content you are in, and the tools that apply to it.
+ *
+ * The empty case is a STATEMENT, not a blank. A context declaring
+ * `toolIds: []` has said no canvas tool edits its content — a
+ * spreadsheet, a web frame, a data binding — and saying so out loud is
+ * the point of the declaration. Rendering nothing there would leave the
+ * user to infer it from an absence, which is how they conclude the app
+ * is broken.
+ */
+function ContextSegment({ frame }: { frame: EditContextFrame }) {
+  const { tools } = useRegistries();
+  const label = frame.label || frame.type;
+  const applicable = (frame.toolIds ?? [])
+    .map((id) => tools.get(id as never)?.title)
+    .filter((t): t is string => Boolean(t));
+
+  return (
+    <span className="pg-ui-xs" style={{ paddingLeft: 2 }} data-context-segment>
+      Editing {label}
+      {frame.toolIds === null
+        ? ""
+        : applicable.length > 0
+          ? ` — ${applicable.join(", ")}`
+          : " — no canvas tools apply here"}
+      <span style={{ opacity: 0.6 }}> · Esc to leave</span>
+    </span>
   );
 }
 

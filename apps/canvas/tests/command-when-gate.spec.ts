@@ -238,3 +238,77 @@ test.describe("Window menu — panel applicability", () => {
     expect(panelBelongsHere(null, "draw.stroke")).toBe(true);
   });
 });
+
+// ── ADR 024 — the context toolbar states where you are ──────────────
+//
+// The bar's left segment came from the workflow MODE, and a mode is a
+// workspace-level choice while a context is a content-level fact — two
+// axes, one wired. So editing a spreadsheet kept the host's design-tool
+// pills on the strip directly above the canvas: controls for page items
+// over content that has none.
+//
+// The segment's TEXT is the contract, so it is asserted as text. The
+// empty case especially: a context declaring `toolIds: []` has said no
+// canvas tool edits its content, and saying that out loud is the point
+// of the declaration — rendering a blank would leave the user to infer
+// it from an absence, which is how people conclude an app is broken.
+
+/** The segment's rule, mirrored from `ContextToolbar.ContextSegment`. */
+function segmentText(
+  frame: { label: string; type: string; toolIds: readonly string[] | null },
+  titleOf: (id: string) => string | undefined,
+): string {
+  const label = frame.label || frame.type;
+  const applicable = (frame.toolIds ?? [])
+    .map(titleOf)
+    .filter((t): t is string => Boolean(t));
+  const tail =
+    frame.toolIds === null
+      ? ""
+      : applicable.length > 0
+        ? ` — ${applicable.join(", ")}`
+        : " — no canvas tools apply here";
+  return `Editing ${label}${tail} · Esc to leave`;
+}
+
+const TITLES: Record<string, string> = {
+  "media.paged.image.tool.brush": "Brush",
+  "paged.tool.type": "Type",
+};
+const titleOf = (id: string) => TITLES[id];
+
+test.describe("context toolbar — the segment", () => {
+  test("AC-BAR-1 — names the content type and its tools @level:happy", () => {
+    const t = segmentText(
+      { label: "rasterImage", type: "rasterImage", toolIds: ["media.paged.image.tool.brush"] },
+      titleOf,
+    );
+    expect(t).toContain("Editing rasterImage");
+    expect(t).toContain("Brush");
+    expect(t, "and the way out is always shown").toContain("Esc to leave");
+  });
+
+  test("AC-BAR-2 — DECLARED-EMPTY says so out loud @level:edge", () => {
+    // The assertion that matters. A blank here would be read as a bug.
+    const t = segmentText({ label: "sheet", type: "sheet", toolIds: [] }, titleOf);
+    expect(t).toContain("no canvas tools apply here");
+  });
+
+  test("AC-BAR-3 — an UNDECLARED list claims nothing about tools @level:edge", () => {
+    // `null` means the context never said. It must not be reported as
+    // "no tools apply", which is a different and much stronger claim.
+    const t = segmentText({ label: "legacy", type: "legacy", toolIds: null }, titleOf);
+    expect(t).not.toContain("no canvas tools apply");
+    expect(t).toContain("Editing legacy");
+  });
+
+  test("AC-BAR-4 — a tool the registry does not know is dropped, not printed raw @level:edge", () => {
+    // A stale id must not put a namespaced string in front of a user.
+    const t = segmentText(
+      { label: "sheet", type: "sheet", toolIds: ["media.paged.gone.tool.x"] },
+      titleOf,
+    );
+    expect(t).not.toContain("media.paged.gone");
+    expect(t).toContain("no canvas tools apply here");
+  });
+});
