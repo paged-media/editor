@@ -225,6 +225,8 @@ export {
   createMenuRegistry,
   createOverlayRegistry,
   createToolRegistry,
+  isEnabled,
+  panelBelongsHere,
 } from "./registries";
 
 // ── W3.2 — edit-context + object-type registries (B-02 / W-03) ──

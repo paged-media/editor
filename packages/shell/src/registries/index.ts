@@ -18,6 +18,7 @@
  */
 
 export type { Disposable, DockEdge, VisibilityPredicate } from "./types";
+export { isEnabled, panelBelongsHere } from "./types";
 
 export {
   createPanelRegistry,

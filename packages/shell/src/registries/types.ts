@@ -80,3 +80,41 @@ export function isEnabled(
   }
   return false;
 }
+
+/**
+ * ADR 024 — may a panel be OFFERED where the user currently is?
+ *
+ * `false` only when ANOTHER edit context claims this panel and that
+ * context is not the active one. Deliberately narrow:
+ *
+ *   · a panel no context claims stays offered, because host panels and
+ *     the selection-driven plugin panels (paged.image's adjustments on
+ *     a selected frame) are legitimately usable without entering
+ *     anything;
+ *   · the ACTIVE context's own panels stay offered, obviously;
+ *   · only a panel that is somebody ELSE'S content surface is hidden —
+ *     "Vector stroke" while editing a Word document is a control for
+ *     content that is not on screen and cannot be reached from here.
+ *
+ * Pure and exported so it can be tested without a shell: `state` is the
+ * `PagedEditor` handle, read structurally rather than by type, because
+ * this lives below the module that defines it.
+ */
+export function panelBelongsHere(state: unknown, panelId: string): boolean {
+  const s = state as {
+    editContext?: { type?: string } | null;
+    registries?: { editContexts?: { list?: () => unknown[] } };
+  } | null;
+  const list = s?.registries?.editContexts?.list?.();
+  if (!list) return true; // No registry to ask — offer it.
+  const activeType = s?.editContext?.type ?? null;
+  for (const raw of list) {
+    const c = raw as { type?: string; panelIds?: readonly string[] };
+    if (!c.panelIds?.includes(panelId)) continue;
+    // Claimed by the active context → offered.
+    if (c.type === activeType) return true;
+    // Claimed by a context that is not active → not offered.
+    return false;
+  }
+  return true;
+}

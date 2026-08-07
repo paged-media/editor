@@ -182,3 +182,59 @@ test.describe("edit context — toolIds semantics", () => {
     expect(restrictionOf(null)).not.toEqual(restrictionOf([]));
   });
 });
+
+// ── ADR 024 — the Window menu stops offering other content types' panels
+//
+// It listed EVERY registered panel in EVERY context, so editing a Word
+// document offered "Vector stroke" and the spreadsheet panel — controls
+// for content not on screen and unreachable from where the user stands.
+//
+// The rule is deliberately narrow, and these pin both halves of that:
+// a panel nobody claims stays offered (host panels, and the
+// selection-driven plugin panels that work without entering anything),
+// and only somebody ELSE'S content surface is hidden.
+
+import { panelBelongsHere } from "@paged-media/shell";
+
+const CONTEXTS = [
+  { type: "vectorGraphic", panelIds: ["draw.stroke"] },
+  { type: "sheet", panelIds: ["sheet.workbook"] },
+];
+
+const stateIn = (activeType: string | null) => ({
+  editContext: activeType ? { type: activeType } : null,
+  registries: { editContexts: { list: () => CONTEXTS } },
+});
+
+test.describe("Window menu — panel applicability", () => {
+  test("AC-WIN-1 — an unclaimed panel is always offered @level:happy", () => {
+    // The CONTROL, and the half that keeps this narrow. Host panels and
+    // selection-driven plugin panels are legitimately usable anywhere.
+    expect(panelBelongsHere(stateIn(null), "paged.layers")).toBe(true);
+    expect(panelBelongsHere(stateIn("sheet"), "paged.layers")).toBe(true);
+  });
+
+  test("AC-WIN-2 — the ACTIVE context's own panel is offered @level:happy", () => {
+    expect(panelBelongsHere(stateIn("sheet"), "sheet.workbook")).toBe(true);
+  });
+
+  test("AC-WIN-3 — ANOTHER content type's panel is NOT offered @level:edge", () => {
+    // The defect, in one line: inside a spreadsheet, the vector stroke
+    // panel is a control for content that is not on screen.
+    expect(panelBelongsHere(stateIn("sheet"), "draw.stroke")).toBe(false);
+  });
+
+  test("AC-WIN-4 — at the document root, no content-type panel is offered @level:edge", () => {
+    // Not standing in any content type, so neither content surface
+    // applies — but the unclaimed panels still do (AC-WIN-1).
+    expect(panelBelongsHere(stateIn(null), "draw.stroke")).toBe(false);
+    expect(panelBelongsHere(stateIn(null), "sheet.workbook")).toBe(false);
+  });
+
+  test("AC-WIN-5 — with no registry to ask, everything is offered @level:edge", () => {
+    // Degradation: a shell mounted without the edit-context registry
+    // must not hide surfaces on the strength of an absent answer.
+    expect(panelBelongsHere({}, "draw.stroke")).toBe(true);
+    expect(panelBelongsHere(null, "draw.stroke")).toBe(true);
+  });
+});

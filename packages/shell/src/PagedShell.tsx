@@ -138,6 +138,7 @@ import { useSpringLoadedTools } from "./tools/use-spring-loaded-tools";
 import type { PagedEditor } from "./state/paged-editor";
 import type { OverlayContribution } from "./registries/overlay";
 import type { PanelContribution, PanelProps } from "./registries/panel";
+import { panelBelongsHere } from "./registries/types";
 import type { ToolContribution } from "./registries/tool";
 import type { Disposable } from "./registries/types";
 import { useFps } from "./hooks/useFps";
@@ -464,6 +465,22 @@ function ShellChrome({
             path: `Window/${p.title}`,
             command: `paged.panel.show.${p.id}`,
             group: "panels",
+            // ADR 024 — a panel that belongs to a DIFFERENT content type
+            // is not offered here.
+            //
+            // The Window menu listed every registered panel in every
+            // context, so editing a Word document offered "Vector
+            // stroke" and the spreadsheet panel — surfaces for content
+            // that is not on screen and cannot be reached from where the
+            // user is standing.
+            //
+            // The rule is deliberately narrow: hide a panel only when
+            // ANOTHER context claims it and that context is not active.
+            // A panel no context claims stays listed, because host
+            // panels and the selection-driven plugin panels (paged.image
+            // adjustments on a selected frame) are legitimately usable
+            // without entering anything.
+            when: (state) => panelBelongsHere(state, p.id),
           }),
         );
       } catch {
