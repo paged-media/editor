@@ -159,6 +159,13 @@ export function EditContextController() {
   /** The live tool, readable from the entry effect without making that
    *  effect depend on it (it is keyed on the frame, not the tool). */
   const activeToolRef = useRef<string | null>(null);
+  /** The primary this entry ASKED FOR, until the tool store reports it
+   *  in hand. While it is pending the leave-by-tool rule must not act:
+   *  `setBaseTool` is a state update, so for at least one render the
+   *  tool still in hand is the OUTGOING one — which is outside the
+   *  context's set by construction, and would read as "the user reached
+   *  for another tool" on the very entry that requested the swap. */
+  const pendingPrimaryRef = useRef<string | null>(null);
   useEffect(() => {
     if (!active) {
       // FORGET the last entry when the stack empties. Without this the
@@ -214,7 +221,15 @@ export function EditContextController() {
     // primary and must not fall back to the host's — the context said
     // no tool applies.
     const primary = active.toolIds?.[0];
-    if (primary && tool) tool.setBaseTool(primary as ToolId);
+    if (primary && tool) {
+      tool.setBaseTool(primary as ToolId);
+      // Latched only when a swap was actually REQUESTED. With no tool
+      // store there is nothing to wait for, and latching would disable
+      // the rule for the whole context.
+      pendingPrimaryRef.current = primary;
+    } else {
+      pendingPrimaryRef.current = null;
+    }
     // The tool this entry STARTS from. The leave-by-tool rule below
     // fires on a CHANGE away from it, never on the tool that was
     // already in hand — otherwise a context declaring `toolIds: []`
@@ -246,12 +261,24 @@ export function EditContextController() {
   activeToolRef.current = activeTool ?? null;
   useEffect(() => {
     if (!active || !active.toolIds || !activeTool) return;
+    // The enter effect owns the first tool and has not run yet.
+    if (enteredKey !== lastEnteredRef.current) return;
+    // THE ENTRY'S SWAP IS STILL IN FLIGHT. Caught by the e2e suite
+    // after this rule first shipped: `setBaseTool` is a state update,
+    // so on the render right after entry the tool in hand is the
+    // OUTGOING one — outside the set by construction — and the rule
+    // exited the very context it was entering. The breadcrumb never
+    // appeared and four layers-retarget tests plus the sheet modal
+    // session went red.
+    //
+    // So wait for the requested primary to actually land before this
+    // rule may act at all.
+    if (pendingPrimaryRef.current !== null) {
+      if (activeTool !== pendingPrimaryRef.current) return;
+      pendingPrimaryRef.current = null;
+    }
     // Unchanged since entry — the user has not reached for anything.
     if (activeTool === toolAtEntryRef.current) return;
-    // Not yet swapped for this entry — the enter effect owns the first
-    // tool and has not run. Acting now would exit the context we are in
-    // the middle of entering.
-    if (enteredKey !== lastEnteredRef.current) return;
     if (active.toolIds.includes(activeTool)) return;
     // COMMIT, not cancel: the user reached for another tool, they did
     // not press Esc. Discarding their in-flight edit because they
