@@ -46,6 +46,7 @@
 import type { CursorSpec, ToolContribution } from "@paged-media/shell";
 
 import { createEllipseHandler } from "./handlers/ellipse-tool";
+import { createEyedropperHandler } from "./handlers/eyedropper-tool";
 import { createGradientFeatherHandler } from "./handlers/gradient-feather-tool";
 import { createGradientSwatchHandler } from "./handlers/gradient-tool";
 import { createLineHandler } from "./handlers/line-tool";
@@ -412,8 +413,38 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     isGroupDefault: true,
     status: "planned",
   },
-  // RETIRED — Eyedropper and Measure were inert built-ins holding `i`
-  // and `k` while paged.draw shipped working versions of BOTH
+  // C-32 — the Eyedropper is BACK in the host, and this time it works.
+  //
+  // It was retired as an inert built-in because paged.draw shipped a
+  // real one; that freed the rail but made the capability unreachable
+  // for paged.image, which cannot import from a sibling bundle under
+  // the isolation contract. A capability whose vocabulary is HOST
+  // vocabulary belongs to the host once a second plugin needs it, and
+  // colour is host vocabulary.
+  //
+  // The two Eyedroppers are NOT duplicates and both stay: paged.draw's
+  // samples typed ELEMENT PROPERTIES (fill/stroke/weight/opacity) and
+  // says in its own header that it does not do pixels; this one samples
+  // the COMPOSITED PIXEL, which only the host can see. Reclaiming `i`
+  // is safe — paged.draw's lives on `shift+d`.
+  {
+    id: "paged.tool.eyedropper",
+    title: "Eyedropper",
+    icon: "tool-eyedropper",
+    shortcut: "i",
+    group: "eyedropper",
+    section: "modNav",
+    // Order 0 + group default, ahead of paged.draw's `order: 2`. Not a
+    // land-grab: the group needs a default that WORKS EVERYWHERE, and
+    // this one does — draw's exists only when that bundle is loaded and
+    // is about vector appearance, while sampling a colour is something
+    // every context wants. The slot holds both; only the face changes.
+    order: 0,
+    isGroupDefault: true,
+    gesture: createEyedropperHandler,
+  },
+  // RETIRED — Measure was an inert built-in holding `k` while
+  // paged.draw shipped a working version
   // (`media.paged.draw.tool.eyedropper` on `shift+d`, joining this same
   // `eyedropper` slot, and `media.paged.draw.tool.measure` on `shift+m`
   // in its own slot). The dead built-in Eyedropper was even the slot's
