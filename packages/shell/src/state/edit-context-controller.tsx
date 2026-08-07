@@ -210,6 +210,39 @@ export function EditContextController() {
     }
   }, [active, enteredKey, tool]);
 
+  // ADR 024 — LEAVING BY TOOL, derived rather than wired per entry point.
+  //
+  // Picking a tool the context does not own means "I am done in here",
+  // and the ToolRail already implemented exactly that: commit the
+  // context, then activate. The problem was that it was the ONLY caller
+  // to do so — `Tools: <name>` from the palette, the tool's keyboard
+  // shortcut, and the cockpit toolbar's pills all called `setBaseTool`
+  // straight, leaving the user inside a context whose declared tool set
+  // no longer matched the active tool. Four surfaces for one action,
+  // one of them right.
+  //
+  // Watching the RESULT instead of patching each caller covers all of
+  // them, plus the ones that do not exist yet — a plugin command, a
+  // script. The rail's own commit becomes redundant and stays harmless.
+  //
+  // Ordering: the enter effect above sets the tool to `toolIds[0]`,
+  // which is in the set by construction, so entry can never trip this.
+  // The `enteredKey` guard is shared for the same reason it exists
+  // there — a re-entry on the same element must not be suppressed.
+  const activeTool = tool?.effectiveTool;
+  useEffect(() => {
+    if (!active || active.toolIds.length === 0 || !activeTool) return;
+    // Not yet swapped for this entry — the enter effect owns the first
+    // tool and has not run. Acting now would exit the context we are in
+    // the middle of entering.
+    if (enteredKey !== lastEnteredRef.current) return;
+    if (active.toolIds.includes(activeTool)) return;
+    // COMMIT, not cancel: the user reached for another tool, they did
+    // not press Esc. Discarding their in-flight edit because they
+    // clicked the wrong thing would be its own defect.
+    commit();
+  }, [active, activeTool, commit, enteredKey]);
+
   // Auto-exit when the selection no longer includes the scope root (the
   // user selected something outside the context — a marquee elsewhere,
   // an empty click). Mirrors usePathEditMode's auto-exit.
