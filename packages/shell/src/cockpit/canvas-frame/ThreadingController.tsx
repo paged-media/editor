@@ -320,6 +320,12 @@ export function ThreadingController() {
       const next = new Set<string>();
       for (const g of geomRef.current) {
         if (g.id.kind !== "textFrame") continue;
+        // C-23 — a pasteboard frame has no page to index or hit-test
+        // against. Threading is a PAGE-level relationship (ports are
+        // drawn in page space, and `hitFrame` probes a page), so an
+        // off-page frame is correctly out of scope here rather than
+        // something to fall back for.
+        if (!g.pageId) continue;
         const pageIdx = pageIds.indexOf(g.pageId);
         const rect = rects[pageIdx];
         if (!rect) continue;

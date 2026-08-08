@@ -159,6 +159,10 @@ function useMissingLinksByPage(
         if (cancelled) return;
         const next = new Map<number, number>();
         for (const g of geoms) {
+          // C-23 — a pasteboard element belongs to no page, so it is
+          // not counted in a PER-PAGE map. Skipping is the honest
+          // answer here; a document map is page-indexed by definition.
+          if (!g.pageId) continue;
           const idx = pageIndexOf.get(g.pageId);
           if (idx == null) continue;
           next.set(idx, (next.get(idx) ?? 0) + 1);

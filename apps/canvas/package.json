@@ -21,12 +21,12 @@
     "fonts:resolve": "tsx scripts/fonts-resolve.ts"
   },
   "dependencies": {
-    "@paged-media/canvas-wasm": "0.61.0",
+    "@paged-media/canvas-wasm": "0.61.1",
     "@paged-media/catalog": "workspace:*",
     "@paged-media/client": "workspace:*",
     "@paged-media/doc": "0.1.0-canary.0",
-    "@paged-media/plugin-api": "0.2.29-canary.0",
-    "@paged-media/plugin-sdk": "0.2.29-canary.0",
+    "@paged-media/plugin-api": "0.2.30-canary.0",
+    "@paged-media/plugin-sdk": "0.2.30-canary.0",
     "@paged-media/publish": "0.1.0-canary.0",
     "@paged-media/pdf": "0.2.5-canary.0",
     "@paged-media/shell": "workspace:*",
