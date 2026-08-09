@@ -314,15 +314,22 @@ test.describe("Export family — Export inspector", () => {
       "JPEG",
     );
 
-    // WHAT THIS TEST DOES NOT PROVE, said rather than implied: the
-    // white FLATTEN. JPEG has no alpha, so `encodePageImage` draws onto
-    // an opaque white canvas first — without it, transparent pixels
-    // encode as whatever was in the buffer, usually black. This fixture
-    // renders an opaque page, so the flatten is never exercised here,
-    // and asserting the file is valid JPEG would pass either way.
-    // Proving it needs a page with real transparency and a pixel
-    // sample; filed as the follow-up rather than faked with an
-    // assertion that cannot fail.
+    // THE FLATTEN IS UNTESTED, AND UNTESTABLE FROM HERE — which is a
+    // stronger statement than "this fixture happens to be opaque", and
+    // is why no follow-up test is filed.
+    //
+    // `encodePageImage` flattens onto white before JPEG encoding. That
+    // cannot be exercised through this path at all: core's
+    // `render_snapshot` paints a white background by construction and
+    // asserts an empty page returns (255,255,255,255) per pixel, so
+    // EVERY page snapshot is already opaque. No input reaching the
+    // encoder has alpha.
+    //
+    // The flatten is therefore defence against a change that has not
+    // happened — a transparent-background PNG export, the one reason to
+    // pick PNG over JPEG for a page. Whoever adds that option: the JPEG
+    // lane will silently render transparent regions BLACK without the
+    // flatten, and THAT is when this becomes testable.
     await setMode(page, "design");
   });
 

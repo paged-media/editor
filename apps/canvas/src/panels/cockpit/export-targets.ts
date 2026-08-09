@@ -334,13 +334,25 @@ function defaultDownload(bytes: Uint8Array, filename: string): void {
  * PNG passes through untouched — no decode, no re-encode, so a lossless
  * export stays byte-for-byte what the renderer produced.
  *
- * JPEG HAS NO ALPHA, and that is the whole reason this function is not
- * a one-liner. A page render can carry transparency, and handing an RGBA
- * bitmap to a JPEG encoder leaves the transparent pixels as whatever
- * happened to be in the buffer — usually BLACK. So the bitmap is drawn
- * onto an opaque WHITE canvas first. White because that is what paper
- * is, and because it matches what the PDF export puts behind the same
- * page.
+ * JPEG HAS NO ALPHA, so the bitmap is drawn onto an opaque WHITE canvas
+ * before encoding — white because that is what paper is, and because it
+ * matches what the PDF export puts behind the same page.
+ *
+ * BE PRECISE ABOUT WHY, because the obvious reason is not the true one
+ * TODAY. A page snapshot is ALREADY opaque: core's `render_snapshot`
+ * documents "background is white (matching the renderer's default for
+ * `render_document`)" and its own test asserts an empty page comes back
+ * `(255, 255, 255, 255)` in every pixel. So no transparency currently
+ * reaches this function, and the flatten changes nothing.
+ *
+ * It stays anyway, and this is the argument: the day a
+ * transparent-background PNG export appears — an ordinary ask, and the
+ * only reason anyone picks PNG over JPEG for a page — the alpha becomes
+ * real, and WITHOUT this the JPEG lane fails by rendering every
+ * transparent region BLACK. A silent, ugly, whole-page failure. One
+ * `fillRect` is a cheap price for removing that trapdoor, provided
+ * nobody later reads this as "transparency happens here" and builds on
+ * it. It does not, yet.
  *
  * Returns `null` when the realm has no imaging primitives (Node), so the
  * caller can fall back rather than throw.
