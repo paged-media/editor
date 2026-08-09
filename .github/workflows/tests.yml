@@ -287,6 +287,21 @@ jobs:
         working-directory: editor
         run: pnpm --filter ./apps/canvas exec playwright install --with-deps chromium
 
+      # --project is REQUIRED here, not tidiness. Without it Playwright
+      # runs EVERY project in the config, which on a Linux runner means
+      # `journeys-gpu` and `demo-capture` — both of which need real Chrome
+      # (`channel: "chrome"`), and `journeys-gpu` additionally passes
+      # `--use-angle=metal`, a macOS-only flag. playwright.config.ts says
+      # of that lane, in its own words, "it cannot run on the Linux CI
+      # runners, and no workflow invokes it". That was false: this step
+      # invoked it, its one WebGPU test failed for want of an adapter, and
+      # because the converter drops the project dimension the failure
+      # collided with the SAME test's pass from the CPU `journeys` lane on
+      # one test_id — red winning. That single phantom failure is what put
+      # THREE features red on state.paged.media (command-palette,
+      # context-toolbars, panels.properties — the latter two attached only
+      # because the ingest test-map unions them onto every journey spec).
+      # Naming the two real gating projects fixes all of it.
       - name: playwright (lean surface, shard ${{ matrix.shard }})
         working-directory: editor/apps/canvas
         env:
@@ -294,6 +309,8 @@ jobs:
           PAGED_CI_LEAN: "1"
         run: |
           npx playwright test \
+            --project=chromium \
+            --project=journeys \
             --shard=${{ matrix.shard }}/${{ env.SHARDS }} \
             --reporter=blob
 
