@@ -373,6 +373,38 @@ export function ExportInspectorPanel(_props: PanelProps) {
                   <option value="300">300 ppi (print)</option>
                 </select>
               </SettingRow>
+              <SettingRow label="Format">
+                <select
+                  data-export-image-format
+                  value={image.format}
+                  disabled={!loaded}
+                  onChange={(e) =>
+                    setImageSettings({
+                      format: e.target.value as "png" | "jpeg",
+                    })
+                  }
+                >
+                  <option value="png">PNG (lossless, alpha)</option>
+                  <option value="jpeg">JPEG (smaller, no alpha)</option>
+                </select>
+              </SettingRow>
+              {image.format === "jpeg" ? (
+                <SettingRow label="Quality">
+                  <select
+                    data-export-image-quality
+                    value={String(image.quality)}
+                    disabled={!loaded}
+                    onChange={(e) =>
+                      setImageSettings({ quality: Number(e.target.value) })
+                    }
+                  >
+                    <option value="0.6">60% (smallest)</option>
+                    <option value="0.8">80%</option>
+                    <option value="0.9">90% (default)</option>
+                    <option value="1">100% (largest)</option>
+                  </select>
+                </SettingRow>
+              ) : null}
               <SettingRow label="Pages">
                 <select
                   data-export-image-scope
@@ -424,7 +456,8 @@ export function ExportInspectorPanel(_props: PanelProps) {
                 className="pg-ui-xs"
                 style={{ marginTop: 8, color: "var(--status-approved)" }}
               >
-                Exported {imagePhase.files} PNG
+                Exported {imagePhase.files}{" "}
+                {image.format === "jpeg" ? "JPEG" : "PNG"}
                 {imagePhase.files === 1 ? "" : "s"}.
               </div>
             )}

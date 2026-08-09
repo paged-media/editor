@@ -274,6 +274,58 @@ test.describe("Export family — Export inspector", () => {
     await setMode(page, "design");
   });
 
+  test("E-2 — JPEG is a real second FORMAT, flattened onto white @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @level:gesture", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    await loadDoc(page, CLEAN);
+    await setMode(page, "export");
+    await page.locator('[data-output-nav="image"]').click();
+    await expect(page.locator("[data-export-inspector-panel]")).toBeVisible();
+
+    // Quality is a JPEG-only concern, so it is absent for PNG. A
+    // control that does nothing should not be on screen.
+    await expect(page.locator("[data-export-image-quality]")).toHaveCount(0);
+    await page.locator("[data-export-image-format]").selectOption("jpeg");
+    await expect(page.locator("[data-export-image-quality]")).toBeVisible();
+
+    await page.locator("[data-export-image-scope]").selectOption("current");
+    const dl = page.waitForEvent("download");
+    await page
+      .locator('[data-cockpit-action="export-inspector-run-image"]')
+      .click();
+    const download = await dl;
+
+    // THE EXTENSION FOLLOWS THE BYTES. `.jpg` here is not cosmetic —
+    // the encoder falls back to PNG in a realm without imaging
+    // primitives, and the filename tracks what was actually written, so
+    // a file is never mislabelled.
+    expect(download.suggestedFilename()).toMatch(/\.jpg$/);
+    // …and the JPEG magic confirms the re-encode really happened rather
+    // than PNG bytes wearing a .jpg name.
+    const stream = await download.createReadStream();
+    const head: Buffer[] = [];
+    for await (const chunk of stream) head.push(chunk as Buffer);
+    const bytes = Buffer.concat(head);
+    expect(bytes[0], "JPEG SOI marker").toBe(0xff);
+    expect(bytes[1]).toBe(0xd8);
+
+    await expect(page.locator("[data-export-image-done]")).toContainText(
+      "JPEG",
+    );
+
+    // WHAT THIS TEST DOES NOT PROVE, said rather than implied: the
+    // white FLATTEN. JPEG has no alpha, so `encodePageImage` draws onto
+    // an opaque white canvas first — without it, transparent pixels
+    // encode as whatever was in the buffer, usually black. This fixture
+    // renders an opaque page, so the flatten is never exercised here,
+    // and asserting the file is valid JPEG would pass either way.
+    // Proving it needs a page with real transparency and a pixel
+    // sample; filed as the follow-up rather than faked with an
+    // assertion that cannot fail.
+    await setMode(page, "design");
+  });
+
   // TODO(ADR-022 Phase 5): IDML is now the paged.publish plugin exporter. Rewrite
   // against the "Plugin exports" section (click
   // `[data-plugin-export="media.paged.publish.exporter.idml"]`, assert the `.idml`

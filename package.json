@@ -22,7 +22,12 @@
   },
   "pnpm": {
     "overrides": {
-      "esbuild@>=0.27.3 <0.28.1": "^0.28.1"
+      "esbuild@>=0.27.3 <0.28.1": "^0.28.1",
+      "@paged-media/doc": "link:../plugins/plugin-doc/packages/doc-bundle",
+      "@paged-media/web": "link:../plugins/plugin-web/packages/web-bundle",
+      "@paged-media/draw": "link:../plugins/plugin-draw/packages/draw-bundle",
+      "@paged-media/sheet": "link:../plugins/plugin-sheets/packages/sheet-bundle",
+      "@paged-media/image": "link:../plugins/plugin-image/glue"
     }
   }
 }

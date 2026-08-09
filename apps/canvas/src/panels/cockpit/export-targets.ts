@@ -140,6 +140,12 @@ export interface ImageSettings {
    *  containment those artboards provide is already a page here, so
    *  what was missing was only the ability to name a SUBSET. */
   scope: "all" | "current" | "range";
+  /** Output container. PNG is lossless with alpha; JPEG is smaller and
+   *  has NO alpha, which is why the encoder flattens onto white first —
+   *  see `encodePageImage`. */
+  format: "png" | "jpeg";
+  /** JPEG quality, 0.5–1. Ignored for PNG. */
+  quality: number;
   /** A 1-based page list like `"1-3,5,8-10"`. Only read when
    *  `scope === "range"`. Kept as the typed STRING rather than a parsed
    *  array so a half-typed entry survives a re-render — parsing on
@@ -181,7 +187,15 @@ export function parsePageRange(
 }
 
 const IMAGE_KEY = "paged.export.image.v1";
-const IMAGE_DEFAULTS: ImageSettings = { dpi: 150, scope: "all", range: "" };
+const IMAGE_DEFAULTS: ImageSettings = {
+  dpi: 150,
+  scope: "all",
+  range: "",
+  format: "png",
+  // 0.9, not 0.8: these are PAGE renders with type on them, and JPEG
+  // ringing around glyph edges is the first thing a designer notices.
+  quality: 0.9,
+};
 
 let imageSettings: ImageSettings = loadImageSettings();
 const imageListeners = new Set<() => void>();
@@ -283,11 +297,22 @@ export async function runImageExport(
     const widthPt = pageSizesPt[i]?.[0] ?? 595; // A4-ish fallback
     const widthPx = pngWidthPx(widthPt, settings.dpi);
     const snap = await client.requestSnapshot(pageId, widthPx, settings.dpi);
-    const bytes = Uint8Array.from(snap.pngBytes);
+    const png = Uint8Array.from(snap.pngBytes);
+    const encoded = await encodePageImage(
+      png,
+      settings.format,
+      settings.quality,
+    );
+    // A realm that cannot encode JPEG falls back to the PNG it already
+    // has rather than writing nothing — the page still lands, and the
+    // extension follows the bytes so the file is never mislabelled.
+    const isJpeg = settings.format === "jpeg" && encoded !== null;
+    const bytes = encoded ?? png;
+    const ext = isJpeg ? "jpg" : "png";
     const label =
       indices.length === 1
-        ? `${base}.png`
-        : `${base}-p${String(i + 1).padStart(pad, "0")}.png`;
+        ? `${base}.${ext}`
+        : `${base}-p${String(i + 1).padStart(pad, "0")}.${ext}`;
     triggerDownload(bytes, label);
     files += 1;
   }
@@ -296,7 +321,60 @@ export async function runImageExport(
 }
 
 function defaultDownload(bytes: Uint8Array, filename: string): void {
-  downloadBytes(bytes, filename, "image/png");
+  downloadBytes(
+    bytes,
+    filename,
+    filename.endsWith(".jpg") ? "image/jpeg" : "image/png",
+  );
+}
+
+/**
+ * Re-encode a page snapshot, which the engine always hands back as PNG.
+ *
+ * PNG passes through untouched — no decode, no re-encode, so a lossless
+ * export stays byte-for-byte what the renderer produced.
+ *
+ * JPEG HAS NO ALPHA, and that is the whole reason this function is not
+ * a one-liner. A page render can carry transparency, and handing an RGBA
+ * bitmap to a JPEG encoder leaves the transparent pixels as whatever
+ * happened to be in the buffer — usually BLACK. So the bitmap is drawn
+ * onto an opaque WHITE canvas first. White because that is what paper
+ * is, and because it matches what the PDF export puts behind the same
+ * page.
+ *
+ * Returns `null` when the realm has no imaging primitives (Node), so the
+ * caller can fall back rather than throw.
+ */
+export async function encodePageImage(
+  pngBytes: Uint8Array,
+  format: "png" | "jpeg",
+  quality: number,
+): Promise<Uint8Array | null> {
+  if (format === "png") return pngBytes;
+  if (
+    typeof createImageBitmap !== "function" ||
+    typeof OffscreenCanvas !== "function"
+  ) {
+    return null;
+  }
+  const bmp = await createImageBitmap(
+    new Blob([pngBytes.slice() as BlobPart], { type: "image/png" }),
+  );
+  try {
+    const canvas = new OffscreenCanvas(bmp.width, bmp.height);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, bmp.width, bmp.height);
+    ctx.drawImage(bmp, 0, 0);
+    const blob = await canvas.convertToBlob({
+      type: "image/jpeg",
+      quality: Math.min(Math.max(quality, 0.5), 1),
+    });
+    return new Uint8Array(await blob.arrayBuffer());
+  } finally {
+    bmp.close();
+  }
 }
 
 /** K-2 / S-06 — run a plugin-registered exporter: pull its bytes and
