@@ -229,6 +229,51 @@ test.describe("Export family — Export inspector", () => {
     await setMode(page, "design");
   });
 
+  test("E-2 — a page RANGE exports the named pages, and a nonsense range REFUSES @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @level:gesture", async ({
+    page,
+  }) => {
+    // The range exists because all/current is a BINARY and the common
+    // ask sits between its ends. This is paged's answer to Photoshop's
+    // "Export As → artboards": a page already IS the containment those
+    // artboards provide, so all that was missing was naming a subset.
+    await openCanvas(page);
+    await loadDoc(page, CLEAN);
+    await setMode(page, "export");
+    await page.locator('[data-output-nav="image"]').click();
+    await expect(page.locator("[data-export-inspector-panel]")).toBeVisible();
+
+    // The range input appears only for the range scope — a control
+    // that cannot act should not be on screen.
+    await expect(page.locator("[data-export-image-range]")).toHaveCount(0);
+    await page.locator("[data-export-image-scope]").selectOption("range");
+    await expect(page.locator("[data-export-image-range]")).toBeVisible();
+
+    // A range naming ONE page yields exactly one download. Asserted as
+    // a download rather than a file count, so it measures what the user
+    // gets rather than what the model reports.
+    await page.locator("[data-export-image-range]").fill("1");
+    const dl = page.waitForEvent("download");
+    await page
+      .locator('[data-cockpit-action="export-inspector-run-image"]')
+      .click();
+    expect((await dl).suggestedFilename()).toMatch(/\.png$/);
+    await expect(page.locator("[data-export-image-done]")).toBeVisible();
+
+    // A range naming NO page in this document REFUSES, and says so with
+    // the document's own page count. The alternative — falling back to
+    // every page — answers a typo with a folder full of files.
+    await page.locator("[data-export-image-range]").fill("999");
+    await page
+      .locator('[data-cockpit-action="export-inspector-run-image"]')
+      .click();
+    await expect(page.locator("[data-export-image-done]")).toHaveCount(0);
+    await expect(
+      page.getByText(/names no page in this .*-page document/),
+    ).toBeVisible();
+
+    await setMode(page, "design");
+  });
+
   // TODO(ADR-022 Phase 5): IDML is now the paged.publish plugin exporter. Rewrite
   // against the "Plugin exports" section (click
   // `[data-plugin-export="media.paged.publish.exporter.idml"]`, assert the `.idml`
