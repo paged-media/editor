@@ -44,7 +44,7 @@ declare global {
 const PANEL_ID = "test.railDoor.panel";
 
 test.describe("K-8 — panel rail + icon door", () => {
-  test("a rail-opted panel appears with its sanitized glyph, toggles its tab, and unregisters cleanly", async ({
+  test("a rail-opted panel appears with its sanitized glyph, toggles its tab, and unregisters cleanly @feat:plugin-platform.panel-rail-door @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
