@@ -41,8 +41,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
-const PACK_NAME = "brand-guidelines";
-const PACK_PATH = `${REPO_ROOT}/corpus/envato/packs/${PACK_NAME}/template.idml`;
+// License-clear generated fixture (runs in lean CI — no envato LFS
+// tier needed). Page 1 carries an un-rotated 100×100 Rectangle at
+// page-local (247.6, 370.9)–(347.6, 470.9) on an A4 portrait page,
+// which the centre-probe grid below finds. All deltas in this spec
+// keep it comfortably on-page and >4pt away from any snap target
+// (page edges / the label frame's edges), so the ±4.5pt snap-
+// tolerance assertions hold with snap idle.
+const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }
@@ -135,7 +141,7 @@ test.describe("Phase B — translate gesture", () => {
 
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
-    const loaded = await loadIdml(page, PACK_PATH, PACK_NAME);
+    const loaded = await loadIdml(page, FIXTURE);
     pageId = loaded.pages[0].pageId;
     pageW = loaded.pages[0].widthPt;
     pageH = loaded.pages[0].heightPt;
@@ -243,8 +249,25 @@ test.describe("Phase B — translate gesture", () => {
     );
     const after = await frameBoundsRaw(page, target);
     // Within snap tolerance of (before + delta) — the cameras
-    // mid-gesture do NOT shift the result.
-    expect(Math.abs(after[0] - (before[0] + dy))).toBeLessThanOrEqual(4.5);
-    expect(Math.abs(after[1] - (before[1] + dx))).toBeLessThanOrEqual(4.5);
+    // mid-gesture do NOT shift the result. The tolerance here is
+    // NOT the 4.5pt the other tests use: core's snap pass converts
+    // its 4 CSS-px tolerance through the camera
+    // (SNAP_TOLERANCE_CSS_PX / scale, snap.rs), and this test
+    // deliberately runs part of the gesture at scale 0.5 — so the
+    // engine may legally nudge up to 8pt in doc space. Measured on
+    // this fixture: (+5.0, +5.3) — geometry.idml's identity spread
+    // transforms overlap all 20 pages at world (0,0), giving a
+    // denser snap-candidate field than a real InDesign export.
+    // 8.0 (= 4 / 0.5) + the same 0.5pt float-noise margin the
+    // other assertions carry.
+    expect(Math.abs(after[0] - (before[0] + dy))).toBeLessThanOrEqual(8.5);
+    expect(Math.abs(after[1] - (before[1] + dx))).toBeLessThanOrEqual(8.5);
+    // The camera-independence property itself stays sharp: the
+    // frame moved RIGIDLY (both edges of each axis shifted by the
+    // same amount), i.e. any deviation is a snap nudge, not a
+    // camera-space delta misinterpretation (scale 0.5 or 2.0 would
+    // shift the result by -50% / +100%, far outside the bound).
+    expect(after[2] - before[2]).toBeCloseTo(after[0] - before[0], 1);
+    expect(after[3] - before[3]).toBeCloseTo(after[1] - before[1], 1);
   });
 });

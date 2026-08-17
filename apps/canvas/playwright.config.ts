@@ -47,32 +47,19 @@ if (!process.env.NODE_OPTIONS) {
 // let the import throw. Local runs (no flag) keep the full surface.
 const LEAN_CI = process.env.PAGED_CI_LEAN === "1";
 
-// Specs that load a real `corpus/envato/packs/<pack>/template.idml` at
-// import/beforeAll time — the same 4.4 GB tier the lean runner omits, so
-// they hard-fail with "Could not find EOCD" before their own skip guards
-// run. They MUST be dropped from the lean collection, exactly like the two
-// fidelity specs above. COVERAGE NOTE (not a silent cap): these gesture
-// specs do NOT run in lean CI — they run only in a full-corpus lane
-// (local / the envato tier). Migrating them onto the license-clear
-// `corpus/generated` fixtures would return them to lean CI; tracked as a
-// follow-up, not done here.
-const ENVATO_LEAN_DROP = [
-  "content-grabber.spec.ts",
-  "cross-spread-duplicate.spec.ts",
-  "gesture-sab-snap.spec.ts",
-  "interaction.spec.ts",
-  "layers.spec.ts",
-  "layers-panel.spec.ts",
-  "multi-select-handles.spec.ts",
-  "multi-select-snap.spec.ts",
-  "resize.spec.ts",
-  "rotate-scale.spec.ts",
-  "ruler-guides.spec.ts",
-  "translate.spec.ts",
-];
-
+// The direct-manipulation specs (translate/resize/rotate-scale/
+// interaction/multi-select/gesture-sab-snap/content-grabber/
+// cross-spread-duplicate/layers/layers-panel/ruler-guides) used to sit
+// on an ENVATO_LEAN_DROP list here because they loaded
+// `corpus/envato/packs/<pack>/template.idml` — the same 4.4 GB LFS tier
+// the lean runner omits. They have since been migrated onto the
+// license-clear `corpus/generated` fixtures (geometry / numbering /
+// layers-z / layout / images), so they now run in lean CI and the list
+// is empty. Only the two specs below remain dropped: they read
+// `corpus/envato/manifest.json` + reference PDFs at import time and are
+// inherently envato-tier (per-pack pixel fidelity), not migratable.
 const LEAN_DROP = LEAN_CI
-  ? ["fidelity.spec.ts", "e2e/extensive-corpus.spec.ts", ...ENVATO_LEAN_DROP]
+  ? ["fidelity.spec.ts", "e2e/extensive-corpus.spec.ts"]
   : [];
 
 export default defineConfig({

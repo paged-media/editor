@@ -32,8 +32,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
-const PACK_NAME = "brand-guidelines";
-const PACK_PATH = `${REPO_ROOT}/corpus/envato/packs/${PACK_NAME}/template.idml`;
+// License-clear generated fixture (runs in lean CI). Page 1 carries
+// two un-rotated TextFrames (page-local y 80..300 and y 360..580,
+// both x 57.6..537.6, left edge 57.6pt from the page-left edge) —
+// two probe-reachable members for AC-E-16, and a >4pt left-edge gap
+// so the "drag to 2pt short of the page edge" snap setups behave
+// exactly as they did on the envato pack. All numeric expectations
+// in this file are computed from measured bounds, so none needed
+// re-derivation beyond that.
+const FIXTURE = `${REPO_ROOT}/corpus/generated/numbering.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }
@@ -77,7 +84,8 @@ interface ElementSnapshot {
 /** Finds N un-rotated frames on `pageId` by probing the page at a
  * grid of interior points via hitTest. Returns each one's page-local
  * AABB. Mirrors the click-probe pattern used by the Phase B/C/D
- * specs — proven to work across the gated envato fixtures. */
+ * specs — proven across both the gated envato packs and the
+ * generated fixtures. */
 async function findMultipleUnrotatedFrames(
   page: Page,
   pageId: string,
@@ -174,7 +182,7 @@ test.describe("Phase E — multi-select, snap, modifiers", () => {
 
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
-    const loaded = await loadIdml(page, PACK_PATH, PACK_NAME);
+    const loaded = await loadIdml(page, FIXTURE);
     pageId = loaded.pages[0].pageId;
     pageW = loaded.pages[0].widthPt;
     pageH = loaded.pages[0].heightPt;
@@ -324,11 +332,11 @@ test.describe("Phase E — multi-select, snap, modifiers", () => {
       },
       { id: it.id, dx },
     );
-    // At least the snap winner fires. On a brand-guidelines body
-    // page, the layout typically lines up multiple frames so smart
-    // guides often surface additional lines — we don't pin the
-    // exact count (fixture-dependent), but the API contract is that
-    // multiple in-tolerance alignments CAN appear.
+    // At least the snap winner fires. We don't pin the exact count
+    // (fixture-dependent — smart guides ADD lines only when other
+    // alignments happen to be exactly true post-adjustment), but
+    // the API contract is that multiple in-tolerance alignments
+    // CAN appear.
     expect(reply.snapLines.length).toBeGreaterThan(0);
     // Every snap line is on the same page as the moving frame.
     for (const l of reply.snapLines) {

@@ -45,12 +45,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
-// A small gated pack. Has multiple frames + at least one rotated
-// element on the cover, which is the bait for AC-E-12. If this pack
-// rots out (assets removed / fixture renamed), swap to another gated
-// pack in `corpus/envato/manifest.json`.
-const PACK_NAME = "brand-guidelines";
-const PACK_PATH = `${REPO_ROOT}/corpus/envato/packs/${PACK_NAME}/template.idml`;
+// License-clear generated fixture (runs in lean CI). Page 1 carries
+// a label TextFrame plus a 100×100 Rectangle straddling the page
+// centre, so the centre probe resolves a hit immediately; the
+// whole-page marquee sees both frames. (The suite's assertions are
+// all fixture-relative — probe-walk + set semantics — so nothing
+// numeric had to be re-derived for this fixture.)
+const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }
@@ -150,7 +151,7 @@ test.describe("Phase A — element selection + hit-testing", () => {
 
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
-    const loaded = await loadIdml(page, PACK_PATH, PACK_NAME);
+    const loaded = await loadIdml(page, FIXTURE);
     expect(loaded.pageCount).toBeGreaterThan(0);
     pageId = loaded.pages[0].pageId;
     pageW = loaded.pages[0].widthPt;
@@ -163,8 +164,8 @@ test.describe("Phase A — element selection + hit-testing", () => {
     const w = pageW;
     const h = pageH;
 
-    // Click roughly in the middle of the page — for a real brand-
-    // guidelines pack this hits a frame on the cover. If it doesn't,
+    // Click roughly in the middle of the page — geometry.idml's
+    // page-1 Rectangle straddles the centre. If it doesn't hit,
     // walk a few points until something resolves.
     let firstHit = null as ElementId | null;
     for (const [px, py] of [

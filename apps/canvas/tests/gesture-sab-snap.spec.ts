@@ -37,8 +37,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
-const PACK_NAME = "brand-guidelines";
-const PACK_PATH = `${REPO_ROOT}/corpus/envato/packs/${PACK_NAME}/template.idml`;
+// License-clear generated fixture (runs in lean CI). The probe grid
+// finds page 1's un-rotated Rectangle (left edge at x=247.6); the
+// drag below re-derives its delta from the measured bounds, so the
+// left edge lands 2pt short of the page-left edge and the snap pass
+// fires an x-axis guide exactly as it did on the envato pack.
+const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }
@@ -124,7 +128,7 @@ test.describe("Step 5e — SAB-mode snap-line notifications", () => {
 
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
-    const loaded = await loadIdml(page, PACK_PATH, PACK_NAME);
+    const loaded = await loadIdml(page, FIXTURE);
     pageId = loaded.pages[0].pageId;
     pageW = loaded.pages[0].widthPt;
     pageH = loaded.pages[0].heightPt;

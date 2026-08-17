@@ -34,8 +34,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
-const PACK_NAME = "brand-guidelines";
-const PACK_PATH = `${REPO_ROOT}/corpus/envato/packs/${PACK_NAME}/template.idml`;
+// License-clear generated fixture (runs in lean CI). Page 1 carries
+// two un-rotated TextFrames (page-local y 80..300 and y 360..580,
+// both x 57.6..537.6) — the two distinct frames the probe grid needs
+// for the union-handle gestures.
+const FIXTURE = `${REPO_ROOT}/corpus/generated/numbering.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }
@@ -117,7 +120,7 @@ test.describe("Phase G — multi-select union handles", () => {
 
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
-    const loaded = await loadIdml(page, PACK_PATH, PACK_NAME);
+    const loaded = await loadIdml(page, FIXTURE);
     pageId = loaded.pages[0].pageId;
     pageW = loaded.pages[0].widthPt;
     pageH = loaded.pages[0].heightPt;
