@@ -42,7 +42,14 @@ name: tests
 
 on:
   push:
-    branches: [main]
+    # feat/plugin-panel-surfaces added 2026-08-18: main is frozen (standing
+    # branch decision, 2026-07-26) while development lives on this branch,
+    # so main-only push triggers meant NO fresh playwright-results artifact
+    # ever reached the state matrix — every editor evidence lane starved.
+    # The state puller accepts this branch via the artifacts.yaml `branch`
+    # override. Remove the extra branch here (and there) when the branch
+    # merges.
+    branches: [main, feat/plugin-panel-surfaces]
   pull_request:
     paths:
       - "apps/canvas/**"

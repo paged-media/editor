@@ -85,9 +85,14 @@ test.describe("journey · paged.data render output", () => {
     //    Reaching "ready" means the query engine booted (the unblocked path). ──
     await invoke(page, IMPORT_COMMAND);
     await openPanel(page, SOURCES_PANEL);
-    const fileInput = page.locator('input[type="file"][accept*="csv"]');
-    await expect(fileInput).toBeVisible({ timeout: 10_000 });
-    await fileInput.setInputFiles(CSV_FIXTURE);
+    // data canary.6: import goes through the shell.pickFile@1 door
+    // (programmatic input.click -> Playwright filechooser, the doc.journey
+    // idiom); the raw <input> survives only in the SDK harness.
+    const importButton = page.locator("[data-data-import-csv]");
+    await expect(importButton).toBeVisible({ timeout: 10_000 });
+    const chooser = page.waitForEvent("filechooser");
+    await importButton.click();
+    await (await chooser).setFiles(CSV_FIXTURE);
 
     const status = page.locator("[data-status]").last();
     let ready = false;

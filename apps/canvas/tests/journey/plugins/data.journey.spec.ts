@@ -180,11 +180,16 @@ test.describe("journey · paged.data plugin", () => {
     await openPanel(page, SOURCES_PANEL);
     await expect(sourcesHeader).toBeVisible({ timeout: 10_000 });
 
-    const fileInput = page.locator('input[type="file"][accept*="csv"]');
+    // data canary.6: import goes through the shell.pickFile@1 door
+    // (programmatic input.click -> Playwright filechooser, the doc.journey
+    // idiom); the raw <input> survives only in the SDK harness.
+    const importButton = page.locator("[data-data-import-csv]");
     let importDrove = false;
     try {
-      await expect(fileInput).toBeVisible({ timeout: 6_000 });
-      await fileInput.setInputFiles(CSV_FIXTURE);
+      await expect(importButton).toBeVisible({ timeout: 6_000 });
+      const chooser = page.waitForEvent("filechooser");
+      await importButton.click();
+      await (await chooser).setFiles(CSV_FIXTURE);
 
       // The session boots DuckDB (pthread Worker) + the data-js wasm lazily,
       // converts CSV→Arrow→RecordSet, and defines the source. Generous
