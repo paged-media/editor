@@ -157,16 +157,19 @@ test.describe("journey · paged.data plugin", () => {
     //    other two panels open + mount too. This is the host-integration
     //    proof: a bundle's React panel factory reaches the cockpit dock. ──
     await invokeCommand(page, IMPORT_COMMAND);
-    const sourcesHeader = page.getByText(/paged\.data · sources/);
-    await expect(sourcesHeader).toBeVisible({ timeout: 10_000 });
+    // data canary.6 (U12): the v-header body text is gone — the panel's
+    // stable mount anchor is its import affordance.
+    await expect(page.locator("[data-data-import-csv]")).toBeVisible({ timeout: 10_000 });
 
     await openPanel(page, BINDINGS_PANEL);
-    await expect(page.getByText(/paged\.data · bindings/i)).toBeVisible({
+    await expect(page.locator("[data-data-bind-author]")).toBeVisible({
       timeout: 10_000,
     });
 
     await openPanel(page, DATASET_PANEL);
-    await expect(page.getByText(/paged\.data · dataset/i)).toBeVisible({
+    // Mount anchor: the locale row renders unconditionally; the variables
+    // block only appears once a query exists.
+    await expect(page.getByText(/Locale:/)).toBeVisible({
       timeout: 10_000,
     });
 
@@ -178,7 +181,7 @@ test.describe("journey · paged.data plugin", () => {
     //    "error" when the heavy engines won't boot headless. Collected so a
     //    partial drive is reported, never flaked. ──
     await openPanel(page, SOURCES_PANEL);
-    await expect(sourcesHeader).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("[data-data-import-csv]")).toBeVisible({ timeout: 10_000 });
 
     // data canary.6: import goes through the shell.pickFile@1 door
     // (programmatic input.click -> Playwright filechooser, the doc.journey

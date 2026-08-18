@@ -128,9 +128,11 @@ test.describe("journey · paged.data barcode symbology", () => {
     //    barcode binding bound to the selected rectangle (the engine will encode
     //    the symbology + scale the module grid to the frame's content box). ──
     await openPanel(page, BINDINGS_PANEL);
-    await expect(page.getByText(/paged\.data · bindings/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("[data-data-bind-author]")).toBeVisible({ timeout: 10_000 });
 
-    // The symbology select is the one whose options name the symbologies.
+    // data canary.6 (U12): the symbology select only renders once the
+    // binding KIND is barcode — pick the kind first, then the symbology.
+    await page.locator("[data-data-bind-kind]").selectOption("barcode");
     const symbology = page
       .locator("select")
       .filter({ has: page.locator('option[value="code128"]') })

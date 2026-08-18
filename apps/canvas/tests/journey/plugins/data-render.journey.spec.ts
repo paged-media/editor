@@ -130,7 +130,7 @@ test.describe("journey · paged.data render output", () => {
     //    and commits the resolved content as native Paged Mutations — the page,
     //    blank before, now carries the data-driven content. ──
     await openPanel(page, BINDINGS_PANEL);
-    await expect(page.getByText(/paged\.data · bindings/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("[data-data-bind-author]")).toBeVisible({ timeout: 10_000 });
 
     const beforeLower = await designer.renderBytes();
     await page.getByRole("button", { name: /wire demo binding/i }).click();

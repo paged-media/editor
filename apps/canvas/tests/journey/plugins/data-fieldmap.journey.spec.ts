@@ -115,7 +115,7 @@ test.describe("journey · paged.data field-mapping wizard", () => {
     //    the engine (`query_mappings`) for the column → variable-binding
     //    suggestions, defaulting the mappable columns to checked. ──
     await openPanel(page, BINDINGS_PANEL);
-    await expect(page.getByText(/paged\.data · bindings/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("[data-data-bind-author]")).toBeVisible({ timeout: 10_000 });
     await page.getByRole("button", { name: /map fields/i }).click();
 
     // ── 3. WIZARD COLUMNS — the engine computed one row per CSV column. The

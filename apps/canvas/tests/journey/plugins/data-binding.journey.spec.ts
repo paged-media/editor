@@ -137,7 +137,7 @@ test.describe("journey · paged.data binding engine + expression DSL", () => {
     //    binding + a single-region table binding on the Rust ResolutionEngine
     //    (data.bind.engine). ──
     await openPanel(page, BINDINGS_PANEL);
-    await expect(page.getByText(/paged\.data · bindings/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("[data-data-bind-author]")).toBeVisible({ timeout: 10_000 });
 
     await page.getByRole("button", { name: /wire demo binding/i }).click();
     await page.waitForTimeout(300);

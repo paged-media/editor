@@ -118,7 +118,7 @@ test.describe("journey · paged.data preview stepper + change report", () => {
     //    stepper walks + a variable binding), then refresh the data so the
     //    records are ingested (the stepper's "of N" bound). ──
     await openPanel(page, BINDINGS_PANEL);
-    await expect(page.getByText(/paged\.data · bindings/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("[data-data-bind-author]")).toBeVisible({ timeout: 10_000 });
     await page.getByRole("button", { name: /wire demo binding/i }).click();
     await page.waitForTimeout(200);
     await page.getByRole("button", { name: /refresh data/i }).click();

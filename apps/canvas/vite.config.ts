@@ -502,10 +502,17 @@ export default defineConfig({
     // top-level await does not exist, so pre-bundling it fails the dev
     // server outright. Excluding it lets Vite serve the module through
     // the normal graph, where the app's own es2022 target applies.
+    // @paged-media/data ships the same wasm shape as pdf/doc, but loads
+    // its glue via a RUNTIME-relative dynamic import ("../bin/data_js.js",
+    // @vite-ignore). Pre-bundled, the importer lives in .vite/deps and the
+    // relative path 404s ("data-js wasm not built" — how the six data
+    // journeys went dark when the link: override left, 2026-08-18); the
+    // link era masked it because linked packages skip pre-bundling.
     exclude: [
       "@paged-media/canvas-wasm",
       "@paged-media/pdf",
       "@paged-media/doc",
+      "@paged-media/data",
       "@paged-media/plugin-sdk",
     ],
     // Pre-bundle apache-arrow at server startup. The DuckDB-WASM API entry's
