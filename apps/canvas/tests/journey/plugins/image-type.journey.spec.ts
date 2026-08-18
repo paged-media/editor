@@ -42,7 +42,7 @@ async function sourceReadout(page: Page): Promise<string> {
 }
 
 test.describe("journey · paged.image raster type", () => {
-  test("the type tool registers, and the panel states that it paints pixels @feat:image.editor.raster-type @feat:editor-shell.plugin-bundles @level:surface", async ({
+  test("the type tool registers, and the panel states that it paints pixels @feat:image.editor.raster-type @feat:editor-shell.plugin-bundles @level:smoke", async ({
     page,
   }) => {
     const designer = new Designer(page);

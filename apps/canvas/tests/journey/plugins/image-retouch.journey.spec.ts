@@ -57,7 +57,7 @@ async function anchor(page: Page): Promise<string | null> {
 }
 
 test.describe("journey · paged.image retouching", () => {
-  test("the clone and heal tools register, and the panel reports no source yet @feat:image.editor.clone-stamp @feat:image.editor.healing-brush @feat:editor-shell.plugin-bundles @level:surface", async ({
+  test("the clone and heal tools register, and the panel reports no source yet @feat:image.editor.clone-stamp @feat:image.editor.healing-brush @feat:editor-shell.plugin-bundles @level:smoke", async ({
     page,
   }) => {
     const designer = new Designer(page);

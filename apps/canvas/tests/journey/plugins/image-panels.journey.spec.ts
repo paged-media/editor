@@ -180,7 +180,7 @@ test.describe("journey · paged.image panels", () => {
       .toBeGreaterThan(95);
   });
 
-  test("the Brush presets section offers the .abr loader and states its scope @feat:image.editor.brush-presets @feat:editor-shell.plugin-bundles @level:surface", async ({
+  test("the Brush presets section offers the .abr loader and states its scope @feat:image.editor.brush-presets @feat:editor-shell.plugin-bundles @level:smoke", async ({
     page,
   }) => {
     // SCOPE, stated: this drives everything about the section EXCEPT

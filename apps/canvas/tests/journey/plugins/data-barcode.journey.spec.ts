@@ -92,7 +92,7 @@ async function importCsv(page: Page): Promise<boolean> {
 }
 
 test.describe("journey · paged.data barcode symbology", () => {
-  test("a designer binds a Code-128 barcode to a frame and the engine encodes the VECTOR modules @feat:data.barcode.symbology @feat:data.plugin.bundle @level:happy", async ({
+  test("a designer binds a Code-128 barcode to a frame and the engine encodes the VECTOR modules @feat:data.barcode.symbology @feat:data.bind.authoring @feat:data.plugin.bundle @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
