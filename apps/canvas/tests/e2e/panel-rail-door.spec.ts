@@ -60,9 +60,9 @@ test.describe("K-8 — panel rail + icon door", () => {
         // subtree, a case-variant event handler, and a data: URL href.
         iconSvg:
           '<circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/>' +
-          '<script>window.__railDoorPwned = true; var x = "<b>markup<\/b>"<\/script>' +
+          '<script>window.__railDoorPwned = true; var x = "<b>markup</b>"</script>' +
           '<foreignObject x="0" y="0" width="24" height="24">' +
-          '<img src="x" onerror="window.__railDoorPwned = true"/><\/foreignObject>' +
+          '<img src="x" onerror="window.__railDoorPwned = true"/></foreignObject>' +
           '<rect x="1" y="1" width="4" height="4" ONClick="window.__railDoorPwned = true"/>' +
           "<use href=\"data:image/svg+xml,<svg onload='window.__railDoorPwned = true'/>\"/>",
       });
