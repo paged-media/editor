@@ -22,6 +22,7 @@
 // contribution so there's a single load path.
 
 import { createBlankDocument, loadDocumentFile } from "../document-loader";
+import { setPendingImportSource } from "../import-source";
 import type { PagedEditor } from "../paged-editor";
 import type { CommandContribution } from "../../registries";
 
@@ -54,6 +55,7 @@ export function buildNewDocumentCommand(options: {
         { widthPt, heightPt },
         {
           setHandle: editor.document.setHandle,
+          setSourceName: editor.document.setSourceName,
           setLoading: editor.document.setLoading,
           setStatus: options.setStatus,
           setSnapshotsReady: editor.document.setSnapshotsReady,
@@ -105,6 +107,10 @@ export function buildOpenIdmlCommand(options: {
         options.setStatus(`importing ${file.name} via ${importer.title}…`);
         try {
           const bytes = new Uint8Array(await file.arrayBuffer());
+          // U14 — park the file name for the open orchestration: an
+          // importer that OPENS a document does so through
+          // `nativeDocument.open(bytes)`, which carries no name.
+          setPendingImportSource(file.name);
           await importer.import({ name: file.name, bytes, mimeType: file.type });
           options.setStatus(`imported ${file.name}`);
         } catch (err) {
@@ -112,11 +118,14 @@ export function buildOpenIdmlCommand(options: {
             `import of ${file.name} via ${importer.title} failed: ` +
               (err instanceof Error ? err.message : String(err)),
           );
+        } finally {
+          setPendingImportSource(null);
         }
         return;
       }
       await loadDocumentFile(editor.client, file, {
         setHandle: editor.document.setHandle,
+        setSourceName: editor.document.setSourceName,
         setLoading: editor.document.setLoading,
         setStatus: options.setStatus,
         setSnapshotsReady: editor.document.setSnapshotsReady,

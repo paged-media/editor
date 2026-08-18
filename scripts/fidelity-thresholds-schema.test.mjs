@@ -89,6 +89,18 @@ test("every entry has the required fields with sane types/values", () => {
       `${where}: rationale must be a real sentence, not a stub`,
     );
 
+    // backend provenance (audit 1.10): which rasterizer the thresholds
+    // were baked against. OPTIONAL — the gate does not (yet) branch on
+    // it; promote-gpu is a separately scheduled decision. When present
+    // it must name a real backend, so a future GPU bake can't land as a
+    // typo'd free-text field.
+    if (f.backend !== undefined) {
+      assert.ok(
+        f.backend === "cpu" || f.backend === "gpu",
+        `${where}: backend must be "cpu" or "gpu" when present`,
+      );
+    }
+
     // gated-page count must be a positive integer when present.
     if (f.max_pages_with_pdf !== undefined) {
       assert.ok(

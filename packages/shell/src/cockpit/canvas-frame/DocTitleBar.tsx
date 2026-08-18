@@ -23,11 +23,16 @@
 // DocumentMeta, the badge from the mode registry.
 
 import { useDocumentMeta } from "../../catalog/use-collection";
+import { useDocument } from "../../state/document-context";
 import { useWorkflowMode } from "../../state/workflow-mode-context";
 import { useRegistries } from "../../state/registries-context";
 
 export function DocTitleBar() {
   const meta = useDocumentMeta();
+  // U14 — most generated/corpus IDMLs carry no meta documentName; the
+  // loaded FILE's name (extension stripped, set by the loader) is the
+  // honest fallback identity before "Untitled document".
+  const { sourceName } = useDocument();
   const { mode } = useWorkflowMode();
   const registries = useRegistries();
   const modeTitle = registries.modes.get(mode)?.title;
@@ -57,7 +62,9 @@ export function DocTitleBar() {
           textOverflow: "ellipsis",
         }}
       >
-        {loaded ? meta.documentName || "Untitled document" : "No document"}
+        {loaded
+          ? meta.documentName || sourceName || "Untitled document"
+          : "No document"}
       </span>
       {loaded && meta.dirty && (
         <span style={{ fontSize: 11.5, color: "var(--pg-muted-fg)" }}>

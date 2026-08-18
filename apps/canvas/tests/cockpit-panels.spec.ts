@@ -101,6 +101,43 @@ test.describe("Cockpit — Preflight", () => {
   });
 });
 
+test.describe("Cockpit — document title bar", () => {
+  test("U14 — the title shows the loaded file's name when the meta has none @feat:editor-shell.cockpit @level:happy", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    // Before any load the bar says so honestly.
+    await expect(page.locator("[data-doc-title-bar]")).toContainText(
+      "No document",
+    );
+
+    // The file-input flow sets the document context's `sourceName`
+    // from the file name (extension stripped); the title prefers
+    // meta.documentName, then sourceName, then "Untitled document".
+    await loadFixture(page);
+    const metaName = await page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: { documentMeta: () => Promise<{ documentName?: string }> };
+          };
+        }
+      ).__canvas;
+      try {
+        return (await c.client.documentMeta()).documentName ?? "";
+      } catch {
+        return "";
+      }
+    });
+    const expected = metaName || "geometry-groups";
+    const title = page.locator("[data-doc-title-bar] span").first();
+    await expect(title).toHaveText(expected);
+    // Whatever the meta carries, a real file load must not fall
+    // through to the untitled placeholder.
+    await expect(title).not.toHaveText("Untitled document");
+  });
+});
+
 test.describe("Cockpit — Publication health + stubs", () => {
   test("health shows live metrics; stubs are visibly stubs @feat:editor-shell.panel-rail @level:happy", async ({
     page,

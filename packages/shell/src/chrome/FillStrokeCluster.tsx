@@ -351,19 +351,19 @@ export function FillStrokeCluster() {
       registries.commands.register({
         id: "paged.fillStroke.swap",
         title: "Swap fill and stroke",
-        category: "Colour",
+        category: "Color",
         handler: () => swapRef.current(),
       }),
       registries.commands.register({
         id: "paged.fillStroke.default",
         title: "Default fill and stroke",
-        category: "Colour",
+        category: "Color",
         handler: () => defaultRef.current(),
       }),
       registries.commands.register({
         id: "paged.fillStroke.toggleAffects",
         title: "Toggle formatting affects container/text",
-        category: "Colour",
+        category: "Color",
         handler: () => toggleAffectsRef.current(),
       }),
       registries.keybindings.register({

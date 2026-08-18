@@ -198,9 +198,9 @@ export const PANEL_RAIL: PanelRailItem[] = [
     icon: "panel-object-styles",
   },
   { panelId: "paged.swatches", title: "Swatches", icon: "panel-swatches" },
-  // The live paged.data bindings panel (the rail's first plugin panel);
-  // the ComingSoon mapping stub it replaces stays registered for legacy
-  // access via the Window menu.
+  // The live paged.data bindings panel (the rail's first plugin panel).
+  // U8: the ComingSoon mapping stub it replaced (`paged.data-mapping`)
+  // is retired — the live panel owns the surface.
   {
     panelId: "media.paged.data.panel.bindings",
     title: "Data",

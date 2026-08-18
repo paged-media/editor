@@ -33,10 +33,13 @@
 //                              everything, never fail a pack)
 //
 // Output (the deliverable): /tmp/paged-e2e-extensive/report.json plus
-// report.md — a per-pack × per-op status table. One pack loaded at a
-// time; ~1–3 min/pack, so E2E_PACKS=all is a nightly/manual job.
+// report.md — a per-pack × per-op status table, merged in afterAll
+// from the per-pack JSON files under packs/ (written incrementally so
+// a worker teardown mid-sweep cannot discard earlier packs). One pack
+// loaded at a time; ~1–3 min/pack, so E2E_PACKS=all is a
+// nightly/manual job.
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { expect, test } from "@playwright/test";
 
@@ -48,12 +51,49 @@ import { loadFixture } from "./harness/fixtures";
 const PACKS_ENV = process.env.E2E_PACKS?.trim();
 const GATE = process.env.E2E_MODE === "gate";
 const OUT_DIR = process.env.E2E_EXTENSIVE_OUT ?? "/tmp/paged-e2e-extensive";
+// Per-pack JSON, written INCREMENTALLY after each pack. The merged
+// report used to come from a worker-scoped in-memory array written
+// once in afterAll — but one failing pack tears the worker down, the
+// FRESH worker's afterAll then wrote only its own packs and silently
+// clobbered everything the first worker had collected (25% of a
+// sweep discarded, audit 17082026). Files survive the worker
+// boundary; afterAll merges whatever exists.
+const PACKS_DIR = `${OUT_DIR}/packs`;
 
 interface PackReport {
   pack: string;
   pages: number;
   results: OpResult[];
   loadError?: string;
+}
+
+/** Pack name → a safe per-pack filename. */
+function packFile(name: string): string {
+  return `${PACKS_DIR}/${name.replace(/[^\w.-]/g, "_")}.json`;
+}
+
+function writePackReport(report: PackReport): void {
+  mkdirSync(PACKS_DIR, { recursive: true });
+  writeFileSync(packFile(report.pack), JSON.stringify(report, null, 2));
+}
+
+/** Merge the per-pack files for the CURRENTLY SELECTED packs (stale
+ *  files from an earlier run with a different selection are ignored;
+ *  a selected pack's leftover from an interrupted earlier run merges
+ *  — better a stale row than a silently missing one). */
+function collectPackReports(selected: { name: string }[]): PackReport[] {
+  const reports: PackReport[] = [];
+  for (const p of selected) {
+    const file = packFile(p.name);
+    if (!existsSync(file)) continue;
+    try {
+      reports.push(JSON.parse(readFileSync(file, "utf8")) as PackReport);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn(`[extensive] unreadable pack report ${file}: ${err}`);
+    }
+  }
+  return reports;
 }
 
 function selectedPacks(): { name: string; idmlPath: string }[] {
@@ -118,12 +158,19 @@ function writeReport(reports: PackReport[]): void {
     }
     const errs = r.results.filter((x) => x.status === "error");
     const stale = r.results.filter((x) => x.status === "render-stale");
+    const skips = r.results.filter((x) => x.status === "skip" && x.note);
     const pass = r.results.filter((x) => x.status === "pass").length;
     const flag = errs.length ? "❌" : stale.length ? "⚠️" : "✅";
     lines.push(
       `- ${flag} **${r.pack}** (${r.pages}p) — ${pass} pass, ${stale.length} render-stale, ${errs.length} error` +
         (errs.length
           ? `\n    errors: ${errs.map((e) => `${e.op} (${e.note})`).join("; ")}`
+          : "") +
+        (stale.length
+          ? `\n    stale: ${stale.map((e) => `${e.op} (${e.note})`).join("; ")}`
+          : "") +
+        (skips.length
+          ? `\n    skips: ${skips.map((e) => `${e.op} (${e.note})`).join("; ")}`
           : ""),
     );
   }
@@ -139,10 +186,11 @@ if (packs.length === 0) {
   test.skip("AC-E2E-EXTENSIVE — opt-in (set E2E_PACKS=all or name,name) @feat:test-corpus.capability-matrix @feat:the-renderer.snapshots @level:happy", () => {});
 } else {
   test.describe("E2E extensive corpus", () => {
-    const reports: PackReport[] = [];
-
+    // No in-memory array across packs — each test persists its own
+    // report; afterAll (whichever worker runs it last) merges the
+    // files. A worker crash mid-sweep loses at most the crashing pack.
     test.afterAll(() => {
-      writeReport(reports);
+      writeReport(collectPackReports(packs));
     });
 
     for (const pack of packs) {
@@ -169,7 +217,7 @@ if (packs.length === 0) {
             ),
           };
         }
-        reports.push(report);
+        writePackReport(report);
 
         const table = report.results
           .map((r) => `  ${r.op.padEnd(34)} ${r.status}`)

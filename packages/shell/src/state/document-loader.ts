@@ -45,6 +45,11 @@ export interface DocumentLoaderCallbacks {
   addSnapshot: (pageId: PageId, objectUrl: string) => void;
   resetForNewDocument: () => void;
   pushWarning: (w: string) => void;
+  /** U14 — receives the loaded file's display name (extension
+   * stripped) so the doc title bar / Save-As basename can fall back
+   * to it when the document meta carries no `documentName`. Optional:
+   * callers that don't surface a title may omit it. */
+  setSourceName?: (name: string | null) => void;
 }
 
 /**
@@ -68,9 +73,13 @@ export async function loadDocumentFile(
   cb.setStatus(`loading ${file.name} (${file.size.toLocaleString()} bytes)…`);
   cb.setLoading({ name: file.name, bytes: file.size });
   cb.resetForNewDocument();
+  // U14 — the file's name (extension stripped) is the document's
+  // fallback display identity when its meta has no documentName.
+  cb.setSourceName?.(file.name.replace(/\.[^.]+$/, "") || null);
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const fontBytes = await fetchDefaultFont();
+  if (!fontBytes) warnDefaultFontUnavailable(cb);
 
   let handle: DocumentHandle;
   try {
@@ -110,8 +119,12 @@ export async function createBlankDocument(
   cb.setStatus("creating new document…");
   cb.setLoading({ name: "Untitled", bytes: 0 });
   cb.resetForNewDocument();
+  // U14 — a blank document has no source file; the title bar's
+  // "Untitled document" fallback is the honest name.
+  cb.setSourceName?.(null);
 
   const fontBytes = await fetchDefaultFont();
+  if (!fontBytes) warnDefaultFontUnavailable(cb);
 
   let handle: DocumentHandle;
   try {
@@ -134,19 +147,34 @@ export async function createBlankDocument(
  * Auto-fetch a default font so text is shaped + the captured StoryLayout
  * has real glyph positions. Without this the caret + selection rendering
  * has nothing to position against (glyphs vec empty → no clusters
- * captured). Inter is checked in under corpus/fonts/. Best-effort: the
- * canvas still renders without it.
+ * captured) — and, worse, fonts the document declares but cannot resolve
+ * have NO fallback face, so their text renders blank (U5/A7). Inter is
+ * checked in under corpus/fonts/. Best-effort in that the load proceeds
+ * without it, but callers must be LOUD about the gap (see
+ * `warnDefaultFontUnavailable`).
+ *
+ * Exported (U5/A7) so the app can hand the SAME fetch to
+ * `CanvasClient`'s `defaultFontProvider` — one default-font door for
+ * shell loads and bare client loads alike.
  */
-async function fetchDefaultFont(): Promise<Uint8Array | undefined> {
+export async function fetchDefaultFont(): Promise<Uint8Array | undefined> {
   try {
     const fontResp = await fetch("/fonts/Inter.ttf");
     if (fontResp.ok) {
       return new Uint8Array(await fontResp.arrayBuffer());
     }
   } catch {
-    // best-effort
+    // fall through to undefined — the caller warns.
   }
   return undefined;
+}
+
+/** U5/A7 — a missing default font is the "blank text" precondition;
+ *  say so where the user can see it instead of failing silently. */
+function warnDefaultFontUnavailable(cb: DocumentLoaderCallbacks): void {
+  cb.pushWarning(
+    "default font unavailable — text in documents with missing fonts will not render",
+  );
 }
 
 /**

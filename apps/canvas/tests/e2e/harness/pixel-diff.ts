@@ -117,19 +117,36 @@ export function diffPngPixels(
   };
 }
 
-/** Inflate a px rect by `slack`, clamped to the image. */
+/** Inflate a px rect by `slack`, clamped to the image.
+ *
+ *  THROWS on a degenerate result. The old clamp was one-sided in
+ *  effect: a region fully left/above/right/below the image (an
+ *  element on the pasteboard, a bad pt→px scale) silently collapsed
+ *  to zero area, the diff then reported "0 changed pixels inside",
+ *  and the caller concluded "render stale" — a lie about the render
+ *  when the truth was "we never looked at any pixels" (audit
+ *  17082026). A partial overlap still clamps fine; only a rect with
+ *  no on-image area (or NaN input) is refused, loudly. */
 export function inflate(
   r: PxRect,
   slack: number,
   width: number,
   height: number,
 ): PxRect {
-  return {
-    x0: Math.max(0, Math.floor(r.x0 - slack)),
-    y0: Math.max(0, Math.floor(r.y0 - slack)),
-    x1: Math.min(width, Math.ceil(r.x1 + slack)),
-    y1: Math.min(height, Math.ceil(r.y1 + slack)),
-  };
+  const x0 = Math.max(0, Math.floor(r.x0 - slack));
+  const y0 = Math.max(0, Math.floor(r.y0 - slack));
+  const x1 = Math.min(width, Math.ceil(r.x1 + slack));
+  const y1 = Math.min(height, Math.ceil(r.y1 + slack));
+  // `!(a < b)` (not `a >= b`) so NaN coordinates are also refused.
+  if (!(x0 < x1) || !(y0 < y1)) {
+    throw new Error(
+      `inflate: render region degenerate or fully off-image — ` +
+        `raw ${JSON.stringify(r)} + slack ${slack} clamps to ` +
+        `[${x0},${y0},${x1},${y1}] in a ${width}×${height} snapshot; ` +
+        `a zero-area region would silently report "0 changed pixels"`,
+    );
+  }
+  return { x0, y0, x1, y1 };
 }
 
 /** Page-space pt rect → px rect for a snapshot of `widthPx`. */

@@ -93,6 +93,10 @@ export interface LoadedFixture {
   frames: Array<{ ref: ElementRef; pageIndex: number }>;
   /** First story (selfId + characterCount), when the doc has text. */
   firstStory: { selfId: string; characterCount: number } | null;
+  /** ALL stories in story-table order. Story-table order is NOT frame
+   *  layout order — correlate through the frame chain, never by
+   *  position (the 17082026 audit's false "render-stale" sweep). */
+  stories: Array<{ selfId: string; characterCount: number }>;
 }
 
 interface TreeNode {
@@ -145,6 +149,47 @@ export async function loadFixture(
     characterCount: number;
   }>;
 
+  // Fixture-drift tripwire — the corpus is a SYMLINKED sibling with no
+  // pin, so a core `paged-gen` regeneration can silently change what
+  // the generated fixtures ship. The `text` fixture's contract with
+  // this suite includes the deliberately-contrasting "Emphasis
+  // Display" paragraph style (28pt / cyan / centred — AC-E2E-TEXT-3
+  // and the style ops resolve it BY NAME). When it drifts away, fail
+  // the LOAD loudly instead of letting every downstream spec decay
+  // into confusing per-op failures.
+  if (typeof name === "string" && name === "text") {
+    const styles = await page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              collection: (
+                n: string,
+              ) => Promise<Array<{ selfId: string; name?: string }>>;
+            };
+          };
+        }
+      ).__canvas;
+      return c.client.collection("paragraphStyles");
+    });
+    const hasEmphasis = styles.some(
+      (s) =>
+        s.name === "Emphasis Display" || s.selfId.includes("EmphasisDisplay"),
+    );
+    if (!hasEmphasis) {
+      throw new Error(
+        `fixture drift: corpus/generated/text.idml no longer ships the ` +
+          `"Emphasis Display" paragraph style (found: ${styles
+            .map((s) => s.name ?? s.selfId)
+            .join(", ")}). The corpus symlink tracks core's paged-gen ` +
+          `output with no version pin — a core regeneration changed the ` +
+          `fixture. Re-align core's paged-gen text sample (or update the ` +
+          `suite's style contract deliberately) before trusting any ` +
+          `text-fixture results.`,
+      );
+    }
+  }
+
   // Walk: top level = Spread nodes; their children = Page nodes
   // (id: null, kind: "Page", document order); page children =
   // frames (possibly nested in Groups, which DO carry element ids).
@@ -192,6 +237,7 @@ export async function loadFixture(
     framesByPage,
     frames,
     firstStory: stories[0] ?? null,
+    stories,
   };
 }
 
@@ -250,8 +296,7 @@ export async function elementPageRectPt(
               Array<{
                 bounds: [number, number, number, number];
                 itemTransform?:
-                  | [number, number, number, number, number, number]
-                  | null;
+                  [number, number, number, number, number, number] | null;
               }>
             >;
           };

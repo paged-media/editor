@@ -56,8 +56,25 @@ export function hasIcon(name: string): boolean {
   return name in GLYPHS;
 }
 
+// The dashed FallbackGlyph is deliberately quiet in the chrome, which
+// once let a plugin ship an unregistered icon name unnoticed. Surface
+// each unknown id ONCE on the console in dev builds so the next typo is
+// loud. (Vite env typed loosely — shell's tsconfig has no Vite ambient
+// types; the Set also absorbs StrictMode double renders.)
+const warnedUnknownIcons = new Set<string>();
+function warnUnknownIcon(name: string): void {
+  const viteEnv = (import.meta as unknown as { env?: { PROD?: boolean } }).env;
+  if (viteEnv?.PROD === true) return;
+  if (warnedUnknownIcons.has(name)) return;
+  warnedUnknownIcons.add(name);
+  console.warn(
+    `Icon: no glyph registered for "${name}" — rendering the dashed fallback`,
+  );
+}
+
 export function Icon({ name, size = 16, title, className, style }: IconProps) {
   const glyph = GLYPHS[name];
+  if (glyph === undefined) warnUnknownIcon(name);
   return (
     <svg
       width={size}

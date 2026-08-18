@@ -58,6 +58,7 @@ import {
   useContentSelection,
 } from "./state/content-selection-context";
 import { DocumentProvider, useDocument } from "./state/document-context";
+import { setPendingImportSource } from "./state/import-source";
 import {
   InstrumentationProvider,
   useInstrumentation,
@@ -290,6 +291,52 @@ export function PagedShell({
   );
 }
 
+// U11 — Window-menu grouping. Panels cluster under a category label
+// derived from the contribution's `defaultGroup` (the dock-group
+// vocabulary the apps already register with), or — when a plugin
+// bundle stamps its display name on the contribution (`source`, being
+// added platform-side; read defensively) — under that bundle's name.
+// MenuBar sorts a menu's items by `order` and renders a separator
+// whenever the adjacent `group` label changes, so encoding the
+// category's rank in `order` yields visually grouped sections in the
+// table's order; unknown categories (plugin sources / the "Plugins"
+// fallback) land after the named ones in approximate alphabetical
+// order (first three characters — ties keep registration order).
+const WINDOW_MENU_CATEGORIES: ReadonlyArray<readonly [string, string]> = [
+  ["cockpit", "Workspace"],
+  ["chrome", "Workspace"],
+  ["structure", "Structure"],
+  ["styles", "Styles"],
+  ["text", "Text"],
+  ["properties", "Properties"],
+  ["inspector", "Properties"],
+  ["object", "Object"],
+  ["output", "Output"],
+  ["console", "Developer"],
+];
+
+const WINDOW_MENU_LABEL_ORDER: ReadonlyArray<string> = Array.from(
+  new Set(WINDOW_MENU_CATEGORIES.map(([, label]) => label)),
+);
+
+function windowMenuGroup(p: PanelContribution): {
+  label: string;
+  order: number;
+} {
+  const source = (p as { source?: string }).source;
+  const fromTable = p.defaultGroup
+    ? WINDOW_MENU_CATEGORIES.find(([g]) => g === p.defaultGroup)?.[1]
+    : undefined;
+  const label =
+    (typeof source === "string" && source.trim()) || fromTable || "Plugins";
+  if (!source) {
+    const idx = WINDOW_MENU_LABEL_ORDER.indexOf(label);
+    if (idx >= 0) return { label, order: idx * 10 };
+  }
+  const c = (i: number) => (label.toUpperCase().charCodeAt(i) || 0) & 0x7f;
+  return { label, order: 1000 + c(0) * 0x4000 + c(1) * 0x80 + c(2) };
+}
+
 /**
  * Inner shell — reads from the contexts and renders the actual
  * chrome. Registers the supplied panels + the file-open command at
@@ -319,6 +366,7 @@ function ShellChrome({
     handle,
     snapshotsReady,
     setHandle,
+    setSourceName,
     setLoading,
     setSnapshots,
     setSnapshotsReady,
@@ -458,13 +506,17 @@ function ShellChrome({
     const items = new Map<string, Disposable>();
     const add = (p: PanelContribution) => {
       if (p.id === "paged.canvas" || items.has(p.id)) return;
+      // U11 — group by category (defaultGroup table / plugin source)
+      // instead of one flat "panels" bucket; see windowMenuGroup.
+      const { label, order } = windowMenuGroup(p);
       try {
         items.set(
           p.id,
           registries.menus.register({
             path: `Window/${p.title}`,
             command: `paged.panel.show.${p.id}`,
-            group: "panels",
+            group: label,
+            order,
             // ADR 024 — a panel that belongs to a DIFFERENT content type
             // is not offered here.
             //
@@ -857,6 +909,10 @@ function ShellChrome({
         void (async () => {
           try {
             const bytes = new Uint8Array(await file.arrayBuffer());
+            // U14 — park the file name for the open orchestration: an
+            // importer that OPENS a document does so through
+            // `nativeDocument.open(bytes)`, which carries no name.
+            setPendingImportSource(file.name);
             await importer.import({
               name: file.name,
               bytes,
@@ -869,12 +925,15 @@ function ShellChrome({
               `import of ${file.name} via ${importer.title} failed: ` +
                 (err instanceof Error ? err.message : String(err)),
             ]);
+          } finally {
+            setPendingImportSource(null);
           }
         })();
         return;
       }
       void loadDocumentFile(client, file, {
         setHandle,
+        setSourceName,
         setLoading,
         setStatus,
         setSnapshotsReady,
@@ -893,6 +952,7 @@ function ShellChrome({
       registries,
       resetForNewDocument,
       setHandle,
+      setSourceName,
       setLoading,
       setSnapshots,
       setSnapshotsReady,

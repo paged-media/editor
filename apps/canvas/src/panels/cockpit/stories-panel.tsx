@@ -33,15 +33,20 @@
 // from the SAME `StorySummary` the row binds to — so it stays live on
 // every document change (the collection refetches on
 // mutation/undo/redo/load). The honest read surface for a story on the
-// current wire is exactly four fields: `selfId`, `characterCount`,
-// `paragraphCount`, `overset`. Everything richer the kit's inspector
-// wants — the applied-frames chain / threading topology, word count,
-// and first-paragraph preview — has NO story-keyed read on the wire, so
-// each is rendered as an HONEST SEAM that names the missing read
-// (these become the W2.7 core follow-ups). Renaming a story has no
-// Operation either (`RenameStory` is absent from the Mutation set), so
-// the inspector is read-only by design; the only action is the
-// row-click caret-at-head selection, which already exists.
+// current wire is four `StorySummary` fields (`selfId`,
+// `characterCount`, `paragraphCount`, `overset`) plus the
+// `requestFrameChain` story→frame read (v38 door, consumed by the
+// row-click select/reveal below). What's still richer than the wire —
+// word count and first-paragraph preview — stays rendered as an HONEST
+// SEAM that names the missing read (these become the W2.7 core
+// follow-ups). Renaming a story has no Operation either (`RenameStory`
+// is absent from the Mutation set), so the inspector is read-only by
+// design.
+//
+// U6 — clicking a row now ALSO element-selects the story's first frame
+// (via `client.frameChain`) and fit-navigates the camera to it, so the
+// panel actually takes you to the story on canvas — in addition to the
+// caret-at-head content selection the text tool drives.
 
 import { useEffect, useState } from "react";
 
@@ -50,15 +55,77 @@ import {
   ComingSoon,
   ListRows,
   StatusPill,
+  useCamera,
+  useCanvasClient,
   useCollection,
   useContentSelection,
+  useDocument,
+  useSelection,
   type ListRowSpec,
 } from "@paged-media/shell";
-import type { StorySummary } from "@paged-media/client";
+import type { ElementId, StorySummary } from "@paged-media/client";
+
+import { layoutPages, fitCamera } from "../../ui/layout";
+import { useAnimatedCamera } from "../../ui/useAnimatedCamera";
 
 export function StoriesPanel() {
+  const client = useCanvasClient();
+  const { handle } = useDocument();
   const { contentSelection, setContentSelection } = useContentSelection();
+  const { setElementSelection, setElementGeometry } = useSelection();
+  const { camera, setCamera, viewportSize } = useCamera();
+  const animateCamera = useAnimatedCamera(camera, setCamera);
   const stories = useCollection<StorySummary>("stories");
+
+  // U6 — resolve the story's frame chain (v38 `requestFrameChain`),
+  // element-select its FIRST frame (the tree-panel selection idiom:
+  // worker-first, then mirror + geometry so overlays key on it), and
+  // reveal the frame by fitting the camera onto its doc-space rect
+  // (page rect from the same vertical-stack layout math the canvas
+  // uses + the frame's page-local bounds). Best-effort: a wire
+  // failure must not break the caret-at-head row click.
+  const revealFirstFrame = async (storyId: string) => {
+    try {
+      const links = await client.frameChain(storyId);
+      const first = links[0];
+      if (!first) return;
+      const id: ElementId = { kind: "textFrame", id: first.frameId };
+      const applied = await client.setElementSelection([id], "replace");
+      setElementSelection(applied);
+      const geoms = await client.elementGeometry(applied);
+      setElementGeometry(geoms);
+      const g = geoms[0];
+      if (!g || !g.pageId || !handle) return;
+      const pageIndex = handle.pageIds.indexOf(g.pageId);
+      if (pageIndex < 0) return;
+      const pageRect = layoutPages(handle.pageSizesPt)[pageIndex];
+      if (!pageRect) return;
+      const [top, left, bottom, right] = g.bounds;
+      const frameRect = {
+        x: pageRect.x + left,
+        y: pageRect.y + top,
+        w: Math.max(right - left, 1),
+        h: Math.max(bottom - top, 1),
+      };
+      const [vw, vh] = viewportSize;
+      if (vw <= 0 || vh <= 0) return;
+      const fit = fitCamera(vw, vh, frameRect);
+      // A small frame would fit at an absurd zoom — cap at 200% and
+      // keep the frame centred (same centring arithmetic as fitCamera).
+      const scale = Math.min(fit.scale, 2);
+      animateCamera(
+        scale === fit.scale
+          ? fit
+          : {
+              scale,
+              tx: (vw - frameRect.w * scale) / 2 - frameRect.x * scale,
+              ty: (vh - frameRect.h * scale) / 2 - frameRect.y * scale,
+            },
+      );
+    } catch {
+      // Select/reveal is additive — swallow and keep the caret click.
+    }
+  };
 
   // The inspector targets a story by id. Seed from / follow the content
   // selection so the canvas caret and the inspector agree, but keep a
@@ -101,12 +168,14 @@ export function StoriesPanel() {
     } · ${s.paragraphCount} ¶ · ${s.selfId}`,
     badge: s.overset ? { label: "overset", tone: "error" } : undefined,
     selected: s.selfId === activeStoryId,
-    // Selecting a story = a caret at its head; the canvas scrolls it
-    // into view AND opens the inspector. Honest: this is the same
-    // content-selection the text tool drives.
+    // Selecting a story = a caret at its head (the same
+    // content-selection the text tool drives) + opens the inspector.
+    // U6: ALSO element-select the chain's first frame and fit the
+    // camera onto it so the click lands you at the story on canvas.
     onClick: () => {
       setInspectedId(s.selfId);
       setContentSelection({ storyId: s.selfId, start: 0, end: 0 });
+      void revealFirstFrame(s.selfId);
     },
   }));
 
@@ -217,18 +286,15 @@ function StoryInspector({
       />
 
       {/* HONEST SEAMS — no story-keyed read on the current wire. Each
-          names the read a core follow-up must add. */}
+          names the read a core follow-up must add. (The frame chain is
+          no longer a seam: `requestFrameChain` is a real story→frame
+          read, consumed by the row-click select/reveal.) */}
       <div
         style={{
           height: 1,
           background: "var(--pg-border)",
           margin: "10px 0 9px",
         }}
-      />
-      <Seam
-        label="Frame chain"
-        testId="story-seam-frame-chain"
-        note="No story→frame map on the wire (StorySummary carries no frame ids; nextTextFrame/previousTextFrame are reachable only from a known frame). Needs a frameChain accessor keyed by story id."
       />
       <Seam
         label="Words"

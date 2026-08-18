@@ -44,9 +44,11 @@ import {
   type ElementGeometryItem,
   type ElementId,
   type GestureAnchor,
+  type GestureFailure,
   type GestureHandle,
   type GestureModifiers,
   type ElementProperties,
+  type FrameChainLink,
   type GestureType,
   type GradientDetail,
   type LayerSummary,
@@ -111,6 +113,30 @@ export interface CanvasClientOptions {
    *  worker from a URL passed across the package boundary — use
    *  `workerFactory` under Vite. */
   workerUrl?: URL;
+  /**
+   * U5/A7 — the default-font invariant. Invoked by `loadDocument` /
+   * `newBlankDocument` when the caller passes NO font bytes, so every
+   * load path shares one default-font door instead of each caller
+   * remembering to fetch one. Without a default font the engine has no
+   * fallback face for fonts the document declares but cannot resolve —
+   * their text shapes to nothing and silently renders BLANK. Resolve
+   * `undefined` when no font is available (the caller-visible behaviour
+   * is then exactly the pre-provider one); a throw is treated as
+   * `undefined`.
+   */
+  defaultFontProvider?: () => Promise<Uint8Array | undefined>;
+}
+
+/** Render a `GestureFailure` with its payload intact. The engine's
+ *  `Other { message }` (and the detail-bearing kinds) carry the actual
+ *  diagnosis — surfacing only `.kind` once left a corpus-sweep red
+ *  unclassifiable as literally "other" (audit 17082026). */
+function describeGestureFailure(error: GestureFailure): string {
+  const details = "details" in error ? error.details : undefined;
+  if (!details) return error.kind;
+  if ("message" in details) return `${error.kind}: ${details.message}`;
+  if ("reason" in details) return `${error.kind}: ${details.reason}`;
+  return `${error.kind}: ${JSON.stringify(details)}`;
 }
 
 export class CanvasClient {
@@ -124,8 +150,11 @@ export class CanvasClient {
   >();
   readonly camera: CameraBuffer;
   readonly gestureSab: GestureBuffer;
+  /** See {@link CanvasClientOptions.defaultFontProvider}. */
+  private readonly defaultFontProvider?: () => Promise<Uint8Array | undefined>;
 
   constructor(options: CanvasClientOptions) {
+    this.defaultFontProvider = options.defaultFontProvider;
     if (options.workerFactory) {
       this.worker = options.workerFactory();
     } else if (options.workerUrl) {
@@ -185,19 +214,25 @@ export class CanvasClient {
     font?: Uint8Array,
     cmykIccProfile?: Uint8Array,
   ): Promise<DocumentHandle> {
+    // U5/A7 — no explicit font ⇒ ask the provider, so a caller that
+    // never thought about fonts (the plugin native-document fallback,
+    // a bare test load) still gets the default-face fallback for
+    // unresolvable document fonts. The result rides the binary
+    // side-channel exactly like caller-passed bytes.
+    const fontBytes = font ?? (await this.resolveDefaultFont());
     const seq = this.nextSeq++;
     const promise = new Promise<DocumentHandle>((resolve, reject) => {
       this.loadDocPending.set(seq, { resolve, reject });
     });
     const transfer: Transferable[] = [bytes.buffer];
-    if (font) transfer.push(font.buffer);
+    if (fontBytes) transfer.push(fontBytes.buffer);
     if (cmykIccProfile) transfer.push(cmykIccProfile.buffer);
     this.worker.postMessage(
       {
         kind: "loadDocumentBinary",
         seq,
         bytes,
-        font: font ?? null,
+        font: fontBytes ?? null,
         cmykIccProfile: cmykIccProfile ?? null,
       },
       // Transfer ownership of the underlying buffers; the caller's
@@ -224,12 +259,16 @@ export class CanvasClient {
     heightPt: number,
     font?: Uint8Array,
   ): Promise<DocumentHandle> {
+    // U5/A7 — same default-font door as `loadDocument`; this path rides
+    // the JSON channel, so the bytes go as `number[]` like a
+    // caller-passed font would.
+    const fontBytes = font ?? (await this.resolveDefaultFont());
     const reply = await this.send({
       kind: "newBlankDocument",
       payload: {
         widthPt,
         heightPt,
-        font: font ? Array.from(font) : null,
+        font: fontBytes ? Array.from(fontBytes) : null,
       },
     });
     if (reply.kind === "documentLoaded") {
@@ -248,6 +287,18 @@ export class CanvasClient {
     number,
     { resolve: (h: DocumentHandle) => void; reject: (e: Error) => void }
   >();
+
+  /** The provider's answer, or `undefined` with no provider / on a
+   *  provider failure — the load itself must never fail because the
+   *  fallback font could not be fetched. */
+  private async resolveDefaultFont(): Promise<Uint8Array | undefined> {
+    if (!this.defaultFontProvider) return undefined;
+    try {
+      return await this.defaultFontProvider();
+    } catch {
+      return undefined;
+    }
+  }
 
   async requestPage(pageId: PageId, lod: LodTier): Promise<WorkerToMain> {
     return this.send({ kind: "requestPage", payload: { pageId, lod } });
@@ -853,7 +904,7 @@ export class CanvasClient {
     });
     if (reply.kind === "gestureBegun") return reply.payload.handle;
     if (reply.kind === "gestureFailed") {
-      throw new Error(`beginGesture failed: ${reply.payload.error.kind}`);
+      throw new Error(`beginGesture failed: ${describeGestureFailure(reply.payload.error)}`);
     }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
@@ -893,7 +944,7 @@ export class CanvasClient {
       };
     }
     if (reply.kind === "gestureFailed") {
-      throw new Error(`updateGesture failed: ${reply.payload.error.kind}`);
+      throw new Error(`updateGesture failed: ${describeGestureFailure(reply.payload.error)}`);
     }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
@@ -917,7 +968,7 @@ export class CanvasClient {
       };
     }
     if (reply.kind === "gestureFailed") {
-      throw new Error(`commitGesture failed: ${reply.payload.error.kind}`);
+      throw new Error(`commitGesture failed: ${describeGestureFailure(reply.payload.error)}`);
     }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
@@ -933,7 +984,7 @@ export class CanvasClient {
     });
     if (reply.kind === "gestureCancelled") return reply.payload.pageIds;
     if (reply.kind === "gestureFailed") {
-      throw new Error(`cancelGesture failed: ${reply.payload.error.kind}`);
+      throw new Error(`cancelGesture failed: ${describeGestureFailure(reply.payload.error)}`);
     }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
@@ -1049,6 +1100,24 @@ export class CanvasClient {
     });
     if (reply.kind === "paragraphBoundsResult")
       return reply.payload.bounds ?? null;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
+   * v38 (Wave 2, C-2 / S-05) — the story's `NextTextFrame` thread,
+   * head-first: one `FrameChainLink` per frame the story flows
+   * through (`frameId` is the frame's `Self` id; `next` is its
+   * `NextTextFrame` target, `null` at end-of-chain; `overflow` marks
+   * the tail link of an overset story). Empty array when the story
+   * owns no frames. This is the story→frame map the Stories panel
+   * uses to select/reveal a story's first frame.
+   */
+  async frameChain(storyId: string): Promise<FrameChainLink[]> {
+    const reply = await this.send({
+      kind: "requestFrameChain",
+      payload: { storyId },
+    });
+    if (reply.kind === "frameChainResult") return reply.payload.links;
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 

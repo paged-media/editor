@@ -315,8 +315,13 @@ export { notifyExportPdfDialog } from "./chrome/ExportPdfDialog";
 // ── Loaders ────────────────────────────────────────────────────
 export {
   loadDocumentFile,
+  fetchDefaultFont,
   type DocumentLoaderCallbacks,
 } from "./state/document-loader";
+export {
+  setPendingImportSource,
+  takePendingImportSource,
+} from "./state/import-source";
 
 // ── Shell root ─────────────────────────────────────────────────
 export { PagedShell, type PagedShellProps } from "./PagedShell";

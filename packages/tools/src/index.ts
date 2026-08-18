@@ -27,6 +27,10 @@
 // (`@paged-media/tools` on npm once the org + token exist).
 
 export { BUILT_IN_TOOLS } from "./built-in-tools";
+// The shared post-insert flow (mutate → select created → geometry
+// refresh) — reused by the editor's `paged.insert.*` command layer so
+// menu/palette inserts land exactly like tool-drawn ones.
+export { mutateAndSelect, type MutateReply } from "./handlers/shared";
 export { createEllipseHandler } from "./handlers/ellipse-tool";
 export { createGradientFeatherHandler } from "./handlers/gradient-feather-tool";
 export { createGradientSwatchHandler } from "./handlers/gradient-tool";

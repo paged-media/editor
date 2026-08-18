@@ -37,6 +37,8 @@ import {
   tableCellOverlayContribution,
   threadingPortsContribution,
   loadDocumentFile,
+  fetchDefaultFont,
+  takePendingImportSource,
   useCamera,
   useCanvasClient,
   useContentSelection,
@@ -48,6 +50,7 @@ import {
   SchemaPanelRenderer,
   CatalogRegistryProvider,
   type OverlayContribution,
+  type PagedEditor,
   type PanelContribution,
   type ShellSchemaPanelRendererProps,
 } from "@paged-media/shell";
@@ -134,6 +137,20 @@ import {
   ungroupSelection,
   type ObjectCommandDeps,
 } from "./object-commands";
+import {
+  addPage,
+  buildInsertCommands,
+  INSERT_DIAGNOSTIC_SOURCE,
+  INSERT_KEYBINDINGS,
+  INSERT_MENU_ITEMS,
+  insertEllipse,
+  insertLine,
+  insertRectangle,
+  insertTable,
+  insertTextFrame,
+  placeImage,
+  type InsertReport,
+} from "./insert-commands";
 import { COCKPIT_MODES, PANEL_RAIL } from "./cockpit-modes";
 import { COCKPIT_MENU_SEAMS } from "./cockpit-menus";
 import { appCatalogRegistry } from "./panels/catalog-registry";
@@ -202,7 +219,6 @@ import { SeparationsPanel } from "./panels/cockpit/separations-panel";
 import {
   CommentsPanel,
   ComponentLibraryPanel,
-  DataMappingPanel,
 } from "./panels/cockpit/stub-panels";
 import { StoriesPanel } from "./panels/cockpit/stories-panel";
 import { DocumentMapPanel } from "./panels/cockpit/document-map-panel";
@@ -313,14 +329,9 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultGroup: "cockpit",
     icon: "ui-comment",
   },
-  {
-    id: "paged.data-mapping",
-    title: "Data",
-    component: DataMappingPanel,
-    defaultDock: "left",
-    defaultGroup: "cockpit",
-    icon: "ui-database",
-  },
+  // U8 — the old `paged.data-mapping` ComingSoon stub is retired: the
+  // LIVE paged.data bindings panel (media.paged.data.panel.bindings)
+  // superseded it and nothing referenced the stub's id.
   {
     id: "paged.component-library",
     title: "Library",
@@ -349,8 +360,11 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     icon: "ui-export",
   },
   {
+    // U8 — the LIVE paged.data plugin panels own the data surface;
+    // this built-in stays only as the honest data-suite seam, titled
+    // so it can't be mistaken for the live plugin panel.
     id: "paged.data-source",
-    title: "Data Source",
+    title: "Data suite (preview)",
     component: DataSourcePanel,
     defaultDock: "left",
     defaultGroup: "cockpit",
@@ -429,7 +443,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
   },
   {
     id: "paged.color-groups",
-    title: "Color Groups",
+    title: "Color groups",
     component: ColorGroupsPanel,
     defaultDock: "right",
     defaultGroup: "styles",
@@ -443,7 +457,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
   },
   {
     id: "paged.color-settings",
-    title: "Colour Settings",
+    title: "Color settings",
     component: ColorSettingsPanel,
     defaultDock: "right",
     defaultGroup: "styles",
@@ -488,7 +502,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
   // documentCollection accessor.
   {
     id: "paged.pages-list",
-    title: "Pages (list)",
+    title: "Pages list",
     component: PagesListPanel,
     defaultDock: "left",
     defaultGroup: "structure",
@@ -646,7 +660,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     // Rendered through the SAME SchemaPanelRenderer the bundle host
     // injects. Driven by tests/e2e/schema-list-panel.spec.ts.
     id: "paged.schema-list-demo",
-    title: "Swatch List (schema)",
+    title: "Swatch list (schema)",
     component: SchemaListDemoPanel,
     defaultDock: "right",
     defaultGroup: "styles",
@@ -1158,12 +1172,19 @@ function PluginBundles() {
       const client = pagedRef.current?.client;
       if (!client) return;
       const d = docRef.current;
+      // U14 — `nativeDocument.open(bytes)` carries no file name, so the
+      // backend hands a generic one ("Imported document"); the shell
+      // parked the REAL picked/dropped file name when it dispatched the
+      // import. Single-shot take: only an importer that actually opens
+      // consumes it.
+      const sourceFileName = takePendingImportSource() ?? name;
       // Copy into a fresh (non-shared) ArrayBuffer — the plugin bytes may be
       // SharedArrayBuffer-backed, which isn't a valid BlobPart.
       const ab = new ArrayBuffer(bytes.byteLength);
       new Uint8Array(ab).set(bytes);
-      await loadDocumentFile(client, new File([ab], name), {
+      await loadDocumentFile(client, new File([ab], sourceFileName), {
         setHandle: d.setHandle,
+        setSourceName: d.setSourceName,
         setLoading: d.setLoading,
         setStatus: () => {},
         setSnapshotsReady: d.setSnapshotsReady,
@@ -1257,7 +1278,7 @@ function PluginBundles() {
 function CanvasAppIntegration() {
   const client = useCanvasClient();
   const { camera, setCamera, viewportSize } = useCamera();
-  const { handle } = useDocument();
+  const { handle, sourceName } = useDocument();
   const { contentSelection, setContentSelection } = useContentSelection();
   const registries = useRegistries();
   // ADR-012 Tier 1 — the MENU path of the undo routing (the controller
@@ -1298,10 +1319,16 @@ function CanvasAppIntegration() {
       const pageSizes = handle?.pageSizesPt ?? [];
       if (pageSizes.length === 0 || pageIndices.length === 0) return;
       const rects = layoutPages(pageSizes);
-      const targets = pageIndices.map((i) => rects[i]).filter((r) => r != null);
-      if (targets.length === 0) return;
+      // `layoutPages` stacks ALL pages vertically (spreads are not
+      // side-by-side), so fitting the union rect of a multi-page
+      // spread lands the camera on the inter-page GAP. Fit the
+      // spread's FIRST page instead; a spread-aware `layoutPages`
+      // (pages of one spread side by side) is the structural fix
+      // (follow-up).
+      const target = rects[pageIndices[0]];
+      if (!target) return;
       const [vw, vh] = viewportSize;
-      animateCamera(fitCamera(vw, vh, documentBounds(targets)));
+      animateCamera(fitCamera(vw, vh, target));
     });
     return () => setCockpitPageNavigator(null);
   }, [animateCamera, handle, viewportSize]);
@@ -1357,12 +1384,14 @@ function CanvasAppIntegration() {
         if (!handle || handle.pageCount === 0) return;
         try {
           const bytes = await client.exportIdml();
-          let baseName = "document";
+          // U14 — same identity preference as the doc title bar:
+          // meta.documentName, else the loaded file's name.
+          let baseName = sourceName || "document";
           try {
             const meta = await client.documentMeta();
             if (meta.documentName) baseName = meta.documentName;
           } catch {
-            /* meta unavailable — keep the default name */
+            /* meta unavailable — keep the fallback name */
           }
           const blob = new Blob([bytes.slice()], {
             type: "application/vnd.adobe.indesign-idml-package",
@@ -1456,23 +1485,54 @@ function CanvasAppIntegration() {
       ungroup: fresh(() => ungroupSelection(objectDeps)),
       selectParentGroup: fresh(() => selectParentGroup(objectDeps)),
     });
-    const cmdDisposables = [...commands, ...objectCommands].map((c) =>
-      registries.commands.register(c),
-    );
+    // `paged.insert.*` — the object-authoring verbs (U7). Unlike the
+    // object layer's deps bag, every runner reads its state (camera,
+    // page layout, caret, edit context) off the LIVE `PagedEditor` the
+    // command registry materialises at invoke time — nothing here is
+    // captured, so the effect's re-run cadence cannot stale a
+    // placement. Same Problems-panel report channel + clean-slate
+    // discipline as `paged.object.*`.
+    const insertReport: InsertReport = (severity, message) =>
+      problemsSink.publish(INSERT_DIAGNOSTIC_SOURCE, "insert", [
+        { severity, message, source: "insert" },
+      ]);
+    const freshInsert =
+      (run: (paged: PagedEditor) => Promise<unknown>) =>
+      async (paged: PagedEditor) => {
+        problemsSink.clear(INSERT_DIAGNOSTIC_SOURCE);
+        return run(paged);
+      };
+    const insertCommands = buildInsertCommands({
+      textFrame: freshInsert((p) => insertTextFrame(p, insertReport)),
+      rectangle: freshInsert((p) => insertRectangle(p, insertReport)),
+      ellipse: freshInsert((p) => insertEllipse(p, insertReport)),
+      line: freshInsert((p) => insertLine(p, insertReport)),
+      table: freshInsert((p) => insertTable(p, insertReport)),
+      placeImage: freshInsert((p) => placeImage(p, insertReport)),
+      newPage: freshInsert((p) => addPage(p, insertReport)),
+    });
+    const cmdDisposables = [
+      ...commands,
+      ...objectCommands,
+      ...insertCommands,
+    ].map((c) => registries.commands.register(c));
     const menuDisposables = [
       ...APP_MENU_ITEMS,
       ...OBJECT_MENU_ITEMS,
+      ...INSERT_MENU_ITEMS,
       ...COCKPIT_MENU_SEAMS,
     ].map((m) => registries.menus.register(m));
-    const keyDisposables = [...APP_KEYBINDINGS, ...OBJECT_KEYBINDINGS].map((k) =>
-      registries.keybindings.register(k),
-    );
+    const keyDisposables = [
+      ...APP_KEYBINDINGS,
+      ...OBJECT_KEYBINDINGS,
+      ...INSERT_KEYBINDINGS,
+    ].map((k) => registries.keybindings.register(k));
     return () => {
       for (const d of cmdDisposables) d.dispose();
       for (const d of menuDisposables) d.dispose();
       for (const d of keyDisposables) d.dispose();
     };
-  }, [registries, client, camera, viewportSize, handle, animateCamera]);
+  }, [registries, client, camera, viewportSize, handle, sourceName, animateCamera]);
 
   return null;
 }
@@ -1492,6 +1552,28 @@ function CanvasAppRoot() {
     // the package boundary (the D6/E8 prod-dist bug).
     const c = new CanvasClient({
       workerFactory: () => new CanvasRenderWorker(),
+      // U5/A7 — the default-font invariant. Any document load that
+      // reaches the client WITHOUT explicit font bytes (the plugin
+      // native-document fallback, a direct `client.loadDocument` from
+      // scripts/tests) still gets the editor's Inter, so text set in
+      // fonts the document doesn't resolve renders through the default
+      // instead of silently disappearing. The shell's own loaders pass
+      // Inter explicitly and never hit this. Failure is LOUD: an
+      // unfetchable default font is exactly the "blank text" precondition.
+      defaultFontProvider: async () => {
+        const bytes = await fetchDefaultFont();
+        if (!bytes) {
+          problemsSink.publish("paged.editor", "default-font", [
+            {
+              severity: "warning",
+              message:
+                "default font unavailable — text in documents with missing fonts will not render",
+              source: "fonts",
+            },
+          ]);
+        }
+        return bytes;
+      },
     });
     setClient(c);
     return () => {

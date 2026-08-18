@@ -107,7 +107,11 @@ export function createEditorNativeDocumentBackend(
         throw new Error("no engine client to load the document into");
       // Prefer the full shell orchestration so the opened document activates
       // in the view (setHandle + snapshot + default font). Fall back to the
-      // bare worker load when no orchestration is injected.
+      // bare worker load when no orchestration is injected — that call
+      // passes no font bytes, and the default face now arrives through the
+      // client's `defaultFontProvider` (U5/A7), so text in fonts the
+      // imported document cannot resolve still renders instead of
+      // silently disappearing.
       if (openBytes) {
         await openBytes(bytes, "Imported document");
         return;

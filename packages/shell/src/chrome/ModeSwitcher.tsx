@@ -64,7 +64,10 @@ export function ModeSwitcher({ right }: ModeSwitcherProps) {
                   : "var(--status-approved)",
               }}
             />
-            {meta.dirty ? "Unsaved changes" : "All changes saved"}
+            {/* U14 — honest wording: the dirty flag means edits-since-
+                load; nothing persists to disk, so neither state may
+                claim a save happened. */}
+            {meta.dirty ? "Edited — not saved" : "No unsaved edits"}
           </span>
         ) : null}
       </div>

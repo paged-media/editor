@@ -62,6 +62,7 @@ export type {
   FieldChange,
   FieldKind,
   FrameBounds,
+  FrameChainLink,
   GuideOrientationSpec,
   GestureAnchor,
   GestureFailure,

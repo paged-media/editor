@@ -134,7 +134,7 @@ export function PublicationHealthPanel() {
             value={links ? String(links.length) : "—"}
           />
           <MetricTile
-            label="Colour mode"
+            label="Color mode"
             value={meta?.colorMode ? meta.colorMode.toUpperCase() : "—"}
           />
         </div>

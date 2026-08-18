@@ -257,7 +257,19 @@ export function EditContextController() {
   // which is in the set by construction, so entry can never trip this.
   // The `enteredKey` guard is shared for the same reason it exists
   // there — a re-entry on the same element must not be suppressed.
-  const activeTool = tool?.effectiveTool;
+  //
+  // BASE, not effective: a spring-loaded hold (Space → hand, and the
+  // bare Meta keydown of every Cmd chord → direct-select) pushes a
+  // momentary OVERRIDE onto the tool state. That is modifier posture,
+  // not the user reaching for another tool — but `effectiveTool`
+  // reflects it, and for a context declaring `toolIds: []` this rule
+  // read the Meta-down of Cmd-Z as "left by tool" and committed the
+  // session before the `z` arrived. The undo then hit the DOCUMENT
+  // stack: sheet-modal AC-K1-2/3 + the sheet journey, deterministic,
+  // CPU and GPU (audit 17082026). Watching the deliberate base tool
+  // keeps the rule's intent exactly: it fires when the user PICKS a
+  // tool outside the context's set, never mid-chord or mid-pan.
+  const activeTool = tool?.toolState.base;
   activeToolRef.current = activeTool ?? null;
   useEffect(() => {
     if (!active || !active.toolIds || !activeTool) return;

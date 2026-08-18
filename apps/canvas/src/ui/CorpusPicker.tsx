@@ -89,6 +89,7 @@ export function CorpusPicker() {
         });
         await loadDocumentFile(client, file, {
           setHandle: doc.setHandle,
+          setSourceName: doc.setSourceName,
           setLoading: doc.setLoading,
           setStatus: (s) => console.info("[corpus]", s),
           setSnapshotsReady: doc.setSnapshotsReady,

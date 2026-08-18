@@ -596,4 +596,41 @@ export const TOOL_GLYPHS: Record<string, ReactNode> = {
       />
     </>
   ),
+
+  // Clone stamp — the rubber stamp: knob handle, stem, shouldered base
+  // block over its impression line. paged.image retouch.
+  "tool-clone": (
+    <>
+      <circle cx={12} cy={5.4} r={2.4} {...LINE} strokeWidth={1.6} />
+      <line x1={10.9} y1={7.7} x2={10.9} y2={14.4} {...LINE} strokeWidth={1.6} />
+      <line x1={13.1} y1={7.7} x2={13.1} y2={14.4} {...LINE} strokeWidth={1.6} />
+      <path
+        d="M5 18 L5 16.5 C5 15.2 6.1 14.4 7.5 14.4 L16.5 14.4 C17.9 14.4 19 15.2 19 16.5 L19 18 Z"
+        {...LINE}
+        strokeWidth={1.6}
+      />
+      <line x1={4.5} y1={20.5} x2={19.5} y2={20.5} {...LINE} strokeWidth={1.7} />
+    </>
+  ),
+
+  // Healing brush — the plaster/bandage on the diagonal, its pad marked
+  // by the four pore dots. paged.image retouch.
+  "tool-heal": (
+    <>
+      <rect
+        x={4.6}
+        y={8.7}
+        width={14.8}
+        height={6.6}
+        rx={3.3}
+        transform="rotate(-45 12 12)"
+        {...LINE}
+        strokeWidth={1.6}
+      />
+      <circle cx={12} cy={9.7} r={0.9} />
+      <circle cx={9.7} cy={12} r={0.9} />
+      <circle cx={14.3} cy={12} r={0.9} />
+      <circle cx={12} cy={14.3} r={0.9} />
+    </>
+  ),
 };

@@ -342,13 +342,13 @@ export function ExportPdfDialog() {
                 marginLeft: 138,
               }}
             >
-              PDF/X-4 requires an output-intent profile — register one in Color
-              Settings or switch to PDF 1.7.
+              PDF/X-4 requires an output-intent profile — register one in the
+              Color settings panel or switch to PDF 1.7.
             </div>
           )}
 
           <div style={fieldRow}>
-            <span style={labelStyle}>Colour</span>
+            <span style={labelStyle}>Color</span>
             <select
               data-export-policy
               value={form.colorPolicy}
@@ -458,7 +458,7 @@ export function ExportPdfDialog() {
                 disabled={exporting}
                 onChange={(e) => set("colorBars", e.target.checked)}
               />
-              Colour bars
+              Color bars
             </label>
           </div>
 

@@ -21,7 +21,7 @@
 // view-state control at the foot of the tool rail, sibling to the
 // screen-mode selector. Flips the output-condition simulation on/off
 // via `setProofSetup`; the proof PROFILE + paper-white detail live
-// in the Colour Settings panel — this is the one-click switch. The
+// in the Color settings panel — this is the one-click switch. The
 // last-used (else first-registered) profile is the toggle's target;
 // with no registered profile the toggle stays disabled.
 
@@ -78,10 +78,10 @@ export function SoftProofToggle() {
       data-soft-proof={proofOn ? "on" : "off"}
       title={
         disabled
-          ? "Proof Colours — register an output profile first (Colour Settings)"
+          ? "Proof colors — register an output profile first (Color settings)"
           : proofOn
-            ? "Proof Colours: on — click to turn off"
-            : `Proof Colours: simulate ${target ?? "output"}`
+            ? "Proof colors: on — click to turn off"
+            : `Proof colors: simulate ${target ?? "output"}`
       }
       disabled={disabled}
       onClick={toggle}

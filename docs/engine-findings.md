@@ -20,11 +20,13 @@ Discovered 2026-06-05.
 > AC-E2E-PAGE-4 (promoted to a live render sandwich), AC-E2E-PROVE-3.
 > Per-finding details below.
 
-> **STATUS 2026-06-06 — W2 sweep adds #6 + #7 (OPEN).** The W2 gesture /
-> ops suite surfaced a batch-insertFrame duplicate-self_id bug (#6,
-> gridify) and a cluster of property paths that round-trip on the wire
-> but aren't yet consumed by core's render (#7). Both are filed for core
-> and anchored by markers that flip the day core fixes them.
+> **STATUS 2026-08-18 — #6 + #7 FIXED at the current pin.** The W2 sweep
+> surfaced a batch-insertFrame duplicate-self_id bug (#6, gridify) and a
+> cluster of wire-accepted-but-render-ignored property paths (#7); both
+> were fixed in core (verified against the v61 pin by the 17082026
+> audit's blind-spot pass — core 27f7d0a; the sandwich's zero-pixel rule
+> stays as the standing guard). This doc misreported them OPEN for two
+> months after the fix — status lines here must cite the verifying run.
 
 ## 1. Text undo/redo don't clear the body-story emit cache
 

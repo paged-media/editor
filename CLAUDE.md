@@ -99,8 +99,8 @@ an end-to-end **fidelity** suite (per-page PNG diff, ΔE2000/SSIM,
 against InDesign reference PDFs).
 
 ```bash
-cd apps/canvas
-pnpm wasm                       # build the wasm first — Playwright won't
+cd apps/canvas                  # engine wasm arrives via npm (Decision B);
+                                # no build step — `pnpm install` suffices
 pnpm test:fidelity              # full gate
 BACKEND=gpu pnpm test:fidelity  # WebGPU/Vello path (headed; CPU fallback)
 ```

@@ -289,8 +289,8 @@ export function SwatchRow({
           onChange={(e) => onAssignGroup(swatch.selfId, e.target.value || null)}
           title={
             canAssignGroup
-              ? "Colour group"
-              : "The active content type does not serve colour groups"
+              ? "Color group"
+              : "The active content type does not serve color groups"
           }
         >
           <option value="">—</option>

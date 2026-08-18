@@ -11,8 +11,8 @@ successfully applied to the IDML document on the canvas?** — not just
 "did the panel update its DOM".
 
 ```bash
-cd apps/canvas
-pnpm wasm                       # build the engine wasm first
+cd apps/canvas                  # engine wasm arrives via npm (Decision B) —
+                                # `pnpm install` at the repo root suffices
 npx playwright test tests/e2e   # the whole E2E suite
 npx playwright test tests/e2e/text-ops   # one domain suite
 ```
