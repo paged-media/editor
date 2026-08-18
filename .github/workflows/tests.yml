@@ -276,6 +276,23 @@ jobs:
           cache: pnpm
           cache-dependency-path: editor/pnpm-lock.yaml
 
+      # @paged-media/doc is the ONE bundle still consumed via a pnpm
+      # `link:` — its first publish is pending (user action). The link
+      # resolves to ../plugins/plugin-doc relative to the editor root, so
+      # check the (public) repo out there and install its deps; without it
+      # the dangling link leaves `@paged-media/doc` unresolvable and
+      # typecheck fails before a single test runs. DROP both steps when
+      # the package publishes and the pin replaces the link.
+      - name: checkout plugin-doc (the one link-consumed bundle)
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/plugin-doc
+          path: plugins/plugin-doc
+
+      - name: install plugin-doc (the link target needs its own deps)
+        working-directory: plugins/plugin-doc
+        run: pnpm install --frozen-lockfile
+
       - name: install editor (engine wasm + all plugin bundles resolve from npm)
         working-directory: editor
         run: pnpm install --frozen-lockfile
