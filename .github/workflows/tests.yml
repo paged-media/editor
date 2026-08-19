@@ -253,18 +253,15 @@ jobs:
           cargo build --release -p paged-gen --bin paged-gen
           GEN="$GITHUB_WORKSPACE/editor/corpus/generated"
           mkdir -p "$GEN"
-          # The full sample set the lean canvas surface loads (matches the
-          # 33 *.idml the local corpus/generated dir carries; mirrors the
-          # match arm list in core/crates/paged-gen/src/bin/paged-gen.rs).
-          for s in geometry geometry-groups strokes-fills text text-advanced \
-                   text-autosize text-letterspacing text-on-path text-overset \
-                   text-in-shape text-wrap effects footnotes gradients tables \
-                   images image-clipping anchored transparency markers masters \
-                   corners links-broken links-ok preflight numbering variables \
-                   conditions swatches navigation styles-cascade layout \
-                   nested-groups; do
-            ./target/release/paged-gen emit --sample "$s" --out "$GEN"
-          done
+          # `emit-all`, NOT a hand-copied name list. This step used to
+          # carry its own copy of paged-gen's sample names — the fourth
+          # copy of that list in the project — and it had silently lost
+          # `layers-z` and `paste-into`. The guard on the other copies only
+          # ever caught an UNKNOWN name; a name left OUT is invisible. The
+          # result: four layers-panel specs failed here with "Could not
+          # find EOCD", fetching a fixture CI had never emitted, and the
+          # suite had never run far enough for anyone to see it.
+          ./target/release/paged-gen emit-all --out "$GEN"
 
       # Guard: the IDML fixtures must now be real bytes on disk, or the
       # whole canvas surface fails with opaque parse errors mid-suite.
