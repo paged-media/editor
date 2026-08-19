@@ -74,7 +74,7 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 // A world pointer at y > 841.89 escapes every identity spread; if it
 // also lands inside spread 5's rect, `resolve_destination_spread`
 // (first match in document order) routes there deterministically.
-const FIXTURE = `${REPO_ROOT}/corpus/generated/layout.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/layout.idml`;
 
 // World-space target for the cross-spread drags: below the identity
 // spreads' shared page rect (y > 841.89) and inside the rotate-15

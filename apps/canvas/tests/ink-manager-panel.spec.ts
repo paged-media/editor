@@ -37,7 +37,7 @@ const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 // swatches.idml ships two Spot-model colors ("Brand Ink",
 // "Brand Ink 50%") — real spot rows without minting anything.
-const FIXTURE = `${REPO_ROOT}/corpus/generated/swatches.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/swatches.idml`;
 
 type InkRow = { spotId: string; name: string; convertToProcess: boolean };
 

@@ -40,7 +40,7 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 // exactly as they did on the envato pack. All numeric expectations
 // in this file are computed from measured bounds, so none needed
 // re-derivation beyond that.
-const FIXTURE = `${REPO_ROOT}/corpus/generated/numbering.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/numbering.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }

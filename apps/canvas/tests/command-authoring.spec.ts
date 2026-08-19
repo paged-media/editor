@@ -47,8 +47,8 @@ import { openCanvas } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const TEXT_FIXTURE = `${REPO_ROOT}/corpus/generated/text.idml`;
-const GEOMETRY_FIXTURE = `${REPO_ROOT}/corpus/generated/geometry.idml`;
+const TEXT_FIXTURE = `${REPO_ROOT}/corpus/idml/generated/text.idml`;
+const GEOMETRY_FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry.idml`;
 
 type ElementId = { kind: string; id: unknown };
 

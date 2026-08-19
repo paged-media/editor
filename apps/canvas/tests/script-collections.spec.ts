@@ -53,9 +53,9 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 //  gradients.idml  → swatches + linear/radial gradients + stories
 //  sample.idml     → multiple paragraph/character/object styles + layers
 //  links-broken.idml → placed-image links (status:missing, with uri/host)
-const GRADIENTS = `${REPO_ROOT}/corpus/generated/gradients.idml`;
-const SAMPLE = `${REPO_ROOT}/corpus/samples/sample.idml`;
-const LINKS = `${REPO_ROOT}/corpus/generated/links-broken.idml`;
+const GRADIENTS = `${REPO_ROOT}/corpus/idml/generated/gradients.idml`;
+const SAMPLE = `${REPO_ROOT}/corpus/idml/samples/sample.idml`;
+const LINKS = `${REPO_ROOT}/corpus/idml/generated/links-broken.idml`;
 
 interface CanvasGlobal {
   client: {

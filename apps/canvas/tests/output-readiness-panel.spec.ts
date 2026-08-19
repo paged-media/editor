@@ -36,7 +36,7 @@ const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 // links-broken.idml ships placements whose link targets are missing —
 // the real not-ready document.
-const FIXTURE = `${REPO_ROOT}/corpus/generated/links-broken.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/links-broken.idml`;
 
 /** Count missing links straight off the wire (the panel's own read). */
 async function wireMissingLinks(page: Page): Promise<number> {

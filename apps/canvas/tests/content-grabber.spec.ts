@@ -39,7 +39,7 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 // image-bearing Rectangles; the finder below walks every page via
 // marquee + `hasImage`, so the fixture only needs to guarantee at
 // least one exists — which it does by construction.
-const FIXTURE = `${REPO_ROOT}/corpus/generated/images.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/images.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }

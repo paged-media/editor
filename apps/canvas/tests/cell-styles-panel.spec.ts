@@ -36,7 +36,7 @@ const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 // styles-cascade.idml ships CellBase + CellDerived (BasedOn=CellBase)
 // — a real two-row cell-style collection with lineage.
-const FIXTURE = `${REPO_ROOT}/corpus/generated/styles-cascade.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/styles-cascade.idml`;
 
 type StyleRow = { selfId: string; name: string; basedOn: string | null };
 

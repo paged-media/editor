@@ -182,16 +182,17 @@ function fontsRoute(): import("vite").Plugin {
  *
  *   GET /corpus/idml/list              -> [{ id, label, group, stage? }]
  *   GET /corpus/idml/file/<group>/<x>  -> the IDML bytes
- *        generated/<base>  -> corpus/generated/<base>.idml
- *        samples/<base>    -> corpus/samples/<base>.idml
+ *        generated/<base>  -> corpus/idml/generated/<base>.idml
+ *        samples/<base>    -> corpus/idml/samples/<base>.idml
  *        packs/<name>      -> corpus/vendor/envato/packs/<name>/template.idml
  *   (legacy `file/<name>` with no group still resolves a pack.)
  */
 function corpusIdmlRoute(): import("vite").Plugin {
   const CORPUS_ROOT = resolve(CORPUS_ENVATO, "..");
   const PACKS_DIR = resolve(CORPUS_ENVATO, "packs");
-  const GENERATED_DIR = resolve(CORPUS_ROOT, "generated");
-  const SAMPLES_DIR = resolve(CORPUS_ROOT, "samples");
+  // Assets are grouped by FORMAT since the corpus grew past IDML.
+  const GENERATED_DIR = resolve(CORPUS_ROOT, "idml", "generated");
+  const SAMPLES_DIR = resolve(CORPUS_ROOT, "idml", "samples");
   const MANIFEST = resolve(CORPUS_ENVATO, "manifest.json");
   const STAGE_RANK: Record<string, number> = { smoke: 0, gated: 1, skip: 2 };
   const GROUP_RANK: Record<string, number> = {
@@ -453,7 +454,7 @@ export default defineConfig({
         // Corpus root (resolved to the sibling `~/paged/corpus` in
         // side-by-side dev, or `editor/corpus` if colocated) so the
         // fidelity driver + ad-hoc `/@fs/` loads can fetch fixtures
-        // under corpus/generated/* and corpus/samples/*, not just the
+        // under corpus/idml/generated/* and corpus/idml/samples/*, not just the
         // envato packs the /corpus/idml/ route serves.
         resolve(CORPUS_ENVATO, ".."),
         // Sibling plugin checkouts (the pnpm `link:` chain): their

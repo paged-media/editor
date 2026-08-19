@@ -38,7 +38,7 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 // two un-rotated TextFrames (page-local y 80..300 and y 360..580,
 // both x 57.6..537.6) — the two distinct frames the probe grid needs
 // for the union-handle gestures.
-const FIXTURE = `${REPO_ROOT}/corpus/generated/numbering.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/numbering.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }

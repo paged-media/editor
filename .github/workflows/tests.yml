@@ -26,7 +26,7 @@ name: tests
 # a local / core-CI concern; `PAGED_CI_LEAN=1` drops `fidelity.spec.ts`
 # + `extensive-corpus.spec.ts` from collection (both read the envato
 # manifest at import time). The lean surface (~412 tests) still needs the
-# small license-clear `corpus/generated` fixtures + `corpus/fonts`, which
+# small license-clear `corpus/idml/generated` fixtures + `corpus/fonts`, which
 # the harness loads — those come from a sparse LFS checkout of the
 # private `paged-media/corpus` repo (≈25 MB, not the 4.4 GB envato tier).
 #
@@ -166,7 +166,7 @@ jobs:
         with:
           path: editor
 
-      # License-clear fixtures the harness loads (corpus/generated/*.idml
+      # License-clear fixtures the harness loads (corpus/idml/generated/*.idml
       # + corpus/fonts). Sparse + LFS so we pull ~25 MB, not the 4.4 GB
       # envato tier. The editor's vite config + tests resolve the corpus
       # as a sibling of the repo root (`editor/corpus`), so check it out
@@ -206,14 +206,13 @@ jobs:
           # heavy tier (1.3 GB of packs) and no test on this surface
           # reads it.
           sparse-checkout: |
-            generated
-            samples
+            idml
             fonts
             config
           sparse-checkout-cone-mode: true
 
       # The canvas Playwright surface loads ~33 per-feature IDML fixtures
-      # from `corpus/generated/*.idml` (61 of the lean specs reference
+      # from `corpus/idml/generated/*.idml` (61 of the lean specs reference
       # them). Those files are NOT committed to the corpus repo — its
       # `generated/.gitignore` excludes `*.idml` because they are
       # reproducible from `cargo run -p paged-gen` (core). So neither a
@@ -223,7 +222,7 @@ jobs:
       #
       # Provision them by building the `paged-gen` fixture generator from
       # a `core` checkout and emitting every sample into
-      # corpus/generated. This is the same build-from-core pattern the
+      # corpus/idml/generated. This is the same build-from-core pattern the
       # `viewer`/`docs` repos use (their `core.pin`); it does NOT touch
       # the Decision-B *wasm* boundary (the engine still arrives as the
       # published npm package — this only generates test fixtures).
@@ -264,11 +263,11 @@ jobs:
           key: paged-rust-${{ runner.os }}-${{ hashFiles('core/Cargo.lock') }}
           restore-keys: paged-rust-${{ runner.os }}-
 
-      - name: generate corpus/generated/*.idml from paged-gen
+      - name: generate corpus/idml/generated/*.idml from paged-gen
         working-directory: core
         run: |
           cargo build --release -p paged-gen --bin paged-gen
-          GEN="$GITHUB_WORKSPACE/editor/corpus/generated"
+          GEN="$GITHUB_WORKSPACE/editor/corpus/idml/generated"
           mkdir -p "$GEN"
           # `emit-all`, NOT a hand-copied name list. This step used to
           # carry its own copy of paged-gen's sample names — the fourth

@@ -46,14 +46,14 @@ const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..", "..");
 const NUMBERING = {
   label: "numbering",
-  absPath: `${REPO_ROOT}/corpus/generated/numbering.idml`,
+  absPath: `${REPO_ROOT}/corpus/idml/generated/numbering.idml`,
 };
 // The `text` fixture's paragraphs are UN-numbered, so turning them into
 // a numbered list + assigning a list definition produces a real render
 // change (the markers paint) — the assign-renumbers gate.
 const TEXT = {
   label: "text",
-  absPath: `${REPO_ROOT}/corpus/generated/text.idml`,
+  absPath: `${REPO_ROOT}/corpus/idml/generated/text.idml`,
 };
 
 interface ListSummary {

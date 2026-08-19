@@ -36,7 +36,7 @@ const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 // tables.idml — the table fixture — ships AltRows + AltCols table
 // styles (applied to real tables) alongside [No table style].
-const FIXTURE = `${REPO_ROOT}/corpus/generated/tables.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/tables.idml`;
 
 type StyleRow = { selfId: string; name: string; basedOn: string | null };
 

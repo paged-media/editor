@@ -36,10 +36,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
-// Fixture: `corpus/generated/layers-z.idml` — license-clear, runs in
+// Fixture: `corpus/idml/generated/layers-z.idml` — license-clear, runs in
 // lean CI. Two `<Layer>` elements, which satisfies AC-M-5's ≥2
 // precondition; the structural ops themselves are fixture-agnostic.
-const FIXTURE = `${REPO_ROOT}/corpus/generated/layers-z.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/layers-z.idml`;
 
 interface LayerSummary {
   selfId: string;

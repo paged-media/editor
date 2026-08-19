@@ -41,7 +41,7 @@ import { mutate } from "./harness/ui";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/anchored.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/anchored.idml`;
 const ANCHORED_REF = { kind: "textFrame", id: "ucbd39a" };
 // The page-level text frame that displays the anchored object's parent
 // story (`u600df2`) — the anchored frame `ucbd39a` is nested INSIDE the

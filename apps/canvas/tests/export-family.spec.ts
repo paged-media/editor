@@ -41,8 +41,8 @@ import { openCanvas, openPanel } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const CLEAN = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
-const BROKEN_LINKS = `${REPO_ROOT}/corpus/generated/links-broken.idml`;
+const CLEAN = `${REPO_ROOT}/corpus/idml/generated/geometry-groups.idml`;
+const BROKEN_LINKS = `${REPO_ROOT}/corpus/idml/generated/links-broken.idml`;
 
 // Load through the FILE INPUT (not the driver's `loadIdml`, which
 // bypasses the React onChange path) so the DocumentContext `handle`

@@ -42,7 +42,7 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 // drag below re-derives its delta from the measured bounds, so the
 // left edge lands 2pt short of the page-left edge and the snap pass
 // fires an x-axis guide exactly as it did on the envato pack.
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }

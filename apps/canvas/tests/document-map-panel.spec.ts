@@ -36,12 +36,12 @@ import { openCanvas } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry-groups.idml`;
 // W2.7 per-page chip fixtures: links-broken ships rectangles whose
 // placed images resolve to the grey missing-image placeholder (status
 // "missing"); text-overset ships body stories that overflow their frames.
-const LINKS_BROKEN_FIXTURE = `${REPO_ROOT}/corpus/generated/links-broken.idml`;
-const OVERSET_FIXTURE = `${REPO_ROOT}/corpus/generated/text-overset.idml`;
+const LINKS_BROKEN_FIXTURE = `${REPO_ROOT}/corpus/idml/generated/links-broken.idml`;
+const OVERSET_FIXTURE = `${REPO_ROOT}/corpus/idml/generated/text-overset.idml`;
 
 async function loadFixtureReact(page: Page, fixture: string = FIXTURE) {
   await page.setInputFiles('input[type="file"]', fixture);

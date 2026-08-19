@@ -48,7 +48,7 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 // keep it comfortably on-page and >4pt away from any snap target
 // (page edges / the label frame's edges), so the ±4.5pt snap-
 // tolerance assertions hold with snap idle.
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }

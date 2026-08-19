@@ -34,28 +34,45 @@ const __dirname = dirname(__filename);
 /** apps/canvas/tests/e2e/harness → repo root (editor/). */
 export const REPO_ROOT = pathResolve(__dirname, "..", "..", "..", "..", "..");
 
+/**
+ * Absolute path to a paged-gen fixture.
+ *
+ * 83 spec files used to spell `${REPO_ROOT}/corpus/generated/<n>.idml`
+ * inline, so the corpus moving `generated/` under `idml/` (grouping
+ * assets by format, since the corpus now holds more than IDML) was an
+ * 83-file edit. Route them through here and the next move is one line.
+ */
+export function generatedFixture(name: string): string {
+  return `${REPO_ROOT}/corpus/idml/generated/${name}.idml`;
+}
+
+/** Same, for the curated real-document samples. */
+export function sampleFixture(name: string): string {
+  return `${REPO_ROOT}/corpus/idml/samples/${name}.idml`;
+}
+
 /** The 13 generated feature fixtures + curated real documents. */
 export const FIXTURES = {
   // generated (small, deterministic, feature-mapped)
-  text: "corpus/generated/text.idml",
-  "text-advanced": "corpus/generated/text-advanced.idml",
-  "text-letterspacing": "corpus/generated/text-letterspacing.idml",
-  "text-overset": "corpus/generated/text-overset.idml",
-  "text-wrap": "corpus/generated/text-wrap.idml",
-  "links-broken": "corpus/generated/links-broken.idml",
-  geometry: "corpus/generated/geometry.idml",
-  "geometry-groups": "corpus/generated/geometry-groups.idml",
-  "strokes-fills": "corpus/generated/strokes-fills.idml",
-  gradients: "corpus/generated/gradients.idml",
-  effects: "corpus/generated/effects.idml",
-  transparency: "corpus/generated/transparency.idml",
-  images: "corpus/generated/images.idml",
-  tables: "corpus/generated/tables.idml",
-  anchored: "corpus/generated/anchored.idml",
+  text: "corpus/idml/generated/text.idml",
+  "text-advanced": "corpus/idml/generated/text-advanced.idml",
+  "text-letterspacing": "corpus/idml/generated/text-letterspacing.idml",
+  "text-overset": "corpus/idml/generated/text-overset.idml",
+  "text-wrap": "corpus/idml/generated/text-wrap.idml",
+  "links-broken": "corpus/idml/generated/links-broken.idml",
+  geometry: "corpus/idml/generated/geometry.idml",
+  "geometry-groups": "corpus/idml/generated/geometry-groups.idml",
+  "strokes-fills": "corpus/idml/generated/strokes-fills.idml",
+  gradients: "corpus/idml/generated/gradients.idml",
+  effects: "corpus/idml/generated/effects.idml",
+  transparency: "corpus/idml/generated/transparency.idml",
+  images: "corpus/idml/generated/images.idml",
+  tables: "corpus/idml/generated/tables.idml",
+  anchored: "corpus/idml/generated/anchored.idml",
   // real documents (user-curated)
-  sample: "corpus/samples/sample.idml",
-  "line-sheet": "corpus/samples/line-sheet.idml",
-  "sample-3": "corpus/samples/sample-3.idml",
+  sample: "corpus/idml/samples/sample.idml",
+  "line-sheet": "corpus/idml/samples/line-sheet.idml",
+  "sample-3": "corpus/idml/samples/sample-3.idml",
 } as const;
 
 export type FixtureName = keyof typeof FIXTURES;
@@ -178,7 +195,7 @@ export async function loadFixture(
     );
     if (!hasEmphasis) {
       throw new Error(
-        `fixture drift: corpus/generated/text.idml no longer ships the ` +
+        `fixture drift: corpus/idml/generated/text.idml no longer ships the ` +
           `"Emphasis Display" paragraph style (found: ${styles
             .map((s) => s.name ?? s.selfId)
             .join(", ")}). The corpus symlink tracks core's paged-gen ` +

@@ -34,7 +34,7 @@ import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry-groups.idml`;
 
 async function openPreflight(page: import("@playwright/test").Page) {
   await page.evaluate(() => {
@@ -71,7 +71,7 @@ test.describe("W2.12 — Preflight panel", () => {
     // overset story + a "Phantom Display" missing font (it also powers
     // AC-FONTS-3), so exporting it raises at least one paged finding.
     await openCanvas(page);
-    await loadIdml(page, `${REPO_ROOT}/corpus/generated/preflight.idml`);
+    await loadIdml(page, `${REPO_ROOT}/corpus/idml/generated/preflight.idml`);
     await openPreflight(page);
     await page.locator('[data-cockpit-action="run-validation"]').click();
     // The validation pill lands once the export round-trips.

@@ -37,7 +37,7 @@ const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 // A multi-page fixture: clicking a single page's tile must produce a
 // camera that differs from the on-load fit (which frames ALL pages).
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry-groups.idml`;
 
 /** Load via the React file-input flow so `useDocument().handle`
  *  populates (same idiom as cockpit-panels.spec). */

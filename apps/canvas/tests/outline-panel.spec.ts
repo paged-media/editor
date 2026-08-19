@@ -37,7 +37,7 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 // navigation.idml carries two "Heading"-styled paragraphs —
 // "Getting Started" and "Going Further" — the fixture's real
 // document structure.
-const FIXTURE = `${REPO_ROOT}/corpus/generated/navigation.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/navigation.idml`;
 
 /** Load via the React file-input flow so `useDocument().handle`
  *  populates (same idiom as cockpit-panels.spec). */

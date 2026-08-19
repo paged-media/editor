@@ -33,7 +33,7 @@ import { openCanvas, openPanel } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/text.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/text.idml`;
 
 /** Load via the React file-input flow — the panel reads useDocumentMeta,
  *  which the fidelity driver's direct client.loadDocument bypasses (the

@@ -33,8 +33,8 @@ import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
-const OVERSET_FIXTURE = `${REPO_ROOT}/corpus/generated/text-overset.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry-groups.idml`;
+const OVERSET_FIXTURE = `${REPO_ROOT}/corpus/idml/generated/text-overset.idml`;
 
 /** Load via the React file-input flow so `useDocument().handle`
  *  populates (the U6 reveal reads it for the page-layout math; the

@@ -40,7 +40,7 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 // probes land on page 1's un-rotated 100×100 Rectangle — a square,
 // so the rotate/scale matrix assertions (which are analytic in the
 // gesture math, not fixture-derived) run against clean geometry.
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }

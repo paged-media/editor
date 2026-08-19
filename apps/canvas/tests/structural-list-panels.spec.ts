@@ -34,7 +34,7 @@ import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/text-advanced.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/text-advanced.idml`;
 
 async function mountAndAssert(
   page: Page,

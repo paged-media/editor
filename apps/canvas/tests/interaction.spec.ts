@@ -51,7 +51,7 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 // whole-page marquee sees both frames. (The suite's assertions are
 // all fixture-relative — probe-walk + set semantics — so nothing
 // numeric had to be re-derived for this fixture.)
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }

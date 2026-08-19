@@ -40,7 +40,7 @@ const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 // 370.9..470.9, A4 portrait) is what the centre probes find; every
 // resize delta below keeps its edges >4pt from any snap target, so
 // the exact-bounds assertions (2dp) are unaffected by the snap pass.
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }

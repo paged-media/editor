@@ -47,7 +47,7 @@ import { openCanvas, snapshotPagePng } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const TEXT_FIXTURE = `${REPO_ROOT}/corpus/generated/text.idml`;
+const TEXT_FIXTURE = `${REPO_ROOT}/corpus/idml/generated/text.idml`;
 
 // Page 1 of text.idml: A4 (595.276 × 841.89 pt); the lone text frame
 // sits at (57.638, 145.824), 480 × 400 pt, FillColor/StrokeColor None.

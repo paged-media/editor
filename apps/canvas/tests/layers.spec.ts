@@ -39,7 +39,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
-const FIXTURE = `${REPO_ROOT}/corpus/generated/layers-z.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/layers-z.idml`;
 
 interface LayerSummary {
   selfId: string;
