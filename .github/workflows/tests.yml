@@ -216,7 +216,7 @@ jobs:
       # absent) or "invalid Zip: Could not find EOCD" (LFS-pointer parse).
       #
       # Provision them by building the `paged-gen` fixture generator from
-      # a pinned `core` checkout and emitting every sample into
+      # a `core` checkout and emitting every sample into
       # corpus/generated. This is the same build-from-core pattern the
       # `viewer`/`docs` repos use (their `core.pin`); it does NOT touch
       # the Decision-B *wasm* boundary (the engine still arrives as the
@@ -227,6 +227,17 @@ jobs:
           repository: paged-media/core
           path: core
           token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
+          # NOT pinned — this deliberately follows core's default branch, so
+          # a new paged-gen sample reaches these fixtures without a bump
+          # here. (The comment above used to call it "a pinned core
+          # checkout"; there has never been a `ref:`.) The cost is a real
+          # ordering coupling: a core change this step depends on must be
+          # PUSHED BEFORE the editor change that uses it, or the run picks
+          # up the older core and fails. That happened on 2026-08-19 with
+          # `emit-all` — editor pushed first, and all three shards died on
+          # "unrecognized subcommand". If this ever needs to stop moving
+          # under the editor, adopt the `core.pin` file docs/viewer use
+          # rather than hand-editing a ref here.
 
       - name: rust toolchain (for paged-gen)
         uses: dtolnay/rust-toolchain@stable
