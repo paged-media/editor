@@ -188,7 +188,15 @@ function fontsRoute(): import("vite").Plugin {
  *   (legacy `file/<name>` with no group still resolves a pack.)
  */
 function corpusIdmlRoute(): import("vite").Plugin {
-  const CORPUS_ROOT = resolve(CORPUS_ENVATO, "..");
+  // Resolve the corpus ROOT directly. It used to be
+  // `resolve(CORPUS_ENVATO, "..")` — derived from the envato path — and
+  // that broke the moment envato moved one level deeper into
+  // `vendor/envato`: the root silently became `corpus/vendor`, the
+  // generated/samples routes pointed at directories that do not exist,
+  // the corpus picker rendered nothing, and the failure surfaced as
+  // `getByLabel('Load corpus IDML')` not found. Deriving one path from
+  // another is exactly the coupling the restructure exists to remove.
+  const CORPUS_ROOT = resolveCorpusSubdir(".");
   const PACKS_DIR = resolve(CORPUS_ENVATO, "packs");
   // Assets are grouped by FORMAT since the corpus grew past IDML.
   const GENERATED_DIR = resolve(CORPUS_ROOT, "idml", "generated");
