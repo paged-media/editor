@@ -363,7 +363,17 @@ jobs:
         timeout-minutes: 15
         run: |
           V=$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | grep version | head -1 | cut -d'"' -f2)
-          cargo install wasm-bindgen-cli --version "$V" --locked
+          # The cargo cache now covers ~/.cargo/bin, so a warm run already
+          # HAS these binaries and a plain `cargo install` dies with
+          # "binary `wasm-bindgen` already exists in destination". Skip
+          # when the cached version is the one the lockfile pins —
+          # cheaper than --force, and it keeps the pin check meaningful
+          # (build-wasm.sh hard-fails on a version mismatch).
+          if wasm-bindgen --version 2>/dev/null | grep -qw "$V"; then
+            echo "wasm-bindgen $V already installed (cache hit)"
+          else
+            cargo install wasm-bindgen-cli --version "$V" --locked --force
+          fi
 
       # build-wasm.sh runs a hard 8 MiB budget gate and only applies
       # wasm-opt when it is on PATH — without it the artifact lands at
