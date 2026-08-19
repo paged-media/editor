@@ -42,7 +42,7 @@ if (!process.env.NODE_OPTIONS) {
 // `corpus/envato` LFS packs + their InDesign reference PDFs + the
 // `paged-diff` Rust binary (built from a `core` checkout) + poppler's
 // `pdftoppm` — none of which the package-boundary runner has. Those two
-// specs read `corpus/envato/manifest.json` at import time, so set
+// specs read `corpus/config/manifest.json` at import time, so set
 // `PAGED_CI_LEAN=1` to drop them from collection entirely rather than
 // let the import throw. Local runs (no flag) keep the full surface.
 const LEAN_CI = process.env.PAGED_CI_LEAN === "1";
@@ -51,12 +51,12 @@ const LEAN_CI = process.env.PAGED_CI_LEAN === "1";
 // interaction/multi-select/gesture-sab-snap/content-grabber/
 // cross-spread-duplicate/layers/layers-panel/ruler-guides) used to sit
 // on an ENVATO_LEAN_DROP list here because they loaded
-// `corpus/envato/packs/<pack>/template.idml` — the same 4.4 GB LFS tier
+// `corpus/vendor/envato/packs/<pack>/template.idml` — the same 4.4 GB LFS tier
 // the lean runner omits. They have since been migrated onto the
 // license-clear `corpus/generated` fixtures (geometry / numbering /
 // layers-z / layout / images), so they now run in lean CI and the list
 // is empty. Only the two specs below remain dropped: they read
-// `corpus/envato/manifest.json` + reference PDFs at import time and are
+// `corpus/config/manifest.json` + reference PDFs at import time and are
 // inherently envato-tier (per-pack pixel fidelity), not migratable.
 const LEAN_DROP = LEAN_CI
   ? ["fidelity.spec.ts", "e2e/extensive-corpus.spec.ts"]

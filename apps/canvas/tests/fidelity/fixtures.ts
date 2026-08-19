@@ -29,12 +29,12 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = resolve(__dirname, "..", "..", "..", "..");
-export const ENVATO_DIR = resolve(REPO_ROOT, "corpus", "envato");
+export const ENVATO_DIR = resolve(REPO_ROOT, "corpus", "vendor", "envato");
 export const PACKS_DIR = resolve(ENVATO_DIR, "packs");
-export const OVERRIDES_DIR = resolve(ENVATO_DIR, "overrides");
-export const MANIFEST_PATH = resolve(ENVATO_DIR, "manifest.json");
+export const OVERRIDES_DIR = resolve(REPO_ROOT, "corpus", "config", "overrides");
+export const MANIFEST_PATH = resolve(REPO_ROOT, "corpus", "config", "manifest.json");
 
-// Default DPI mirrors corpus/envato/test.sh's IDML_ENVATO_DPI=144.
+// Default DPI mirrors corpus/harness/test.sh's IDML_ENVATO_DPI=144.
 // Override via the FIDELITY_DPI env var.
 export const FIDELITY_DPI = Number(process.env.FIDELITY_DPI ?? 144);
 export const FIDELITY_OUT_ROOT = resolve(

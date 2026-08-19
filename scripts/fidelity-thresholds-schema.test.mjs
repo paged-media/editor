@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Schema sanity check for corpus/envato/canvas-fidelity-thresholds.json.
+// Schema sanity check for corpus/config/canvas-fidelity-thresholds.json.
 //
 // The fidelity gate (apps/canvas/tests/fidelity.spec.ts) trusts this file
 // blind: a missing field or a junk value silently weakens or breaks the gate
@@ -21,22 +21,22 @@ const THRESHOLDS_PATH = resolve(
   here,
   "..",
   "corpus",
-  "envato",
+  "config",
   "canvas-fidelity-thresholds.json",
 );
-const MANIFEST_PATH = resolve(here, "..", "corpus", "envato", "manifest.json");
+const MANIFEST_PATH = resolve(here, "..", "corpus", "config", "manifest.json");
 
 // Both inputs live in the SEPARATE paged-media/corpus repo (locally a
 // `corpus` symlink → ~/paged/corpus). The corpus-free CI jobs (the static
 // `checks` job; the playwright job's sparse checkout only pulls
-// `envato/overrides`) don't carry these JSONs, so skip gracefully when
+// `config/overrides`) don't carry these JSONs, so skip gracefully when
 // they're absent rather than ENOENT-failing — the guard still runs in
 // full locally and anywhere corpus is present. Same skip-when-absent
 // contract as core's corpus/generated/diff.sh.
 if (!existsSync(THRESHOLDS_PATH) || !existsSync(MANIFEST_PATH)) {
   // eslint-disable-next-line no-console
   console.log(
-    "[thresholds] corpus/envato thresholds + manifest absent — skipping " +
+    "[thresholds] corpus/config thresholds + manifest absent — skipping " +
       "schema guard (corpus repo not checked out in this environment)",
   );
   process.exit(0);
