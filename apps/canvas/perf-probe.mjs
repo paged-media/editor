@@ -9,8 +9,16 @@
 import { chromium } from "@playwright/test";
 
 const PACK = process.argv[2] ?? process.env.PROBE_PACK ?? "digital-bridesmaid-planner-template";
-const IDML = `/Users/drietsch/idml/corpus/envato/packs/${PACK}/template.idml`;
-const FONT = "/Users/drietsch/idml/corpus/fonts/Inter.ttf";
+// Resolved relative to this file (apps/canvas/) so the probe works on any
+// checkout — the hardcoded `/Users/drietsch/idml/...` paths here were the
+// ARCHIVED monorepo layout and had been dead since the 2026-05-30 split.
+// `editor/corpus` is a symlink to the private corpus checkout; override
+// with PAGED_CORPUS when it lives elsewhere.
+const CORPUS =
+  process.env.PAGED_CORPUS ??
+  new URL("../../corpus/", import.meta.url).pathname;
+const IDML = `${CORPUS}envato/packs/${PACK}/template.idml`;
+const FONT = `${CORPUS}fonts/Inter.ttf`;
 const ICC  = "/Library/Application Support/Adobe/Color/Profiles/Recommended/CoatedFOGRA39.icc";
 
 console.log(`\n=== perf probe: ${PACK} ===`);
