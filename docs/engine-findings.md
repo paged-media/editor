@@ -220,6 +220,37 @@ pixels changed") the day core wires the render. Bullets
 (`paragraphBulletCharacter`) was in this list on first pass but core
 DOES composite it (~3.2k px), so its sandwich asserts a live render.
 
+## 8. DocumentMeta.dirty was hardcoded false (FIXED core-side, awaits pin)
+
+Discovered 2026-08-18 by the Info panel's first behaviour spec
+(`info-panel.spec.ts` AC-INFO-2): the engine's `document_meta()` returned
+`dirty: false` unconditionally, so EVERY consumer — the ModeSwitcher
+status chip ("No unsaved edits"), the DocTitleBar dirty dot, the Info
+panel's Dirty row — permanently claimed a clean document through any
+number of edits. The U14 honest-wording fix rode a dead flag.
+
+**Fixed in core** the same day: `dirty = !applied_log.is_empty()`
+(edits-since-load; undoing everything reads clean again; a pending redo
+does not differ from the loaded state) + a model test pinning the
+lifecycle. Rides the v0.61.2 tag; AC-INFO-2 is `test.fixme` until the
+canvas-wasm pin carries it — unfixme at the bump.
+
+## 9. resizeFrame / frameStrokeWeight repaint-stale cluster (OPEN)
+
+The truthful 61-pack op sweep (2026-08-18, post harness-truthing) puts
+`resizeFrame` at 42/61 packs render-stale — "operation produced NO
+render change in the affected region" — with the model verified landed
+(real `expectModel` readback) and the whole host page diffed. The
+op-sweep increment adds `frameStrokeWeight` and it lands in the same
+cluster (0/3 probe packs repaint; `frameStrokeColor` repaints once the
+weight is real, 1/3). One pack (`cultured-business-newsletter`) also
+shows the resize UNDO restoring non-byte-identically (3236 px, the
+determinism finding from the August audit). Smells like a
+geometry-write invalidation gap on the canvas rebuild path rather than
+per-property consumption (#7): the same writes repaint fine on the
+generated fixtures. Needs a core-side reproduction against an envato
+pack; tracked for the next engine investigation.
+
 ---
 
 ### What works (verified byte-clean)
