@@ -308,9 +308,39 @@ jobs:
         working-directory: editor
         run: pnpm --filter ./apps/canvas run typecheck
 
-      - name: install chromium + system deps
+      # NO `--with-deps`. That flag shells out to `apt-get update` as root,
+      # and on the ubuntu-24.04 runner that hangs: azure.archive.ubuntu.com
+      # answers every index request with `Ign:`, apt falls back to
+      # archive.ubuntu.com, and then it simply stops — the last log line is
+      # `Get:5 …noble-security InRelease` and nothing follows until the
+      # job's 50-minute timeout kills it. Deterministic, not flaky: all
+      # three shards hung at the same line in the same run, and this is why
+      # `tests.yml` has never once published a green Playwright result (30
+      # runs: 18 failure, 12 timed-out-as-cancelled, 0 success). Because
+      # the evidence artifact is produced by this job, every downstream
+      # consumer starved too — state's coverage gate reports "0 linked
+      # tests" for eight features whose specs exist and are tagged.
+      #
+      # The flag was never needed: the runner image ships Playwright's
+      # browser libraries preinstalled. Without it, `playwright install`
+      # only fetches the browser from Playwright's own CDN and touches apt
+      # never. And if a library IS ever missing, the browser fails to
+      # launch with a named error in seconds instead of a silent 50-minute
+      # stall — strictly better feedback either way.
+      #
+      # (`demo-capture.yml` still uses `--with-deps chrome`, which is a
+      # different case: installing real Google Chrome genuinely goes
+      # through apt. That lane is release-triggered and would hit the same
+      # wall; it needs its own fix, not this one.)
+      - name: install chromium
         working-directory: editor
-        run: pnpm --filter ./apps/canvas exec playwright install --with-deps chromium
+        # A browser download is ~1 minute. Bounding the step means a future
+        # stall here is reported AS a stall, in ten minutes, instead of
+        # eating the job's whole 50-minute budget and surfacing as
+        # "cancelled" — which is indistinguishable from a concurrency
+        # cancel and is precisely why this went unnoticed.
+        timeout-minutes: 10
+        run: pnpm --filter ./apps/canvas exec playwright install chromium
 
       # --project is REQUIRED here, not tidiness. Without it Playwright
       # runs EVERY project in the config, which on a Linux runner means
