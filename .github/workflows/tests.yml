@@ -126,6 +126,15 @@ jobs:
       - name: fidelity thresholds schema
         run: pnpm test:thresholds
 
+      # The app-wide wasm budget: 100 MB for the editor AND every plugin
+      # together (2026-08-19). Every other wasm ceiling in the platform is
+      # per-artifact or per-bundle, so until now nothing measured the sum —
+      # eight bundles could each pass their own gate and the app could still
+      # ship a quarter of a gigabyte. This job is the only place that sees
+      # the whole assembled app, so this is where the sum is checked.
+      - name: app-wide wasm budget (100 MB, editor + all plugins)
+        run: pnpm test:wasm-budget
+
   playwright:
     name: playwright (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
