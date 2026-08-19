@@ -286,8 +286,15 @@ jobs:
       - name: verify corpus fixtures are materialized
         working-directory: editor/corpus
         run: |
-          for f in generated/text.idml generated/text-overset.idml \
-                   generated/geometry.idml generated/links-broken.idml; do
+          # Paths are corpus-root-relative. They said `generated/…` until
+          # 2026-08-19, when assets were grouped by format under `idml/`
+          # — and this guard is what caught the stale list, before 170
+          # specs per shard could fail on a fixture that was simply
+          # somewhere else. Keep it that way: it is the only thing
+          # standing between a mis-typed sparse cone and a mystery.
+          for f in idml/generated/text.idml idml/generated/text-overset.idml \
+                   idml/generated/geometry.idml idml/generated/links-broken.idml \
+                   idml/samples/sample.idml fonts/Inter.ttf; do
             if [ ! -f "$f" ]; then
               echo "::error::$f is missing — paged-gen provisioning failed"
               exit 1
