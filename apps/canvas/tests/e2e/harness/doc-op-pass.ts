@@ -686,6 +686,17 @@ export async function docOpPass(
     results.push({ op: "setElementProperty(frameFillColor)", status: "skip" });
   }
 
+  // Ops 9/10 (coverage campaign increment 1) reuse the story insertText
+  // PROVED paintable — the probe below is the expensive part, and a second
+  // probe could pick a DIFFERENT story than the one just mutated.
+  let textTarget: {
+    storyId: string;
+    region: { top: number; left: number; bottom: number; right: number };
+    pageId: string;
+    widthPt: number;
+    before: number;
+  } | null = null;
+
   // 5) insertText on the first story (undo render is the known text
   //    cache bug → waive the pixel check, keep model restore hard).
   //
@@ -768,6 +779,13 @@ export async function docOpPass(
       };
       const storyId = chosen.selfId;
       const before = chosen.before;
+      textTarget = {
+        storyId,
+        region,
+        pageId: pageInfo.pageId,
+        widthPt: pageInfo.widthPt,
+        before,
+      };
       await runOp(
         "insertText",
         assert,
@@ -836,6 +854,226 @@ export async function docOpPass(
     );
   } else {
     results.push({ op: "createSwatch", status: "skip" });
+  }
+
+  // ── Coverage campaign increment 1 (2026-08-18): four more ops through the
+  // same sandwich + honest-target discipline. Order matters twice: weight
+  // BEFORE colour (a stroke-colour write on a 0-weight frame repaints
+  // nothing and would falsely read render-stale), and deleteRange rides the
+  // "Zz " insertText left applied (the sandwich ends on redo).
+
+  // 7) frameStrokeWeight on the visible rectangle — write-is-a-change by
+  //    construction (read current, pick the other of 1.5/4).
+  if (rectPick) {
+    const rect = rectPick.ref;
+    const host = await hostPage(rect);
+    if (host) {
+      const current = await readPropValue(page, rect, "frameStrokeWeight");
+      const cur = current?.type === "length" ? (current.value as number | null) : null;
+      const target = cur !== null && Math.abs(cur - 4) < 0.01 ? 1.5 : 4;
+      await runOp(
+        "setElementProperty(frameStrokeWeight)",
+        assert,
+        () =>
+          opSandwich(page, {
+            pageId: host.pageId,
+            pageWidthPt: host.widthPt,
+            region: null,
+            apply: async () => {
+              await mutate(page, {
+                op: "setElementProperty",
+                args: {
+                  elementId: rect,
+                  path: "frameStrokeWeight",
+                  value: { type: "length", value: target },
+                },
+              });
+            },
+            expectModel: async () => {
+              const v = await readPropValue(page, rect, "frameStrokeWeight");
+              if (!(v?.type === "length" && Math.abs((v.value as number) - target) < 0.01)) {
+                throw new Error(
+                  `frameStrokeWeight did not land in the model: expected ${target}, read ${JSON.stringify(v)}`,
+                );
+              }
+            },
+          }).then(() => undefined),
+        results,
+        rectPick.note,
+      );
+    } else {
+      results.push({
+        op: "setElementProperty(frameStrokeWeight)",
+        status: "skip",
+        note: "target renders on no listed page (pasteboard / master)",
+      });
+    }
+  } else {
+    results.push({ op: "setElementProperty(frameStrokeWeight)", status: "skip" });
+  }
+
+  // 8) frameStrokeColor — after 7 the stroke has real width, so a colour
+  //    change must repaint. Exclude the current stroke swatch (write-is-a-
+  //    change), same as the fill op.
+  if (rectPick) {
+    const rect = rectPick.ref;
+    const host = await hostPage(rect);
+    const currentStroke = await readPropValue(page, rect, "frameStrokeColor");
+    const exclude =
+      currentStroke?.type === "colorRef" && typeof currentStroke.value === "string"
+        ? currentStroke.value
+        : null;
+    const sw = await firstSwatchId(page, exclude);
+    if (host && sw) {
+      await runOp(
+        "setElementProperty(frameStrokeColor)",
+        assert,
+        () =>
+          opSandwich(page, {
+            pageId: host.pageId,
+            pageWidthPt: host.widthPt,
+            region: null,
+            apply: async () => {
+              await mutate(page, {
+                op: "setElementProperty",
+                args: {
+                  elementId: rect,
+                  path: "frameStrokeColor",
+                  value: { type: "colorRef", value: sw },
+                },
+              });
+            },
+            expectModel: async () => {
+              const v = await readPropValue(page, rect, "frameStrokeColor");
+              if (!(v?.type === "colorRef" && v.value === sw)) {
+                throw new Error(
+                  `frameStrokeColor did not land in the model: expected ${sw}, read ${JSON.stringify(v)}`,
+                );
+              }
+            },
+          }).then(() => undefined),
+        results,
+        rectPick.note,
+      );
+    } else {
+      results.push({
+        op: "setElementProperty(frameStrokeColor)",
+        status: "skip",
+        note: host
+          ? "no paint swatch differing from the current stroke"
+          : "target renders on no listed page (pasteboard / master)",
+      });
+    }
+  } else {
+    results.push({ op: "setElementProperty(frameStrokeColor)", status: "skip" });
+  }
+
+  // 9) deleteRange — removes the exact "Zz " op 5 left applied, so the
+  //    model lands back on the story's original count. Same text-cache
+  //    undo-pixel waiver as insertText.
+  let lastDeleteReply: unknown = null;
+  let deletePreCount: number | null = null;
+  if (textTarget) {
+    const t = textTarget;
+    await runOp(
+      "deleteRange",
+      assert,
+      () =>
+        opSandwich(page, {
+          pageId: t.pageId,
+          pageWidthPt: t.widthPt,
+          region: t.region,
+          containment: false,
+          skipUndoPixelCheck: UNDO_TEXT_CACHE_BUG,
+          apply: async () => {
+            deletePreCount = await storyChars(page, t.storyId);
+            const reply = await mutate(page, {
+              op: "deleteRange",
+              args: { storyId: t.storyId, start: 0, end: 3 },
+            });
+            lastDeleteReply = reply;
+          },
+          expectModel: async () => {
+            const count = await storyChars(page, t.storyId);
+            if (count !== (deletePreCount ?? t.before + 3) - 3) {
+              throw new Error(
+                `deleteRange [0,3) moved the count ${deletePreCount} -> ${count} (expected -3); original ${t.before}; reply ${JSON.stringify(lastDeleteReply).slice(0, 160)}`,
+              );
+            }
+          },
+        }).then(() => undefined),
+      results,
+    );
+  } else {
+    results.push({
+      op: "deleteRange",
+      status: "skip",
+      note: "no paintable story (see insertText)",
+    });
+  }
+
+  // 10) applyStyle — the LAST paragraph style in the collection (the
+  //    capability-probe idiom: maximises the odds of a visible change; a
+  //    same-styled range honestly reads render-stale, which the advisory
+  //    per-op table records rather than hides). Model check is weak by
+  //    necessity — there is no cheap range-style read door yet.
+  if (textTarget) {
+    const t = textTarget;
+    const style = await page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: { collection: (n: string) => Promise<Array<{ selfId: string }>> };
+          };
+        }
+      ).__canvas;
+      const styles = await c.client.collection("paragraphStyles");
+      return styles.at(-1)?.selfId ?? null;
+    });
+    if (style) {
+      await runOp(
+        "applyStyle",
+        assert,
+        () =>
+          opSandwich(page, {
+            pageId: t.pageId,
+            pageWidthPt: t.widthPt,
+            region: t.region,
+            containment: false,
+            skipUndoPixelCheck: UNDO_TEXT_CACHE_BUG,
+            apply: async () => {
+              await mutate(page, {
+                op: "applyStyle",
+                args: {
+                  storyId: t.storyId,
+                  start: 0,
+                  end: Math.min(t.before, 32),
+                  style,
+                  scope: "paragraph",
+                },
+              });
+            },
+            expectModel: async () => {
+              if ((await storyChars(page, t.storyId)) !== t.before) {
+                throw new Error("applyStyle must not change the character count");
+              }
+            },
+          }).then(() => undefined),
+        results,
+      );
+    } else {
+      results.push({
+        op: "applyStyle",
+        status: "skip",
+        note: "document has no paragraph styles",
+      });
+    }
+  } else {
+    results.push({
+      op: "applyStyle",
+      status: "skip",
+      note: "no paintable story (see insertText)",
+    });
   }
 
   return results;
