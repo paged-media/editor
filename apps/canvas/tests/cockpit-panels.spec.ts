@@ -102,7 +102,7 @@ test.describe("Cockpit — Preflight", () => {
 });
 
 test.describe("Cockpit — document title bar", () => {
-  test("U14 — the title shows the loaded file's name when the meta has none @feat:editor-shell.cockpit @level:happy", async ({
+  test("U14 — the title shows the loaded file's name when the meta has none @feat:editor-shell.document-title @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
