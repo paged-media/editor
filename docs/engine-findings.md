@@ -235,21 +235,30 @@ does not differ from the loaded state) + a model test pinning the
 lifecycle. Rides the v0.61.2 tag; AC-INFO-2 is `test.fixme` until the
 canvas-wasm pin carries it — unfixme at the bump.
 
-## 9. resizeFrame / frameStrokeWeight repaint-stale cluster (OPEN)
+## 9. resizeFrame repaint-stale on real templates (OPEN)
 
 The truthful 61-pack op sweep (2026-08-18, post harness-truthing) puts
-`resizeFrame` at 42/61 packs render-stale — "operation produced NO
+`resizeFrame` at 41/61 packs render-stale — "operation produced NO
 render change in the affected region" — with the model verified landed
-(real `expectModel` readback) and the whole host page diffed. The
-op-sweep increment adds `frameStrokeWeight` and it lands in the same
-cluster (0/3 probe packs repaint; `frameStrokeColor` repaints once the
-weight is real, 1/3). One pack (`cultured-business-newsletter`) also
-shows the resize UNDO restoring non-byte-identically (3236 px, the
-determinism finding from the August audit). Smells like a
-geometry-write invalidation gap on the canvas rebuild path rather than
-per-property consumption (#7): the same writes repaint fine on the
-generated fixtures. Needs a core-side reproduction against an envato
-pack; tracked for the next engine investigation.
+(real `expectModel` readback) and the whole host page diffed. One pack
+(`cultured-business-newsletter`) additionally shows the resize UNDO
+restoring non-byte-identically (3236 px, the determinism finding from
+the August audit). The same write repaints fine on the generated
+fixtures, so it smells like a geometry-write invalidation/rebuild gap
+that only real template documents hit. Needs a core-side reproduction
+against an envato pack; tracked for the next engine investigation.
+
+**NOT part of this finding (corrected 2026-08-19):** the first run of
+the expanded sweep showed `frameStrokeWeight` 0/59 and
+`frameStrokeColor` 27/59 stale, and it was tempting to read that as the
+same engine gap. It was the HARNESS: both stroke ops targeted the
+fill-picked rectangle, and a wider stroke of `Swatch/None` paints
+nothing exactly as a recoloured 0pt stroke does. With an honest target
+(visible stroke colour AND non-zero weight, else an explicit skip) both
+ops pass where a stroked rectangle exists and skip where none does.
+`paged-mutate` emits the `frame_style` invalidation hint for these
+paths correctly. Cost of the lesson: a harness target fact wearing an
+engine finding's clothes for one afternoon.
 
 ---
 

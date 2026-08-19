@@ -210,12 +210,18 @@ export async function opSandwich(
   // dirty (unless the op never repaints).
   if (!o.noRenderChange) {
     const dirty = new Set(replies.flatMap((r) => r.pageIds ?? []));
-    expect
-      .soft(
-        dirty.has(o.pageId),
+    if (!dirty.has(o.pageId)) {
+      // A PLAIN throw, deliberately — `expect.soft` recorded the failure
+      // and kept going, so the op still got classified/collected while
+      // the PACK went red for a reason absent from its own advisory
+      // report (found 2026-08-18 when frameStrokeWeight, which reports
+      // no invalidation at all, reddened 5 corpus packs whose reports
+      // read "8 pass, 1 stale, 1 error"). Throwing routes it through
+      // runOp's classify — advisory collects it, gate mode still fails.
+      throw new Error(
         `invalidation contract: page ${o.pageId} not in dirty pageIds ${[...dirty]}`,
-      )
-      .toBe(true);
+      );
+    }
   }
 
   await o.expectModel();

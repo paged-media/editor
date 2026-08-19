@@ -862,15 +862,40 @@ export async function docOpPass(
   // nothing and would falsely read render-stale), and deleteRange rides the
   // "Zz " insertText left applied (the sandwich ends on redo).
 
-  // 7) frameStrokeWeight on the visible rectangle — write-is-a-change by
-  //    construction (read current, pick the other of 1.5/4).
-  if (rectPick) {
-    const rect = rectPick.ref;
+  // A stroke op can only move a pixel when the target has BOTH a visible
+  // stroke colour and a non-zero weight: a wider stroke of `Swatch/None`
+  // paints nothing, and a recoloured 0pt stroke paints nothing either.
+  // Targeting the fill-picked rectangle regardless made both stroke ops
+  // read render-stale on nearly every pack (0/59 and 27/59 in the first
+  // 61-pack run) — a harness target fact wearing an engine finding's
+  // clothes. Probe for a genuinely stroked rectangle; skip HONESTLY with
+  // the reason when the document has none.
+  const strokePick = await (async () => {
+    const rects = fx.frames.filter((f) => f.ref.kind === "rectangle").slice(0, 40);
+    for (const r of rects) {
+      const pid = await elementHostPageId(page, r.ref);
+      if (pid === null || !fx.pages.some((p) => p.pageId === pid)) continue;
+      const color = await readPropValue(page, r.ref, "frameStrokeColor");
+      if (!isVisibleFill(color)) continue;
+      const w = await readPropValue(page, r.ref, "frameStrokeWeight");
+      const weight = w?.type === "length" ? (w.value as number | null) : null;
+      if (weight !== null && weight > 0.05) return { ref: r.ref, weight };
+    }
+    return null;
+  })();
+
+  // 7) frameStrokeWeight on a genuinely stroked rectangle — write-is-a-
+  //    change by construction (double it, or halve an already-thick one).
+  if (strokePick) {
+    const rect = strokePick.ref;
     const host = await hostPage(rect);
     if (host) {
       const current = await readPropValue(page, rect, "frameStrokeWeight");
       const cur = current?.type === "length" ? (current.value as number | null) : null;
-      const target = cur !== null && Math.abs(cur - 4) < 0.01 ? 1.5 : 4;
+      // A visible delta on the target's own scale: double a thin stroke,
+      // halve a thick one (never a sub-pixel nudge at 420px snapshots).
+      const base = cur ?? strokePick.weight;
+      const target = base >= 6 ? base / 2 : base * 3;
       await runOp(
         "setElementProperty(frameStrokeWeight)",
         assert,
@@ -899,7 +924,6 @@ export async function docOpPass(
             },
           }).then(() => undefined),
         results,
-        rectPick.note,
       );
     } else {
       results.push({
@@ -909,14 +933,19 @@ export async function docOpPass(
       });
     }
   } else {
-    results.push({ op: "setElementProperty(frameStrokeWeight)", status: "skip" });
+    results.push({
+      op: "setElementProperty(frameStrokeWeight)",
+      status: "skip",
+      note: "no on-page rectangle with a visible stroke colour AND a non-zero weight — a stroke op cannot move a pixel on such a target",
+    });
   }
 
-  // 8) frameStrokeColor — after 7 the stroke has real width, so a colour
-  //    change must repaint. Exclude the current stroke swatch (write-is-a-
-  //    change), same as the fill op.
-  if (rectPick) {
-    const rect = rectPick.ref;
+  // 8) frameStrokeColor on the same genuinely stroked rectangle — the
+  //    weight is real (op 7 left it larger), so a colour change repaints.
+  //    Exclude the current stroke swatch (write-is-a-change), as the fill
+  //    op does.
+  if (strokePick) {
+    const rect = strokePick.ref;
     const host = await hostPage(rect);
     const currentStroke = await readPropValue(page, rect, "frameStrokeColor");
     const exclude =
@@ -953,7 +982,6 @@ export async function docOpPass(
             },
           }).then(() => undefined),
         results,
-        rectPick.note,
       );
     } else {
       results.push({
@@ -965,7 +993,11 @@ export async function docOpPass(
       });
     }
   } else {
-    results.push({ op: "setElementProperty(frameStrokeColor)", status: "skip" });
+    results.push({
+      op: "setElementProperty(frameStrokeColor)",
+      status: "skip",
+      note: "no on-page rectangle with a visible stroke colour AND a non-zero weight",
+    });
   }
 
   // 9) deleteRange — removes the exact "Zz " op 5 left applied, so the
@@ -973,6 +1005,7 @@ export async function docOpPass(
   //    undo-pixel waiver as insertText.
   let lastDeleteReply: unknown = null;
   let deletePreCount: number | null = null;
+  let deleteSpan = 0;
   if (textTarget) {
     const t = textTarget;
     await runOp(
@@ -986,18 +1019,26 @@ export async function docOpPass(
           containment: false,
           skipUndoPixelCheck: UNDO_TEXT_CACHE_BUG,
           apply: async () => {
+            // Clamp to what the story ACTUALLY holds right now: the
+            // sandwich's undo/redo can leave the earlier insertText
+            // un-redone, and a 1-char story cannot give up 3 characters
+            // — the engine answers `notImplemented` and the op would
+            // read as a false failure (5 corpus packs, 2026-08-18).
             deletePreCount = await storyChars(page, t.storyId);
+            deleteSpan = Math.min(3, Math.max(0, deletePreCount));
+            if (deleteSpan === 0) throw new Error("story is empty — nothing to delete");
             const reply = await mutate(page, {
               op: "deleteRange",
-              args: { storyId: t.storyId, start: 0, end: 3 },
+              args: { storyId: t.storyId, start: 0, end: deleteSpan },
             });
             lastDeleteReply = reply;
           },
           expectModel: async () => {
             const count = await storyChars(page, t.storyId);
-            if (count !== (deletePreCount ?? t.before + 3) - 3) {
+            const expected = (deletePreCount ?? 0) - deleteSpan;
+            if (count !== expected) {
               throw new Error(
-                `deleteRange [0,3) moved the count ${deletePreCount} -> ${count} (expected -3); original ${t.before}; reply ${JSON.stringify(lastDeleteReply).slice(0, 160)}`,
+                `deleteRange [0,${deleteSpan}) moved the count ${deletePreCount} -> ${count} (expected ${expected}); reply ${JSON.stringify(lastDeleteReply).slice(0, 160)}`,
               );
             }
           },
