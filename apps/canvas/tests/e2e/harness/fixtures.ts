@@ -37,7 +37,7 @@ export const REPO_ROOT = pathResolve(__dirname, "..", "..", "..", "..", "..");
 /**
  * Absolute path to a paged-gen fixture.
  *
- * 83 spec files used to spell `${REPO_ROOT}/corpus/generated/<n>.idml`
+ * 83 spec files used to spell `${REPO_ROOT}/corpus/idml/generated/<n>.idml`
  * inline, so the corpus moving `generated/` under `idml/` (grouping
  * assets by format, since the corpus now holds more than IDML) was an
  * 83-file edit. Route them through here and the next move is one line.

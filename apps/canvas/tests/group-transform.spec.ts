@@ -34,7 +34,7 @@
 // AC-L-5: a single Cmd-Z reverts the gesture; every leaf transform
 //         restored bytewise.
 //
-// Fixture: corpus/generated/geometry-groups.idml page 0 — Group with
+// Fixture: corpus/idml/generated/geometry-groups.idml page 0 — Group with
 // `ItemTransform = T(GROUP_ANCHOR_X, GROUP_ANCHOR_Y)` enclosing two
 // un-rotated Rect leaves. Identity Group + identity leaves are the
 // easiest case to verify by hand and the one
@@ -98,7 +98,7 @@ interface CanvasGlobal {
 /**
  * Hit-test page 0 at the centre of the first rect (the leaf at the
  * group's local origin) and return the hit + the containing group id.
- * `corpus/generated/geometry-groups.idml` page 0 keeps the leaves
+ * `corpus/idml/generated/geometry-groups.idml` page 0 keeps the leaves
  * un-rotated, so the rect's spread-coord centroid is the simple
  * `(GROUP_ANCHOR + half-rect)`.
  */

@@ -24,7 +24,7 @@
 // treats them as targets. Verifies the wire round-trip end-to-end:
 // parser → model → channel → main thread.
 //
-// Fixture: `corpus/generated/layout.idml` — license-clear, runs in
+// Fixture: `corpus/idml/generated/layout.idml` — license-clear, runs in
 // lean CI. Its first body spread carries exactly 2 vertical `<Guide>`
 // elements (the asymmetric-3col column boundaries at x=219.4253 and
 // x=393.8507, PageIndex 0). The exact count is fixture-pinned — if

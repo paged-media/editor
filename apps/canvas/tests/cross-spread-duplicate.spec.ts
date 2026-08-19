@@ -41,7 +41,7 @@
 // the duplicate's `pageId` — same as source's = AC-K-1, different
 // = AC-K-2.
 //
-// Fixture: `corpus/generated/layout.idml` (6 single-page spreads;
+// Fixture: `corpus/idml/generated/layout.idml` (6 single-page spreads;
 // the last two carry non-identity spread ItemTransforms, so their
 // pages occupy distinct world-space rects — see the FIXTURE note).
 

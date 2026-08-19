@@ -25,7 +25,7 @@
 // asserts the wire surface reflects the change. Single-undo restores
 // each toggle bytewise.
 //
-// Fixture: `corpus/generated/layers-z.idml` — license-clear, runs in
+// Fixture: `corpus/idml/generated/layers-z.idml` — license-clear, runs in
 // lean CI. Ships exactly two `<Layer>` elements ("Foreground" /
 // "Background"), which is all this read+toggle surface needs.
 

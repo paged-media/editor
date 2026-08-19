@@ -24,7 +24,7 @@
 // finding's editor half; the engine-side PINK substitute marker ships
 // separately — nothing here asserts pink, only that ink lands).
 //
-// The oracle: `corpus/generated/text.idml` declares "Open Sans", which
+// The oracle: `corpus/idml/generated/text.idml` declares "Open Sans", which
 // the editor never registers. Its page-1 text frame (57.6, 145.8,
 // 480×400 pt, no fill/stroke) paints NOTHING but glyphs — so ink
 // inside that region IS the fallback face rendering.

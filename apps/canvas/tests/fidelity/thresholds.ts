@@ -19,9 +19,9 @@
 
 // Per-pack ΔE/SSIM thresholds for the canvas fidelity gate.
 //
-// Schema mirrors `corpus/generated/fidelity-thresholds.json` so the
+// Schema mirrors `corpus/idml/generated/fidelity-thresholds.json` so the
 // existing tooling (and human understanding) carries over directly.
-// We store these alongside the manifest in `corpus/envato/`.
+// We store these alongside the manifest in `corpus/vendor/envato/`.
 //
 // `FIDELITY_MODE=capture` writes a fresh thresholds JSON from the
 // most-recent run's worst-page metric per pack, rounded up to give
@@ -68,7 +68,7 @@ export function loadThresholds(): ThresholdsFile {
  * Per-pack baseline collected by a `FIDELITY_MODE=capture` run. The
  * caller passes the worst-page metric across the pack; we apply a
  * 25 % headroom on the ΔE values and round SSIM down to two decimal
- * places (matches the `corpus/generated/fidelity-thresholds.json`
+ * places (matches the `corpus/idml/generated/fidelity-thresholds.json`
  * convention).
  */
 export interface CapturedBaseline {

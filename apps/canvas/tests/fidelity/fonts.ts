@@ -17,7 +17,7 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// Parse a per-pack `corpus/envato/overrides/<pack>/fonts.sh` and
+// Parse a per-pack `corpus/vendor/envato/overrides/<pack>/fonts.sh` and
 // resolve every declared `--font-family "Family=path"` entry to an
 // absolute TTF on disk plus its IDML family / style key.
 //

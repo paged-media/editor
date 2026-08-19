@@ -34,7 +34,7 @@ const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
 // License-clear generated fixture (runs in lean CI).
-// `corpus/generated/images.idml` carries 14 `<Image>` elements
+// `corpus/idml/generated/images.idml` carries 14 `<Image>` elements
 // across its 5 pages. Phase F's content grabber only fires on
 // image-bearing Rectangles; the finder below walks every page via
 // marquee + `hasImage`, so the fixture only needs to guarantee at

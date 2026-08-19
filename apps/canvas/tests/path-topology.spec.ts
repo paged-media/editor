@@ -30,7 +30,7 @@
 // AC-J-1 (insert preserves visible shape) and the subpath-collapse arm
 // of AC-J-4 wait on J.5b (segment hit zones + curve-preserving Batch).
 //
-// Fixture: corpus/generated/geometry-groups.idml carries Polygon
+// Fixture: corpus/idml/generated/geometry-groups.idml carries Polygon
 // `u0f396d` on the "compound-path · square-with-hole" page — 8
 // anchors split across 2 subpaths (outer square 0..3, inner hole
 // 4..7). Real compound geometry; matches AC-J-4.

@@ -39,7 +39,7 @@ if (!process.env.NODE_OPTIONS) {
 
 // Lean CI surface (tests.yml): the published-wasm CI runs the behaviour
 // surface without the Envato fidelity gate, which needs the 4.4 GB
-// `corpus/envato` LFS packs + their InDesign reference PDFs + the
+// `corpus/vendor/envato` LFS packs + their InDesign reference PDFs + the
 // `paged-diff` Rust binary (built from a `core` checkout) + poppler's
 // `pdftoppm` — none of which the package-boundary runner has. Those two
 // specs read `corpus/config/manifest.json` at import time, so set

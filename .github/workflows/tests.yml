@@ -20,7 +20,7 @@ name: tests
 #
 # Scope: the behaviour surface (panels + gesture + e2e op-sandwiches),
 # NOT the Envato fidelity gate. That gate needs the 4.4 GB
-# `corpus/envato` LFS packs, their InDesign reference PDFs, poppler's
+# `corpus/vendor/envato` LFS packs, their InDesign reference PDFs, poppler's
 # `pdftoppm`, and the `paged-diff` Rust binary built from a `core`
 # checkout — none of which the package-boundary runner carries. It stays
 # a local / core-CI concern; `PAGED_CI_LEAN=1` drops `fidelity.spec.ts`
