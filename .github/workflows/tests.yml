@@ -336,6 +336,18 @@ jobs:
           V=$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | grep version | head -1 | cut -d'"' -f2)
           cargo install wasm-bindgen-cli --version "$V" --locked
 
+      # build-wasm.sh runs a hard 8 MiB budget gate and only applies
+      # wasm-opt when it is on PATH — without it the artifact lands at
+      # 10.9 MiB and the gate correctly refuses. The version is pinned
+      # rather than apt-installed: an old binaryen miscompiles
+      # wasm-bindgen's externref table grow ("Table.grow failed" at
+      # runtime). Same pin plugin-doc's own rust.yml uses; keep them
+      # together.
+      - name: install pinned binaryen (reftypes-safe wasm-opt)
+        run: |
+          curl -fsSL https://github.com/WebAssembly/binaryen/releases/download/version_119/binaryen-version_119-x86_64-linux.tar.gz | tar xz
+          echo "$PWD/binaryen-version_119/bin" >> "$GITHUB_PATH"
+
       - name: build the paged.doc engine wasm
         working-directory: plugins/plugin-doc
         timeout-minutes: 25
