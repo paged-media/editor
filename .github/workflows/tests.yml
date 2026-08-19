@@ -133,7 +133,16 @@ jobs:
     # consumed most of a 30-min budget, leaving no room for the sharded
     # tests. After run 1 `core/target` is cached and the job drops back to
     # ~20-25 min; the headroom only matters on a cold cache.
-    timeout-minutes: 50
+    #
+    # Then 75, not 50: that budget was never actually exercised — the job
+    # had never once reached its tests (see the chromium note below), so
+    # "~20-25 min" described a job that spent its life in `apt`. A second
+    # cold rust build (the paged.doc engine wasm) now shares it too. The
+    # long steps carry their OWN bounds — chromium install 10 min, doc
+    # wasm 25 min — so a hang still reports as a hang at the step that
+    # hung, and this number only buys the tests room to finish. Re-measure
+    # and bring it back down once a green run says what the suite costs.
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -213,15 +222,21 @@ jobs:
       - name: rust toolchain (for paged-gen)
         uses: dtolnay/rust-toolchain@stable
 
+      # Covers BOTH rust builds this job does: paged-gen (fixtures) and the
+      # paged.doc engine wasm. Without plugin-doc/target in here the doc
+      # wasm is a cold release build of a vendored-ooxmlsdk workspace on
+      # every single run — the thing this cache exists to prevent.
       - name: cache cargo + paged-gen build
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
+            ~/.cargo/bin
             core/target
-          key: paged-gen-${{ runner.os }}-${{ hashFiles('core/Cargo.lock') }}
-          restore-keys: paged-gen-${{ runner.os }}-
+            plugins/plugin-doc/target
+          key: paged-rust-${{ runner.os }}-${{ hashFiles('core/Cargo.lock') }}
+          restore-keys: paged-rust-${{ runner.os }}-
 
       - name: generate corpus/generated/*.idml from paged-gen
         working-directory: core
@@ -292,6 +307,43 @@ jobs:
       - name: install plugin-doc (the link target needs its own deps)
         working-directory: plugins/plugin-doc
         run: pnpm install --frozen-lockfile
+
+      # …and its wasm, which `pnpm install` does not produce. Once the
+      # chromium hang was fixed and the suite finally reached the dev
+      # server, THIS is what it hit: vite dies transforming
+      # doc-bundle/src/engine.ts with `Failed to resolve import
+      # "../bin/docx_js.js"`. `packages/doc-bundle/bin/*.js` is gitignored
+      # (it is a build artifact), so a fresh checkout never has it, and
+      # main.tsx imports `@paged-media/doc` at module scope — one missing
+      # bundle takes the whole app down, so all 260 tests in the shard
+      # fail before the first assertion.
+      #
+      # engine.ts DOES guard this: a try/catch around the dynamic import
+      # that raises "engine wasm not built — run scripts/build-wasm.sh".
+      # It cannot fire. Vite resolves the specifier during import-analysis
+      # at TRANSFORM time, long before any of that code runs — a guard
+      # that is declared but structurally unreachable.
+      #
+      # Building it is the faithful fix rather than a workaround: the
+      # published @paged-media/doc will ship exactly this artifact inside
+      # the package, so CI reproduces production instead of dodging it.
+      # The toolchain and cargo cache are already here for paged-gen.
+      # DROP this together with the checkout above when doc publishes.
+      - name: install pinned wasm-bindgen-cli (plugin-doc Cargo.lock version)
+        working-directory: plugins/plugin-doc
+        timeout-minutes: 15
+        run: |
+          V=$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | grep version | head -1 | cut -d'"' -f2)
+          cargo install wasm-bindgen-cli --version "$V" --locked
+
+      - name: build the paged.doc engine wasm
+        working-directory: plugins/plugin-doc
+        timeout-minutes: 25
+        run: |
+          rustup target add wasm32-unknown-unknown
+          bash scripts/build-wasm.sh
+          test -f packages/doc-bundle/bin/docx_js.js \
+            || { echo "::error::doc wasm glue absent after build"; exit 1; }
 
       - name: install editor (engine wasm + all plugin bundles resolve from npm)
         working-directory: editor
