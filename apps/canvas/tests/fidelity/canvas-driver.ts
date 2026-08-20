@@ -34,7 +34,7 @@ import type { Page } from "@playwright/test";
 import { FIDELITY_DPI } from "./fixtures";
 import { loadPackFonts } from "./fonts";
 
-// FOGRA39 ICC profile — same one `corpus/vendor/envato/test.sh` hands to
+// FOGRA39 ICC profile — same one `corpus/idml/test.sh` hands to
 // `pdftoppm -defaultcmykprofile`. Without this the canvas's naive
 // CMYK→RGB conversion lands ~10 ΔE off the reference PDF on every
 // page (uniform-coloured backgrounds dominate the metric).

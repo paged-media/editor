@@ -29,7 +29,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = resolve(__dirname, "..", "..", "..", "..");
-export const ENVATO_DIR = resolve(REPO_ROOT, "corpus", "vendor", "envato");
+export const ENVATO_DIR = resolve(REPO_ROOT, "corpus", "idml");
 export const PACKS_DIR = resolve(ENVATO_DIR, "packs");
 export const OVERRIDES_DIR = resolve(REPO_ROOT, "corpus", "config", "overrides");
 export const MANIFEST_PATH = resolve(REPO_ROOT, "corpus", "config", "manifest.json");

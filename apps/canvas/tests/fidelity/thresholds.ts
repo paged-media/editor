@@ -21,7 +21,7 @@
 //
 // Schema mirrors `corpus/idml/generated/fidelity-thresholds.json` so the
 // existing tooling (and human understanding) carries over directly.
-// We store these alongside the manifest in `corpus/vendor/envato/`.
+// We store these alongside the manifest in `corpus/idml/`.
 //
 // `FIDELITY_MODE=capture` writes a fresh thresholds JSON from the
 // most-recent run's worst-page metric per pack, rounded up to give

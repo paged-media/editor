@@ -2,7 +2,7 @@
 
 End-to-end fidelity suite that drives the canvas app in a real
 browser and diffs per-page PNG output against InDesign-exported
-reference PDFs from `corpus/vendor/envato/`.
+reference PDFs from `corpus/idml/`.
 
 ## Quickstart
 
@@ -64,7 +64,7 @@ is the gate spec — captured by `npm run test:fidelity:capture`.
   canvas's fractional-pt snapshot.
 - `tests/fidelity/diff.ts` — shells out to `target/release/paged-diff`.
 - `tests/fidelity/fonts.ts` — parses per-pack
-  `corpus/vendor/envato/overrides/<pack>/fonts.sh`. Source of truth for
+  `corpus/idml/overrides/<pack>/fonts.sh`. Source of truth for
   family → TTF substitution (mirrored to the canvas via the wasm
   `registerFont` method so canvas and reference PDF use the same
   fonts).

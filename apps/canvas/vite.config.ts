@@ -42,7 +42,7 @@ function resolveCorpusSubdir(name: string): string {
 }
 
 const CORPUS_FONTS = resolveCorpusSubdir("fonts");
-const CORPUS_ENVATO = resolveCorpusSubdir("vendor/envato");
+const CORPUS_ENVATO = resolveCorpusSubdir("idml");
 
 // The vendored DuckDB-WASM dist (paged.data's query engine). The editor
 // consumes data-bundle through the pnpm `link:` chain, so the bundle's
@@ -169,7 +169,7 @@ function fontsRoute(): import("vite").Plugin {
 /**
  * Dev-only: browse + load the staged Envato fidelity corpus from the
  * running editor. The loadable IDML for each pack is
- * `corpus/vendor/envato/packs/<name>/template.idml` — note the *raw* Envato
+ * `corpus/idml/packs/<name>/template.idml` — note the *raw* Envato
  * `.zip` bundles often ship only an `.indd`, which the engine can't
  * parse, so we deliberately serve the staged `template.idml` that the
  * Playwright fidelity suite already relies on (manifest.json). Mirrors
@@ -184,7 +184,7 @@ function fontsRoute(): import("vite").Plugin {
  *   GET /corpus/idml/file/<group>/<x>  -> the IDML bytes
  *        generated/<base>  -> corpus/idml/generated/<base>.idml
  *        samples/<base>    -> corpus/idml/samples/<base>.idml
- *        packs/<name>      -> corpus/vendor/envato/packs/<name>/template.idml
+ *        packs/<name>      -> corpus/idml/packs/<name>/template.idml
  *   (legacy `file/<name>` with no group still resolves a pack.)
  */
 function corpusIdmlRoute(): import("vite").Plugin {

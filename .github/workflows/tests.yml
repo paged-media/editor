@@ -20,7 +20,7 @@ name: tests
 #
 # Scope: the behaviour surface (panels + gesture + e2e op-sandwiches),
 # NOT the Envato fidelity gate. That gate needs the 4.4 GB
-# `corpus/vendor/envato` LFS packs, their InDesign reference PDFs, poppler's
+# `corpus/idml` LFS packs, their InDesign reference PDFs, poppler's
 # `pdftoppm`, and the `paged-diff` Rust binary built from a `core`
 # checkout — none of which the package-boundary runner carries. It stays
 # a local / core-CI concern; `PAGED_CI_LEAN=1` drops `fidelity.spec.ts`
@@ -205,8 +205,15 @@ jobs:
           # a loud failure. `vendor` is deliberately absent: it is the
           # heavy tier (1.3 GB of packs) and no test on this surface
           # reads it.
+          # NESTED cone paths — verified working. Naming `idml` whole
+          # would drag in idml/packs (1.3 GB of Envato packs) on every
+          # shard of every push; these two subtrees are 10 MB. The
+          # "verify corpus fixtures are materialized" step below is what
+          # catches a stale name, because a wrong cone yields an EMPTY
+          # checkout rather than an error.
           sparse-checkout: |
-            idml
+            idml/generated
+            idml/samples
             fonts
             config
           sparse-checkout-cone-mode: true

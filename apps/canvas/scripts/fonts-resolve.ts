@@ -28,7 +28,7 @@
 // `--re-export` (rewriting fonts.jsx + reinvoking InDesign) is planned
 // per the plan file but unwired here — it touches a host-side script
 // and isn't safe to run unattended. Use the manual export workflow in
-// `corpus/vendor/envato/export-pdf.sh` for that.
+// `corpus/idml/export-pdf.sh` for that.
 
 import { existsSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";

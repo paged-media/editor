@@ -19,7 +19,7 @@
 
 // E2E op suite — the EXTENSIVE corpus mode. The opt-in pass that runs
 // the document-parameterized op pass (docOpPass) over the whole
-// corpus/vendor/envato/packs corpus of real InDesign documents, producing
+// corpus/idml/packs corpus of real InDesign documents, producing
 // per-pack insight on which operations land — and which break — on
 // real-world structures.
 //

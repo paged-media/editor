@@ -39,7 +39,7 @@ if (!process.env.NODE_OPTIONS) {
 
 // Lean CI surface (tests.yml): the published-wasm CI runs the behaviour
 // surface without the Envato fidelity gate, which needs the 4.4 GB
-// `corpus/vendor/envato` LFS packs + their InDesign reference PDFs + the
+// `corpus/idml` LFS packs + their InDesign reference PDFs + the
 // `paged-diff` Rust binary (built from a `core` checkout) + poppler's
 // `pdftoppm` — none of which the package-boundary runner has. Those two
 // specs read `corpus/config/manifest.json` at import time, so set
@@ -51,7 +51,7 @@ const LEAN_CI = process.env.PAGED_CI_LEAN === "1";
 // interaction/multi-select/gesture-sab-snap/content-grabber/
 // cross-spread-duplicate/layers/layers-panel/ruler-guides) used to sit
 // on an ENVATO_LEAN_DROP list here because they loaded
-// `corpus/vendor/envato/packs/<pack>/template.idml` — the same 4.4 GB LFS tier
+// `corpus/idml/packs/<pack>/template.idml` — the same 4.4 GB LFS tier
 // the lean runner omits. They have since been migrated onto the
 // license-clear `corpus/generated` fixtures (geometry / numbering /
 // layers-z / layout / images), so they now run in lean CI and the list
