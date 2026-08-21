@@ -1407,6 +1407,38 @@ function CanvasAppIntegration() {
           console.error("Save As IDML failed:", err);
         }
       },
+      // Save (.paged) — the native container. Same download shape as
+      // Save As IDML, and deliberately so: the bytes ARE an IDML
+      // package, with `manifest.json`, `paged/core/model/document.pgm`
+      // and the loaded bundles' `paged/<plugin>/…` parts appended. The
+      // difference that matters to a user is what survives a reopen —
+      // a sheet's workbook, a web frame's source, a Word file's
+      // original OPC — none of which an IDML export can carry.
+      savePaged: async () => {
+        if (!handle || handle.pageCount === 0) return;
+        try {
+          const bytes = await client.exportPaged();
+          let baseName = sourceName || "document";
+          try {
+            const meta = await client.documentMeta();
+            if (meta.documentName) baseName = meta.documentName;
+          } catch {
+            /* meta unavailable — keep the fallback name */
+          }
+          const blob = new Blob([bytes.slice()], {
+            type: "application/x-paged+zip",
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${baseName.replace(/\.(paged|idml)$/i, "")}.paged`;
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error("Save (.paged) failed:", err);
+        }
+      },
       zoomIn: () => {
         const cx = vw / 2;
         const cy = vh / 2;

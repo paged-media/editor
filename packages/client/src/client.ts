@@ -586,6 +586,36 @@ export class CanvasClient {
   }
 
   /**
+   * Serialise the loaded document to a `.paged` container ("Save
+   * (.paged)"). Same one-shot shape as `exportIdml`, and the bytes are
+   * a superset: the engine carries every IDML entry through unchanged,
+   * then appends `manifest.json`, a freshly re-serialised
+   * `paged/core/model/document.pgm`, and every `paged/<plugin>/…` part
+   * a bundle wrote through `host.parts` (protocol 51).
+   *
+   * So the result opens BOTH ways. InDesign and any IDML reader see a
+   * valid UCF package and ignore the `paged/` namespace; this engine
+   * sniffs `document.pgm` on load and reconstructs the model without
+   * parsing the IDML projection at all. That is why the same bytes can
+   * be handed to a download, fed back into `loadDocument`, or renamed
+   * to `.idml` — and why a plugin's content survives a round-trip that
+   * a plain IDML export would flatten away.
+   *
+   * The failure reply is `pagedPartFailed`, shared with the three
+   * part-level doors rather than given an export-specific variant.
+   */
+  async exportPaged(): Promise<Uint8Array> {
+    const reply = await this.send({ kind: "exportPaged", payload: {} });
+    if (reply.kind === "pagedExported") {
+      return new Uint8Array(reply.payload.bytes);
+    }
+    if (reply.kind === "pagedPartFailed") {
+      throw new Error(reply.payload.error);
+    }
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
    * Concept 3 — open a PDF export session. The worker re-builds the
    * scene one-shot (text-as-text side-channel on) and parks the
    * writer state; drive it with `exportPdfPage` one page at a time.

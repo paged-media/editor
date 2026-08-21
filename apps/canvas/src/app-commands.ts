@@ -43,6 +43,7 @@ export const PAGED_EDITOR_UNDO = "paged.editor.undo";
 export const PAGED_EDITOR_REDO = "paged.editor.redo";
 export const PAGED_FILE_OPEN_PDF = "paged.file.openPdf";
 export const PAGED_FILE_SAVE_AS_IDML = "paged.file.saveAsIdml";
+export const PAGED_FILE_SAVE_PAGED = "paged.file.savePaged";
 export const PAGED_VIEW_ZOOM_IN = "paged.view.zoomIn";
 export const PAGED_VIEW_ZOOM_OUT = "paged.view.zoomOut";
 export const PAGED_VIEW_ZOOM_100 = "paged.view.zoom100";
@@ -58,6 +59,12 @@ export interface AppCommandHandlers {
   /** W3.B2 — serialise the loaded document to an `.idml` package and
    *  trigger a browser download (mirrors Export PDF's download). */
   saveAsIdml: () => void | Promise<void>;
+  /** Save the loaded document as a `.paged` container — the same IDML
+   *  bytes plus `manifest.json`, the native `document.pgm` model part
+   *  and every `paged/<plugin>/…` part the loaded bundles wrote. This
+   *  is the format that keeps plugin content; "Save As IDML…" is the
+   *  lossy interchange sibling. */
+  savePaged: () => void | Promise<void>;
   zoomIn: () => void;
   zoomOut: () => void;
   zoom100: () => void;
@@ -95,6 +102,12 @@ export function buildAppCommands(
       title: "Save As IDML…",
       category: "File",
       handler: () => handlers.saveAsIdml(),
+    },
+    {
+      id: PAGED_FILE_SAVE_PAGED,
+      title: "Save (.paged)",
+      category: "File",
+      handler: () => handlers.savePaged(),
     },
     {
       id: PAGED_VIEW_ZOOM_IN,
@@ -146,6 +159,17 @@ export const APP_MENU_ITEMS: Array<{
   },
   // File menu — real "Save As IDML…" (W3.B2). Sits in the "save"
   // group just below the disabled "Save as…" kit seam.
+  // File menu — the native container save. It takes slot 31, which
+  // `cockpit-menus.ts` held as a disabled `soon(...)` seam until the
+  // engine's protocol-51 export door got a caller; the MenuRegistry
+  // dedupes by path and would throw on a collision, so the seam is
+  // gone rather than shadowed.
+  {
+    path: "File/Save (.paged)",
+    command: PAGED_FILE_SAVE_PAGED,
+    order: 31,
+    group: "save",
+  },
   {
     path: "File/Save As IDML…",
     command: PAGED_FILE_SAVE_AS_IDML,

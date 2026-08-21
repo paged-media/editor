@@ -45,10 +45,12 @@ export const COCKPIT_MENU_SEAMS: MenuItemContribution[] = [
   { path: "File/New document…", command: PAGED_FILE_NEW, order: 5, group: "open" },
   soon("File/Open recent", 12, "open"),
   soon("File/Close", 30, "save"),
-  // U14 — named honestly: what will land here is native `.paged`
-  // container save, not a generic Save. (No "Save as…" seam — the
-  // REAL "Save As IDML…" already registers from app-commands.ts.)
-  soon("File/Save (.paged)", 31, "save"),
+  // `File/Save (.paged)` was a seam here until `client.exportPaged()`
+  // got a caller; it is now a REAL entry registering from
+  // app-commands.ts at the same slot (order 31, group "save"). The
+  // MenuRegistry dedupes by path and would throw on the collision, so
+  // the stub is gone rather than duplicated — same move `File/Place…`
+  // made when the `paged.insert.*` layer landed.
   // `File/Place…` was a seam here until the `paged.insert.*` layer
   // landed; it is now a REAL entry (→ paged.insert.placeImage) that
   // registers from `insert-commands.ts` at the same slot (order 40,

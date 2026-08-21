@@ -646,9 +646,21 @@ function ShellChrome({
             // K-2 / S-06 — also offer the file types registered plugin
             // importers claim (e.g. paged.sheet's .xlsx), resolved at
             // click time so late-registered importers are included.
+            //
+            // `.paged` needs no importer and no separate load path: a
+            // container IS a valid IDML package, so the same bytes go
+            // through the same door, and the engine decides on the way
+            // in — it sniffs `paged/core/model/document.pgm` and
+            // reconstructs the native model, falling back to parsing
+            // the IDML projection when that part is absent or was
+            // written by an incompatible version. Listing it here is
+            // the whole change; leaving it out only meant the picker
+            // hid files it could already open.
             input.accept = [
               ".idml",
+              ".paged",
               "application/vnd.adobe.indesign-idml-package",
+              "application/x-paged+zip",
               ...registries.importers.acceptExtensions(),
             ].join(",");
             input.onchange = () => resolve(input.files?.[0] ?? null);
