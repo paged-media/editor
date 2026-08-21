@@ -1,0 +1,327 @@
+{
+  "generatedFrom": "/Users/drietsch/paged/state/registry/features",
+  "registryFound": true,
+  "registryRows": 571,
+  "claimedRows": 73,
+  "claims": [
+    {
+      "module": "01-cover",
+      "title": "Cover",
+      "pages": [
+        1
+      ],
+      "covers": [
+        "frames-paths.frame.insert",
+        "frames-paths.page-item-kinds",
+        "color-swatches.fill-stroke-apply",
+        "geometry-coordinates.item-transform",
+        "effects-transparency.opacity",
+        "effects-transparency.drop-shadow",
+        "stories-text.text.insert",
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "02-contents",
+      "title": "Contents",
+      "pages": [
+        2
+      ],
+      "covers": [
+        "stories-text.story-model",
+        "stories-text.text.insert",
+        "stories-text.style-apply-range",
+        "stories-text.fields.insert",
+        "stories-text.page-number-markers",
+        "sections-numbering-variables.page-number-resolution",
+        "cross-references-hyperlinks.hyperlinks",
+        "frames-paths.page-item-kinds"
+      ]
+    },
+    {
+      "module": "03-editorial",
+      "title": "How a page is made",
+      "pages": [
+        3,
+        4
+      ],
+      "covers": [
+        "layout-model.text-frame-chain",
+        "layout-model.spreads-pages",
+        "stories-text.story-model",
+        "stories-text.text.insert",
+        "stories-text.style-apply-range",
+        "styles.cascade",
+        "typography.knuth-plass",
+        "the-renderer.pipeline"
+      ]
+    },
+    {
+      "module": "05-raster",
+      "title": "Raster — a photograph, placed and corrected",
+      "pages": [
+        5
+      ],
+      "covers": [
+        "images-graphics.placed-images",
+        "images-graphics.frame-fitting",
+        "plugin-platform.importer-exporter",
+        "editor-shell.plugin-bundles",
+        "plugin-platform.bundle-lifecycle",
+        "image.editor.auto-enhance",
+        "plugin-platform.image-resource"
+      ],
+      "notes": [
+        "adjustSelected → Select a placed image frame, then ingest.",
+        "no WebGPU adapter on this lane: paged.image's adjustment kernels are WGSL compute with no CPU fallback, so Auto-enhance's correction was computed from the real histogram and shown in the panel but NOT committed. The right-hand frame shows the decoded photograph, uncorrected.",
+        "paged.image's tile provider does not honour the frame's `frameFittingCrops`: both frames on this page carry the SAME placeImage fit and the same crops, and the host-served left frame fills its 228 × 240 box while the plugin-served right frame letterboxes the 4:3 photograph inside it."
+      ]
+    },
+    {
+      "module": "06-vector",
+      "title": "Vector — an SVG, lowered to native paths",
+      "pages": [
+        6
+      ],
+      "covers": [
+        "plugin-draw.live-corners",
+        "plugin-draw.svg-io",
+        "plugin-platform.importer-exporter",
+        "plugin-platform.bundle-lifecycle",
+        "editor-shell.plugin-bundles",
+        "plugin-draw.pro-path-toolset",
+        "plugin-draw.stroke-dash-commands",
+        "plugin-draw.repeats"
+      ],
+      "notes": []
+    },
+    {
+      "module": "07-spreadsheet",
+      "title": "Spreadsheet — a workbook, lowered twice",
+      "pages": [
+        7
+      ],
+      "covers": [
+        "sheet.plugin.bundle",
+        "plugin-platform.file-picker",
+        "plugin-platform.bundle-lifecycle",
+        "editor-shell.plugin-bundles",
+        "sheet.lower.page",
+        "sheet.chart.engine"
+      ],
+      "notes": [
+        "the paged.sheet engine wasm booted and parsed the workbook (its range control rendered, and accepted A1:B4)",
+        "the chart lowered as 6 native path(s) and 10 label frame(s)"
+      ]
+    },
+    {
+      "module": "08-web",
+      "title": "paged.web — HTML and CSS as placed content",
+      "pages": [
+        8
+      ],
+      "covers": [
+        "editor-shell.plugin-bundles",
+        "plugin-platform.document-metadata",
+        "plugin-web.source-model",
+        "plugin-web.source-panel",
+        "plugin-web.metadata-persistence",
+        "frames-paths.frame.insert",
+        "stories-text.text.insert",
+        "stories-text.style-apply-range",
+        "plugin-web.insert-command",
+        "plugin-web.engine-rendering",
+        "plugin-web.render-readout"
+      ],
+      "notes": [
+        "bake readout: Bake to document #2 — 41 native item(s) deferred: fillPath.multiSubpath ×21 baked 41 native item(s); 21 unsupported item(s) not baked (fillPath.multiSubpath:21)"
+      ]
+    },
+    {
+      "module": "09-database",
+      "title": "paged.data — publishing from a database",
+      "pages": [
+        9
+      ],
+      "covers": [
+        "editor-shell.plugin-bundles",
+        "frames-paths.frame.insert",
+        "stories-text.text.insert",
+        "stories-text.style-apply-range",
+        "plugin-platform.file-picker",
+        "data.bind.field-mapping",
+        "data.bind.authoring",
+        "data.bind.engine",
+        "tables.model",
+        "data.expr.engine",
+        "plugin-platform.text-caret-door",
+        "stories-text.fields.insert",
+        "data.barcode.symbology",
+        "frames-paths.path.insert"
+      ],
+      "notes": [
+        "paged.data session status after lowering: status: ready — Resolved + lowered \"v_demo\"."
+      ]
+    },
+    {
+      "module": "10-word",
+      "title": "paged.doc — a Word document poured into the layout",
+      "pages": [
+        10
+      ],
+      "covers": [
+        "editor-shell.plugin-bundles",
+        "frames-paths.frame.insert",
+        "stories-text.text.insert",
+        "stories-text.style-apply-range",
+        "plugin-platform.file-picker",
+        "plugin-doc.outline-panel",
+        "plugin-doc.read-path",
+        "plugin-doc.embedded-placement",
+        "package-anatomy.paged-parts-door"
+      ],
+      "notes": [
+        "paged.doc save-back readiness on this lane: verbatim."
+      ]
+    },
+    {
+      "module": "11-tables",
+      "title": "Tables",
+      "pages": [
+        11
+      ],
+      "covers": [
+        "tables.model",
+        "tables.cell-composition",
+        "tables.spans",
+        "tables.row-col-sizing",
+        "tables.borders-strokes",
+        "tables.cell-vertical-justification",
+        "stories-text.text.insert",
+        "stories-text.style-apply-range"
+      ],
+      "notes": [
+        "header-row REPEAT across a chain break is not exercised here: the table declares a header band but fits inside a single frame, so there is no break for the band to repeat over. That behaviour needs a table taller than its frame, which this page deliberately avoids (it would render as overset rather than as a table)."
+      ]
+    },
+    {
+      "module": "12-layers",
+      "title": "Layers",
+      "pages": [
+        12
+      ],
+      "covers": [
+        "layers.model",
+        "layers.ops",
+        "layers.z-ordering"
+      ],
+      "notes": []
+    },
+    {
+      "module": "13-conditions",
+      "title": "Conditional text",
+      "pages": [
+        13
+      ],
+      "covers": [
+        "conditional-text.applied-conditions",
+        "conditional-text.condition-ops",
+        "conditional-text.visibility-filtering"
+      ],
+      "notes": [
+        "condition tagging skipped: mutation setConditionVisible refused: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: conditions entry \\\"Draft\\\" not found\"}}. Conditions must be DEFINED by the base fixture — the wire has no create-condition op."
+      ]
+    },
+    {
+      "module": "14-masters",
+      "title": "Masters and sections",
+      "pages": [
+        14
+      ],
+      "covers": [
+        "master-spreads-overrides.master-stamping",
+        "master-spreads-overrides.apply-master-op",
+        "sections-numbering-variables.sections",
+        "sections-numbering-variables.section-ops",
+        "sections-numbering-variables.page-number-resolution"
+      ],
+      "notes": []
+    },
+    {
+      "module": "15-color",
+      "title": "Colour and transparency",
+      "pages": [
+        15
+      ],
+      "covers": [
+        "color-swatches.swatch.crud",
+        "color-swatches.process-spot-tint",
+        "color-swatches.gradients",
+        "color-swatches.fill-stroke-apply",
+        "effects-transparency.opacity",
+        "effects-transparency.blend-modes",
+        "frames-paths.frame.insert"
+      ],
+      "notes": [
+        "the spot ink is authored as a named separation (Model=Spot) and round-trips as one, but this page renders it through its CMYK alternate — a composite proof, not a separations proof. Whether the plate stays separate is the Separations panel's evidence, not a composite page render's."
+      ]
+    },
+    {
+      "module": "16-colophon",
+      "title": "Colophon",
+      "pages": [
+        16
+      ],
+      "covers": [
+        "stories-text.text.insert",
+        "styles.paragraph.crud"
+      ]
+    }
+  ],
+  "unknown": [],
+  "notShipped": [],
+  "families": {
+    "frames-paths": 8,
+    "color-swatches": 5,
+    "geometry-coordinates": 1,
+    "effects-transparency": 4,
+    "stories-text": 20,
+    "sections-numbering-variables": 4,
+    "cross-references-hyperlinks": 1,
+    "layout-model": 2,
+    "styles": 2,
+    "typography": 1,
+    "the-renderer": 1,
+    "images-graphics": 2,
+    "plugin-platform": 11,
+    "editor-shell": 6,
+    "image": 1,
+    "plugin-draw": 5,
+    "sheet": 3,
+    "plugin-web": 6,
+    "data": 5,
+    "tables": 7,
+    "plugin-doc": 3,
+    "package-anatomy": 1,
+    "layers": 3,
+    "conditional-text": 3,
+    "master-spreads-overrides": 2
+  },
+  "notes": [
+    "05-raster: adjustSelected → Select a placed image frame, then ingest.",
+    "05-raster: no WebGPU adapter on this lane: paged.image's adjustment kernels are WGSL compute with no CPU fallback, so Auto-enhance's correction was computed from the real histogram and shown in the panel but NOT committed. The right-hand frame shows the decoded photograph, uncorrected.",
+    "05-raster: paged.image's tile provider does not honour the frame's `frameFittingCrops`: both frames on this page carry the SAME placeImage fit and the same crops, and the host-served left frame fills its 228 × 240 box while the plugin-served right frame letterboxes the 4:3 photograph inside it.",
+    "05-raster: pixel assertion skipped — no WebGPU adapter on this lane",
+    "07-spreadsheet: the paged.sheet engine wasm booted and parsed the workbook (its range control rendered, and accepted A1:B4)",
+    "07-spreadsheet: the chart lowered as 6 native path(s) and 10 label frame(s)",
+    "08-web: bake readout: Bake to document #2 — 41 native item(s) deferred: fillPath.multiSubpath ×21 baked 41 native item(s); 21 unsupported item(s) not baked (fillPath.multiSubpath:21)",
+    "09-database: paged.data session status after lowering: status: ready — Resolved + lowered \"v_demo\".",
+    "10-word: paged.doc save-back readiness on this lane: verbatim.",
+    "11-tables: header-row REPEAT across a chain break is not exercised here: the table declares a header band but fits inside a single frame, so there is no break for the band to repeat over. That behaviour needs a table taller than its frame, which this page deliberately avoids (it would render as overset rather than as a table).",
+    "13-conditions: condition tagging skipped: mutation setConditionVisible refused: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: conditions entry \\\"Draft\\\" not found\"}}. Conditions must be DEFINED by the base fixture — the wire has no create-condition op.",
+    "15-color: the spot ink is authored as a named separation (Model=Spot) and round-trips as one, but this page renders it through its CMYK alternate — a composite proof, not a separations proof. Whether the plate stays separate is the Separations panel's evidence, not a composite page render's.",
+    "pdf export: font \"Open Sans\" is not available; a substitute face was used",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)"
+  ]
+}

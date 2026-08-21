@@ -152,6 +152,8 @@ export class CanvasClient {
   readonly gestureSab: GestureBuffer;
   /** See {@link CanvasClientOptions.defaultFontProvider}. */
   private readonly defaultFontProvider?: () => Promise<Uint8Array | undefined>;
+  /** See {@link setActivePage}. Host-supplied, never engine-derived. */
+  private activePageHint: string | null = null;
 
   constructor(options: CanvasClientOptions) {
     this.defaultFontProvider = options.defaultFontProvider;
@@ -476,8 +478,50 @@ export class CanvasClient {
     const reply = await this.send({
       kind: "requestDocumentMeta",
     });
-    if (reply.kind === "documentMetaReply") return reply.payload.meta;
-    throw new Error(`unexpected reply: ${reply.kind}`);
+    if (reply.kind !== "documentMetaReply") {
+      throw new Error(`unexpected reply: ${reply.kind}`);
+    }
+    const meta = reply.payload.meta;
+    // Fold the host's active page in. The engine deliberately reports
+    // `activePage: null` — `CanvasModel::document_meta` says active
+    // page is application state (camera focus + Pages-panel selection)
+    // that the worker does not track, and leaves it to "consumers to
+    // fold their own active-page state in when they need it". This is
+    // that fold, and until it existed nobody had done it.
+    //
+    // It is not cosmetic. Every first-party bundle that mints a page
+    // item resolves its target the same way — paged.web's `insert.ts`,
+    // paged.data's `lower.ts`, paged.doc's `place.ts`, paged.draw's
+    // `resolveTargetPage`, paged.sheet's `activePageId` all read
+    // `meta.activePage` and fall back to `pages[0]`. With the engine
+    // always answering null, that fallback was the ONLY branch: on a
+    // one-page document nothing looked wrong, and on a sixteen-page
+    // one every plugin dropped its work onto page 1 no matter which
+    // page the user was looking at. Reparenting cannot repair it after
+    // the fact either — `MoveNode`'s `new_parent` is deliberately not
+    // on the wire.
+    return this.activePageHint && !meta.activePage
+      ? { ...meta, activePage: this.activePageHint }
+      : meta;
+  }
+
+  /**
+   * Tell the client which page the user is working on, so
+   * `documentMeta()` can answer `activePage` for plugins.
+   *
+   * The client cannot derive this: it is a fact about the CANVAS —
+   * where the camera is pointed, what the Pages panel has selected —
+   * and the client is deliberately UI-agnostic. So the app that owns
+   * the viewport pushes it here. Passing `null` clears the hint and
+   * restores the engine's own answer.
+   */
+  setActivePage(pageId: string | null): void {
+    this.activePageHint = pageId;
+  }
+
+  /** The page most recently pushed by {@link setActivePage}. */
+  get activePage(): string | null {
+    return this.activePageHint;
   }
 
   /**

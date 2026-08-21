@@ -93,7 +93,7 @@ async function exportPaged(page: Page): Promise<Buffer> {
 }
 
 test.describe("File ▸ Save (.paged)", () => {
-  test("the command is registered and the menu item is real @feat:package-anatomy.container @level:happy", async ({
+  test("the command is registered and the menu item is real @feat:package-anatomy.paged-container @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -104,7 +104,11 @@ test.describe("File ▸ Save (.paged)", () => {
             registries: {
               commands: { list: () => { id: string; title: string }[] };
               menus: {
-                list: () => { path: string; command: string; disabled?: boolean }[];
+                list: () => {
+                  path: string;
+                  command: string;
+                  disabled?: boolean;
+                }[];
               };
             };
           };
@@ -123,11 +127,14 @@ test.describe("File ▸ Save (.paged)", () => {
     // The seam it replaced was `disabled: true` with a `paged.soon.*`
     // command id. Both halves have to have changed, or the menu still
     // shows a dead entry that merely LOOKS different.
-    expect(surfaced.menuDisabled, "the seam is retired, not shadowed").toBeFalsy();
+    expect(
+      surfaced.menuDisabled,
+      "the seam is retired, not shadowed",
+    ).toBeFalsy();
     expect(surfaced.menuCommand).toBe("paged.file.savePaged");
   });
 
-  test("the container is well-formed and reopens through the ordinary door @feat:package-anatomy.container @feat:round-tripping.paged @level:happy", async ({
+  test("the container is well-formed and reopens through the ordinary door @feat:package-anatomy.paged-container @feat:package-anatomy.paged-parts-door @feat:round-tripping.native-reserialization @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -166,7 +173,10 @@ test.describe("File ▸ Save (.paged)", () => {
     // `mimetype` must be the FIRST entry and STORED, or Adobe's UCF
     // sniff fails and the file stops being a valid IDML package —
     // which is the property that lets one artifact serve both readers.
-    assertUcfMimetypeFirst(paged, "application/vnd.adobe.indesign-idml-package");
+    assertUcfMimetypeFirst(
+      paged,
+      "application/vnd.adobe.indesign-idml-package",
+    );
 
     const entries = zipEntryNames(paged);
     expect(entries).toContain("manifest.json");
@@ -174,7 +184,9 @@ test.describe("File ▸ Save (.paged)", () => {
     expect(entries, "the plugin part travelled with the file").toContain(PART);
     expect(entries, "still a valid IDML projection").toContain("designmap.xml");
 
-    const manifest = JSON.parse(readZipText(paged, "manifest.json") ?? "{}") as {
+    const manifest = JSON.parse(
+      readZipText(paged, "manifest.json") ?? "{}",
+    ) as {
       format: string;
       pagedProtocol: number;
       parts: { path: string }[];
@@ -223,7 +235,7 @@ test.describe("File ▸ Save (.paged)", () => {
     expect(reopened.text).toBe(PAYLOAD);
   });
 
-  test("an IDML export is the negative control — the plugin part is dropped @feat:round-tripping.paged @level:edge", async ({
+  test("an IDML export is the negative control — the plugin part is dropped @feat:round-tripping.idml-reserialization @level:edge", async ({
     page,
   }) => {
     await openCanvas(page);

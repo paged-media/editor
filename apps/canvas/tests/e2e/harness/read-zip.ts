@@ -133,6 +133,8 @@ export function assertUcfMimetypeFirst(buf: Buffer, expected: string): void {
   }
   const text = readZipEntry(buf, "mimetype")?.toString("utf8");
   if (text !== expected) {
-    throw new Error(`UCF: mimetype is ${JSON.stringify(text)}, expected ${expected}`);
+    throw new Error(
+      `UCF: mimetype is ${JSON.stringify(text)}, expected ${expected}`,
+    );
   }
 }

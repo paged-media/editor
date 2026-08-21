@@ -149,6 +149,7 @@ import {
   insertTable,
   insertTextFrame,
   placeImage,
+  pageTargetFor,
   type InsertReport,
 } from "./insert-commands";
 import { COCKPIT_MODES, PANEL_RAIL } from "./cockpit-modes";
@@ -1310,6 +1311,27 @@ function CanvasAppIntegration() {
     setSelection: setContentSelection,
   });
   usePathEditMode();
+
+  // Tell the client which page the user is on, so plugins can ask.
+  //
+  // `host.document.meta().activePage` is how every first-party bundle
+  // picks the page it mints into — paged.web, paged.data, paged.doc,
+  // paged.draw and paged.sheet all read it and fall back to `pages[0]`.
+  // The ENGINE always answers null (it does not track application
+  // state and says so), and nothing here folded the answer back in, so
+  // that fallback was the only branch: on a multi-page document every
+  // plugin dropped its work onto page 1 regardless of where the user
+  // was looking. `MoveNode`'s reparenting is deliberately off the wire,
+  // so it could not even be corrected afterwards.
+  //
+  // The page is the one `paged.insert.*` already targets — viewport
+  // centre, then the containing page, then the nearest — so the host's
+  // own insert verbs and a plugin's insert now agree about "here",
+  // which is the property that was actually missing.
+  useEffect(() => {
+    const target = pageTargetFor({ handle, camera, viewportSize });
+    client.setActivePage(target?.pageId ?? null);
+  }, [client, handle, camera, viewportSize]);
 
   // Cockpit — the thumbnail filmstrip / document map navigate by
   // page indices; the camera-fit math (page layout convention) is

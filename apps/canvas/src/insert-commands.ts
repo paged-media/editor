@@ -156,7 +156,28 @@ export interface PageTarget {
  * initialised: scale 0 / no viewport). `null` only with no document.
  */
 export function currentPageTarget(paged: PagedEditor): PageTarget | null {
-  const handle = paged.document.handle;
+  return pageTargetFor({
+    handle: paged.document.handle,
+    camera: paged.camera.camera,
+    viewportSize: paged.camera.viewportSize,
+  });
+}
+
+/** The inputs {@link currentPageTarget} actually reads. Split out so a
+ *  caller that holds the camera and handle directly — the canvas app's
+ *  active-page effect does — can ask without assembling a fake
+ *  `PagedEditor` around three fields. */
+export interface PageTargetInputs {
+  handle: PagedEditor["document"]["handle"];
+  camera: PagedEditor["camera"]["camera"];
+  viewportSize: PagedEditor["camera"]["viewportSize"];
+}
+
+export function pageTargetFor({
+  handle,
+  camera: cam,
+  viewportSize,
+}: PageTargetInputs): PageTarget | null {
   if (!handle || handle.pageIds.length === 0) return null;
   const rects = layoutPages(handle.pageSizesPt);
   const at = (i: number): PageTarget => ({
@@ -164,8 +185,7 @@ export function currentPageTarget(paged: PagedEditor): PageTarget | null {
     rect: rects[i],
   });
 
-  const cam = paged.camera.camera;
-  const [vw, vh] = paged.camera.viewportSize;
+  const [vw, vh] = viewportSize;
   if (!(cam.scale > 0) || vw <= 0 || vh <= 0) return at(0);
   const [docX, docY] = viewportToDoc(cam, vw / 2, vh / 2);
   if (!Number.isFinite(docX) || !Number.isFinite(docY)) return at(0);

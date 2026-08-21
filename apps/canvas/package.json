@@ -18,7 +18,8 @@
     "test:fidelity:dashboard": "open ${FIDELITY_OUT:-/tmp/paged-canvas-fidelity}/dashboard.html",
     "test:fidelity:report": "playwright show-report",
     "fonts:list": "tsx scripts/fonts-resolve.ts --list",
-    "fonts:resolve": "tsx scripts/fonts-resolve.ts"
+    "fonts:resolve": "tsx scripts/fonts-resolve.ts",
+    "typecheck:showcase": "tsc --noEmit -p tests/showcase/tsconfig.json"
   },
   "dependencies": {
     "@paged-media/canvas-wasm": "0.61.1",

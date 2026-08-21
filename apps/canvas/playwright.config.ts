@@ -109,8 +109,10 @@ export default defineConfig({
     {
       name: "chromium",
       // The journey tier is its own project (below); keep it out of the
-      // behaviour-surface suite so each runs once.
-      testIgnore: [...LEAN_DROP, "journey/**"],
+      // behaviour-surface suite so each runs once. The showcase is its
+      // own project too — it builds a sixteen-page document and takes
+      // minutes, so it must not ride the behaviour suite.
+      testIgnore: [...LEAN_DROP, "journey/**", "showcase/**"],
       use: {
         ...devices["Desktop Chrome"],
         // WebGPU lights up when BACKEND=gpu — but headless Chromium
@@ -208,6 +210,40 @@ export default defineConfig({
                 ],
               }
             : {},
+      },
+    },
+    {
+      // The showcase — one document that exercises the engine and every
+      // wired plugin, built by driving the real editor. Real Chrome in
+      // new-headless for a live WebGPU adapter, same as journeys-gpu and
+      // for the same reason: paged.image's kernels are GPU-only WGSL, so
+      // on the bundled Chromium its page would build but assert nothing.
+      // The spec degrades that one module to a note rather than a red
+      // when no adapter is present, so this still runs anywhere.
+      //
+      //   npx playwright test --project=showcase
+      //
+      // Writes apps/canvas/showcase/. Not part of any CI lane: it needs
+      // the core checkout beside the editor for the base fixture, and it
+      // is a build step for an artifact, not a gate.
+      name: "showcase",
+      testDir: "./tests/showcase",
+      // Both the document build and the driver's own tests. The driver
+      // is load-bearing for sixteen page modules, so it gets checked
+      // against a real editor rather than only by the type system.
+      testMatch: "**/*.spec.ts",
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: "chrome",
+        deviceScaleFactor: 1,
+        headless: false,
+        launchOptions: {
+          args: [
+            "--headless=new",
+            "--enable-unsafe-webgpu",
+            "--use-angle=metal",
+          ],
+        },
       },
     },
     {
