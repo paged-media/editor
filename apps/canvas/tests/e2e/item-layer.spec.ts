@@ -49,6 +49,16 @@ import { openCanvas } from "../fidelity/canvas-driver";
 import { loadFixture, type ElementRef, type LoadedFixture } from "./harness/fixtures";
 import { mutate, script } from "./harness/ui";
 
+async function openPanel(page: Page, id: string): Promise<void> {
+  await page.evaluate(
+    (panelId) =>
+      (
+        globalThis as unknown as { __canvas: { openPanel: (i: string) => void } }
+      ).__canvas.openPanel(panelId),
+    id,
+  );
+}
+
 function refStr(ref: ElementRef): string {
   return `${ref.kind}:${ref.id}`;
 }
@@ -149,6 +159,42 @@ test.describe("itemLayer — protocol 62 layer assignment", () => {
     });
     const cleared = await readItemLayer(page, rect);
     expect(cleared === null || cleared === "").toBe(true);
+  });
+
+  test("AC-ITEMLAYER-4 — the Layers panel moves the selection to a layer @feat:layers.item-assignment @feat:editor-shell.panels.layers @level:happy", async ({
+    page,
+  }) => {
+    // C-35's affordance. The panel is a schema list bound to the
+    // `layers` collection through the provider seam, so item ROWS under
+    // each layer would mean synthesising a row set in this panel and
+    // taking the read back out of that seam. A per-layer "move the
+    // selection here" is the verb a designer reaches for anyway.
+    const before = await layerIds(page);
+    await mutate(page, { op: "layerInsert", args: { position: 0, name: "Destination" } });
+    const target = (await layerIds(page)).find((id) => !before.includes(id))!;
+
+    await page.evaluate(
+      (el) =>
+        (
+          globalThis as unknown as {
+            __canvas: { setElementSelection: (ids: unknown[], mode: string) => void };
+          }
+        ).__canvas.setElementSelection([el], "replace"),
+      rect,
+    );
+
+    await openPanel(page, "paged.layers");
+    const row = page.locator(`[data-list-row="${target}"]`);
+    await expect(row).toBeVisible();
+    // The action's DOM key is the command id — `schema-panel-renderer`
+    // uses `a.action.command` as the key, not the label.
+    const move = row.locator('[data-list-action="paged.layers.assignSelection"]');
+    await expect(move).toBeEnabled();
+    await move.click();
+
+    await expect
+      .poll(() => readItemLayer(page, rect), { timeout: 8_000 })
+      .toBe(target);
   });
 
   test("AC-ITEMLAYER-3 — KNOWN DEFECT: paged.set refuses itemLayer on the published wasm @feat:layers.item-assignment @feat:scripting.property-readwrite @level:edge", async ({

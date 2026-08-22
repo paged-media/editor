@@ -89,18 +89,21 @@ import {
   useProvidedCollection,
   useProviderFirstMutate,
   useRegistries,
+  useSelection,
   type ShellPanelSchema,
   type ShellSchemaRenamePayload,
   type ShellSchemaReorderPayload,
 } from "@paged-media/shell";
 
-import type { LayerSummary, Mutation } from "@paged-media/client";
+import type { ElementId, LayerSummary, Mutation } from "@paged-media/client";
 
 import { appCatalogRegistry } from "./catalog-registry";
 
 export const LAYERS_PANEL_ID = "paged.layers";
 
 export const LAYERS_REORDER_COMMAND = "paged.layers.reorder";
+export const LAYERS_ASSIGN_SELECTION_COMMAND = "paged.layers.assignSelection";
+export const LAYERS_TOGGLE_PRINTABLE_COMMAND = "paged.layers.togglePrintable";
 export const LAYERS_RENAME_COMMAND = "paged.layers.rename";
 export const LAYERS_TOGGLE_VISIBLE_COMMAND = "paged.layers.toggleVisible";
 export const LAYERS_TOGGLE_LOCKED_COMMAND = "paged.layers.toggleLocked";
@@ -115,6 +118,11 @@ const SELECTED_BINDING = "paged.layers.selected";
 const CAN_RENAME_BINDING = "paged.layers.canRename";
 const CAN_TOGGLE_VISIBLE_BINDING = "paged.layers.canToggleVisible";
 const CAN_TOGGLE_LOCKED_BINDING = "paged.layers.canToggleLocked";
+/** Gates "Move selection here" on there BEING a selection. Unlike the
+ *  three above this is not a capability question about the row owner —
+ *  `itemLayer` is a core PropertyPath on the element, not a layer-row
+ *  path — it is simply "is there anything to move". */
+const CAN_ASSIGN_BINDING = "paged.layers.canAssignSelection";
 
 // Module-scoped so dock close/reopen keeps the published gates — the
 // same reason the schema-tree demo panel holds its surface here.
@@ -172,6 +180,37 @@ const LAYERS_SCHEMA: ShellPanelSchema = {
                 enabled: { bind: CAN_TOGGLE_LOCKED_BINDING },
               },
               {
+                // C-35 (protocol 62). Layer membership used to be a
+                // BIRTH-only property — the seven Layer* mutations
+                // managed the layer LIST and nothing wrote which layer
+                // an item was on, so this panel could show the tree and
+                // never let anything into it. `PropertyPath::ItemLayer`
+                // closed that on the wire; this is the affordance.
+                //
+                // A per-layer "move the selection here" rather than
+                // item rows under each layer: the list is bound to the
+                // `layers` collection through the provider seam, and
+                // synthesising item rows in this panel would take the
+                // read back out of that seam — which the module header
+                // argues against at length. Sending the selection to a
+                // layer is the verb a designer actually reaches for.
+                label: "Move selection here",
+                action: {
+                  kind: "command",
+                  command: LAYERS_ASSIGN_SELECTION_COMMAND,
+                },
+                enabled: { bind: CAN_ASSIGN_BINDING },
+              },
+              {
+                // `layerSetPrintable` is capability-verified on the wire
+                // and was simply absent from this panel.
+                label: "Printable",
+                action: {
+                  kind: "command",
+                  command: LAYERS_TOGGLE_PRINTABLE_COMMAND,
+                },
+              },
+              {
                 label: "Delete",
                 action: { kind: "command", command: LAYERS_REMOVE_COMMAND },
               },
@@ -211,11 +250,20 @@ export function LayersPanel(_: PanelProps) {
   const canToggleVisible = useCollectionPathOffered("layers", "layerVisible");
   const canToggleLocked = useCollectionPathOffered("layers", "layerLocked");
   const active = useActiveBindingProviders();
+  const selection = useSelection();
+  const selectedElements = selection.elementSelection;
   useEffect(() => {
     layersBindings.publish(CAN_RENAME_BINDING, canRename);
     layersBindings.publish(CAN_TOGGLE_VISIBLE_BINDING, canToggleVisible);
     layersBindings.publish(CAN_TOGGLE_LOCKED_BINDING, canToggleLocked);
-  }, [canRename, canToggleVisible, canToggleLocked]);
+    layersBindings.publish(CAN_ASSIGN_BINDING, selectedElements.length > 0);
+  }, [canRename, canToggleVisible, canToggleLocked, selectedElements.length]);
+
+  // Held in a ref for the same reason `rowsRef` is: the command objects
+  // are built once and would otherwise close over the selection as it
+  // was at registration time.
+  const selectionRef = useRef<readonly ElementId[]>([]);
+  selectionRef.current = selectedElements;
 
   const rowById = useCallback(
     (id: string): LayerRow | undefined =>
@@ -295,6 +343,50 @@ export function LayersPanel(_: PanelProps) {
               args: { layerId: row.selfId, visible: !row.visible },
             } as Mutation,
             "layerSetVisible",
+          );
+        },
+      },
+      {
+        id: LAYERS_ASSIGN_SELECTION_COMMAND,
+        title: "Move the selection to this layer",
+        run: (payload?: unknown) => {
+          const row = typeof payload === "string" ? rowById(payload) : undefined;
+          if (!row) return;
+          const targets = selectionRef.current;
+          if (targets.length === 0) return;
+          // One batch, so moving a multi-selection is ONE undo step
+          // rather than N — the same rule the gridify insert follows.
+          const ops: Mutation[] = targets.map(
+            (el) =>
+              ({
+                op: "setElementProperty",
+                args: {
+                  elementId: el,
+                  path: "itemLayer",
+                  value: { type: "text", value: row.selfId },
+                },
+              }) as Mutation,
+          );
+          return run(
+            ops.length === 1
+              ? ops[0]
+              : ({ op: "batch", args: { ops } } as Mutation),
+            "itemLayer",
+          );
+        },
+      },
+      {
+        id: LAYERS_TOGGLE_PRINTABLE_COMMAND,
+        title: "Include or exclude this layer when printing",
+        run: (payload?: unknown) => {
+          const row = typeof payload === "string" ? rowById(payload) : undefined;
+          if (!row) return;
+          return run(
+            {
+              op: "layerSetPrintable",
+              args: { layerId: row.selfId, printable: !row.printable },
+            } as Mutation,
+            "layerSetPrintable",
           );
         },
       },
