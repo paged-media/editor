@@ -94,6 +94,25 @@ export function snapshotWidthPx(widthPt: number, dpi = FIDELITY_DPI): number {
  * up and `window.__canvas` is populated.
  */
 export async function openCanvas(page: Page): Promise<void> {
+  // A3 — `File ▸ New` and `File ▸ Open` now ask before discarding an
+  // EDITED document, and Playwright auto-DISMISSES dialogs when nothing
+  // is listening. Without a handler the confirm is declined, the command
+  // returns early, and the document is silently never replaced — which
+  // took publish.journey down, where the failure then read as a renderer
+  // fault (0 changed pixels) rather than a New that never happened.
+  //
+  // Accepts ONLY the discard prompt, by message. A blanket accept-all
+  // would swallow a dialog some future test did not expect, and this
+  // helper is used by nearly every spec in the suite. The guard's own
+  // behaviour is asserted in unsaved-work.spec.ts, which does not use
+  // this path.
+  page.on("dialog", (d) => {
+    if (d.type() === "confirm" && d.message().includes("unsaved edits")) {
+      void d.accept();
+    } else {
+      void d.dismiss();
+    }
+  });
   await page.goto("/");
   // Pull console output into the Playwright test log so render
   // panics surface in the test report instead of vanishing.

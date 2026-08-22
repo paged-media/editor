@@ -590,7 +590,30 @@ test.describe("plugin surface · paged.web", () => {
 
     expect(reach.tools, "paged.web contributes no tool").toEqual([]);
     expect(reach.pluginToolsTotal, "the tool door works — other bundles use it").toBeGreaterThan(10);
-    expect(reach.menuItems, "paged.web contributes no menu item").toEqual([]);
+    // UPDATED 2026-08-22 by C1. This assertion used to read `.toEqual([])`
+    // — "paged.web contributes no menu item" — and it was written to go
+    // RED the day that stopped being true, which is exactly what it did.
+    //
+    // The plugin still contributes none: the contract has twelve
+    // contribution types and `menu` is not one of them. What changed is
+    // that the HOST now curates an `Object ▸ Insert web frame…` entry
+    // pointing at the plugin's own command, the same courtesy it already
+    // extended to paged.pdf via `File ▸ Open PDF…`. So the menu item
+    // exists and its OWNER is still the host.
+    // UPDATED 2026-08-22 by C1. This read `.toEqual([])` — "paged.web
+    // contributes no menu item" — and was written to go RED the day that
+    // stopped being true. It did, which is the ratchet working.
+    //
+    // Note what this list actually measures: menu entries whose COMMAND
+    // belongs to paged.web. The plugin still contributes none itself
+    // (the contract has twelve contribution types and `menu` is not one
+    // of them); the entry is the HOST curating a front door onto the
+    // plugin's own command, the same courtesy already extended to
+    // paged.pdf via `File ▸ Open PDF…`.
+    expect(
+      reach.menuItems,
+      "the host curates exactly one front door onto paged.web's creation verb",
+    ).toEqual(["Object/Insert web frame…"]);
     expect(reach.keybindings, "paged.web contributes no keybinding").toEqual([]);
     expect(reach.railPanels, "no panel opted into the K-8 rail launcher").toEqual([]);
     expect(reach.insertTitle).toBe("Insert web frame");

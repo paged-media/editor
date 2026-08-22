@@ -792,7 +792,23 @@ test.describe("plugin surface · paged.sheet", () => {
       reach.pluginToolsTotal,
       "other bundles do use the tool door, so this is a choice",
     ).toBeGreaterThan(10);
-    expect(reach.menuItems, "paged.sheet contributes no menu item").toEqual([]);
+    // UPDATED 2026-08-22 by C1. This read `.toEqual([])` and was written
+    // to go RED the day the exposure improved. It did.
+    //
+    // The list measures menu entries whose COMMAND belongs to
+    // paged.sheet. The plugin still contributes none of its own — the
+    // contract has twelve contribution types and `menu` is not among
+    // them — so what is here is the HOST curating a front door onto the
+    // plugin's own command, as it already did for paged.pdf.
+    //
+    // Note the door lands on `importXlsx`, the FIRST of sheet's two
+    // creation steps. The second, `lowerToFrame`, is what actually puts
+    // the sheet on the page and is still reachable only from Cmd+K under
+    // a name ("Lower selection to frame") no designer would search for.
+    expect(
+      reach.menuItems,
+      "the host curates one front door onto paged.sheet's first creation step",
+    ).toEqual(["Object/Insert spreadsheet…"]);
     expect(reach.keybindings, "paged.sheet contributes no keybinding").toEqual([]);
     expect(reach.railPanels, "no panel opted into the K-8 rail launcher").toEqual([]);
 
