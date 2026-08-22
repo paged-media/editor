@@ -41,7 +41,11 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import {
+  openCanvas,
+  loadIdml,
+  cmykProfileAvailable,
+} from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -201,6 +205,19 @@ test.describe("§21 — Separations & Ink Limit panel", () => {
   test("AC-SEP-4 — the plate lane reports the job's plates and a per-page reading that jumps to its page @feat:editor-shell.panels.separations @level:happy", async ({
     page,
   }) => {
+    // Everything below describes a document with a CMYK working profile
+    // ACTIVE. The profile the driver registers is read from an Adobe
+    // installation directory, which exists on a designer's Mac and on no
+    // CI runner, and FOGRA39 is ECI-licensed so it cannot be committed
+    // to make that uniform. Without this guard the test asserted "an
+    // Adobe install is present" as though it were editor behaviour, and
+    // failed every CI run for it while passing on the machine it was
+    // written on. AC-SEP-1..3 and AC-SEP-5 cover the panel's
+    // profile-independent behaviour and still run everywhere.
+    test.skip(
+      !cmykProfileAvailable(),
+      "no CMYK working profile on this machine — the plate lane has nothing to separate",
+    );
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
     await openSeparations(page);

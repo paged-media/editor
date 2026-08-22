@@ -45,6 +45,21 @@ function fogra39Path(): string | null {
 }
 
 /**
+ * Whether a CMYK working profile can be registered on THIS machine.
+ *
+ * The path above is an Adobe installation directory, so the answer is
+ * yes on a designer's Mac with Creative Cloud and no on a bare Linux
+ * runner — and FOGRA39 is licensed by ECI, so it cannot simply be
+ * committed to the repo to make the answer uniform. A spec that asserts
+ * profile-dependent behaviour has to ask first; otherwise it encodes
+ * "an Adobe install is present" as if it were a property of the editor,
+ * and fails everywhere that isn't the machine it was written on.
+ */
+export function cmykProfileAvailable(): boolean {
+  return fogra39Path() !== null;
+}
+
+/**
  * Convert an absolute filesystem path to a `/@fs/<absolute>` URL the
  * Vite dev server can stream. Vite is configured (vite.config.ts
  * `server.fs.allow`) to expose the repo root + `/tmp` + the system
@@ -258,6 +273,56 @@ async function preloadPackFonts(page: Page, packName: string): Promise<void> {
       for (const e of entries) {
         const bytes = await fetchBytes(e.url);
         await c.client.registerFont(e.family, bytes, e.style);
+      }
+    },
+    { entries },
+  );
+}
+
+/**
+ * Register a named set of fonts with the worker, for specs that load a
+ * fixture outside the pack lanes.
+ *
+ * A spec that skips this does not render without fonts — it renders with
+ * the engine's catch-all default standing in for whatever the document
+ * asked for. That used to be invisible. Since protocol 62 the resolver
+ * reports a substitution (`resolve_font_traced`), the PDF pipeline
+ * promotes it to a `font_substituted` PreflightFinding, and a fixture
+ * whose fonts were never registered no longer looks clean — correctly,
+ * because it never was. Specs that mean to assert the CLEAN path have to
+ * supply the faces the fixture declares.
+ *
+ * Fetched through `/@fs/` for the same reason `loadIdml` does: the bytes
+ * have to reach the worker from the dev server, not from Node.
+ */
+export async function preloadFonts(
+  page: Page,
+  fonts: { family: string; style?: string | null; ttfPath: string }[],
+): Promise<void> {
+  const entries = fonts.map((f) => ({
+    family: f.family,
+    style: f.style ?? null,
+    url: vitePathFor(f.ttfPath),
+  }));
+  await page.evaluate(
+    async ({ entries }) => {
+      const fetchBytes = async (url: string): Promise<Uint8Array> =>
+        new Uint8Array(await (await fetch(url)).arrayBuffer());
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              registerFont: (
+                family: string,
+                bytes: Uint8Array,
+                style?: string | null,
+              ) => Promise<void>;
+            };
+          };
+        }
+      ).__canvas;
+      for (const e of entries) {
+        await c.client.registerFont(e.family, await fetchBytes(e.url), e.style);
       }
     },
     { entries },

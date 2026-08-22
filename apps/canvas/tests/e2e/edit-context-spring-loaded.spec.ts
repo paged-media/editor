@@ -165,24 +165,42 @@ async function activeContextType(page: Page): Promise<string | null> {
 }
 
 async function fitHome(page: Page): Promise<void> {
-  await page.keyboard.press("Home");
-  await page.waitForTimeout(1200);
-  await expect
-    .poll(
+  // Press Home until the camera actually responds.
+  //
+  // Home is not an unconditional "fit page": useKeyboardShortcuts drops
+  // EVERY page-navigation shortcut while the canvas has no measured size
+  // (`vw < 10 || vh < 10`), and it also early-returns when the page
+  // nearest the viewport centre is already the target. Either way the
+  // keypress is swallowed silently — no error, no console line — and the
+  // camera keeps whatever the load left it at, so the next assertion
+  // blames the camera for a keypress that never took effect.
+  //
+  // This reproduced only in CI, where the shard runs headless under load
+  // and the measurement lands later; a warm dev machine passed every
+  // time, including under CI=1. What identified the guard rather than the
+  // fit maths is that the pre-Home camera is IDENTICAL in both
+  // (scale 0.0197758…) — same fixture, same 1600x1000 viewport, same
+  // starting camera, different outcome, so the difference is whether the
+  // handler ran at all.
+  //
+  // Retrying is right for this step: it is a precondition ("reach a known
+  // camera state"), not the assertion. AC-SPRING-* are about the K-1
+  // modal edit session, and none of them is a test of Home.
+  const scale = () =>
+    page.evaluate(
       () =>
-        page.evaluate(
-          () =>
-            (
-              globalThis as unknown as {
-                __canvas: {
-                  client: { camera: { read: () => { scale: number } } };
-                };
-              }
-            ).__canvas.client.camera.read().scale,
-        ),
-      { timeout: 10_000 },
-    )
-    .toBeGreaterThan(0.2);
+        (
+          globalThis as unknown as {
+            __canvas: { client: { camera: { read: () => { scale: number } } } };
+          }
+        ).__canvas.client.camera.read().scale,
+    );
+  for (let attempt = 0; attempt < 6; attempt++) {
+    await page.keyboard.press("Home");
+    await page.waitForTimeout(400);
+    if ((await scale()) > 0.2) break;
+  }
+  await expect.poll(scale, { timeout: 10_000 }).toBeGreaterThan(0.2);
 }
 
 /** Register the minimal `toolIds: []` context + an object type that
