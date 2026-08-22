@@ -136,6 +136,10 @@ interface GroupedItem {
   command: string;
   order: number;
   group?: string;
+  /** E4 — the group's human heading, carried through rather than
+   *  dropped. Dropping it is what made the Window menu read as ~90 flat
+   *  entries divided by unlabelled hairlines. */
+  groupLabel?: string;
   disabled?: boolean;
   /** ADR 024 — carried through rather than dropped. This field was
    *  declared on the contribution and discarded HERE, which is why a
@@ -157,6 +161,7 @@ function groupByTopLevel(
       command: item.command,
       order: item.order ?? 100,
       group: item.group,
+      groupLabel: item.groupLabel,
       disabled: item.disabled,
       when: item.when,
     };
@@ -202,6 +207,22 @@ function renderItems(
   items.forEach((item, idx) => {
     if (idx > 0 && item.group !== lastGroup) {
       out.push(<DropdownMenuSeparator key={`sep-${idx}`} />);
+    }
+    // E4 — render the group's NAME when it has one. The Window menu
+    // computed these all along and MenuBar dropped them, so ~90 panel
+    // entries read as one flat list divided by unlabelled hairlines.
+    // A separator says "these differ"; a heading says how.
+    if (item.groupLabel && item.group !== lastGroup) {
+      out.push(
+        <div
+          key={`grouplabel-${idx}`}
+          data-menu-group-label={item.groupLabel}
+          className="pg-mono-meta"
+          style={{ padding: "4px 8px 2px", opacity: 0.55 }}
+        >
+          {item.groupLabel}
+        </div>,
+      );
     }
     lastGroup = item.group;
     // TWO REASONS TO GREY, and they are different facts the user needs

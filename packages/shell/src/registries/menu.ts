@@ -44,6 +44,19 @@ export interface MenuItemContribution {
    * different groups render with a visual separator between them. */
   group?: string;
 
+  /** E4 — a human heading for this item's group.
+   *
+   *  The Window menu already computes these (`WINDOW_MENU_CATEGORIES`:
+   *  Workspace / Structure / Styles / Text / Properties / Object /
+   *  Output / Developer) and then threw them away, because `MenuBar`
+   *  only ever emitted a separator on a group change. So ~90 panel
+   *  entries rendered as one flat list divided by unlabelled hairlines —
+   *  the grouping was done and the user could not see it.
+   *
+   *  Optional: a menu whose groups need no names (File's open/save
+   *  clusters) keeps the bare separator. */
+  groupLabel?: string;
+
   /** Visible-but-disabled seam — a kit menu item whose backing
    * doesn't exist yet. Renders greyed with a "soon" marker and
    * never invokes (the honest-stub convention). */

@@ -93,6 +93,69 @@ test.describe("Phase E — learnability", () => {
     await expect(page.locator('[data-shortcut-adhoc="Undo"]')).toBeVisible();
   });
 
+  test("AC-LEARN-3 — the Window menu is grouped by heading and free of developer panels @feat:editor-shell.menus @feat:editor-shell.panel-rail @level:happy", async ({
+    page,
+  }) => {
+    const items = await page.evaluate(
+      () =>
+        (
+          globalThis as unknown as {
+            __canvas: {
+              registries: { menus: { list: () => { path: string; command: string }[] } };
+            };
+          }
+        ).__canvas.registries.menus.list(),
+    );
+    const windowItems = items.filter((i) => i.path.startsWith("Window/"));
+    expect(windowItems.length).toBeGreaterThan(20);
+
+    // E6 — these are developer surfaces. They stay REGISTERED and
+    // openable (openPanel, the palette, any spec); they are simply not
+    // offered to a designer browsing for a workspace, where they sat
+    // indistinguishable from ninety real panels.
+    for (const dev of [
+      "paged.panel.show.paged.repl",
+      "paged.panel.show.paged.script-editor",
+      "paged.panel.show.paged.schema-list-demo",
+      "paged.panel.show.paged.schema-tree-demo",
+    ]) {
+      expect(
+        windowItems.map((i) => i.command),
+        `${dev} is a developer surface and must not be in the Window menu`,
+      ).not.toContain(dev);
+    }
+
+    // …and they are still reachable, which is the half that makes the
+    // above safe rather than a removal.
+    await openPanel(page, "paged.repl");
+    await expect
+      .poll(
+        async () =>
+          (
+            await page.evaluate(
+              () =>
+                (
+                  globalThis as unknown as {
+                    __canvas: { debugContext: () => { panels: { open: string[] } } };
+                  }
+                ).__canvas.debugContext().panels.open,
+            )
+          ).includes("paged.repl"),
+        { timeout: 5_000 },
+      )
+      .toBe(true);
+
+    // E4 — the Window menu computed its group headings all along and
+    // MenuBar dropped them, so ~90 entries read as one flat list divided
+    // by unlabelled hairlines. A separator says "these differ"; a
+    // heading says how.
+    await page.locator('[data-menu-trigger="Window"]').click();
+    await expect(
+      page.locator("[data-menu-group-label]").first(),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+  });
+
   test("AC-LEARN-2 — the menus carry an accelerator column @feat:editor-shell.menus @level:happy", async ({
     page,
   }) => {

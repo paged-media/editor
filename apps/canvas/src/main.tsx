@@ -664,6 +664,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     // Rendered through the SAME SchemaPanelRenderer the bundle host
     // injects. Driven by tests/e2e/schema-list-panel.spec.ts.
     id: "paged.schema-list-demo",
+    devOnly: true,
     title: "Swatch list (schema)",
     component: SchemaListDemoPanel,
     defaultDock: "right",
@@ -678,6 +679,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     // are dedicated ops, not property writes). NOT the Layers panel —
     // phase C owns that. Driven by tests/e2e/schema-tree-panel.spec.ts.
     id: "paged.schema-tree-demo",
+    devOnly: true,
     title: "Structure (schema tree)",
     component: SchemaTreeDemoPanel,
     defaultDock: "right",
@@ -835,6 +837,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
   },
   {
     id: "paged.repl",
+    devOnly: true,
     title: "REPL",
     component: ReplPanel,
     defaultDock: "bottom",
@@ -842,6 +845,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
   },
   {
     id: "paged.script-editor",
+    devOnly: true,
     title: "Script",
     component: ScriptEditorPanel,
     defaultDock: "bottom",

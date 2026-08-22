@@ -47,6 +47,21 @@ export interface PanelProps {
  * title, a React component, and placement / visibility metadata.
  */
 export interface PanelContribution {
+  /** E6 — a DEVELOPER surface: kept out of the Window menu.
+   *
+   *  The menu listed every registered panel, so an end user browsing it
+   *  found the REPL, the script editor and two panels titled "Swatch
+   *  list (schema)" and "Structure (schema tree)" — which exist to give
+   *  the schema tiers a real consumer for their tests. Four developer
+   *  tools in a designer's Window menu, indistinguishable from the
+   *  ninety real ones.
+   *
+   *  It stays REGISTERED and openable — `__canvas.openPanel`, the
+   *  command palette, and any test that wants it — because the panel is
+   *  not the problem; offering it to a designer browsing for a workspace
+   *  is. */
+  devOnly?: boolean;
+
   /** Stable identifier. Format: `<namespace>.<panel>`. */
   id: string;
 

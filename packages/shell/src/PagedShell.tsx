@@ -514,6 +514,14 @@ function ShellChrome({
     const items = new Map<string, Disposable>();
     const add = (p: PanelContribution) => {
       if (p.id === "paged.canvas" || items.has(p.id)) return;
+      // E6 — developer surfaces stay out of the Window menu. The menu
+      // listed every registered panel, so a designer browsing for a
+      // workspace found the REPL, the script editor and two panels
+      // titled "Swatch list (schema)" / "Structure (schema tree)" —
+      // which exist to give the schema tiers a real consumer for their
+      // tests. They remain registered and openable (openPanel, the
+      // palette, any spec); they are simply not OFFERED.
+      if (p.devOnly) return;
       // U11 — group by category (defaultGroup table / plugin source)
       // instead of one flat "panels" bucket; see windowMenuGroup.
       const { label, order } = windowMenuGroup(p);
@@ -524,6 +532,10 @@ function ShellChrome({
             path: `Window/${p.title}`,
             command: `paged.panel.show.${p.id}`,
             group: label,
+            // E4 — the heading the user sees. This value was computed
+            // here all along and dropped by MenuBar, so ~90 entries read
+            // as one flat list divided by unlabelled hairlines.
+            groupLabel: label,
             order,
             // ADR 024 — a panel that belongs to a DIFFERENT content type
             // is not offered here.
