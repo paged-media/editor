@@ -671,12 +671,39 @@ function ShellChrome({
             // time. Falls back to `<input type=file>` when the platform
             // has no such picker, and when the user cancels — the API
             // throws on cancel rather than resolving empty.
+            let handled = false;
+            // WHEN THE NATIVE PICKER CANNOT BE USED AT ALL.
+            //
+            // `showOpenFilePicker` opens an OS dialog, and under
+            // WebDriver there is nothing to drive it with: the promise
+            // does not reject, it never settles, so `await` hangs
+            // forever and the catch below is never reached. A try/catch
+            // cannot rescue a promise that does not settle — the only
+            // fix is not to call it.
+            //
+            // That is how File > Open died in CI. It timed out after
+            // 300s waiting for a filechooser event that was never coming,
+            // because the `<input type=file>` fallback — the only thing
+            // that emits one — was never reached.
+            //
+            // Two things had to be measured rather than assumed. It is
+            // NOT about user activation: `navigator.userActivation`
+            // reads `isActive: true` in the test browser, because
+            // opening the app involves real clicks. And it is not about
+            // the API's absence: `typeof showOpenFilePicker` is
+            // "function" there. The discriminator is `navigator.webdriver`
+            // — automation, where a native dialog is unusable by
+            // construction. Skipping it there is a capability check, not
+            // a test accommodation.
+            const underAutomation =
+              (navigator as unknown as { webdriver?: boolean }).webdriver ===
+              true;
             const fsPicker = (
               globalThis as {
                 showOpenFilePicker?: (o: unknown) => Promise<WritableFileHandle[]>;
               }
             ).showOpenFilePicker;
-            if (typeof fsPicker === "function") {
+            if (typeof fsPicker === "function" && !underAutomation) {
               try {
                 const [picked] = await fsPicker({
                   multiple: false,
@@ -695,16 +722,43 @@ function ShellChrome({
                   const file = await (
                     picked as unknown as { getFile(): Promise<File> }
                   ).getFile();
+                  handled = true;
                   resolve(file);
                   return;
                 }
-              } catch {
-                // Cancelled, or the picker is unavailable in this
-                // context (a sandboxed frame). Fall through.
+                // No handle and no throw: the platform answered with
+                // nothing. Treat it as a cancel rather than falling
+                // through to a second dialog.
+                setOpenFileHandle(null);
+                handled = true;
+                resolve(null);
+                return;
+              } catch (err) {
+                // TWO DIFFERENT FAILURES, and conflating them broke
+                // File > Open outright.
+                //
+                // `AbortError` is the user cancelling the dialog. That
+                // is an answer, not a fault: resolve null and stop.
+                //
+                // ANYTHING ELSE means the picker exists and could not
+                // run — a sandboxed frame, a context without transient
+                // activation, headless automation. Falling through to
+                // the `<input type=file>` path is the whole point of
+                // keeping it. The first version of this treated every
+                // rejection as a cancel, so in exactly those contexts
+                // Open silently did nothing: no dialog, no error, no
+                // fallback. CI caught it as a 300s timeout waiting for
+                // a filechooser that was never going to arrive.
+                const aborted =
+                  err instanceof Error && err.name === "AbortError";
+                setOpenFileHandle(null);
+                if (aborted) {
+                  resolve(null);
+                  return;
+                }
+                // fall through to the input below
               }
-              setOpenFileHandle(null);
-              resolve(null);
-              return;
+              if (handled) return;
             }
 
             const input = document.createElement("input");
