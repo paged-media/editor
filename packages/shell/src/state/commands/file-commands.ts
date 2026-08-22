@@ -38,6 +38,36 @@ const LETTER_PT: readonly [number, number] = [612, 792];
  * same document-state orchestration as Open, so the menu, palette, and
  * tests all reach one path.
  */
+/** Ask before discarding an edited document.
+ *
+ *  `File > New` and `File > Open` both replace the open document
+ *  outright. The editor has no autosave and no recent-files list, so a
+ *  mis-click here is unrecoverable — the previous document is simply
+ *  gone. The dirty flag was already displayed in two places and acted on
+ *  in none.
+ *
+ *  `window.confirm` deliberately, not a designed modal: this must work
+ *  before any React tree exists (a failed bundle load still reaches the
+ *  menu), it must be synchronous so nothing races the replacement, and
+ *  it is the one dialog the platform guarantees. A prettier modal is a
+ *  fine follow-up; shipping nothing until it exists is not.
+ *
+ *  Returns true when it is safe to proceed. */
+async function confirmDiscard(editor: PagedEditor, what: string): Promise<boolean> {
+  let dirty = false;
+  try {
+    dirty = (await editor.client.documentMeta()).dirty;
+  } catch {
+    // No document, or the worker is not answering — nothing to lose.
+    return true;
+  }
+  if (!dirty) return true;
+  return globalThis.confirm(
+    `This document has unsaved edits. ${what} will discard them.\n\n` +
+      "Save with Cmd+S first, or continue to discard.",
+  );
+}
+
 export function buildNewDocumentCommand(options: {
   setStatus: (s: string) => void;
   pushWarning: (w: string) => void;
@@ -49,6 +79,7 @@ export function buildNewDocumentCommand(options: {
     category: "File",
     handler: async (paged) => {
       const editor = paged as PagedEditor;
+      if (!(await confirmDiscard(editor, "Creating a new document"))) return;
       const [widthPt, heightPt] = options.defaultSizePt ?? LETTER_PT;
       await createBlankDocument(
         editor.client,
@@ -123,6 +154,13 @@ export function buildOpenIdmlCommand(options: {
         }
         return;
       }
+      // The guard sits HERE, not before the picker and not before the
+      // importer routing above. Asking before the picker interrupts a
+      // gesture the user may abandon anyway, and a plugin importer does
+      // not necessarily replace the document — paged.sheet's .xlsx adds
+      // a frame. This branch is the one that always replaces, so it is
+      // the only one where "continue" means "discard what is open".
+      if (!(await confirmDiscard(editor, `Opening ${file.name}`))) return;
       await loadDocumentFile(editor.client, file, {
         setHandle: editor.document.setHandle,
         setSourceName: editor.document.setSourceName,

@@ -214,4 +214,13 @@ export const PANEL_RAIL: PanelRailItem[] = [
   },
   { panelId: "paged.comments", title: "Comments", icon: "ui-comment" },
   { panelId: "paged.preflight", title: "Preflight", icon: "ui-target" },
+  // Problems. The app writes genuinely good refusal sentences into this
+  // panel — "Insert rectangle inserts page items, and you are editing
+  // inside a vectorGraphic. Leave the frame (Esc) to insert into the
+  // document." — and the panel was in NO mode's slots and on no rail, so
+  // the explanation for a greyed command was published where nobody
+  // could read it. Save and export failures now land here too, which
+  // makes reachability the difference between a reported failure and a
+  // silent one.
+  { panelId: "paged.problems", title: "Problems", icon: "ui-warn" },
 ];

@@ -45,6 +45,9 @@ import React, {
 import type { CanvasClient } from "@paged-media/client";
 // eslint-disable-next-line import/no-relative-parent-imports
 import { supportsSharedArrayBuffer } from "@paged-media/client";
+// ADR 025 — the journal ring. Lives in `client` (React-free) precisely so
+// both this package and the canvas app reach the SAME buffer.
+import { journal, errorIdent, identOf } from "@paged-media/client";
 // eslint-disable-next-line import/no-relative-parent-imports
 import type { WorkerToMain } from "@paged-media/client";
 
@@ -57,6 +60,7 @@ import {
   ContentSelectionProvider,
   useContentSelection,
 } from "./state/content-selection-context";
+import { useDocumentMeta } from "./catalog/use-collection";
 import { DocumentProvider, useDocument } from "./state/document-context";
 import { setPendingImportSource } from "./state/import-source";
 import {
@@ -843,10 +847,26 @@ function ShellChrome({
   useEffect(() => {
     const off = client.subscribe((msg: WorkerToMain) => {
       if (msg.kind === "warning") {
-        setWarnings((prev) => [
-          ...prev,
-          `${msg.payload.kind}: ${msg.payload.details}`,
-        ]);
+        // ADR 025 — the worker ALREADY structures every failure it has
+        // (dispatchError, initFailed, protocolMismatch, SAB drift) into this
+        // envelope, with a `kind` discriminator. Flattening it straight to a
+        // string threw that structure away at the last possible moment. Record
+        // the structured form first; the human list below is unchanged.
+        //
+        // `details` deliberately does NOT cross: it is free text and carries
+        // font names, ids and message fragments. The `kind` is the signal.
+        journal.record({
+          code: WORKER_WARNING_CODES[msg.payload.kind] ?? "worker.dispatch.error",
+          severity: "error",
+          data: { kind: identOf(msg.payload.kind) ?? "unknown" },
+        });
+        setWarnings((prev) =>
+          // Bounded: this list was previously append-only for the life of the
+          // session, so a chatty worker grew it without limit.
+          [...prev, `${msg.payload.kind}: ${msg.payload.details}`].slice(
+            -MAX_VISIBLE_WARNINGS,
+          ),
+        );
       } else if (msg.kind === "attachReady") {
         setGpuActive(msg.payload.gpuActive);
       } else if (msg.kind === "resolutionDone") {
@@ -1059,6 +1079,7 @@ function ShellChrome({
   // legacy dockview layout keys survive while the flag is off.
   return cockpitActive ? (
     <CockpitStateProvider>
+      <UnsavedChangesGuard />
       {!isProd && <DebugContextProbe targetRef={debugContextRef} />}
       {shellBody}
     </CockpitStateProvider>
@@ -1090,6 +1111,39 @@ interface DebugContextSnapshot {
    *  it here means the panel and the tests read the same source rather
    *  than two hand-kept lists that drift. */
   keybindings: { key: string; command: string }[];
+}
+
+/** Renderless: warn before the tab closes on an edited document.
+ *
+ *  The editor displayed its dirty state honestly in two places — the
+ *  mode bar's "Edited — not saved" and the doc title bar's "Edited" —
+ *  and then never acted on it. There was no `beforeunload` handler
+ *  anywhere in the app, no autosave, and no `File > Open recent`, so a
+ *  closed tab took the work with it in silence.
+ *
+ *  `preventDefault()` plus a non-empty `returnValue` is the whole
+ *  contract; browsers show their own wording and ignore ours, which is
+ *  why there is no message to translate here. Registered ONLY while
+ *  dirty — a permanently-installed handler makes every navigation away
+ *  from a clean document prompt, which trains people to click through
+ *  the dialog that is supposed to stop them.
+ *
+ *  This does not make the document safe, and must not be read as
+ *  autosave. It buys a confirmation, nothing more. */
+function UnsavedChangesGuard() {
+  const meta = useDocumentMeta();
+  const dirty = meta?.dirty ?? false;
+  useEffect(() => {
+    if (!dirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Legacy Chrome still wants the assignment; the string is never shown.
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
+  return null;
 }
 
 /** Dev-only renderless probe: reads the cockpit tab state + edit-context
@@ -1132,6 +1186,21 @@ function DebugContextProbe({
   return null;
 }
 
+/** The worker's `warning` envelope carries a `kind` discriminator; map it onto
+ *  the journal's registered codes so a bundle reader gets a stable id rather
+ *  than a stringly-typed one. Unknown kinds fall back to dispatch-error rather
+ *  than being dropped — an unrecognised failure is still a failure. */
+const WORKER_WARNING_CODES: Readonly<Record<string, string>> = {
+  initFailed: "worker.init.failed",
+  protocolMismatch: "worker.protocol.mismatch",
+  sabDrift: "worker.sab.drift",
+  dispatchError: "worker.dispatch.error",
+  protocol: "worker.dispatch.error",
+};
+
+/** Cap on the visible warning list. The journal keeps the real record. */
+const MAX_VISIBLE_WARNINGS = 50;
+
 /**
  * Minimal error boundary so a panel / dockview crash leaves a
  * visible diagnostic instead of unmounting the whole shell.
@@ -1149,6 +1218,17 @@ class DebugErrorBoundary extends React.Component<
     console.error(`[${this.props.label}] caught:`, error);
     (globalThis as unknown as { __pagedCrash?: string }).__pagedCrash =
       `[${this.props.label}] ${error.message}\n${error.stack ?? ""}`;
+    // ADR 025 — record the crash. The console line and `__pagedCrash` are for
+    // a developer watching live; this is for the person who hits it once and
+    // exports a bundle. Neither the message nor the stack crosses: both
+    // routinely carry disk paths and document content, so only the error KIND
+    // and the boundary label do (stacks reach the export only through its
+    // opt-in, default-OFF `crash` section).
+    journal.record({
+      code: "shell.panel.crash",
+      severity: "error",
+      data: { label: identOf(this.props.label) ?? "unknown", error: errorIdent(error) },
+    });
   }
   render() {
     if (this.state.error) {

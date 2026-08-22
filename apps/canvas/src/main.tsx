@@ -71,6 +71,13 @@ import {
   createBindingProviderRegistry,
 } from "@paged-media/plugin-sdk";
 import type { SchemaPanelRenderer as SchemaPanelRendererType } from "@paged-media/plugin-api";
+import { errorIdent, identOf } from "@paged-media/client";
+import {
+  journal,
+  createHostConsole,
+  installGlobalErrorCapture,
+  exposeJournalForTests,
+} from "./journal-sink";
 import { drawBundle } from "@paged-media/draw";
 import { webBundle } from "@paged-media/web";
 import { dataBundle } from "@paged-media/data";
@@ -1203,7 +1210,7 @@ function PluginBundles() {
       () => pagedRef.current?.client ?? null,
       openBytes,
     );
-    const hostOptions = {
+    const sharedHostOptions = {
       shell,
       widgets,
       assetSource,
@@ -1220,6 +1227,14 @@ function PluginBundles() {
       diagnosticsSink: problemsSink,
       schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
     };
+    // ADR 025 §4a — the doors are identical for every bundle, but the CONSOLE
+    // is per-plugin so `host.log` is attributed at the source rather than
+    // parsed back out of the `[id]` prefix the SDK already prints. The sink
+    // censuses (severity + site hash), never mirrors, the text.
+    const hostOptionsFor = (pluginId: string) => ({
+      ...sharedHostOptions,
+      console: createHostConsole(pluginId),
+    });
     // Test affordance (the `__overlaySignals` pattern): the shell doors the
     // host app injects, reachable so an E2E spec can drive them as a bundle
     // would. K-10's saveFile is only reachable this way until the pinned
@@ -1231,34 +1246,81 @@ function PluginBundles() {
       (globalThis as unknown as { __shellDoors?: unknown }).__shellDoors =
         shell;
     }
+    // ADR 025 §4a — these eight loads used to be one array literal over an
+    // UNGUARDED `bundle.activate(host)`, so a throw in bundle #3 prevented
+    // #4-#8 from loading at all, with nothing naming the culprit. Guard each
+    // one: record it, surface it in the Problems panel, and keep going. Seven
+    // working plugins beat eight broken ones, and the failure is now visible
+    // in three places instead of zero.
+    //
+    // The structural fix belongs in plugin-sdk's `load.ts`; doing it there
+    // costs a contract bump + canary publish + editor re-pin, so it rides the
+    // single bump in the phase that needs one anyway (2026-08-22).
+    const loadGuarded = (
+      bundle: Parameters<typeof loadBundle>[1],
+    ): ReturnType<typeof loadBundle> | null => {
+      const pluginId = bundle.manifest.id;
+      const t0 = performance.now();
+      try {
+        const handle = loadBundle(
+          () => pagedRef.current,
+          bundle,
+          hostOptionsFor(pluginId),
+        );
+        journal.record({
+          code: "plugin.activate",
+          durMs: performance.now() - t0,
+          data: { ok: true, plugin: pluginId },
+        });
+        return handle;
+      } catch (err) {
+        journal.record({
+          code: "plugin.activate",
+          severity: "error",
+          durMs: performance.now() - t0,
+          data: { ok: false, plugin: pluginId, error: errorIdent(err) },
+        });
+        // The user-facing half: a bundle that failed to activate is a DOCUMENT
+        // problem as far as the person editing is concerned, so it goes where
+        // every other bundle diagnostic goes.
+        problemsSink.publish(pluginId, "activation", [
+          {
+            severity: "error",
+            message: `${pluginId} failed to activate: ${String(err)}`,
+            source: "loadBundle",
+          },
+        ]);
+        return null;
+      }
+    };
     const loaded = [
-      loadBundle(() => pagedRef.current, drawBundle, hostOptions),
-      loadBundle(() => pagedRef.current, webBundle, hostOptions),
+      loadGuarded(drawBundle),
+      loadGuarded(webBundle),
       // paged.data (the §7.1 PROVIDER — publishes a governed query) + paged.sheet
       // (the future consumer, S-15). Both rendezvous through `dataProviders`
       // above. Engines boot lazily, so loading them is cheap; a missing engine /
       // DuckDB degrades honestly in-panel (never crashes the app).
-      loadBundle(() => pagedRef.current, dataBundle, hostOptions),
-      loadBundle(() => pagedRef.current, sheetBundle, hostOptions),
+      loadGuarded(dataBundle),
+      loadGuarded(sheetBundle),
       // paged.image (M4 ingest slice): C-5 placed bytes → engine-wasm
       // decode → GPU adjustments → C-1 Stage-A in-frame composite. The
       // engine wasm boots lazily on first ingest (the GPU device lives
       // in the bundle realm — I-07); a missing artifact / no WebGPU
       // degrades honestly in-panel.
-      loadBundle(() => pagedRef.current, imageBundle, hostOptions),
+      loadGuarded(imageBundle),
       // ADR-022 Phase 4/5 — paged.publish: the IDML importer (routes .idml to
       // host.nativeDocument.open) + exporter (reuses the engine serializer).
       // Replaces the Export Center's built-in static IDML target.
-      loadBundle(() => pagedRef.current, publishBundle, hostOptions),
+      loadGuarded(publishBundle),
       // paged.pdf — Phase 0: opens a .pdf as full-page image frames (pdf.js
       // raster -> inline-image IDML -> host.nativeDocument.open).
-      loadBundle(() => pagedRef.current, pdfBundle, hostOptions),
+      loadGuarded(pdfBundle),
       // paged.doc — Word/DOCX: .docx/.dotx importer + "Place Word document…"
       // places lowered native stories into the OPEN document (no destructive
       // open; the docx→native standalone producer is deferred). Save-back
       // export needs the v54/v55 doors — degrades to verbatim on older hosts.
-      loadBundle(() => pagedRef.current, docBundle, hostOptions),
-    ];
+      loadGuarded(docBundle),
+    ].filter((l): l is NonNullable<typeof l> => l !== null);
     return () => {
       for (const l of loaded) l.dispose();
       delete (globalThis as unknown as { __shellDoors?: unknown })
@@ -1276,12 +1338,66 @@ function PluginBundles() {
  * specifics (page rect math, IDML mutation API). Renders nothing —
  * mounted inside PagedShell as a side-effect-only child.
  */
+/** File-command failures the user must see.
+ *
+ *  Save and export both end in a browser download, so "nothing happened"
+ *  is indistinguishable from "it went to your Downloads folder" — and
+ *  there is no autosave behind either. A console.error is invisible to
+ *  the person who just lost the save. Routes to the same Problems
+ *  channel the insert refusals use, and keeps the console line for a
+ *  developer reading a trace. */
+const FILE_DIAGNOSTIC_SOURCE = "paged.file";
+function reportFileFailure(what: string, err: unknown): void {
+  const message = err instanceof Error ? err.message : String(err);
+  problemsSink.publish(FILE_DIAGNOSTIC_SOURCE, "file", [
+    { severity: "error", message: `${what} failed — ${message}`, source: "file" },
+  ]);
+  // eslint-disable-next-line no-console
+  console.error(`${what} failed:`, err);
+}
+
 function CanvasAppIntegration() {
   const client = useCanvasClient();
   const { camera, setCamera, viewportSize } = useCamera();
   const { handle, sourceName } = useDocument();
   const { contentSelection, setContentSelection } = useContentSelection();
   const registries = useRegistries();
+  // ADR 025 — THE COMMAND TAP. `commands.observe` is the one place a command
+  // handler is ever called, so this single subscription sees every menu item,
+  // keybinding, command-palette entry, tool activation, panel toggle,
+  // schema-panel row action and plugin command — live, including commands
+  // registered after we subscribed. Highest signal per line in the app.
+  //
+  // What it CANNOT see is not a mystery: `shell/src/actions/model.ts` already
+  // enumerates it (canvas gestures over the SAB, typing, panel field edits,
+  // selection, camera, Cmd-Z), and the journal DECLARES the same gaps in
+  // KNOWN_BLIND_SPOTS rather than letting a reader mistake silence for calm.
+  useEffect(() => {
+    const startedAt = new Map<number, number>();
+    const off = registries.commands.observe((event) => {
+      if (event.phase === "started") {
+        startedAt.set(event.invocation.seq, performance.now());
+        return;
+      }
+      const t0 = startedAt.get(event.invocation.seq);
+      startedAt.delete(event.invocation.seq);
+      journal.record({
+        code: "shell.command",
+        severity: event.error ? "error" : "info",
+        corr: event.invocation.seq,
+        durMs: t0 === undefined ? undefined : performance.now() - t0,
+        data: {
+          // A command id is a code-authored constant, not user content, but
+          // many are camelCase — `identOf` normalises rather than widening
+          // the identifier rule (which would start admitting font families).
+          id: identOf(event.invocation.id) ?? "unknown",
+          ok: !event.error,
+          ...(event.error ? { error: errorIdent(event.error) } : {}),
+        },
+      });
+    });
+    return () => off.dispose();
+  }, [registries]);
   // ADR-012 Tier 1 — the MENU path of the undo routing (the controller
   // owns the keyboard chords): while a modal context declares undo
   // ownership, Edit/Undo + Edit/Redo drive ITS op-log, not the document
@@ -1425,8 +1541,7 @@ function CanvasAppIntegration() {
           a.click();
           URL.revokeObjectURL(url);
         } catch (err) {
-          // eslint-disable-next-line no-console
-          console.error("Save As IDML failed:", err);
+          reportFileFailure("Save As IDML", err);
         }
       },
       // Save (.paged) — the native container. Same download shape as
@@ -1457,8 +1572,10 @@ function CanvasAppIntegration() {
           a.click();
           URL.revokeObjectURL(url);
         } catch (err) {
-          // eslint-disable-next-line no-console
-          console.error("Save (.paged) failed:", err);
+          // A failed save that reaches only the devtools console is a
+          // failed save the user believes succeeded — and with no
+          // autosave behind it, believing wrongly is how work is lost.
+          reportFileFailure("Save (.paged)", err);
         }
       },
       zoomIn: () => {
@@ -1682,6 +1799,17 @@ function CanvasAppRoot() {
 // worker's SharedArrayBuffer needs — otherwise the app dies deep in the worker
 // with an opaque SecurityError far from the real cause (W0.17).
 assertCrossOriginIsolated();
+
+// ADR 025 — the journal's global net. Before this the editor had exactly ONE
+// React error boundary (at the shell root) and NO window.onerror /
+// unhandledrejection handler at all, so any throw outside a React render was
+// invisible: nothing to attribute it to, nothing to put in a bug report.
+// Installed before render so a crash DURING the first render is caught.
+installGlobalErrorCapture();
+if (!import.meta.env.PROD) {
+  // Test affordance, same shape as `__overlaySignals` / `__pagedCrash`.
+  exposeJournalForTests();
+}
 
 const root = document.getElementById("root");
 if (!root) {

@@ -220,4 +220,19 @@ export const APP_KEYBINDINGS: KeybindingContribution[] = [
   { key: "ctrl+=", command: PAGED_VIEW_ZOOM_IN },
   { key: "cmd+-", command: PAGED_VIEW_ZOOM_OUT },
   { key: "ctrl+-", command: PAGED_VIEW_ZOOM_OUT },
+  // Save. Both commands shipped without a key, so the single most
+  // reflexive gesture in any editor did nothing at all — and the app has
+  // no autosave, so the reflex failing is not a small matter. Cmd+S is
+  // the native container (.paged); Cmd+Shift+S is the interchange
+  // export, which mirrors how the File menu orders them.
+  //
+  // Note this is still SAVE-AS-DOWNLOAD, not a save: the handler mints a
+  // Blob and clicks an <a download>, so a second Cmd+S produces
+  // "document (1).paged" rather than overwriting. Binding the key does
+  // not fix that; it stops the gesture being silently inert while the
+  // fix lands.
+  { key: "cmd+s", command: PAGED_FILE_SAVE_PAGED },
+  { key: "ctrl+s", command: PAGED_FILE_SAVE_PAGED },
+  { key: "cmd+shift+s", command: PAGED_FILE_SAVE_AS_IDML },
+  { key: "ctrl+shift+s", command: PAGED_FILE_SAVE_AS_IDML },
 ];
