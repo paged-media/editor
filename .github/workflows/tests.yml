@@ -134,6 +134,11 @@ jobs:
       # the whole assembled app, so this is where the sum is checked.
       - name: app-wide wasm budget (100 MB, editor + all plugins)
         run: pnpm test:wasm-budget
+      # Every panel / tool / keybinding / menu item the host registers, and
+      # every contribution the loaded plugin bundles inject, must be named
+      # by some spec or sit under a per-kind ceiling that only ever falls.
+      - name: editor surface coverage
+        run: pnpm test:surface-coverage
 
   playwright:
     name: playwright (shard ${{ matrix.shard }}/3)
