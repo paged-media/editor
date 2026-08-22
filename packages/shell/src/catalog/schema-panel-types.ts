@@ -103,6 +103,20 @@ export interface SchemaListAction {
   /** Button label (sentence case, no emoji — brand content rules). */
   label: string;
   action: SchemaRowAction;
+  /** B2 — reflect the ROW's own state on the button.
+   *
+   *  The schema list tier had no per-row state: an action carried one
+   *  static label for every row, so the Layers panel's toggles worked
+   *  and did not SHOW anything. A row read
+   *  `Layer 1 [Hide/show] [Lock/unlock]` whether the layer was visible
+   *  or hidden, and a locked layer was indistinguishable from an
+   *  unlocked one until a click failed.
+   *
+   *  `field` is a dot-path into the row. When its value is falsy the
+   *  button renders `labelWhenOff` and carries `data-row-state="off"`,
+   *  so a spec asserts the state rather than the label text. */
+  state?: { field: string; labelWhenOff: string };
+
   /** Gate the button on a published binding (absent = enabled;
    *  `applyEntity` actions additionally disable while the target
    *  selection is empty — the honest no-write-path rule). */

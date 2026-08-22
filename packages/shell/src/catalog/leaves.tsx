@@ -908,6 +908,8 @@ export interface ListLeafAction {
   label: string;
   disabled?: boolean;
   onInvoke: (rowId: string) => void;
+  /** B2 — the row field whose truthiness picks the label. */
+  state?: { field: string; labelWhenOff: string };
 }
 
 /** Resolved TREE structure for the rows the leaf was handed. The
@@ -1285,13 +1287,24 @@ export function ListLeaf({ props }: LeafProps) {
                   )}
                 </button>
               )}
-              {actions.map((a) => (
+              {actions.map((a) => {
+                // B2 — the row's own state picks the label. Resolved
+                // HERE because the leaf is the only tier holding the
+                // row: the schema declares the field, the renderer
+                // carries it, and this reads it.
+                const on = a.state
+                  ? Boolean(fieldAt(row, a.state.field))
+                  : null;
+                const actionLabel =
+                  on === false && a.state ? a.state.labelWhenOff : a.label;
+                return (
                 <button
                   key={a.key}
                   type="button"
                   disabled={a.disabled}
-                  aria-label={`${a.label}: ${label}`}
+                  aria-label={`${actionLabel}: ${label}`}
                   data-list-action={a.key}
+                  data-row-state={on === null ? undefined : on ? "on" : "off"}
                   className="shrink-0 cursor-pointer rounded-[6px] border px-[7px] text-[11px] leading-[22px] disabled:cursor-default"
                   style={{
                     fontFamily: "var(--font-sans)",
@@ -1302,9 +1315,10 @@ export function ListLeaf({ props }: LeafProps) {
                   }}
                   onClick={() => a.onInvoke(id)}
                 >
-                  {a.label}
+                  {actionLabel}
                 </button>
-              ))}
+                );
+              })}
             </div>
           );
         })}

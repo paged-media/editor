@@ -197,6 +197,39 @@ test.describe("itemLayer — protocol 62 layer assignment", () => {
       .toBe(target);
   });
 
+  test("AC-ITEMLAYER-5 — the layer toggles show the row's own state @feat:editor-shell.panels.layers @feat:layers.ops @level:happy", async ({
+    page,
+  }) => {
+    // B2 — the schema list tier had no per-row state, so these toggles
+    // worked and showed nothing: a row read `Layer 1 [Hide/show]
+    // [Lock/unlock]` whether the layer was visible or hidden, and a
+    // locked layer was indistinguishable from an unlocked one until a
+    // click failed. Fixed in the WIDGET tier (schema type -> renderer ->
+    // leaf) rather than this panel, so every list panel gains it.
+    await mutate(page, { op: "layerInsert", args: { position: 0, name: "Stateful" } });
+    await openPanel(page, "paged.layers");
+
+    const before = await layerIds(page);
+    const target = before[0];
+    const row = page.locator(`[data-list-row="${target}"]`);
+    await expect(row).toBeVisible();
+
+    const visToggle = row.locator(
+      '[data-list-action="paged.layers.toggleVisible"]',
+    );
+    // A visible layer offers to Hide it, and says its state in the DOM
+    // so this asserts the decision rather than the label text.
+    await expect(visToggle).toHaveAttribute("data-row-state", "on");
+    await expect(visToggle).toHaveText("Hide");
+
+    await visToggle.click();
+    // Hidden now: the SAME control offers to Show it.
+    await expect(visToggle).toHaveAttribute("data-row-state", "off", {
+      timeout: 8_000,
+    });
+    await expect(visToggle).toHaveText("Show");
+  });
+
   test("AC-ITEMLAYER-3 — KNOWN DEFECT: paged.set refuses itemLayer on the published wasm @feat:layers.item-assignment @feat:scripting.property-readwrite @level:edge", async ({
     page,
   }) => {

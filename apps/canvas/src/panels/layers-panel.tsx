@@ -68,7 +68,17 @@
 // INDICES stay the engine's, so the reorder command needs no arithmetic
 // and cannot drift from the display.
 //
-// ONE CAPABILITY LOST IN THE MIGRATION, named rather than faked: the
+// ONE CAPABILITY LOST IN THE MIGRATION — RESTORED 2026-08-22 (B2). The
+// schema list tier gained a per-row `state` field (schema type ->
+// renderer -> leaf, the leaf being the only tier that holds the row), so
+// the toggles below now read `Hide`/`Show`, `Lock`/`Unlock` and
+// `Printable`/`Not printable` from each row's own flag. The original
+// note is kept below because it is the reason the fix went into the
+// WIDGET tier rather than this panel: a `binding`-lane row set here
+// would have taken the read out of the platform seam, and three other
+// list panels would still be missing it.
+//
+// The original note: the
 // old panel drew eye / lock / print GLYPHS reflecting each row's own
 // flag. The schema list tier has no per-row state indicator — only
 // static-label action buttons — so the toggles here work but do not
@@ -164,7 +174,15 @@ const LAYERS_SCHEMA: ShellPanelSchema = {
             },
             actions: [
               {
-                label: "Hide/show",
+                // B2 — the row's own flag picks the label, so a hidden
+                // layer READS hidden. The schema list tier had no
+                // per-row state until now, which is why this panel's
+                // module header recorded the loss rather than faking it:
+                // the toggles worked and showed nothing, and a row said
+                // `Layer 1 [Hide/show] [Lock/unlock]` whether the layer
+                // was visible or hidden.
+                label: "Hide",
+                state: { field: "visible", labelWhenOff: "Show" },
                 action: {
                   kind: "command",
                   command: LAYERS_TOGGLE_VISIBLE_COMMAND,
@@ -172,7 +190,8 @@ const LAYERS_SCHEMA: ShellPanelSchema = {
                 enabled: { bind: CAN_TOGGLE_VISIBLE_BINDING },
               },
               {
-                label: "Lock/unlock",
+                label: "Unlock",
+                state: { field: "locked", labelWhenOff: "Lock" },
                 action: {
                   kind: "command",
                   command: LAYERS_TOGGLE_LOCKED_COMMAND,
@@ -205,6 +224,7 @@ const LAYERS_SCHEMA: ShellPanelSchema = {
                 // `layerSetPrintable` is capability-verified on the wire
                 // and was simply absent from this panel.
                 label: "Printable",
+                state: { field: "printable", labelWhenOff: "Not printable" },
                 action: {
                   kind: "command",
                   command: LAYERS_TOGGLE_PRINTABLE_COMMAND,
