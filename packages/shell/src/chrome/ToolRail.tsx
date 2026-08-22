@@ -29,7 +29,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { applicabilityOf } from "./applicability";
+import { applicabilityOf, applicabilityStyle } from "./applicability";
 
 import { useRegistries } from "../state/registries-context";
 import { useEditContextStack } from "../state/edit-context-stack";
@@ -504,6 +504,15 @@ function ToolSlot({
       window.removeEventListener("pointerdown", close, { capture: true });
   }, [flyoutOpen]);
 
+  // Palette semantics: an inapplicable slot is not rendered at all. See
+  // the `data-applies` note below for why hiding rather than dimming.
+  const applies = applicabilityOf({
+    exists: true,
+    appliesHere: !restricted || restricted.has(face.id),
+    id: face.id,
+  });
+  if (!applicabilityStyle(applies, "palette").visible) return null;
+
   return (
     <div ref={containerRef} style={{ position: "relative" }}>
       <button
@@ -518,14 +527,23 @@ function ToolSlot({
         data-context-dimmed={
           restricted && !restricted.has(face.id) ? "true" : undefined
         }
-        // Phase F — declare the STATE, not just the styling. The rail
-        // already implemented "applies elsewhere" correctly (dimmed and
-        // still clickable, so picking one leaves the context); this names
-        // it in the shared vocabulary so the other surfaces can match and
-        // the guard can check they do.
+        // Phase F — the rail is a PALETTE: a surface the eye scans, so
+        // an inapplicable tool costs attention rather than teaching
+        // anything. It holds 60 tools (28 built-in + 19 draw + 13
+        // image), and inside `sheet` — whose context declares
+        // `toolIds: []` — every one of them would dim. Inside draw's own
+        // `vectorGraphic`, which declares 3 of draw's 19, 57 would.
+        //
+        // Dimming is an escape hatch when a few things do not apply and a
+        // wall of grey when almost nothing does; at that ratio it makes
+        // the context read as a degraded version of the app instead of a
+        // place with its own tools. So on a palette `elsewhere` HIDES.
+        // Selection stays regardless (ALWAYS_IN_PALETTE) so the way out
+        // is never more than one obvious click.
         data-applies={applicabilityOf({
           exists: true,
           appliesHere: !restricted || restricted.has(face.id),
+          id: face.id,
         })}
         onPointerDown={onPointerDown}
         onPointerUp={clearTimer}
@@ -602,6 +620,7 @@ function ToolSlot({
               data-applies={applicabilityOf({
                 exists: true,
                 appliesHere: !memberDimmed,
+                id: member.id,
               })}
                 onClick={() => {
                   if (memberPlanned) return;

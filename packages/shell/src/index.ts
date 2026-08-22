@@ -595,9 +595,11 @@ export {
 } from "./state/open-file-handle";
 
 export {
-  APPLICABILITY,
+  ALWAYS_IN_PALETTE,
   applicabilityOf,
   applicabilityHint,
+  applicabilityStyle,
   type Applicability,
   type ApplicabilityStyle,
+  type SurfaceKind,
 } from "./chrome/applicability";

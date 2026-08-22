@@ -753,13 +753,27 @@ test.describe("plugin surface · paged.sheet", () => {
     await expect(page.locator("[data-context-segment]")).toContainText(
       "no canvas tools apply here",
     );
-    // Every rail tool is dimmed, because `toolIds: []` restricts to
-    // nothing. Picking one is an EXIT, not a dead end.
-    for (const t of ["paged.tool.select", "paged.tool.type", "paged.tool.pen"]) {
+    // Phase F — the rail is a PALETTE, so an inapplicable tool HIDES
+    // rather than dimming. `toolIds: []` means nothing authoring applies
+    // here, and dimming 60 tools makes the context read as a degraded
+    // app rather than a place with its own tools.
+    //
+    // Navigation and inspection are exempt (ALWAYS_IN_PALETTE): a
+    // content type narrowing its AUTHORING tools has no business hiding
+    // how you look at things, and Direct Selection in particular is what
+    // Cmd-hold spring-loads — hiding it would activate a tool with no
+    // slot.
+    for (const t of ["paged.tool.type", "paged.tool.pen"]) {
       await expect(
         page.locator(`[data-tool-rail="ready"] [data-tool="${t}"]`),
-        `${t} dims inside the sheet context`,
-      ).toHaveAttribute("data-context-dimmed", "true");
+        `${t} should be hidden inside the sheet context, not dimmed`,
+      ).toHaveCount(0);
+    }
+    for (const t of ["paged.tool.select", "paged.tool.hand"]) {
+      await expect(
+        page.locator(`[data-tool-rail="ready"] [data-tool="${t}"]`),
+        `${t} is navigation and stays — it is the way out`,
+      ).toHaveAttribute("data-applies", "here");
     }
 
     await page.keyboard.press("Escape");
