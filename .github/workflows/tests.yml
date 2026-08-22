@@ -133,7 +133,24 @@ jobs:
       # ship a quarter of a gigabyte. This job is the only place that sees
       # the whole assembled app, so this is where the sum is checked.
       - name: app-wide wasm budget (100 MB, editor + all plugins)
-        run: pnpm test:wasm-budget
+        # `--json-out` writes the measurement artifact as a SIDE EFFECT and
+        # still exits on the budget. Deliberately not `--json | tee`: a pipe
+        # replaces this step's exit code with tee's, which would turn the
+        # budget gate into a gate that always passes.
+        run: pnpm test:wasm-budget --json-out "$RUNNER_TEMP/paged-measurements-wasm.json"
+
+      # The number, kept. The gate above answers "are we under 100 MB today";
+      # only a series answers "which way is it moving, and how fast". Uploaded
+      # `if: always()` because a FAILING run's number is precisely the one
+      # worth having in the trend.
+      - name: upload wasm measurement
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paged-measurements-wasm
+          path: ${{ runner.temp }}/paged-measurements-wasm.json
+          if-no-files-found: warn
+          retention-days: 90
       # Every panel / tool / keybinding / menu item the host registers, and
       # every contribution the loaded plugin bundles inject, must be named
       # by some spec or sit under a per-kind ceiling that only ever falls.

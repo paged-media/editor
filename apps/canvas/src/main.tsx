@@ -72,6 +72,17 @@ import {
   createBindingProviderRegistry,
 } from "@paged-media/plugin-sdk";
 import type { SchemaPanelRenderer as SchemaPanelRendererType } from "@paged-media/plugin-api";
+import { errorIdent, identOf } from "@paged-media/client";
+import {
+  journal,
+  createHostConsole,
+  installGlobalErrorCapture,
+  exposeJournalForTests,
+  setJournalDrainer,
+  setDocumentShapeProvider,
+  notePluginLoaded,
+} from "./journal-sink";
+import { createGuardedLoader } from "./plugin-load-guard";
 import { drawBundle } from "@paged-media/draw";
 import { webBundle } from "@paged-media/web";
 import { dataBundle } from "@paged-media/data";
@@ -214,6 +225,7 @@ import { ReplPanel } from "./panels/repl-panel";
 import { ScriptEditorPanel } from "./panels/script-editor";
 import { KeyboardShortcutsPanel } from "./panels/keyboard-shortcuts-panel";
 import { ProblemsPanel } from "./panels/problems-panel";
+import { JournalPanel } from "./panels/journal-panel";
 import { problemsSink } from "./panels/problems-store";
 import { TreePanel } from "./panels/tree-panel";
 import { ExportCenterPanel } from "./panels/cockpit/export-center-panel";
@@ -880,6 +892,17 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultDock: "bottom",
     defaultGroup: "console",
   },
+  {
+    // ADR 025 — the journal: a LOCAL flight recorder. Sits beside Problems
+    // because they are the two halves of the same question and are read
+    // together: Problems is what is wrong with the DOCUMENT, the journal is
+    // what the PROGRAM did. Nothing here is ever transmitted.
+    id: "paged.journal",
+    title: "Journal",
+    component: JournalPanel,
+    defaultDock: "bottom",
+    defaultGroup: "console",
+  },
   // ── Panel-gallery pass — CONCEPT panels (INDESIGN_PARITY.md).
   //    The four ●●● parity surfaces + the two in-scope output/a11y
   //    surfaces, shipped as kit-shaped honest seams with Concept
@@ -1217,7 +1240,7 @@ function PluginBundles() {
       () => pagedRef.current?.client ?? null,
       openBytes,
     );
-    const hostOptions = {
+    const sharedHostOptions = {
       shell,
       widgets,
       assetSource,
@@ -1234,6 +1257,29 @@ function PluginBundles() {
       diagnosticsSink: problemsSink,
       schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
     };
+    // ADR 025 §4a — identical doors for every bundle, but a PER-PLUGIN
+    // console so `host.log` is attributed at the source rather than parsed
+    // back out of the `[id]` prefix the SDK prints. The sink censuses
+    // (severity + a site hash), never mirrors, the text.
+    const hostOptionsFor = (pluginId: string) => ({
+      ...sharedHostOptions,
+      console: createHostConsole(pluginId),
+    });
+    // One bundle's activation failure must not take the seven after it down.
+    // The guard lives in `plugin-load-guard.ts` so its FAILURE path is
+    // unit-testable without a browser.
+    const loadGuarded = createGuardedLoader({
+      load: (bundle: Parameters<typeof loadBundle>[1]) =>
+        loadBundle(
+          () => pagedRef.current,
+          bundle,
+          hostOptionsFor(bundle.manifest.id),
+        ),
+      record: (entry) => journal.record(entry),
+      notePlugin: notePluginLoaded,
+      publishProblem: (bundleId, key, diagnostics) =>
+        problemsSink.publish(bundleId, key, diagnostics),
+    });
     // Test affordance (the `__overlaySignals` pattern): the shell doors the
     // host app injects, reachable so an E2E spec can drive them as a bundle
     // would. K-10's saveFile is only reachable this way until the pinned
@@ -1246,33 +1292,33 @@ function PluginBundles() {
         shell;
     }
     const loaded = [
-      loadBundle(() => pagedRef.current, drawBundle, hostOptions),
-      loadBundle(() => pagedRef.current, webBundle, hostOptions),
+      loadGuarded(drawBundle),
+      loadGuarded(webBundle),
       // paged.data (the §7.1 PROVIDER — publishes a governed query) + paged.sheet
       // (the future consumer, S-15). Both rendezvous through `dataProviders`
       // above. Engines boot lazily, so loading them is cheap; a missing engine /
       // DuckDB degrades honestly in-panel (never crashes the app).
-      loadBundle(() => pagedRef.current, dataBundle, hostOptions),
-      loadBundle(() => pagedRef.current, sheetBundle, hostOptions),
+      loadGuarded(dataBundle),
+      loadGuarded(sheetBundle),
       // paged.image (M4 ingest slice): C-5 placed bytes → engine-wasm
       // decode → GPU adjustments → C-1 Stage-A in-frame composite. The
       // engine wasm boots lazily on first ingest (the GPU device lives
       // in the bundle realm — I-07); a missing artifact / no WebGPU
       // degrades honestly in-panel.
-      loadBundle(() => pagedRef.current, imageBundle, hostOptions),
+      loadGuarded(imageBundle),
       // ADR-022 Phase 4/5 — paged.publish: the IDML importer (routes .idml to
       // host.nativeDocument.open) + exporter (reuses the engine serializer).
       // Replaces the Export Center's built-in static IDML target.
-      loadBundle(() => pagedRef.current, publishBundle, hostOptions),
+      loadGuarded(publishBundle),
       // paged.pdf — Phase 0: opens a .pdf as full-page image frames (pdf.js
       // raster -> inline-image IDML -> host.nativeDocument.open).
-      loadBundle(() => pagedRef.current, pdfBundle, hostOptions),
+      loadGuarded(pdfBundle),
       // paged.doc — Word/DOCX: .docx/.dotx importer + "Place Word document…"
       // places lowered native stories into the OPEN document (no destructive
       // open; the docx→native standalone producer is deferred). Save-back
       // export needs the v54/v55 doors — degrades to verbatim on older hosts.
-      loadBundle(() => pagedRef.current, docBundle, hostOptions),
-    ];
+      loadGuarded(docBundle),
+    ].filter((l): l is NonNullable<typeof l> => l !== null);
     return () => {
       for (const l of loaded) l.dispose();
       delete (globalThis as unknown as { __shellDoors?: unknown })
@@ -1314,6 +1360,70 @@ function CanvasAppIntegration() {
   const { handle, sourceName } = useDocument();
   const { contentSelection, setContentSelection } = useContentSelection();
   const registries = useRegistries();
+  // ADR 025 — THE COMMAND TAP. `commands.observe` is the one place a command
+  // handler is ever called, so this single subscription sees every menu item,
+  // keybinding, palette entry, tool activation, panel toggle and plugin
+  // command — including ones registered after we subscribed.
+  //
+  // What it CANNOT see is not a mystery: `shell/src/actions/model.ts` already
+  // enumerates it (canvas gestures over the SAB, typing, panel field edits,
+  // selection, camera), and the journal DECLARES the same gaps in
+  // KNOWN_BLIND_SPOTS rather than letting silence read as calm.
+  useEffect(() => {
+    const startedAt = new Map<number, number>();
+    const off = registries.commands.observe((event) => {
+      if (event.phase === "started") {
+        startedAt.set(event.invocation.seq, performance.now());
+        return;
+      }
+      const t0 = startedAt.get(event.invocation.seq);
+      startedAt.delete(event.invocation.seq);
+      journal.record({
+        code: "shell.command",
+        severity: event.error ? "error" : "info",
+        corr: event.invocation.seq,
+        durMs: t0 === undefined ? undefined : performance.now() - t0,
+        data: {
+          // Command ids are code-authored constants, but many are camelCase —
+          // `identOf` normalises rather than widening the identifier rule
+          // (which would start admitting font families).
+          id: identOf(event.invocation.id) ?? "unknown",
+          ok: !event.error,
+          ...(event.error ? { error: errorIdent(event.error) } : {}),
+        },
+      });
+    });
+    return () => off.dispose();
+  }, [registries]);
+  // ADR 025 — hand the sink a way to drain the render worker's ring. The
+  // worker keeps its OWN buffer (different realm); it is pulled on demand
+  // rather than streamed, so the render loop pays one array push instead of
+  // a structured clone per frame.
+  useEffect(() => {
+    setJournalDrainer(() => client.drainJournal());
+    return () => setJournalDrainer(null);
+  }, [client]);
+  // ADR 025 — the opt-in `documentShape` export section. The engine's
+  // `DocumentStats` is already pure counts, so this carries structure and no
+  // content. A PROVIDER, not a snapshot: the dialog must show the document
+  // open at EXPORT time, not whatever was open when the panel mounted.
+  useEffect(() => {
+    setDocumentShapeProvider(() => {
+      const stats = handle?.stats;
+      if (!stats) return undefined;
+      return {
+        spreads: stats.spreads,
+        pages: stats.pages,
+        frames: stats.frames,
+        stories: stats.stories,
+        paragraphs: stats.paragraphs,
+        lines: stats.lines,
+        glyphs: stats.glyphs,
+        oversetStories: stats.overset_stories,
+      };
+    });
+    return () => setDocumentShapeProvider(null);
+  }, [handle]);
   // ADR-012 Tier 1 — the MENU path of the undo routing (the controller
   // owns the keyboard chords): while a modal context declares undo
   // ownership, Edit/Undo + Edit/Redo drive ITS op-log, not the document
@@ -1728,6 +1838,17 @@ function CanvasAppRoot() {
 // worker's SharedArrayBuffer needs — otherwise the app dies deep in the worker
 // with an opaque SecurityError far from the real cause (W0.17).
 assertCrossOriginIsolated();
+
+// ADR 025 — the journal's global net. The editor had exactly ONE React error
+// boundary (at the shell root) and NO window.onerror / unhandledrejection
+// handler at all, so any throw outside a React render was invisible: nothing
+// to attribute it to, nothing to put in a bug report. Installed before render
+// so a crash DURING the first render is caught.
+installGlobalErrorCapture();
+if (!import.meta.env.PROD) {
+  // Test affordance, same shape as `__overlaySignals` / `__pagedCrash`.
+  exposeJournalForTests();
+}
 
 const root = document.getElementById("root");
 if (!root) {

@@ -36,7 +36,7 @@
 // Usage:  node scripts/wasm-budget.mjs [--json]
 // Exit 1 when over budget; prints the full inventory either way.
 
-import { readdirSync, statSync, realpathSync } from "node:fs";
+import { readdirSync, statSync, realpathSync, writeFileSync } from "node:fs";
 import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -121,9 +121,63 @@ export function collect() {
 
 const mb = (n) => (n / 1_000_000).toFixed(1);
 
+/** `--json-out <path>` — write the measurement artifact as a SIDE EFFECT and
+ *  still exit on the budget the way the gate always did.
+ *
+ *  Deliberately not `--json | tee file`: a pipe replaces this process's exit
+ *  code with tee's, which would turn the budget gate into a gate that always
+ *  passes. One invocation, gate on exit, file written on the way past. */
+function jsonOutPath() {
+  const i = process.argv.indexOf("--json-out");
+  return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : null;
+}
+
 function main() {
   const json = process.argv.includes("--json");
+  const outPath = jsonOutPath();
   const { artifacts, total, budget } = collect();
+
+  if (outPath) {
+    // The measurement shape, not the inventory shape: one total plus one row
+    // per artifact, each carrying the budget it is measured against. Per-file
+    // detail stays in the CI log; only these aggregates are meant to be
+    // trended.
+    const doc = {
+      contract: 1,
+      source: "editor",
+      lane: "wasm-budget",
+      commit: process.env.GITHUB_SHA ?? "unknown",
+      branch: process.env.GITHUB_REF_NAME ?? "main",
+      ...(process.env.GITHUB_RUN_ID ? { run_id: String(process.env.GITHUB_RUN_ID) } : {}),
+      finished_at: new Date().toISOString(),
+      environment: { os: process.env.RUNNER_OS ?? process.platform, arch: process.arch },
+      // AGGREGATES ONLY, and one of them deliberately.
+      //
+      // A row per artifact would key the series on a FILE PATH — an
+      // effectively open set that churns whenever a dependency is renamed,
+      // and paths in a committed trend file are noise at best. The count of
+      // artifacts is the useful summary; the per-file inventory stays in the
+      // CI log above, where you read it while triaging.
+      measurements: [
+        {
+          metric: "wasm.app_total_bytes",
+          subject: "app",
+          value: total,
+          unit: "bytes",
+          status: "ok",
+          budget,
+        },
+        {
+          metric: "wasm.artifact_count",
+          subject: "app",
+          value: artifacts.length,
+          unit: "count",
+          status: "ok",
+        },
+      ],
+    };
+    writeFileSync(outPath, `${JSON.stringify(doc, null, 2)}\n`);
+  }
 
   if (json) {
     console.log(JSON.stringify({ artifacts, total, budget }, null, 2));

@@ -36,6 +36,7 @@
 import { CameraBuffer, type Camera } from "@paged-media/client";
 import { layoutPages, type PageRect } from "../ui/layout";
 import type { PageId } from "@paged-media/client";
+import { workerJournal } from "./journal";
 
 /**
  * Wasm-side bindings the renderer needs. Subset of the
@@ -260,11 +261,30 @@ export class WorkerRenderer {
       // GPU hot path: hand the camera to wasm; wasm builds the
       // composite Vello scene and presents directly to the surface.
       // No CPU work in this branch.
+      //
+      // ADR 025 — two `performance.now()` calls per frame buy the single
+      // highest-value measurement in the editor: how long a present actually
+      // takes. The HUD has shown FPS since W1 with no way to tell whether a
+      // dropped frame was the GPU, the layout or the main thread. The entry
+      // is an `aggregate` code, so this emits ONE rollup per second, never
+      // per frame.
+      const t0 = performance.now();
       this.wasm.presentFrame(camera.scale, camera.tx, camera.ty, this.dpr);
+      workerJournal.record({
+        code: "worker.frame",
+        durMs: performance.now() - t0,
+        data: { gpu: true },
+      });
       this.maybeTap();
       return;
     }
+    const t0 = performance.now();
     this.draw(camera);
+    workerJournal.record({
+      code: "worker.frame",
+      durMs: performance.now() - t0,
+      data: { gpu: false },
+    });
     this.maybeTap();
   };
 

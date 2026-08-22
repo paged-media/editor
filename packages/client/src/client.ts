@@ -75,6 +75,17 @@ import {
 } from "./protocol";
 import { CameraBuffer, type Camera } from "./sab/camera";
 import { GestureBuffer } from "./sab/gesture";
+import type { JournalEntry, UncapturedLedger } from "./journal";
+
+/** ADR 025 — what one worker-journal drain hands back. */
+export interface JournalDrain {
+  entries: JournalEntry[];
+  ledger: UncapturedLedger;
+  /** The worker ring's epoch, so the main thread can rebase relative
+   *  timestamps onto its own. Rebasing is APPROXIMATE and the export says so
+   *  (`clocks.skewNote`) rather than pretending the two clocks are one. */
+  epochWallMs: number;
+}
 
 type PendingReply = (msg: WorkerToMain) => void;
 
@@ -1298,6 +1309,39 @@ export class CanvasClient {
     return promise;
   }
 
+  /**
+   * ADR 025 — drain the render worker's journal ring into the caller.
+   *
+   * A TS-ONLY side-channel, exactly like `requestVelloPng` above: it never
+   * touches the engine wire, so the whole worker->main journal path costs zero
+   * protocol surface. Drained rather than streamed so the cost lands when
+   * somebody looks (panel open, export), not on the render loop.
+   *
+   * Resolves to null if the worker does not answer within `timeoutMs` — a
+   * drain that silently hangs would leave the merged view quietly incomplete,
+   * so the caller counts the failure instead (`drainFailures`).
+   */
+  async drainJournal(timeoutMs = 2000): Promise<JournalDrain | null> {
+    const seq = this.nextJournalSeq++;
+    return new Promise<JournalDrain | null>((resolve) => {
+      const timer = setTimeout(() => {
+        this.journalPending.delete(seq);
+        resolve(null);
+      }, timeoutMs);
+      this.journalPending.set(seq, (drain) => {
+        clearTimeout(timer);
+        resolve(drain);
+      });
+      this.worker.postMessage({ kind: "journalDrain", seq });
+    });
+  }
+
+  private nextJournalSeq = 1;
+  private readonly journalPending = new Map<
+    number,
+    (drain: JournalDrain | null) => void
+  >();
+
   private nextVelloSeq = 1;
   private readonly velloPending = new Map<
     number,
@@ -1406,6 +1450,15 @@ export class CanvasClient {
     }
     // Sub-phase D side-channel: vello PNG readback replies bypass
     // the typed JSON envelope (transferable bytes ride directly).
+    if (raw && raw.kind === "journalDrainReply") {
+      const reply = event.data as JournalDrain & { seq: number };
+      const cb = this.journalPending.get(reply.seq);
+      if (cb) {
+        this.journalPending.delete(reply.seq);
+        cb(reply);
+      }
+      return;
+    }
     if (raw && raw.kind === "velloPngReply") {
       const reply = event.data as {
         kind: "velloPngReply";
