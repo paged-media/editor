@@ -783,6 +783,11 @@ const PLUGIN_INSERT_ENTRIES: { path: string; command: string; order: number }[] 
       order: 20,
     },
     {
+      path: "Help/Keyboard shortcuts",
+      command: "paged.panel.show.paged.keyboard-shortcuts",
+      order: 20,
+    },
+    {
       path: "Data/Generate pages…",
       command: "paged.panel.show.media.paged.data.panel.dataset",
       order: 30,

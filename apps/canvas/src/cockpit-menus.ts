@@ -94,6 +94,9 @@ export const COCKPIT_MENU_SEAMS: MenuItemContribution[] = [
   // the panel existing, so a build without paged.data shows nothing
   // rather than a dead entry.
   // ── Help ──
-  soon("Help/Documentation", 10),
-  soon("Help/Keyboard shortcuts", 20),
+  //
+  // E1/E5 — both items were `soon(...)` seams, so the app's only offer
+  // to explain itself explained nothing. Keyboard shortcuts now opens a
+  // panel rendered from the LIVE keybinding registry; Documentation
+  // opens docs.paged.media.
 ];

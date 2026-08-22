@@ -113,11 +113,51 @@ function looksLikePrompt(query: string): boolean {
  * <Mode>" group from the active ModeContribution, and the AI-prompt
  * affordance.
  */
+/** `cmd+shift+s` -> `\u2318\u21e7S`. Mac glyphs because the app is
+ *  Chromium-only and the tool rail already spells its hints this way. */
+function prettyKey(combo: string): string {
+  const parts = combo.split("+");
+  const key = parts.pop() ?? "";
+  const mods = parts
+    .map((m) =>
+      m === "cmd" || m === "meta"
+        ? "\u2318"
+        : m === "shift"
+          ? "\u21e7"
+          : m === "alt" || m === "option"
+            ? "\u2325"
+            : m === "ctrl" || m === "control"
+              ? "\u2303"
+              : m,
+    )
+    .join("");
+  return `${mods}${key.length === 1 ? key.toUpperCase() : key.charAt(0).toUpperCase() + key.slice(1)}`;
+}
+
 export function CommandPalette() {
   const paged = useOptionalPaged();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const { commands, modes } = useRegistries();
+  const { commands, modes, keybindings } = useRegistries();
+
+  // E3 — command id -> the key that runs it. `KeybindingRegistry.list()`
+  // is the same source `Help > Keyboard shortcuts` renders, so the two
+  // cannot drift into disagreeing about what a key does. First binding
+  // wins: cmd+ and ctrl+ are registered as SEPARATE contributions for
+  // one command, and showing both would double the width of every row.
+  // NOT memoised on the registry. Its object identity never changes,
+  // while its CONTENTS grow as bundles load — so a memo keyed on it is
+  // built once at first render, before any plugin has registered a
+  // binding, and never recomputes. That is exactly what happened: 82
+  // bindings live and 0 accelerators drawn. Rebuilding per render costs
+  // one pass over ~80 entries, and only while the surface is open.
+  const keyFor = (() => {
+    const byCommand = new Map<string, string>();
+    for (const b of keybindings.list()) {
+      if (!byCommand.has(b.command)) byCommand.set(b.command, prettyKey(b.key));
+    }
+    return (id: string) => byCommand.get(id) ?? null;
+  })();
   const workflowMode = useOptionalWorkflowMode();
   const [recents, setRecents] = useState<string[]>(loadRecents);
   const [version, setVersion] = useState(0);
@@ -276,7 +316,17 @@ export function CommandPalette() {
                   onSelect={() => run(cmd)}
                 >
                   <span>{cmd.title}</span>
-                  <span className="ml-auto text-xs opacity-50">{cmd.id}</span>
+                  {/* E3 — the SHORTCUT, not the command id. A designer
+                      searching the palette was shown
+                      `media.paged.data.command.lowerBinding` where every
+                      other application puts the key, so the palette
+                      taught nobody a single accelerator. The id stays as
+                      the fallback: a command with no binding still needs
+                      something on the right, and for a plugin command
+                      the id is at least what a bug report can quote. */}
+                  <span className="ml-auto text-xs opacity-50">
+                    {keyFor(cmd.id) ?? cmd.id}
+                  </span>
                 </CommandItem>
               ))}
             </CommandGroup>

@@ -211,6 +211,7 @@ import { OutlinePanel } from "./panels/outline-panel";
 import { ActionsPanel } from "./panels/actions-panel";
 import { ReplPanel } from "./panels/repl-panel";
 import { ScriptEditorPanel } from "./panels/script-editor";
+import { KeyboardShortcutsPanel } from "./panels/keyboard-shortcuts-panel";
 import { ProblemsPanel } from "./panels/problems-panel";
 import { problemsSink } from "./panels/problems-store";
 import { TreePanel } from "./panels/tree-panel";
@@ -856,6 +857,13 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultDock: "right",
     defaultGroup: "console",
     icon: "panel-actions",
+  },
+  {
+    id: "paged.keyboard-shortcuts",
+    title: "Keyboard shortcuts",
+    component: KeyboardShortcutsPanel,
+    defaultDock: "right",
+    defaultGroup: "workspace",
   },
   {
     // paged.web W-05 — the host problems panel: consumes
