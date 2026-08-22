@@ -13,9 +13,11 @@
     "lint:boundaries-selftest": "node scripts/eslint-boundaries-selftest.mjs",
     "test:boot-coi": "node --experimental-strip-types scripts/cross-origin-isolation-check.test.mjs",
     "test:thresholds": "node scripts/fidelity-thresholds-schema.test.mjs",
+    "test:journal": "node --experimental-strip-types scripts/journal.test.mjs",
     "test:wasm-budget": "node scripts/wasm-budget.mjs",
     "check:pins": "node scripts/check-plugin-pins.mjs",
-    "test:surface-coverage": "node scripts/surface-coverage.mjs"
+    "test:surface-coverage": "node scripts/surface-coverage.mjs",
+    "test:seam-guard": "node scripts/seam-guard.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.4",

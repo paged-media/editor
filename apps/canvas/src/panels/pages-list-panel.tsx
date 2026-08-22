@@ -98,6 +98,19 @@ export function PagesListPanel() {
       .catch(() => {});
   };
 
+  // The seam here read "Duplicate page — awaiting engine support" while
+  // `duplicatePage` sat in the capability matrix as MEASURED SUPPORTED.
+  // A seam that outlives its gap tells the user a shipped feature is
+  // missing, which is the same lie as claiming an unbuilt one works —
+  // just harder to notice, because it still looks deliberate.
+  const onDuplicate = selectedPage
+    ? () => {
+        void client
+          .mutate({ op: "duplicatePage", args: { page: selectedPage.selfId } })
+          .catch(() => {});
+      }
+    : undefined;
+
   const onDelete = selectedPage
     ? () => {
         void client
@@ -120,7 +133,10 @@ export function PagesListPanel() {
         />
         <ToolbarBtn
           icon="ui-component"
-          label="Duplicate page — awaiting engine support"
+          label={
+            selectedPage ? "Duplicate page" : "Duplicate page (select one first)"
+          }
+          onClick={onDuplicate}
         />
       </PanelToolbar>
       {items.length === 0 ? (

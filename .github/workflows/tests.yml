@@ -139,6 +139,11 @@ jobs:
       # by some spec or sit under a per-kind ceiling that only ever falls.
       - name: editor surface coverage
         run: pnpm test:surface-coverage
+      # A seam may not outlive the gap it names: a capability lands and
+      # the UI still says it is missing, which is the same lie as
+      # claiming an unbuilt feature works, only harder to notice.
+      - name: seam guard
+        run: pnpm test:seam-guard
 
   playwright:
     name: playwright (shard ${{ matrix.shard }}/3)
