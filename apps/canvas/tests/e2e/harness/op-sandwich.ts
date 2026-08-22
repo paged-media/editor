@@ -227,20 +227,49 @@ export async function opSandwich(
   await o.expectModel();
 
   // ── render verification ───────────────────────────────────────
-  const after = await snap(page, o.pageId, o.pageWidthPt, widthPx);
   // First pass without a region to learn the image dimensions,
   // then re-diff with the px region clamped to them.
-  const probe = diffPngPixels(baseline, after);
-  let region: PxRect | null = null;
-  if (o.region) {
-    region = inflate(
-      ptRectToPx(o.region, o.pageWidthPt, widthPx),
-      slack,
-      probe.width,
-      probe.height,
-    );
+  const sample = async () => {
+    const png = await snap(page, o.pageId, o.pageWidthPt, widthPx);
+    const p = diffPngPixels(baseline, png);
+    const r: PxRect | null = o.region
+      ? inflate(
+          ptRectToPx(o.region!, o.pageWidthPt, widthPx),
+          slack,
+          p.width,
+          p.height,
+        )
+      : null;
+    return { probe: p, region: r, diff: r ? diffPngPixels(baseline, png, r) : p };
+  };
+
+  let { probe, region, diff: finalDiff } = await sample();
+
+  // The snapshot is ONE SAMPLE of an asynchronous rebuild. The dirty-
+  // pageIds contract above proves the op was accepted and the page was
+  // marked for repaint; it does NOT prove the repaint has landed by the
+  // time the next `requestSnapshot` is served. On a loaded runner it
+  // sometimes has not, and a stale PNG is indistinguishable from an op
+  // that painted nothing — the assertion then reports a render defect
+  // that the engine does not have.
+  //
+  // That is what AC-E2E-FX-directional-feather has been doing in CI. The
+  // engine paints it (the core sweep's digest moves, and a local probe
+  // measures 4898 changed px); the run is reproducible under CI's exact
+  // invocation on a dev machine and still passes; the wasm is identical
+  // bytes and its float maths is deterministic, so the same input cannot
+  // produce different pixels — leaving WHEN the sample was taken as the
+  // only variable.
+  //
+  // Re-sampling costs nothing when the first sample already shows the
+  // change, which is the overwhelmingly common case.
+  if (!o.noRenderChange) {
+    const settleBy = Date.now() + 5_000;
+    while (finalDiff.changedInside === 0 && Date.now() < settleBy) {
+      await page.waitForTimeout(150);
+      ({ probe, region, diff: finalDiff } = await sample());
+    }
   }
-  const finalDiff = region ? diffPngPixels(baseline, after, region) : probe;
 
   if (o.noRenderChange) {
     expect(
@@ -248,9 +277,21 @@ export async function opSandwich(
       "op declared noRenderChange but pixels changed",
     ).toBe(0);
   } else {
+    // Say WHICH of the two failures this is. `changedInside === 0` has
+    // two very different causes — the op painted nothing anywhere, or
+    // it painted somewhere the region does not cover — and the old
+    // message asserted the first while being equally true of the
+    // second. That ambiguity is why AC-E2E-FX-directional-feather sat
+    // red in CI for weeks reading like an engine defect: the whole-page
+    // number, which distinguishes them in one line, was measured
+    // (`probe`) and then thrown away.
     expect(
       finalDiff.changedInside,
-      "operation produced NO render change in the affected region — not applied to the canvas document",
+      probe.changed === 0
+        ? "operation produced NO render change ANYWHERE on the page — not applied to the canvas document"
+        : `operation changed ${probe.changed}px on the page but 0 inside the affected region ` +
+          `(region px ${JSON.stringify(region)}, whole-page bbox ${JSON.stringify(probe.bbox)}) ` +
+          `— the op painted, the region is looking in the wrong place`,
     ).toBeGreaterThan(0);
     if (region && (o.containment ?? true)) {
       expect(
