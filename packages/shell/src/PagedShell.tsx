@@ -987,10 +987,7 @@ function ShellChrome({
 
       {!sabSupported && (
         <div style={warningStyle}>
-          SharedArrayBuffer unavailable — cross-origin isolation headers (COOP +
-          COEP) not set. Camera falls back to a regular ArrayBuffer; latency is
-          unaffected but reads may tear under contention.
-        </div>
+          Some features are running in a reduced mode. Reload the page; if it persists, the page is not being served with the headers the editor needs (cross-origin isolation).</div>
       )}
 
       {warnings.length > 0 && (

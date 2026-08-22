@@ -34,7 +34,16 @@ export function PanelHost({ id }: { id: string }) {
   if (!contribution) {
     return (
       <div className="pg-ui-xs" style={{ padding: 12, opacity: 0.6 }}>
-        Panel <code>{id}</code> not registered.
+        {/* E7 — this reaches a USER, in the 262px left column, whenever
+            a mode slot or a persisted tab names a panel that is not
+            there — which happens when a plugin bundle fails to load.
+            "Panel media.paged.data.panel.sources not registered" is a
+            developer's sentence in a designer's workspace. The id stays,
+            in a title, because a bug report needs it. */}
+        <span title={id}>
+          This panel is unavailable. It may belong to a plugin that
+          failed to load.
+        </span>
       </div>
     );
   }

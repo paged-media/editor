@@ -374,21 +374,11 @@ export function CommandPalette() {
         <span>
           <kbd style={kbdStyle}>↑↓</kbd> navigate
         </span>
-        <span
-          style={{
-            marginLeft: "auto",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-          }}
-        >
-          <Icon
-            name="ui-sparkle"
-            size={12}
-            style={{ color: "var(--pg-primary)" }}
-          />
-          AI-assisted
-        </span>
+        {/* E8 — the footer used to claim "AI-assisted" beside a
+              disabled assistant row. A promise the app does not keep is
+              not a seam; a seam SAYS it is unbuilt, and this asserted the
+              opposite. The assistant row itself already reads
+              "assistant coming soon", which is the honest form. */}
       </div>
     </CommandDialog>
   );
