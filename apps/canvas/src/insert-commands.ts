@@ -715,6 +715,62 @@ export function buildInsertCommands(
  *  honest-stub convention doing its job); "Add page" heads Layout.
  *  Each item carries the same `when` as its command so the menu greys
  *  where the palette hides. */
+/** C1 — an Insert entry for a PLUGIN content type.
+ *
+ *  The plugin contract has twelve contribution types and `menu` is not
+ *  one of them, so a plugin command's only host-wide home is Cmd+K —
+ *  where the palette shows the raw command id rather than a shortcut,
+ *  and where nobody ever sees two creation verbs side by side. That is
+ *  why the six content types teach six different idioms (Insert / Place
+ *  / Import / and sheet's `lowerToFrame`, which is compiler vocabulary
+ *  for the step that actually puts the sheet on the page).
+ *
+ *  Until the contract grows a menu door, the host curates. It already
+ *  special-cases one plugin this way — `File > Open PDF…` is a host
+ *  menu item written for media.paged.pdf, which never asked for it — so
+ *  the precedent is set and the alternative is leaving four content
+ *  types undiscoverable.
+ *
+ *  Gated on the command being REGISTERED, not on a hardcoded list of
+ *  bundles: a build without paged.sheet shows no Spreadsheet entry
+ *  rather than a dead one, which is the tool-rail rule ("worse than an
+ *  empty slot") applied to the menu.
+ */
+function pluginInsert(command: string) {
+  return (state: unknown): boolean => {
+    if (!insertApplies(state)) return false;
+    const s = state as {
+      registries?: { commands?: { list?: () => { id: string }[] } };
+    } | null;
+    const list = s?.registries?.commands?.list?.();
+    return Array.isArray(list) && list.some((c) => c.id === command);
+  };
+}
+
+const PLUGIN_INSERT_ENTRIES: { path: string; command: string; order: number }[] =
+  [
+    {
+      path: "Object/Insert web frame…",
+      command: "media.paged.web.command.insertWebFrame",
+      order: 30,
+    },
+    {
+      path: "Object/Insert spreadsheet…",
+      command: "media.paged.sheet.command.importXlsx",
+      order: 31,
+    },
+    {
+      path: "Object/Insert Word document…",
+      command: "media.paged.doc.command.placeDoc",
+      order: 32,
+    },
+    {
+      path: "Object/Insert data binding…",
+      command: "media.paged.data.command.defineBinding",
+      order: 33,
+    },
+  ];
+
 export const INSERT_MENU_ITEMS: MenuItemContribution[] = [
   {
     path: "Object/Insert text frame",
@@ -770,6 +826,13 @@ export const INSERT_MENU_ITEMS: MenuItemContribution[] = [
     order: 6,
     when: insertApplies,
   },
+  ...PLUGIN_INSERT_ENTRIES.map((e) => ({
+    path: e.path,
+    command: e.command,
+    order: e.order,
+    group: "insert-plugin",
+    when: pluginInsert(e.command),
+  })),
 ];
 
 /** Cmd+D — InDesign's Place. Verified unbound across the live
