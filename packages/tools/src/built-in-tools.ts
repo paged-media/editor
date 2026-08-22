@@ -55,6 +55,7 @@ import { createPageHandler } from "./handlers/page-tool";
 import { createPencilHandler } from "./handlers/pencil-tool";
 import { createPenHandler } from "./handlers/pen-tool";
 import { createRectangleHandler } from "./handlers/rectangle-tool";
+import { createTypeHandler } from "./handlers/type-tool";
 import { createScissorsHandler } from "./handlers/scissors-tool";
 import { createShearHandler } from "./handlers/shear-tool";
 import { createSmoothHandler } from "./handlers/smooth-tool";
@@ -142,7 +143,13 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     section: "drawType",
     order: 0,
     isGroupDefault: true,
+    // `legacyKey` still routes the CLICK: ViewportCanvas sets the
+    // hit-test filter to "text" and places a caret. The gesture handles
+    // only the DRAG, because the pointer-up dispatch splits the two at
+    // CLICK_DRAG_THRESHOLD_PX. Both halves are the tool; neither
+    // replaces the other.
     legacyKey: "text",
+    gesture: createTypeHandler,
   },
   // RETIRED — "Type on a Path" used to sit here as an inert built-in
   // holding `shift+t`. paged.draw ships the working tool

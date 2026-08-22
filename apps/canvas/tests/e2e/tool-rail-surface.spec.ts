@@ -232,6 +232,51 @@ test.describe("tool rail — the six live tools no spec had named", () => {
       .toBeGreaterThan(before);
   });
 
+  test("AC-RAIL-type-draws — the Type tool drags out a text frame @feat:editor-tools.draw.rectangle @feat:stories-text.frame.insert @level:happy", async ({
+    page,
+  }) => {
+    // "Press T, drag a box, type" — the muscle memory of every InDesign
+    // user, which produced nothing at all until the Type tool gained a
+    // gesture. A CLICK still places a caret: the pointer-up dispatch
+    // splits click from drag at CLICK_DRAG_THRESHOLD_PX, so the two
+    // halves of the tool do not compete.
+    await page.keyboard.press("t");
+    await expect.poll(() => activeSlot(page), { timeout: 5_000 }).toBe("type");
+
+    // On a BLANK document, not the fixture. `geometry.idml` carries 20
+    // text frames across 20 pages, so a drag anywhere near the page
+    // centre starts over one — and the handler then correctly declines,
+    // because creating a frame on top of the one the user was aiming at
+    // is worse than doing nothing. Testing the create path needs canvas
+    // that is genuinely empty.
+    await page.evaluate(async () => {
+      const cmd = (
+        globalThis as unknown as {
+          __canvas: { registries: { commands: { invoke: (id: string) => Promise<unknown> } } };
+        }
+      ).__canvas.registries.commands;
+      await cmd.invoke("paged.file.new");
+    });
+    await expect
+      .poll(() => countKind(page, "textFrame"), { timeout: 15_000 })
+      .toBe(0);
+    await fitPageZero(page);
+
+    // Drag from the page CENTRE outward, not from an offset: the blank
+    // document is one letter page, and a drag that starts off-page gives
+    // the handler a null pageId and it correctly does nothing.
+    const c = await pageZeroScreenCenter(page);
+    await page.mouse.move(c.x - 40, c.y - 30);
+    await page.mouse.down();
+    await page.mouse.move(c.x, c.y, { steps: 8 });
+    await page.mouse.move(c.x + 60, c.y + 40, { steps: 8 });
+    await page.mouse.up();
+
+    await expect
+      .poll(() => countKind(page, "textFrame"), { timeout: 8_000 })
+      .toBe(1);
+  });
+
   test("AC-RAIL-transform-needs-a-target — Shear activates and stays active with a selection @feat:editor-tools.shear @level:edge", async ({
     page,
   }) => {
