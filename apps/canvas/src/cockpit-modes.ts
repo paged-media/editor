@@ -19,7 +19,7 @@
 
 // Cockpit — the six workflow modes + the right-edge panel rail
 // (design-system ui_kits/editor is the reference). Each mode is a
-// VIEW over the registered panels: `panelSet` selects what mounts,
+// VIEW over the registered panels: `slots` selects what mounts,
 // `toolbarLeft` (work-in-progress; D4) re-skins the context
 // toolbar. The shell renders, this file declares.
 
@@ -47,18 +47,6 @@ export const COCKPIT_MODES: ModeContribution[] = [
       left: "paged.document-map",
       tabs: ["paged.properties", "paged.component-library", "paged.swatches"],
     },
-    panelSet: {
-      left: ["paged.pages", "paged.publication-health"],
-      right: [
-        "paged.swatches",
-        "paged.color",
-        "paged.stroke",
-        "paged.character",
-        "paged.paragraph",
-        "paged.inspector",
-        "paged.layers",
-      ],
-    },
   },
   {
     id: "content",
@@ -71,15 +59,6 @@ export const COCKPIT_MODES: ModeContribution[] = [
       left: "paged.stories",
       inspector: "paged.story-inspector",
     },
-    panelSet: {
-      left: ["paged.stories"],
-      right: [
-        "paged.character",
-        "paged.paragraph",
-        "paged.character-styles",
-        "paged.paragraph-styles",
-      ],
-    },
   },
   {
     id: "prepress",
@@ -91,17 +70,6 @@ export const COCKPIT_MODES: ModeContribution[] = [
     slots: {
       left: "paged.preflight",
       inspector: "paged.output-readiness",
-    },
-    panelSet: {
-      left: ["paged.preflight"],
-      right: [
-        "paged.ink-manager",
-        // §21 — the Ink Manager decides which plates exist; Separations
-        // reports what actually lands on them. They belong side by side.
-        "paged.separations",
-        "paged.color-settings",
-        "paged.links",
-      ],
     },
   },
   {
@@ -129,10 +97,6 @@ export const COCKPIT_MODES: ModeContribution[] = [
         "media.paged.data.panel.dataset",
       ],
     },
-    panelSet: {
-      left: ["media.paged.data.panel.bindings"],
-      right: ["paged.inspector"],
-    },
   },
   {
     id: "review",
@@ -144,10 +108,6 @@ export const COCKPIT_MODES: ModeContribution[] = [
     slots: {
       left: "paged.comments",
       inspector: "paged.review-inspector",
-    },
-    panelSet: {
-      left: ["paged.comments"],
-      right: ["paged.pages"],
     },
   },
   {
@@ -162,10 +122,6 @@ export const COCKPIT_MODES: ModeContribution[] = [
       left: "paged.outputs",
       inspector: "paged.export-inspector",
       canvas: "panel:paged.export-center",
-    },
-    panelSet: {
-      left: ["paged.export-center"],
-      right: [],
     },
   },
 ];

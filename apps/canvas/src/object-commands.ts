@@ -584,48 +584,71 @@ export function buildObjectCommands(
  *  is the honest-stub convention doing its job — a seam lights up when
  *  its backing lands. Titles are sentence case, per the brand content
  *  rules the rest of the menu follows. */
+/** D1 — the MENU items carry the same `when` their COMMANDS do.
+ *
+ *  Every `paged.object.*` command already declared
+ *  `when: notInsideAnEditContext`, and the menu entries declared
+ *  nothing — so inside a plugin edit context the menu rendered them
+ *  ENABLED, the user clicked, `CommandRegistry.invoke` checked the
+ *  predicate and returned undefined, and nothing happened with no
+ *  feedback whatsoever. The INSERT items got this right from the start
+ *  (`when: insertApplies` on every entry); these did not.
+ *
+ *  A false `when` greys WITHOUT a "soon" badge, which is the distinction
+ *  MenuBar draws deliberately: `disabled` means the feature does not
+ *  exist yet, a false `when` means it does not apply where you are
+ *  standing. The second is exactly the fact a user inside a vector
+ *  graphic needs told about Group and Send to back.
+ */
 export const OBJECT_MENU_ITEMS: MenuItemContribution[] = [
   {
     path: "Object/Bring to front",
     command: PAGED_OBJECT_BRING_TO_FRONT,
     order: 11,
     group: "arrange",
+    when: notInsideAnEditContext,
   },
   {
     path: "Object/Bring forward",
     command: PAGED_OBJECT_BRING_FORWARD,
     order: 12,
     group: "arrange",
+    when: notInsideAnEditContext,
   },
   {
     path: "Object/Send backward",
     command: PAGED_OBJECT_SEND_BACKWARD,
     order: 13,
     group: "arrange",
+    when: notInsideAnEditContext,
   },
   {
     path: "Object/Send to back",
     command: PAGED_OBJECT_SEND_TO_BACK,
     order: 14,
     group: "arrange",
+    when: notInsideAnEditContext,
   },
   {
     path: "Object/Group",
     command: PAGED_OBJECT_GROUP,
     order: 20,
     group: "group",
+    when: notInsideAnEditContext,
   },
   {
     path: "Object/Ungroup",
     command: PAGED_OBJECT_UNGROUP,
     order: 21,
     group: "group",
+    when: notInsideAnEditContext,
   },
   {
     path: "Object/Select parent group",
     command: PAGED_OBJECT_SELECT_PARENT_GROUP,
     order: 22,
     group: "group",
+    when: notInsideAnEditContext,
   },
 ];
 

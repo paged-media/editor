@@ -99,6 +99,42 @@ test.describe("C1 — the Insert menu reaches plugin content", () => {
     }
   });
 
+  test("AC-SEAM-1 — the Data menu opens the panels its labels promise @feat:editor-shell.menus @feat:plugin-data.bindings @level:happy", async ({
+    page,
+  }) => {
+    // D1 — these three were `soon(…)` seams whose labels duplicated three
+    // LIVE pills in the Data-layout toolbar. The verbs existed and the
+    // menu said they did not, so a designer reaching for the menu
+    // concluded the feature was unbuilt. The seam pointed the wrong way.
+    const items = await menuItems(page);
+    const registered = new Set(await commandIds(page));
+
+    // Named by id, not only by path, so the surface-coverage gate counts
+    // them: it asks whether any spec mentions each registered id, and a
+    // path is not an id. These are the registry-DERIVED panel-show
+    // commands the shell mints for every registered panel.
+    const expected = new Map([
+      ["Data/Connect source…", "paged.panel.show.media.paged.data.panel.sources"],
+      ["Data/Field mapping…", "paged.panel.show.media.paged.data.panel.bindings"],
+      ["Data/Generate pages…", "paged.panel.show.media.paged.data.panel.dataset"],
+    ]);
+    for (const [path, command] of expected) {
+      const entry = items.find((i) => i.path === path);
+      expect(entry?.command, `${path} points somewhere unexpected`).toBe(command);
+    }
+
+    for (const path of expected.keys()) {
+      const hit = items.find((i) => i.path === path);
+      expect(hit, `${path} missing`).toBeTruthy();
+      expect(hit!.command, `${path} is still a soon() seam`).not.toMatch(
+        /^paged\.soon\./,
+      );
+      expect(registered.has(hit!.command), `${path} -> unregistered command`).toBe(
+        true,
+      );
+    }
+  });
+
   test("AC-INSERT-2 — each entry points at a command that is actually registered @feat:editor-shell.menus @level:edge", async ({
     page,
   }) => {

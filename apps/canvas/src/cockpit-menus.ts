@@ -80,9 +80,19 @@ export const COCKPIT_MENU_SEAMS: MenuItemContribution[] = [
   soon("Object/Transform", 10),
   soon("Object/Effects…", 30),
   // ── Data (the data-publishing surface) ──
-  soon("Data/Connect source…", 10),
-  soon("Data/Field mapping…", 20),
-  soon("Data/Generate pages…", 30),
+  //
+  // D1 — these three were `soon(...)` seams whose labels duplicated
+  // three LIVE, enabled pills in the Data-layout toolbar
+  // (`data-sources` / `data-mapping` / `data-generate`), each of which
+  // raises a real paged.data panel. So the verbs existed and the menu
+  // said they did not: a designer who reached for Data > Connect source…
+  // found it greyed with a "soon" badge and concluded the feature was
+  // unbuilt. The seam was pointing the wrong way.
+  //
+  // They now open the same panels the pills do, through the panel-show
+  // commands the registry derives for every registered panel. Gated on
+  // the panel existing, so a build without paged.data shows nothing
+  // rather than a dead entry.
   // ── Help ──
   soon("Help/Documentation", 10),
   soon("Help/Keyboard shortcuts", 20),

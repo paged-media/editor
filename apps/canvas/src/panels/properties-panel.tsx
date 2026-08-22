@@ -46,6 +46,7 @@ import {
   useOptionalCockpitState,
   useSelection,
   useSelectionObjectType,
+  useOptionalThreading,
 } from "@paged-media/shell";
 
 import { appCatalogRegistry } from "./catalog-registry";
@@ -74,6 +75,19 @@ export function PropertiesPanel() {
     elementGeometry.some(
       (g) => (g as { hasImage?: boolean }).hasImage === true,
     );
+
+  // D1 — the frame whose overset state the chip reports. A text caret
+  // means the content selection's frame; a frame selection means that
+  // frame. Null when neither, which is why the chip renders only when
+  // it has something real to say rather than showing a dash.
+  const threading = useOptionalThreading();
+  // `ElementId.id` is a union — a StoryRange carries a struct, not a
+  // string — and narrowing on `kind` does not narrow it, so the string
+  // check is the narrowing.
+  const oversetFrameId = (() => {
+    const hit = elementGeometry.find((g) => g.id.kind === "textFrame");
+    return typeof hit?.id.id === "string" ? hit.id.id : null;
+  })();
 
   // Live selection wins; the panel-rail steer covers the empty case.
   const kind: InspectorKind = hasContent
@@ -131,16 +145,38 @@ export function PropertiesPanel() {
             <span className="pg-label" data-selection-label>
               {selectionLabel}
             </span>
-            {/* The kit's overset alert chip — an honest seam until
-                the engine's overset signal lands (gap 1). */}
-            {kind === "text" && (
+            {/* D1 — the seam had INVERTED. This chip read
+                `overset · —  "awaiting the engine's overset signal"`
+                while that very signal was live and already painting the
+                red "+" badge on the out-port two overlays away. So the
+                Properties panel — which IS on the panel rail, unlike
+                the ports — was telling the user a shipped feature was
+                missing, next to a canvas demonstrating it.
+
+                `StorySummary.overset` reaches the ThreadingContext via
+                `paged.stories()`, mapped frame→story by hit-testing the
+                frame's transformed centre. Reading it here costs
+                nothing; it is the same accessor the ports use. */}
+            {kind === "text" && oversetFrameId && (
               <span
-                data-overset-seam
-                title="Overset detection — awaiting the engine's overset signal"
+                data-overset-state={
+                  threading?.isOverset(oversetFrameId) ? "overset" : "fits"
+                }
+                title={
+                  threading?.isOverset(oversetFrameId)
+                    ? "This frame's story does not fit — text continues past the last frame in its chain"
+                    : "This frame's story fits"
+                }
                 className="pg-ui-xs"
-                style={{ opacity: 0.55, whiteSpace: "nowrap" }}
+                style={{
+                  opacity: threading?.isOverset(oversetFrameId) ? 1 : 0.55,
+                  whiteSpace: "nowrap",
+                  color: threading?.isOverset(oversetFrameId)
+                    ? "var(--status-error)"
+                    : undefined,
+                }}
               >
-                overset · —
+                {threading?.isOverset(oversetFrameId) ? "overset" : "overset · no"}
               </span>
             )}
           </div>

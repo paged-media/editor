@@ -769,6 +769,24 @@ const PLUGIN_INSERT_ENTRIES: { path: string; command: string; order: number }[] 
       command: "media.paged.data.command.defineBinding",
       order: 33,
     },
+    // The three Data-menu verbs, replacing `soon(...)` seams whose
+    // labels duplicated three LIVE toolbar pills. Same panels the pills
+    // raise, through the registry-derived panel-show commands.
+    {
+      path: "Data/Connect source…",
+      command: "paged.panel.show.media.paged.data.panel.sources",
+      order: 10,
+    },
+    {
+      path: "Data/Field mapping…",
+      command: "paged.panel.show.media.paged.data.panel.bindings",
+      order: 20,
+    },
+    {
+      path: "Data/Generate pages…",
+      command: "paged.panel.show.media.paged.data.panel.dataset",
+      order: 30,
+    },
   ];
 
 export const INSERT_MENU_ITEMS: MenuItemContribution[] = [

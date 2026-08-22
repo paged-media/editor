@@ -86,7 +86,15 @@ export function ContextToolbar({ paged, right }: ContextToolbarProps) {
       <div style={rightStyle}>
         {right}
         <ViewPill name="ui-grid" title="Overview — coming soon" disabled />
-        <ViewPill name="ui-cols-2" title="Spread view" active />
+        {/* D1 — `active` with no `onClick` and no `disabled` rendered a
+            pointer-cursor, permanently-highlighted button that swallowed
+            every click. That is precisely the failure the tool rail's
+            own doctrine names: an affordance that accepts a click and
+            silently does nothing is WORSE than an empty slot, because
+            the user reads the dead control as a fault in their own
+            input. Spread view is not wired, so it says so and refuses
+            the click like its two neighbours. */}
+        <ViewPill name="ui-cols-2" title="Spread view — coming soon" disabled />
         <ViewPill name="ui-rows" title="Story view — coming soon" disabled />
         <span style={sepStyle} />
         <ViewPill
