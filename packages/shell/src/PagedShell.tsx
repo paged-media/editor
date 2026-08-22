@@ -45,9 +45,6 @@ import React, {
 import type { CanvasClient } from "@paged-media/client";
 // eslint-disable-next-line import/no-relative-parent-imports
 import { supportsSharedArrayBuffer } from "@paged-media/client";
-// ADR 025 — the journal ring. Lives in `client` (React-free) precisely so
-// both this package and the canvas app reach the SAME buffer.
-import { journal, errorIdent, identOf } from "@paged-media/client";
 // eslint-disable-next-line import/no-relative-parent-imports
 import type { WorkerToMain } from "@paged-media/client";
 
@@ -847,26 +844,10 @@ function ShellChrome({
   useEffect(() => {
     const off = client.subscribe((msg: WorkerToMain) => {
       if (msg.kind === "warning") {
-        // ADR 025 — the worker ALREADY structures every failure it has
-        // (dispatchError, initFailed, protocolMismatch, SAB drift) into this
-        // envelope, with a `kind` discriminator. Flattening it straight to a
-        // string threw that structure away at the last possible moment. Record
-        // the structured form first; the human list below is unchanged.
-        //
-        // `details` deliberately does NOT cross: it is free text and carries
-        // font names, ids and message fragments. The `kind` is the signal.
-        journal.record({
-          code: WORKER_WARNING_CODES[msg.payload.kind] ?? "worker.dispatch.error",
-          severity: "error",
-          data: { kind: identOf(msg.payload.kind) ?? "unknown" },
-        });
-        setWarnings((prev) =>
-          // Bounded: this list was previously append-only for the life of the
-          // session, so a chatty worker grew it without limit.
-          [...prev, `${msg.payload.kind}: ${msg.payload.details}`].slice(
-            -MAX_VISIBLE_WARNINGS,
-          ),
-        );
+        setWarnings((prev) => [
+          ...prev,
+          `${msg.payload.kind}: ${msg.payload.details}`,
+        ]);
       } else if (msg.kind === "attachReady") {
         setGpuActive(msg.payload.gpuActive);
       } else if (msg.kind === "resolutionDone") {
@@ -1186,21 +1167,6 @@ function DebugContextProbe({
   return null;
 }
 
-/** The worker's `warning` envelope carries a `kind` discriminator; map it onto
- *  the journal's registered codes so a bundle reader gets a stable id rather
- *  than a stringly-typed one. Unknown kinds fall back to dispatch-error rather
- *  than being dropped — an unrecognised failure is still a failure. */
-const WORKER_WARNING_CODES: Readonly<Record<string, string>> = {
-  initFailed: "worker.init.failed",
-  protocolMismatch: "worker.protocol.mismatch",
-  sabDrift: "worker.sab.drift",
-  dispatchError: "worker.dispatch.error",
-  protocol: "worker.dispatch.error",
-};
-
-/** Cap on the visible warning list. The journal keeps the real record. */
-const MAX_VISIBLE_WARNINGS = 50;
-
 /**
  * Minimal error boundary so a panel / dockview crash leaves a
  * visible diagnostic instead of unmounting the whole shell.
@@ -1218,17 +1184,6 @@ class DebugErrorBoundary extends React.Component<
     console.error(`[${this.props.label}] caught:`, error);
     (globalThis as unknown as { __pagedCrash?: string }).__pagedCrash =
       `[${this.props.label}] ${error.message}\n${error.stack ?? ""}`;
-    // ADR 025 — record the crash. The console line and `__pagedCrash` are for
-    // a developer watching live; this is for the person who hits it once and
-    // exports a bundle. Neither the message nor the stack crosses: both
-    // routinely carry disk paths and document content, so only the error KIND
-    // and the boundary label do (stacks reach the export only through its
-    // opt-in, default-OFF `crash` section).
-    journal.record({
-      code: "shell.panel.crash",
-      severity: "error",
-      data: { label: identOf(this.props.label) ?? "unknown", error: errorIdent(error) },
-    });
   }
   render() {
     if (this.state.error) {
