@@ -122,9 +122,14 @@ test.describe("paged showcase", () => {
     );
 
     const gpu = await doc.gpuActive();
+    // "ABSENT (CPU lane)" is not a diagnosis, and for a while it was not
+    // even true — the adapter was there and the editor had simply never
+    // attached a canvas. So when the GPU is missing, say which of the two
+    // it is, measured against the browser.
+    const gpuReason = gpu ? "" : await doc.gpuReason();
     // eslint-disable-next-line no-console
     console.log(
-      `[showcase] WebGPU adapter: ${gpu ? "present" : "ABSENT (CPU lane)"}`,
+      `[showcase] WebGPU: ${gpu ? "adapter attached, GPU render path live" : `NOT ACTIVE — ${gpuReason}`}`,
     );
 
     const claims: CoverageClaim[] = [];
@@ -165,7 +170,7 @@ test.describe("paged showcase", () => {
       // product defect — but it is recorded, not swallowed.
       if (spread.needsGpu && !gpu) {
         allNotes.push(
-          `${spread.id}: pixel assertion skipped — no WebGPU adapter on this lane`,
+          `${spread.id}: pixel assertion skipped — no GPU render path: ${gpuReason}`,
         );
       } else {
         await doc.expectRenderChanged(spread.pages[0], before[0]);

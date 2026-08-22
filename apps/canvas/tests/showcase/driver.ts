@@ -83,22 +83,44 @@ export class ShowcaseDoc {
 
   // ── document ────────────────────────────────────────────────────
 
-  /** Load an IDML/`.paged` from an absolute path through the client. */
+  /**
+   * Load an IDML/`.paged` from an absolute path through the editor's REAL
+   * open flow — the file input the drop zone and File ▸ Open both feed.
+   *
+   * It used to call `client.loadDocument` directly, and that one shortcut
+   * cost the showcase its GPU. `client.loadDocument` reaches the WORKER
+   * only: the shell's `useDocument().handle` stays null, so
+   * `canvas-panel.tsx` renders its "Drop an IDML file here" placeholder
+   * instead of `<ViewportCanvas>`, so no OffscreenCanvas is ever
+   * transferred, so `attachCanvas` → `initGpu` never runs and
+   * `__canvas.gpuActive` sits at `null` forever. The whole document still
+   * built (every read here is worker-side), which is why it looked like a
+   * missing adapter rather than a missing canvas — but paged.image's
+   * GPU-only kernels degraded to a note on a machine that has a perfectly
+   * good Metal adapter.
+   *
+   * Driving the input is the same idiom the panel specs use
+   * (`loadViaInput` in navigator-panel.spec.ts et al) and it goes through
+   * `loadDocumentFile` — which also hands the engine the default font, so
+   * text shapes here exactly as it does for a user.
+   */
   async load(absPath: string): Promise<number> {
-    const count = await this.page.evaluate(async (url) => {
-      const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
-      const c = (
-        globalThis as unknown as {
-          __canvas: {
-            client: {
-              loadDocument: (b: Uint8Array) => Promise<{ pageCount: number }>;
-            };
-          };
-        }
-      ).__canvas;
-      const handle = await c.client.loadDocument(bytes);
-      return handle.pageCount;
-    }, "/@fs" + absPath);
+    await this.page.setInputFiles('input[type="file"]', absPath);
+    await this.page.waitForFunction(
+      () =>
+        (globalThis as unknown as { __canvas?: { ready?: boolean } }).__canvas
+          ?.ready === true,
+      null,
+      { timeout: 120_000 },
+    );
+    const count = await this.page.evaluate(
+      () =>
+        (
+          globalThis as unknown as {
+            __canvas: { handle: { pageCount: number } };
+          }
+        ).__canvas.handle.pageCount,
+    );
     this.pagesCache = [];
     return count;
   }
@@ -407,14 +429,12 @@ export class ShowcaseDoc {
   /**
    * Render one page to PNG bytes (the deterministic CPU snapshot).
    *
-   * Deliberately NOT `Designer.renderBytes`, which reads the React
-   * shell's `__canvas.handle` for the page list. The showcase loads
-   * through `client.loadDocument` so it can hand the engine an exact
-   * file, and that path never populates the shell's handle — so the
-   * driver's own spec failed with "no document loaded" until this
-   * asked the engine directly. Same snapshot door, page list taken
-   * from `paged.pages()`, dpi derived per page so a mixed-size
-   * document still renders each page at the requested pixel width.
+   * Same snapshot door as `Designer.renderBytes`, but the page list is
+   * taken from `paged.pages()` (the engine) rather than from the React
+   * shell's `__canvas.handle`. The showcase authors pages structurally,
+   * and the engine's list is the one that is always current; dpi is
+   * derived per page so a mixed-size document still renders each page
+   * at the requested pixel width.
    */
   async renderPage(pageIndex: number, widthPx = 1024): Promise<Buffer> {
     const all = await this.pages();
@@ -446,9 +466,74 @@ export class ShowcaseDoc {
     return Buffer.from(Uint8Array.from(arr));
   }
 
-  /** Is a real WebGPU adapter attached? paged.image's kernels need one. */
-  gpuActive(): Promise<boolean> {
+  /**
+   * Is a real WebGPU adapter attached? paged.image's kernels need one.
+   *
+   * WAITS for the answer rather than sampling it. `gpuActive` is `null`
+   * until the worker's `attachReady` lands, and `null` reads as "no GPU"
+   * — so a plain read taken moments after the document loads reports a
+   * CPU lane on a GPU machine. Settling on `true`/`false` turns a race
+   * into an answer; the timeout falls through to whatever is there,
+   * which on a genuinely adapter-less lane is the honest `null`.
+   */
+  async gpuActive(): Promise<boolean> {
+    await this.page
+      .waitForFunction(
+        () => {
+          const v = (
+            globalThis as unknown as { __canvas?: { gpuActive?: unknown } }
+          ).__canvas?.gpuActive;
+          return v === true || v === false;
+        },
+        null,
+        { timeout: 30_000 },
+      )
+      .catch(() => undefined);
     return this.designer.gpuActive();
+  }
+
+  /**
+   * Why there is no GPU, measured — not guessed.
+   *
+   * "No adapter on this lane" was the story the showcase told for its
+   * whole first life, and it was wrong: the browser had an adapter and
+   * the editor had never attached a canvas. So when the answer is "no
+   * GPU", ask the browser directly and say which of the two it is. Only
+   * called on the degrade path, so it costs nothing on a green run.
+   */
+  async gpuReason(): Promise<string> {
+    const probe = await this.page.evaluate(async () => {
+      // Typed structurally: the showcase tsconfig has no WebGPU lib.
+      const nav = navigator as Navigator & {
+        gpu?: { requestAdapter: () => Promise<unknown> };
+      };
+      const flag = (
+        globalThis as unknown as { __canvas?: { gpuActive?: unknown } }
+      ).__canvas?.gpuActive;
+      if (!nav.gpu) return { flag, adapter: false, why: "navigator.gpu absent" };
+      try {
+        const a = await nav.gpu.requestAdapter();
+        return {
+          flag,
+          adapter: !!a,
+          why: a ? "requestAdapter() resolved" : "requestAdapter() -> null",
+        };
+      } catch (e) {
+        return { flag, adapter: false, why: `requestAdapter() threw: ${String(e)}` };
+      }
+    });
+    if (!probe.adapter) {
+      return (
+        `this browser has no WebGPU adapter (${probe.why}) — an environment ` +
+        `limit, not a product defect`
+      );
+    }
+    return (
+      `the BROWSER has a WebGPU adapter (${probe.why}) but the editor's ` +
+      `renderer never attached one (__canvas.gpuActive=${String(probe.flag)}). ` +
+      `That is ours: the viewport must mount (a real document open through ` +
+      `the shell) before the worker runs initGpu`
+    );
   }
 
   /** Invoke a command exactly as a menu, palette or shortcut would. */

@@ -2,7 +2,7 @@
   "generatedFrom": "/Users/drietsch/paged/state/registry/features",
   "registryFound": true,
   "registryRows": 571,
-  "claimedRows": 73,
+  "claimedRows": 74,
   "claims": [
     {
       "module": "01-cover",
@@ -69,12 +69,14 @@
         "editor-shell.plugin-bundles",
         "plugin-platform.bundle-lifecycle",
         "image.editor.auto-enhance",
+        "image.editor.adjust-breadth",
         "plugin-platform.image-resource"
       ],
       "notes": [
         "adjustSelected → Select a placed image frame, then ingest.",
-        "no WebGPU adapter on this lane: paged.image's adjustment kernels are WGSL compute with no CPU fallback, so Auto-enhance's correction was computed from the real histogram and shown in the panel but NOT committed. The right-hand frame shows the decoded photograph, uncorrected.",
-        "paged.image's tile provider does not honour the frame's `frameFittingCrops`: both frames on this page carry the SAME placeImage fit and the same crops, and the host-served left frame fills its 228 × 240 box while the plugin-served right frame letterboxes the 4:3 photograph inside it."
+        "Apply → Composited 320×240 into the frame (document unchanged — preview layer only).",
+        "paged.image's tile provider does not honour the frame's `frameFittingCrops`: both frames on this page carry the SAME placeImage fit and the same crops, and the host-served left frame fills its 228 × 240 box while the plugin-served right frame letterboxes the 4:3 photograph inside it.",
+        "the correction reached the page through Apply's C-1 Stage-A scene layer; the claimTiles that followed was a measured no-op on this linked frame"
       ]
     },
     {
@@ -295,7 +297,7 @@
     "images-graphics": 2,
     "plugin-platform": 11,
     "editor-shell": 6,
-    "image": 1,
+    "image": 2,
     "plugin-draw": 5,
     "sheet": 3,
     "plugin-web": 6,
@@ -309,9 +311,9 @@
   },
   "notes": [
     "05-raster: adjustSelected → Select a placed image frame, then ingest.",
-    "05-raster: no WebGPU adapter on this lane: paged.image's adjustment kernels are WGSL compute with no CPU fallback, so Auto-enhance's correction was computed from the real histogram and shown in the panel but NOT committed. The right-hand frame shows the decoded photograph, uncorrected.",
+    "05-raster: Apply → Composited 320×240 into the frame (document unchanged — preview layer only).",
     "05-raster: paged.image's tile provider does not honour the frame's `frameFittingCrops`: both frames on this page carry the SAME placeImage fit and the same crops, and the host-served left frame fills its 228 × 240 box while the plugin-served right frame letterboxes the 4:3 photograph inside it.",
-    "05-raster: pixel assertion skipped — no WebGPU adapter on this lane",
+    "05-raster: the correction reached the page through Apply's C-1 Stage-A scene layer; the claimTiles that followed was a measured no-op on this linked frame",
     "07-spreadsheet: the paged.sheet engine wasm booted and parsed the workbook (its range control rendered, and accepted A1:B4)",
     "07-spreadsheet: the chart lowered as 6 native path(s) and 10 label frame(s)",
     "08-web: bake readout: Bake to document #2 — 41 native item(s) deferred: fillPath.multiSubpath ×21 baked 41 native item(s); 21 unsupported item(s) not baked (fillPath.multiSubpath:21)",

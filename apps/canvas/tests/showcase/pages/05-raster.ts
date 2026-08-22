@@ -45,17 +45,33 @@
 //           WGSL kernels; and `claimTiles` hands the corrected image
 //           back to the renderer through the plugin's own tile provider.
 //
-// A MEASURED FINDING, and why the page ends on `claimTiles`. Apply's
-// documented output is a C-1 Stage-A SCENE LAYER composited in-frame,
-// and on a bare frame that is exactly what renders (probed: 69,146 px
-// change). On a frame that already carries a PLACED IMAGE LINK the same
-// Apply changes NOTHING on the page — 0 px — because the placed image
-// paints over the plugin's scene layer. The corrected pixels still
-// reach the page, but through the tile provider: the `claimTiles` that
-// follows re-claims the frame's image resource and serves the ADJUSTED
-// image (probed: 78,499 px). So this page drives Apply for the
-// adjustment it commits and asserts the RENDER on the claim, and says
-// the reason here rather than pretending the scene layer showed.
+// TWO DOORS, ONE OUTCOME — and why the assertion is on the outcome.
+// Apply's documented output is a C-1 Stage-A SCENE LAYER composited
+// in-frame; `claimTiles` is the C-6 tile-provider door, which re-claims
+// the frame's image resource and serves the ADJUSTED image. On a frame
+// that already carries a PLACED IMAGE LINK — which is what this page
+// builds — the two doors compete, and WHICH ONE lands the corrected
+// pixels is not stable across engine versions. This page has measured
+// it both ways:
+//
+//   · an earlier probe recorded Apply = 0 px (the placed image painting
+//     over the scene layer) and the following `claimTiles` = 78,499 px;
+//   · on the current engine, on the real-adapter showcase lane, it is
+//     the other way round — Apply changes the page and the `claimTiles`
+//     that follows is a measured no-op on top of it.
+//
+// Asserting either door individually therefore encodes an engine
+// version, not a product promise. What IS the promise is that the
+// corrected pixels end up on the page, so the hard assertion spans the
+// whole commit (Apply → claimTiles) and the notes record which door
+// delivered it on this run. That attribution is the interesting part
+// and it is measured every time rather than remembered.
+//
+// (The earlier reading was taken when the showcase lane had NO GPU at
+// all — its `load()` reached the worker directly, so the shell's
+// document handle stayed null, the viewport never mounted and `initGpu`
+// never ran. Apply is GPU-only, so on that lane it could not have
+// rendered anything. See `ShowcaseDoc.load`.)
 //
 // GPU, STATED PLAINLY. paged.image's adjustment kernels are WGSL
 // compute with NO CPU fallback. `ctx.doc.gpuActive()` decides whether
@@ -297,6 +313,28 @@ async function panelStatus(ctx: PageContext, settleMs = 0): Promise<string> {
 }
 
 /**
+ * Did the page's pixels move within `ms`? A non-throwing sibling of
+ * `ShowcaseDoc.expectRenderChanged`, for ATTRIBUTION rather than
+ * gating: this page needs to say which of two doors landed the
+ * correction, and "no" is a legitimate answer for one of them. Polls
+ * for the same reason the assertion does — a single cold sample of a
+ * fresh render flakes (see the journey render-flake note).
+ */
+async function changedWithin(
+  doc: PageContext["doc"],
+  pageIndex: number,
+  before: Buffer,
+  ms: number,
+): Promise<boolean> {
+  const deadline = Date.now() + ms;
+  for (;;) {
+    if (!(await doc.renderPage(pageIndex)).equals(before)) return true;
+    if (Date.now() >= deadline) return false;
+    await new Promise((r) => setTimeout(r, 400));
+  }
+}
+
+/**
  * Give a placed frame its IDML fitting. The TYPE is the attribute and
  * the CROPS are the signed-from-the-edge numbers beside it;
  * `PropertyPath::FrameFittingType` says in its own comment that the
@@ -446,30 +484,32 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   }
 
   // APPLY — the kernels commit. GPU-only, so this is gated on a real
-  // adapter. Its own Stage-A scene layer is invisible under this
-  // frame's placed-image link (see the header); `claimTiles` below is
-  // what puts the corrected pixels on the page, and what is asserted.
+  // adapter. `beforeCommit` is the page as it stands with the photograph
+  // placed but uncorrected; it is the baseline the hard assertion below
+  // (after `claimTiles`) is made against, because the correction may
+  // land through either door — see the header.
   const apply = page.getByRole("button", { name: "Apply", exact: true });
   const gpu = await doc.gpuActive();
+  let beforeCommit: Buffer | null = null;
+  let applyRendered = false;
   if (gpu) {
     await expect(apply).toBeEnabled({ timeout: 20_000 });
+    beforeCommit = await doc.renderPage(pageIndex);
     await apply.click();
     notes.push(`Apply → ${await panelStatus(ctx, 20_000)}`);
-    notes.push(
-      "Apply's C-1 Stage-A scene layer does not render on a frame that " +
-        "already carries a placed-image link — the placed image paints over " +
-        "it (measured: 0 px on a linked frame, 69,146 px on a bare one). " +
-        "The corrected pixels reach this page through the plugin's tile " +
-        "provider instead.",
-    );
+    // Attribution, not a gate: did Apply's own scene layer reach the
+    // page, or is the tile claim below the door that lands it? Polled,
+    // because a single cold sample of a fresh render flakes.
+    applyRendered = await changedWithin(doc, pageIndex, beforeCommit, 8_000);
     covers.push("image.editor.adjust-breadth");
   } else {
     notes.push(
-      "no WebGPU adapter on this lane: paged.image's adjustment kernels are " +
-        "WGSL compute with no CPU fallback, so Auto-enhance's correction was " +
-        "computed from the real histogram and shown in the panel but NOT " +
-        "committed. The right-hand frame shows the decoded photograph, " +
-        "uncorrected.",
+      "no GPU render path — " +
+        (await doc.gpuReason()) +
+        ". paged.image's adjustment kernels are WGSL compute with no CPU " +
+        "fallback, so Auto-enhance's correction was computed from the real " +
+        "histogram and shown in the panel but NOT committed. The right-hand " +
+        "frame shows the decoded photograph, uncorrected.",
     );
   }
 
@@ -488,9 +528,32 @@ export async function build(ctx: PageContext): Promise<PageReport> {
         "fills its 228 × 240 box while the plugin-served right frame " +
         "letterboxes the 4:3 photograph inside it.",
     );
-    if (gpu) {
-      // The whole point of the page: the corrected pixels are on it.
-      await doc.expectRenderChanged(pageIndex, beforeClaim);
+    if (gpu && beforeCommit) {
+      const claimRendered = await changedWithin(
+        doc,
+        pageIndex,
+        beforeClaim,
+        8_000,
+      );
+      notes.push(
+        applyRendered && claimRendered
+          ? "both doors moved this page's pixels: Apply's C-1 Stage-A scene " +
+              "layer AND the claimTiles tile provider on top of it"
+          : applyRendered
+            ? "the correction reached the page through Apply's C-1 Stage-A " +
+              "scene layer; the claimTiles that followed was a measured " +
+              "no-op on this linked frame"
+            : claimRendered
+              ? "the correction reached the page through the claimTiles tile " +
+                "provider; Apply's own scene layer was a measured no-op on " +
+                "this linked frame"
+              : "NEITHER Apply nor claimTiles moved this page's pixels — the " +
+                "assertion below turns that into a failure rather than a note",
+      );
+      // The whole point of the page: the corrected pixels are ON it. The
+      // baseline is the uncorrected placed photograph, so this holds
+      // whichever of the two doors above delivered them.
+      await doc.expectRenderChanged(pageIndex, beforeCommit);
     }
   } else {
     notes.push(`claimTiles → ${claimStatus}`);
