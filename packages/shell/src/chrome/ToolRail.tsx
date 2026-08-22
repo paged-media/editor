@@ -29,6 +29,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { applicabilityOf } from "./applicability";
 
 import { useRegistries } from "../state/registries-context";
 import { useEditContextStack } from "../state/edit-context-stack";
@@ -517,6 +518,15 @@ function ToolSlot({
         data-context-dimmed={
           restricted && !restricted.has(face.id) ? "true" : undefined
         }
+        // Phase F — declare the STATE, not just the styling. The rail
+        // already implemented "applies elsewhere" correctly (dimmed and
+        // still clickable, so picking one leaves the context); this names
+        // it in the shared vocabulary so the other surfaces can match and
+        // the guard can check they do.
+        data-applies={applicabilityOf({
+          exists: true,
+          appliesHere: !restricted || restricted.has(face.id),
+        })}
         onPointerDown={onPointerDown}
         onPointerUp={clearTimer}
         onPointerLeave={clearTimer}
@@ -589,6 +599,10 @@ function ToolSlot({
                 data-tool-status={memberPlanned ? "planned" : undefined}
                 aria-disabled={memberPlanned ? true : undefined}
                 data-context-dimmed={memberDimmed ? "true" : undefined}
+              data-applies={applicabilityOf({
+                exists: true,
+                appliesHere: !memberDimmed,
+              })}
                 onClick={() => {
                   if (memberPlanned) return;
                   setFlyoutOpen(false);

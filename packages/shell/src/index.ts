@@ -593,3 +593,11 @@ export {
   writeToOpenFile,
   type WritableFileHandle,
 } from "./state/open-file-handle";
+
+export {
+  APPLICABILITY,
+  applicabilityOf,
+  applicabilityHint,
+  type Applicability,
+  type ApplicabilityStyle,
+} from "./chrome/applicability";

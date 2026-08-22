@@ -144,6 +144,11 @@ jobs:
       # claiming an unbuilt feature works, only harder to notice.
       - name: seam guard
         run: pnpm test:seam-guard
+      # One vocabulary for "this doesn't apply here". The four rules that
+      # existed were four independent reasonable decisions, which is why
+      # no review caught them — there was nothing for them to disagree with.
+      - name: applicability vocabulary
+        run: pnpm test:applicability
 
   playwright:
     name: playwright (shard ${{ matrix.shard }}/3)

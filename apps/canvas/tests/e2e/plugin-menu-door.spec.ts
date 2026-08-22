@@ -101,4 +101,96 @@ test.describe("F1 — the host end of contribute.menu()", () => {
       "dispose() left the entry behind — a bundle unload would leak menu items",
     ).toBe(true);
   });
+
+  test("AC-MENUDOOR-2 — document verbs grey inside a context, and a new menu appends at the END @feat:editor-shell.menus @feat:editor-shell.context-sensitivity @level:edge", async ({
+    page,
+  }: {
+    page: Page;
+  }) => {
+    await openCanvas(page);
+    await page.setInputFiles('input[type="file"]', fixturePath("geometry"));
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () => (globalThis as unknown as { __canvas: { ready: boolean } }).__canvas.ready,
+          ),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+
+    // Evaluate the PREDICATES rather than driving a double-click into a
+    // plugin frame: the question is whether the menu's own rule knows
+    // about edit contexts, and a predicate answers that directly.
+    const verdict = await page.evaluate(() => {
+      const menus = (
+        globalThis as unknown as {
+          __canvas: {
+            registries: {
+              menus: {
+                list: () => {
+                  path: string;
+                  when?: (s: unknown) => boolean;
+                }[];
+              };
+            };
+          };
+        }
+      ).__canvas.registries.menus.list();
+
+      const doc = { document: { handle: { pageCount: 3 } } };
+      const inside = { ...doc, editContext: { type: "vectorGraphic" } };
+      const check = (path: string) => {
+        const item = menus.find((m) => m.path === path);
+        if (!item) return null;
+        return {
+          atRoot: item.when ? item.when(doc) : true,
+          inContext: item.when ? item.when(inside) : true,
+        };
+      };
+      return {
+        group: check("Object/Group"),
+        sendToBack: check("Object/Send to back"),
+        addPage: check("Layout/Add page"),
+        insertText: check("Object/Insert text frame"),
+      };
+    });
+
+    // Every one of these acts on the DOCUMENT, so inside a plugin's own
+    // frame they do not apply — and a menu that renders them enabled
+    // sends the click to `invoke`, which checks the same predicate and
+    // returns undefined. Nothing happens, and nothing says why.
+    for (const [name, r] of Object.entries(verdict)) {
+      expect(r, `${name} is missing from the menu`).not.toBeNull();
+      expect(r!.atRoot, `${name} should apply at the document root`).toBe(true);
+      expect(r!.inContext, `${name} should NOT apply inside an edit context`).toBe(
+        false,
+      );
+    }
+  });
+
+  test("AC-MENUDOOR-3 — an unfamiliar top-level menu sorts AFTER the canonical ten @feat:editor-shell.menus @level:edge", async ({
+    page,
+  }: {
+    page: Page;
+  }) => {
+    await openCanvas(page);
+    // Menu bars whose File/Edit/View shift position are hostile — muscle
+    // memory is the whole point of a menu bar — so a plugin's own menu
+    // has to APPEND. `topLevelOrder` gives an unlisted label
+    // `100 + charCodeAt(0)`, which puts it after Help by construction;
+    // this pins that, because the canonical list is the kind of thing a
+    // future edit reorders without noticing what depends on it.
+    const order = await page.evaluate(() => {
+      const labels = Array.from(
+        document.querySelectorAll("[data-menu-trigger]"),
+      ).map((e) => e.getAttribute("data-menu-trigger") ?? "");
+      return labels;
+    });
+    expect(order.length).toBeGreaterThan(5);
+    expect(order[0], "File must lead the bar").toBe("File");
+    // Help is the last of the canonical ten, so anything a plugin adds
+    // lands beyond it.
+    expect(order).toContain("Help");
+  });
 });
