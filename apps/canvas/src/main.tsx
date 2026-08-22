@@ -53,6 +53,7 @@ import {
   type PagedEditor,
   type PanelContribution,
   type ShellSchemaPanelRendererProps,
+  writeToOpenFile,
 } from "@paged-media/shell";
 import "@paged-media/shell/styles/globals.css";
 
@@ -1473,6 +1474,18 @@ function CanvasAppIntegration() {
           } catch {
             /* meta unavailable — keep the fallback name */
           }
+          // A5 — write BACK to the file the document was opened from,
+          // when there is one. Until now every save minted a download,
+          // so a second Cmd+S produced "document (1).paged" and the file
+          // the user opened was never touched: a save-AS wearing the
+          // word Save, with no autosave behind it.
+          //
+          // Falls back to the download whenever the write cannot happen
+          // — no handle, no platform support, a declined permission
+          // prompt, a moved file.  returns false rather
+          // than throwing for exactly that reason: a save that did not
+          // happen must not look like one that did.
+          if (await writeToOpenFile(bytes, "application/x-paged+zip")) return;
           const blob = new Blob([bytes.slice()], {
             type: "application/x-paged+zip",
           });

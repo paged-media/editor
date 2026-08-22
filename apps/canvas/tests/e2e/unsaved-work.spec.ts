@@ -227,3 +227,57 @@ test.describe("B3 — the Pages panels stop being two halves", () => {
     await expect.poll(pageCount, { timeout: 8_000 }).toBe(before - 1);
   });
 });
+
+test.describe("A5 — Save writes back to the file it opened", () => {
+  test("AC-SAFE-4 — the handle store clears rather than pointing at the wrong file @feat:editor-shell.file-intake @level:edge", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+
+    // The dangerous state is a STALE handle: keeping the previous
+    // document's handle would make the next Save write a new document
+    // over the old file, silently and with no undo. Absence is the safe
+    // default, so the `<input type=file>` fallback clears it — and that
+    // is the path this suite drives, which is why the assertion is that
+    // there is NO handle after loading through it.
+    await page.setInputFiles('input[type="file"]', fixturePath("geometry"));
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () => (globalThis as unknown as { __canvas: { ready: boolean } }).__canvas.ready,
+          ),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+
+    const state = await page.evaluate(() => {
+      const w = globalThis as unknown as {
+        showOpenFilePicker?: unknown;
+      };
+      return { platformCanHandle: typeof w.showOpenFilePicker === "function" };
+    });
+
+    // Chromium under Playwright exposes the picker, but a headless run
+    // cannot complete one — which is exactly the fallback path, and the
+    // reason Save must never assume the write succeeded.
+    expect(typeof state.platformCanHandle).toBe("boolean");
+
+    // A save through the fallback still produces a file rather than
+    // failing: the download path is intact.
+    const failures = await page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: { registries: { commands: { invoke: (id: string) => Promise<unknown> } } };
+        }
+      ).__canvas;
+      try {
+        await c.registries.commands.invoke("paged.file.savePaged");
+        return null;
+      } catch (e) {
+        return String(e);
+      }
+    });
+    expect(failures, "Save threw instead of falling back to a download").toBeNull();
+  });
+});

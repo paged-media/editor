@@ -585,3 +585,11 @@ export type {
 
 // ── Actions — record / replay a command sequence ────────────────
 export * from "./actions";
+
+export {
+  getOpenFileHandle,
+  setOpenFileHandle,
+  supportsFileHandles,
+  writeToOpenFile,
+  type WritableFileHandle,
+} from "./state/open-file-handle";

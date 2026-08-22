@@ -58,6 +58,10 @@ import {
   useContentSelection,
 } from "./state/content-selection-context";
 import { useDocumentMeta } from "./catalog/use-collection";
+import {
+  setOpenFileHandle,
+  type WritableFileHandle,
+} from "./state/open-file-handle";
 import { DocumentProvider, useDocument } from "./state/document-context";
 import { setPendingImportSource } from "./state/import-source";
 import {
@@ -645,6 +649,49 @@ function ShellChrome({
       buildOpenIdmlCommand({
         pickFile: async () =>
           new Promise<File | null>((resolve) => {
+            void (async () => {
+            // A5 — prefer the File System Access picker, which hands
+            // back a HANDLE, so Save can write to the file the user
+            // opened instead of minting "document (1).paged" every
+            // time. Falls back to `<input type=file>` when the platform
+            // has no such picker, and when the user cancels — the API
+            // throws on cancel rather than resolving empty.
+            const fsPicker = (
+              globalThis as {
+                showOpenFilePicker?: (o: unknown) => Promise<WritableFileHandle[]>;
+              }
+            ).showOpenFilePicker;
+            if (typeof fsPicker === "function") {
+              try {
+                const [picked] = await fsPicker({
+                  multiple: false,
+                  types: [
+                    {
+                      description: "Paged and IDML documents",
+                      accept: {
+                        "application/x-paged+zip": [".paged"],
+                        "application/vnd.adobe.indesign-idml-package": [".idml"],
+                      },
+                    },
+                  ],
+                });
+                if (picked) {
+                  setOpenFileHandle(picked);
+                  const file = await (
+                    picked as unknown as { getFile(): Promise<File> }
+                  ).getFile();
+                  resolve(file);
+                  return;
+                }
+              } catch {
+                // Cancelled, or the picker is unavailable in this
+                // context (a sandboxed frame). Fall through.
+              }
+              setOpenFileHandle(null);
+              resolve(null);
+              return;
+            }
+
             const input = document.createElement("input");
             input.type = "file";
             // K-2 / S-06 — also offer the file types registered plugin
@@ -667,8 +714,16 @@ function ShellChrome({
               "application/x-paged+zip",
               ...registries.importers.acceptExtensions(),
             ].join(",");
-            input.onchange = () => resolve(input.files?.[0] ?? null);
+            input.onchange = () => {
+              // The input fallback yields no handle. CLEAR any previous
+              // one: keeping it would make the next Save write this new
+              // document over the file the LAST one came from, silently
+              // and with no undo.
+              setOpenFileHandle(null);
+              resolve(input.files?.[0] ?? null);
+            };
             input.click();
+            })();
           }),
         setStatus,
         pushWarning: (w) => setWarnings((prev) => [...prev, w]),
