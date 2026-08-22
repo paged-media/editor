@@ -95,6 +95,7 @@ export const PAGED_INSERT_LINE = "paged.insert.line";
 export const PAGED_INSERT_TABLE = "paged.insert.table";
 export const PAGED_INSERT_PLACE_IMAGE = "paged.insert.placeImage";
 export const PAGED_INSERT_NEW_PAGE = "paged.insert.newPage";
+export const PAGED_INSERT_DELETE_PAGE = "paged.insert.deletePage";
 
 /** Attribution the insert layer publishes diagnostics under. */
 export const INSERT_DIAGNOSTIC_SOURCE = "paged.insert";
@@ -135,6 +136,47 @@ export interface InsertOutcome {
 }
 
 const REFUSED: InsertOutcome = { applied: false, createdId: null };
+
+/** B3 — deleting a page had NO menu route at all. `deletePage` was
+ *  reachable only from `paged.pages-list`, a panel in no mode's slots,
+ *  so a designer using the default layout could add pages and never
+ *  remove one.
+ *
+ *  Targets the page the camera is on, which is the same page `Add page`
+ *  inserts after — the two verbs then read as a pair rather than one
+ *  acting on the view and the other on a hidden selection. Refuses on
+ *  the last page: a document with no pages is not a state the editor
+ *  recovers from gracefully, and the engine's own refusal message would
+ *  reach the user as jargon. */
+export async function deleteCurrentPage(
+  paged: PagedEditor,
+  report: InsertReport,
+): Promise<InsertOutcome> {
+  if (blockedFor(paged, report, "Delete page")) return REFUSED;
+  const target = currentPageTarget(paged);
+  if (!target) {
+    report("error", "Delete page needs a page in view.");
+    return REFUSED;
+  }
+  if ((paged.document.handle?.pageCount ?? 0) <= 1) {
+    report(
+      "error",
+      "Delete page refused: this is the document's only page. " +
+        "Add another page first, or close the document.",
+    );
+    return REFUSED;
+  }
+  const reply = await paged.client.mutate({
+    op: "deletePage",
+    args: { pageId: target.pageId },
+  });
+  const refusal = refusalOf(reply);
+  if (refusal) {
+    report("error", `Delete page refused: ${refusal}`);
+    return REFUSED;
+  }
+  return outcomeOf(reply);
+}
 
 // ---------------------------------------------------------------- pure
 
@@ -635,6 +677,7 @@ export interface InsertCommandHandlers {
   table: (paged: PagedEditor) => unknown | Promise<unknown>;
   placeImage: (paged: PagedEditor) => unknown | Promise<unknown>;
   newPage: (paged: PagedEditor) => unknown | Promise<unknown>;
+  deletePage: (paged: PagedEditor) => unknown | Promise<unknown>;
 }
 
 /** Build the insert command set. Same shape as `buildObjectCommands`
@@ -659,6 +702,7 @@ export function buildInsertCommands(
     cmd(PAGED_INSERT_ELLIPSE, "Insert ellipse", handlers.ellipse),
     cmd(PAGED_INSERT_LINE, "Insert line", handlers.line),
     cmd(PAGED_INSERT_TABLE, "Insert table", handlers.table),
+    cmd(PAGED_INSERT_DELETE_PAGE, "Delete page", handlers.deletePage),
     cmd(PAGED_INSERT_PLACE_IMAGE, "Place image…", handlers.placeImage),
     cmd(PAGED_INSERT_NEW_PAGE, "Add page", handlers.newPage),
   ];
@@ -718,6 +762,12 @@ export const INSERT_MENU_ITEMS: MenuItemContribution[] = [
     path: "Layout/Add page",
     command: PAGED_INSERT_NEW_PAGE,
     order: 5,
+    when: insertApplies,
+  },
+  {
+    path: "Layout/Delete page",
+    command: PAGED_INSERT_DELETE_PAGE,
+    order: 6,
     when: insertApplies,
   },
 ];

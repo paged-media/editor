@@ -23,7 +23,10 @@
 // with no per-mount props plumbing.
 
 import {
+  PanelToolbar,
+  ToolbarBtn,
   useCamera,
+  useCanvasClient,
   useDocument,
   type PanelProps,
 } from "@paged-media/shell";
@@ -34,12 +37,35 @@ export function NavigatorPanel(_props: PanelProps) {
   const { handle, snapshots } = useDocument();
   const { camera, setCamera, viewportSize } = useCamera();
   const animateCamera = useAnimatedCamera(camera, setCamera);
+  const client = useCanvasClient();
 
   if (!handle || handle.pageCount === 0) {
     return <div style={{ padding: 12, opacity: 0.5 }}>No document loaded.</div>;
   }
 
+  // B3 — the page VERBS, on the panel a designer actually has open.
+  // `paged.pages` is in Design mode's left dock by default and could
+  // only navigate; `paged.pages-list` could add and delete and is in no
+  // mode's slots. Adding a page from the default layout meant knowing
+  // about `Layout > Add page`, and DELETING one had no menu route at
+  // all — the list panel was the only way to reach `deletePage`.
+  //
+  // Appends at the end rather than after a selection: this panel has no
+  // row selection to speak of (clicking a thumbnail navigates), so
+  // there is no "current page" here that is not just "where the camera
+  // is". The list panel keeps the after-the-selection behaviour.
+  const onNew = () => {
+    const last = handle.pageIds[handle.pageIds.length - 1] ?? null;
+    void client
+      .mutate({ op: "insertPage", args: { afterPageId: last, masterId: null } })
+      .catch(() => {});
+  };
+
   return (
+    <>
+      <PanelToolbar>
+        <ToolbarBtn icon="ui-plus" label="Add page" onClick={onNew} />
+      </PanelToolbar>
     <PageNavigator
       pageIds={handle.pageIds}
       pageSizesPt={handle.pageSizesPt}
@@ -47,5 +73,6 @@ export function NavigatorPanel(_props: PanelProps) {
       viewportSize={viewportSize}
       onCameraChange={animateCamera}
     />
+    </>
   );
 }

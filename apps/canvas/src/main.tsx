@@ -151,6 +151,7 @@ import {
   placeImage,
   pageTargetFor,
   type InsertReport,
+  deleteCurrentPage,
 } from "./insert-commands";
 import { COCKPIT_MODES, PANEL_RAIL } from "./cockpit-modes";
 import { COCKPIT_MENU_SEAMS } from "./cockpit-menus";
@@ -1576,6 +1577,7 @@ function CanvasAppIntegration() {
         return run(paged);
       };
     const insertCommands = buildInsertCommands({
+      deletePage: freshInsert((p) => deleteCurrentPage(p, insertReport)),
       textFrame: freshInsert((p) => insertTextFrame(p, insertReport)),
       rectangle: freshInsert((p) => insertRectangle(p, insertReport)),
       ellipse: freshInsert((p) => insertEllipse(p, insertReport)),

@@ -175,3 +175,55 @@ test.describe("Phase A — unsaved work", () => {
       .toBe(true);
   });
 });
+
+test.describe("B3 — the Pages panels stop being two halves", () => {
+  test("AC-PAGES-1 — Layout ▸ Delete page exists and removes the page in view @feat:layout-model.spreads-pages @feat:editor-shell.menus @level:happy", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    await page.setInputFiles('input[type="file"]', fixturePath("geometry"));
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () => (globalThis as unknown as { __canvas: { ready: boolean } }).__canvas.ready,
+          ),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+
+    const pageCount = () =>
+      page.evaluate(
+        () =>
+          (globalThis as unknown as { __canvas: { handle: { pageCount: number } } })
+            .__canvas.handle.pageCount,
+      );
+    const before = await pageCount();
+    expect(before).toBeGreaterThan(1);
+
+    // Deleting a page had NO menu route at all before B3: `deletePage`
+    // was reachable only from `paged.pages-list`, which is in no mode's
+    // slots. A designer on the default layout could add pages forever
+    // and never remove one.
+    const menuCommands = await page.evaluate(
+      () =>
+        (
+          globalThis as unknown as {
+            __canvas: { registries: { menus: { list: () => { path: string; command: string }[] } } };
+          }
+        ).__canvas.registries.menus.list(),
+    );
+    expect(menuCommands.map((m) => m.path)).toContain("Layout/Delete page");
+
+    await page.evaluate(async () => {
+      const cmd = (
+        globalThis as unknown as {
+          __canvas: { registries: { commands: { invoke: (id: string) => Promise<unknown> } } };
+        }
+      ).__canvas.registries.commands;
+      await cmd.invoke("paged.insert.deletePage");
+    });
+
+    await expect.poll(pageCount, { timeout: 8_000 }).toBe(before - 1);
+  });
+});
