@@ -148,6 +148,12 @@ export class CanvasClient {
   private readonly frameListeners = new Set<
     (f: { src: string; width: number; height: number }) => void
   >();
+  /** C-6 — the tile-fill subscribers (see {@link onResourceTilesNeeded}).
+   *  Kept apart from {@link listeners} because the engine delivers the
+   *  miss list on the CLAIM/SUBMIT ACK, not as an unsolicited event. */
+  private readonly tilesNeededListeners = new Set<
+    (need: ResourceTilesNeededWire) => void
+  >();
   readonly camera: CameraBuffer;
   readonly gestureSab: GestureBuffer;
   /** See {@link CanvasClientOptions.defaultFontProvider}. */
@@ -869,13 +875,25 @@ export class CanvasClient {
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
-  /** C-6 (I-06) — claim a placed image's tiled mip pyramid (the v44 wire).
-   *  The worker registers the claim and emits `resourceTilesNeeded`
-   *  (worker→main, surfaced via `subscribe`) when a build lacks tiles at
-   *  the level its scale needs; the plugin fills them through
-   *  `submitResourceTiles`. The reply `resourceClaimApplied` may carry the
-   *  initial `needed` set — those notifications also arrive unsolicited, so
-   *  the SDK's subscription is the single fill path; we just await the ack. */
+  /**
+   * C-6 (I-06) — claim a placed image's tiled mip pyramid (the v44 wire).
+   * The worker registers the claim, rebuilds, and answers with the tiles
+   * that build LACKED — carried on the `resourceClaimApplied` ack as
+   * `needed`. Routing that set to {@link onResourceTilesNeeded} is what
+   * closes the fill loop; the plugin's provider sources those tiles and
+   * posts them back through {@link submitResourceTiles}.
+   *
+   * THE ACK IS THE ONLY DELIVERY. The wire also declares an unsolicited
+   * `resourceTilesNeeded` notification, and this client used to wait for
+   * it alone — but nothing constructs it: `paged-canvas-wasm`'s dispatch
+   * returns the miss list additively on the ack and never posts the
+   * standalone kind. Waiting on it meant a claim EVICTED the frame's
+   * cached tiles (the worker drops them when a claim is replaced) and
+   * nothing ever refilled them, so every plugin-served frame rendered
+   * BLANK — measured on the showcase's raster page, where `claimTiles`
+   * turned a filled 228 × 240 pt frame into 0 px of content while the
+   * panel reported "Claimed tile resource".
+   */
   async claimImageResource(claim: {
     imageId: string;
     levels: number;
@@ -885,7 +903,10 @@ export class CanvasClient {
     revision: number;
   }): Promise<void> {
     const reply = await this.send({ kind: "claimImageResource", payload: claim });
-    if (reply.kind === "resourceClaimApplied") return;
+    if (reply.kind === "resourceClaimApplied") {
+      this.emitTilesNeeded(reply.payload.needed);
+      return;
+    }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
@@ -902,7 +923,11 @@ export class CanvasClient {
 
   /** C-6 — fill the worker-side tile cache for a claimed image at `level`.
    *  `generation` echoes the `resourceTilesNeeded` request so a stale reply
-   *  is dropped worker-side. */
+   *  is dropped worker-side. The ack re-states whatever is STILL missing
+   *  (a partial fill, or a level the provider skipped), so it feeds the
+   *  same loop the claim starts — which terminates because a provider that
+   *  returns nothing for a tile submits nothing, and a submit that carries
+   *  no tiles is never sent. */
   async submitResourceTiles(
     imageId: string,
     level: number,
@@ -913,20 +938,46 @@ export class CanvasClient {
       kind: "submitResourceTiles",
       payload: { imageId, level, tiles, generation },
     });
-    if (reply.kind === "resourceClaimApplied") return;
+    if (reply.kind === "resourceClaimApplied") {
+      this.emitTilesNeeded(reply.payload.needed);
+      return;
+    }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
-  /** C-6 — subscribe to the worker's `resourceTilesNeeded` notifications
-   *  (worker→main). A thin filter over `subscribe` (the events arrive
-   *  unsolicited, `seq === null`); the SDK adapter routes per-image and
-   *  pulls + submits the tiles. The returned function unsubscribes. */
+  /** C-6 — subscribe to the tiles a build is missing. Fed by the
+   *  claim/submit acks (the engine's only delivery — see
+   *  {@link claimImageResource}) AND by the unsolicited
+   *  `resourceTilesNeeded` notification, so a future engine that posts one
+   *  needs no change here. The SDK adapter routes per-image and pulls +
+   *  submits the tiles. The returned function unsubscribes. */
   onResourceTilesNeeded(
     listener: (need: ResourceTilesNeededWire) => void,
   ): () => void {
-    return this.subscribe((msg) => {
+    this.tilesNeededListeners.add(listener);
+    const offWire = this.subscribe((msg) => {
       if (msg.kind === "resourceTilesNeeded") listener(msg.payload);
     });
+    return () => {
+      this.tilesNeededListeners.delete(listener);
+      offWire();
+    };
+  }
+
+  /** Hand one ack's miss list to the tile-fill subscribers. A listener
+   *  that throws must not strand the rest of the fill (or the ack's
+   *  caller), so each is called defensively. */
+  private emitTilesNeeded(needed?: ResourceTilesNeededWire[]): void {
+    if (!needed || needed.length === 0) return;
+    for (const need of needed) {
+      for (const listener of [...this.tilesNeededListeners]) {
+        try {
+          listener(need);
+        } catch {
+          // a subscriber's failure is its own; the loop continues
+        }
+      }
+    }
   }
 
   /**
