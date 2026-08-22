@@ -68,7 +68,7 @@ import { GuideDragProvider } from "./state/guide-drag-context";
 import { ThreadingProvider } from "./state/threading-context";
 import { TableSelectionProvider } from "./state/table-selection-context";
 import { SelectionProvider, useSelection } from "./state/selection-context";
-import { ToolProvider } from "./state/tool-context";
+import { ToolProvider, useOptionalTool } from "./state/tool-context";
 import { ScreenModeProvider } from "./state/screen-mode-context";
 import { ThemeProvider, useTheme } from "./state/theme-context";
 import { useOptionalPaged } from "./state/paged-editor";
@@ -395,6 +395,9 @@ function ShellChrome({
     panels: { open: [], active: null },
     editContext: null,
     inspectorContext: null,
+    tools: { base: null, effective: null, registered: [] },
+    commands: [],
+    keybindings: [],
   });
   const {
     contentSelection,
@@ -1070,6 +1073,23 @@ interface DebugContextSnapshot {
   panels: { open: string[]; active: string | null };
   editContext: { type: string; scopeRoot: unknown; label: string } | null;
   inspectorContext: string | null;
+  /** The tool the rail is acting as, plus every registered tool id.
+   *  `effective` folds spring-loaded overrides over the deliberate base
+   *  tool, which is the value the canvas actually dispatches on — a spec
+   *  asserting `base` would miss exactly the class of defect that put
+   *  AC-K1-2/3 red (a bare Meta keydown flipping the effective tool). */
+  tools: { base: string | null; effective: string | null; registered: string[] };
+  /** Registered command ids. The palette is the only place most of these
+   *  are visible to a user, so this is the only way a spec can assert a
+   *  command EXISTS separately from asserting the palette renders it. */
+  commands: string[];
+  /** Every `key -> command` the KeybindingRegistry holds.
+   *  `KeybindingRegistry.list()` was written "for diagnostics + the future
+   *  'Show keybindings' panel" and had ZERO call sites; this is the first.
+   *  It is also what a Help > Keyboard shortcuts panel needs, so exposing
+   *  it here means the panel and the tests read the same source rather
+   *  than two hand-kept lists that drift. */
+  keybindings: { key: string; command: string }[];
 }
 
 /** Dev-only renderless probe: reads the cockpit tab state + edit-context
@@ -1084,6 +1104,8 @@ function DebugContextProbe({
 }) {
   const cockpit = useOptionalCockpitState();
   const editStack = useOptionalEditContextStack();
+  const registries = useRegistries();
+  const tool = useOptionalTool();
   targetRef.current = {
     panels: {
       open: cockpit?.rightTabs ?? [],
@@ -1097,6 +1119,15 @@ function DebugContextProbe({
         }
       : null,
     inspectorContext: cockpit?.inspectorContext ?? null,
+    tools: {
+      base: tool?.toolState.base ?? null,
+      effective: tool?.effectiveTool ?? null,
+      registered: registries.tools.list().map((t) => t.id),
+    },
+    commands: registries.commands.list().map((c) => c.id),
+    keybindings: registries.keybindings
+      .list()
+      .map((k) => ({ key: k.key, command: k.command })),
   };
   return null;
 }

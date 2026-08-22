@@ -308,31 +308,38 @@ let failed = false;
 
 // ── the ratchet ─────────────────────────────────────────────────────
 //
-// 362 surface ids against 294 spec files. The honest state today: the
-// HOST surface is largely named, the PLUGIN-INJECTED surface is not —
-// draw alone contributes 131 things and specs name 39 of them. A gate
-// demanding all 362 at once gets reverted within the day; a gate
-// carrying 150 hand-written excuses is a list nobody reads.
+// Every ceiling is 0, because the campaign that added this gate closed
+// the whole gap: 362 surface ids, all named. That is the strongest form
+// of the rule — new surface arrives with a spec that names it, or it
+// does not arrive.
 //
-// So the rule is a CEILING PER KIND that may fall and must never rise.
-// New surface arrives with a spec that names it, or it does not arrive.
-// Existing gaps get worked down. The gate ALSO fails when a ceiling sits
-// above reality, because a stale ceiling silently readmits everything
-// between the real count and the number — the same fail-open shape as a
-// dry-run that prints nothing and exits 0.
+// The ceilings stay as a MAP rather than a blanket `=== 0` for two
+// reasons. They record the shape of the surface, so a kind that vanishes
+// is caught (see the "no longer a surface kind" check below). And they
+// leave a deliberate, reviewable place to raise a number if some future
+// surface genuinely cannot be tested yet — better a ceiling of 2 with a
+// commit message explaining it than a disabled gate.
+//
+// It fails BOTH ways. Over the ceiling is the obvious direction. Under
+// it matters just as much: a ceiling left above reality silently
+// readmits everything between the real count and the number, which is
+// the same fail-open shape as a dry-run that prints nothing and exits 0.
+// This caught itself twice while the campaign ran, when specs landed and
+// the numbers dropped underneath the ceilings still in the file.
+
 const CEILING = new Map([
-  ["panel", 2],
-  ["tool", 6],
-  ["keybinding", 8],
-  ["menu item", 6],
-  ["plugin commands", 91],
-  ["plugin tools", 17],
-  ["plugin panels", 8],
-  ["plugin importers", 4],
+  ["panel", 0],
+  ["tool", 0],
+  ["keybinding", 0],
+  ["menu item", 0],
+  ["plugin commands", 0],
+  ["plugin tools", 0],
+  ["plugin panels", 0],
+  ["plugin importers", 0],
   ["plugin exporters", 0],
-  ["plugin editContexts", 2],
-  ["plugin objectTypes", 2],
-  ["plugin partTypes", 9],
+  ["plugin editContexts", 0],
+  ["plugin objectTypes", 0],
+  ["plugin partTypes", 0],
 ]);
 
 const kinds = [...new Set(surface.map((x) => x.kind))].sort();
