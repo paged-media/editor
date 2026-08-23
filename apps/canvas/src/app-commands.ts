@@ -17,6 +17,8 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
+import { toggleViewToggle } from "@paged-media/shell";
+
 // SDK Phase 4 — canvas-app-specific commands.
 //
 // These are the actions that today live as direct event handlers
@@ -48,6 +50,15 @@ export const PAGED_VIEW_ZOOM_IN = "paged.view.zoomIn";
 export const PAGED_VIEW_ZOOM_OUT = "paged.view.zoomOut";
 export const PAGED_VIEW_ZOOM_100 = "paged.view.zoom100";
 export const PAGED_VIEW_ZOOM_FIT = "paged.view.zoomFit";
+/** B4 — View ▸ Show text threads. Flips a module-scope view toggle the
+ *  thread-line overlay subscribes to.
+ *
+ *  KNOWN LIMIT: `MenuItemContribution` has no `checked` field, so the
+ *  item cannot render a tick and the label cannot say "Hide…" while the
+ *  overlay is on. The feedback is the lines themselves appearing on the
+ *  canvas, which is immediate and unambiguous; a real checkmark wants a
+ *  registry + MenuBar change and is not smuggled in here. */
+export const PAGED_VIEW_TOGGLE_TEXT_THREADS = "paged.view.toggleTextThreads";
 
 export interface AppCommandHandlers {
   undo: () => void | Promise<void>;
@@ -133,6 +144,14 @@ export function buildAppCommands(
       category: "View",
       handler: () => handlers.zoomFit(),
     },
+    {
+      id: PAGED_VIEW_TOGGLE_TEXT_THREADS,
+      title: "Show text threads",
+      category: "View",
+      handler: () => {
+        toggleViewToggle("textThreads");
+      },
+    },
   ];
 }
 
@@ -203,6 +222,15 @@ export const APP_MENU_ITEMS: Array<{
     command: PAGED_VIEW_ZOOM_FIT,
     order: 50,
     group: "zoom",
+  },
+  {
+    path: "View/Show text threads",
+    command: PAGED_VIEW_TOGGLE_TEXT_THREADS,
+    order: 60,
+    // Its own group so a separator divides "how big is the page" from
+    // "what extra structure is drawn on it" — InDesign splits Zoom from
+    // Extras for the same reason.
+    group: "extras",
   },
 ];
 

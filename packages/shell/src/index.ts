@@ -399,6 +399,7 @@ export {
   guideOverlayContribution,
   selectionChromeContribution,
   threadingPortsContribution,
+  threadLinesContribution,
   tableCellOverlayContribution,
   snapLinesContribution,
   applyAffine,
@@ -593,6 +594,22 @@ export {
   writeToOpenFile,
   type WritableFileHandle,
 } from "./state/open-file-handle";
+
+export {
+  getViewToggle,
+  resetViewToggles,
+  setViewToggle,
+  subscribeViewToggles,
+  toggleViewToggle,
+  type ViewToggle,
+} from "./state/view-toggles";
+
+export {
+  awaitPlacementPoint,
+  cancelPendingPlacement,
+  placementArmed,
+  type PlacementPoint,
+} from "./state/pending-placement";
 
 export {
   ALWAYS_IN_PALETTE,

@@ -204,6 +204,47 @@ async function fitFirstPage(page: Page): Promise<void> {
     .toBeGreaterThan(0.2);
 }
 
+/** Wait until the camera stops moving.
+ *
+ *  `Home` FIT-ANIMATES, and a placement clicked mid-animation reads the
+ *  camera on one frame and lands the pointer on another — the frame
+ *  then sits several pt from the click, by a different amount every
+ *  run. That is a measurement artefact, not a placement bug: the
+ *  SECOND placement in the same test was always exact to three
+ *  decimals, because by then the animation had settled. */
+async function settleCamera(page: Page): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const read = () =>
+          page.evaluate(
+            () =>
+              (
+                globalThis as unknown as {
+                  __canvas: {
+                    client: {
+                      camera: {
+                        read: () => { scale: number; tx: number; ty: number };
+                      };
+                    };
+                  };
+                }
+              ).__canvas.client.camera.read(),
+          );
+        const first = await read();
+        await page.waitForTimeout(120);
+        const second = await read();
+        return (
+          first.scale === second.scale &&
+          first.tx === second.tx &&
+          first.ty === second.ty
+        );
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+}
+
 async function firstPageId(page: Page): Promise<string> {
   return page.evaluate(
     () =>
@@ -404,7 +445,7 @@ test.describe("U7 — paged.insert.* command authoring", () => {
     expect(await elementProperties(page, outcome.createdId!)).toBeNull();
   });
 
-  test("Place image: filechooser → aspect-fit frame filled with the picked bytes; two undos unwind it @feat:editor-shell.command-authoring @level:happy", async ({
+  test("Place image: filechooser → CLICK to position → aspect-fit frame filled with the picked bytes; two undos unwind it @feat:editor-shell.command-authoring @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -420,6 +461,20 @@ test.describe("U7 — paged.insert.* command authoring", () => {
       mimeType: "image/png",
       buffer: tinyPng(40, 20),
     });
+    // Place now ASKS WHERE. After the picker returns, the pointer arms
+    // and the next click inside the canvas positions the image; the
+    // command does not resolve until it has a point. (Before this, every
+    // place landed centred, so four places built a pile of four.)
+    const viewport = page.locator("[data-paged-viewport]");
+    await expect(page.locator("html[data-paged-placement='armed']")).toHaveCount(
+      1,
+      { timeout: 10_000 },
+    );
+    const box = (await viewport.boundingBox())!;
+    const clickX = box.x + box.width * 0.35;
+    const clickY = box.y + box.height * 0.3;
+    await page.mouse.click(clickX, clickY);
+
     const outcome = (await invoked) as InsertOutcome;
     expect(outcome.applied).toBe(true);
     expect(outcome.createdId).not.toBeNull();
@@ -429,16 +484,24 @@ test.describe("U7 — paged.insert.* command authoring", () => {
     // The frame HOSTS a placed image (the replaceImageBytes half of
     // the batch landed on the minted frame via `$created`).
     expect(geo!.hasImage).toBe(true);
-    // Natural size (40×20 px = pt — well under 80% of the page), the
-    // aspect preserved, centred.
+    // Natural size (40×20 px = pt — well under 80% of the page), aspect
+    // preserved.
     const [pageW, pageH] = await pageSizeOf(page, geo!.pageId!);
     const [top, left, bottom, right] = geo!.bounds;
     expect(right - left).toBeCloseTo(40, 0);
     expect(bottom - top).toBeCloseTo(20, 0);
     expect(right - left).toBeLessThanOrEqual(pageW * 0.8);
     expect(bottom - top).toBeLessThanOrEqual(pageH * 0.8);
-    expect(left).toBeCloseTo((pageW - 40) / 2, 0);
-    expect(top).toBeCloseTo((pageH - 20) / 2, 0);
+    // AND it is NOT centred — the click decided the position.
+    //
+    // Only a coarse check here on purpose: page-local bounds are
+    // relative to the page's origin in the `layoutPages` stack, which is
+    // NOT the document origin, so comparing `left` against a camera-
+    // inverted click needs the page rect and gets fragile. The exact
+    // pointer tracking is asserted origin-independently in the
+    // "tracks the pointer" test below, which recovers the page origin
+    // from two placements and requires the two answers to agree.
+    expect(Math.abs(left - (pageW - 40) / 2)).toBeGreaterThan(2);
 
     // Sequential compound (insert-commands.ts fact 3): undo #1 pops
     // the bytes (the frame survives, image-less); undo #2 removes the
@@ -449,6 +512,140 @@ test.describe("U7 — paged.insert.* command authoring", () => {
     expect(afterFirstUndo!.hasImage).toBe(false);
     await undoOnce(page);
     expect(await elementProperties(page, outcome.createdId!)).toBeNull();
+  });
+
+  /** Place an image at a viewport fraction and return its page-local
+   *  top-left plus the document-space point that was clicked. */
+  async function placeAt(
+    page: Page,
+    fx: number,
+    fy: number,
+  ): Promise<{
+    left: number;
+    top: number;
+    docX: number;
+    docY: number;
+    pageId: string;
+  }> {
+    const chooser = page.waitForEvent("filechooser");
+    const invoked = invoke(page, "paged.insert.placeImage");
+    await (await chooser).setFiles({
+      name: "swatch.png",
+      mimeType: "image/png",
+      buffer: tinyPng(40, 20),
+    });
+    await expect(page.locator("html[data-paged-placement='armed']")).toHaveCount(
+      1,
+      { timeout: 10_000 },
+    );
+    const box = (await page.locator("[data-paged-viewport]").boundingBox())!;
+    // INTEGER click coordinates. The mouse lands on whole CSS pixels,
+    // and at this zoom (scale ~0.41) one pixel is ~2.5pt of document
+    // space — so a fractional target quantises on the way out and the
+    // conversion below would be comparing two different points. Two
+    // placements then disagree by ~5pt for no reason but arithmetic.
+    const cx = Math.round(box.x + box.width * fx);
+    const cy = Math.round(box.y + box.height * fy);
+    // Convert through the camera AS IT IS AT CLICK TIME. Reading it
+    // afterwards compares the click against a camera that the placement
+    // itself may have moved (the new frame is selected on insert), which
+    // silently shifts the answer.
+    const [docX, docY] = await page.evaluate(
+      ({ cx, cy }) => {
+        const wrap = document.querySelector("[data-paged-viewport]")!;
+        const r = wrap.getBoundingClientRect();
+        const cam = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                camera: { read: () => { scale: number; tx: number; ty: number } };
+              };
+            };
+          }
+        ).__canvas.client.camera.read();
+        return [
+          (cx - r.left - cam.tx) / cam.scale,
+          (cy - r.top - cam.ty) / cam.scale,
+        ];
+      },
+      { cx, cy },
+    );
+    await page.mouse.click(cx, cy);
+    const outcome = (await invoked) as InsertOutcome;
+    expect(outcome.applied).toBe(true);
+    const geo = await geometryOf(page, outcome.createdId!);
+    const [top, left] = geo!.bounds;
+    const pageId = geo!.pageId as string;
+    return { left, top, docX, docY, pageId };
+  }
+
+  test("Place image tracks the pointer — two placements recover the SAME page origin @feat:editor-shell.command-authoring @level:happy", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    await loadFixture(page, TEXT_FIXTURE);
+    await fitFirstPage(page);
+
+    // Both clicks must land on the SAME page: page-local bounds are
+    // relative to their own page's origin, so two placements on two
+    // pages recover two DIFFERENT origins and the comparison below is
+    // meaningless. (This fixture has several pages and the first
+    // attempt at this test straddled two of them.)
+    await settleCamera(page);
+    const a = await placeAt(page, 0.4, 0.35);
+    const b = await placeAt(page, 0.52, 0.55);
+    expect(a.pageId).toBe(b.pageId);
+
+    // Two different clicks must produce two different frames — the
+    // regression this whole change exists to prevent is every place
+    // landing in one spot.
+    expect(Math.abs(a.left - b.left)).toBeGreaterThan(10);
+    expect(Math.abs(a.top - b.top)).toBeGreaterThan(10);
+
+    // ORIGIN-INDEPENDENT EXACTNESS. `docPoint - pageLocalTopLeft` is the
+    // page's origin in document space. It is the same page both times,
+    // so both placements must recover the same origin — which is only
+    // true if each frame's top-left sits exactly on its own click. This
+    // holds without the spec knowing where `layoutPages` puts the page,
+    // and it fails for any constant offset, any inversion, and for the
+    // old centred behaviour.
+    const originAx = a.docX - a.left;
+    const originAy = a.docY - a.top;
+    const originBx = b.docX - b.left;
+    const originBy = b.docY - b.top;
+    expect(Math.abs(originAx - originBx)).toBeLessThan(2);
+    expect(Math.abs(originAy - originBy)).toBeLessThan(2);
+  });
+
+  test("Place image: Escape cancels and places NOTHING @feat:editor-shell.command-authoring @level:unhappy", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    await loadFixture(page, TEXT_FIXTURE);
+    await fitFirstPage(page);
+
+    const before = await sceneNodeCount(page);
+    const chooser = page.waitForEvent("filechooser");
+    const invoked = invoke(page, "paged.insert.placeImage");
+    await (await chooser).setFiles({
+      name: "swatch.png",
+      mimeType: "image/png",
+      buffer: tinyPng(40, 20),
+    });
+    await expect(page.locator("html[data-paged-placement='armed']")).toHaveCount(
+      1,
+      { timeout: 10_000 },
+    );
+
+    await page.keyboard.press("Escape");
+    const outcome = (await invoked) as InsertOutcome;
+    expect(outcome.applied).toBe(false);
+
+    // The armed state is torn down AND nothing was minted. A place that
+    // landed anyway after a cancel would be worse than the centred
+    // behaviour this replaced, because the user believes they cancelled.
+    await expect(page.locator("html[data-paged-placement]")).toHaveCount(0);
+    expect(await sceneNodeCount(page)).toBe(before);
   });
 
   test("Add page inserts after the current page; one undo removes it @feat:editor-shell.command-authoring @level:happy", async ({

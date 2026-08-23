@@ -80,6 +80,7 @@ import type {
   MenuItemContribution,
   PagedEditor,
 } from "@paged-media/shell";
+import { awaitPlacementPoint } from "@paged-media/shell";
 import type { ElementId, Mutation, PageId } from "@paged-media/client";
 import { viewportToDoc } from "@paged-media/client";
 import { mutateAndSelect, type MutateReply } from "@paged-media/tools";
@@ -203,6 +204,44 @@ export function currentPageTarget(paged: PagedEditor): PageTarget | null {
     camera: paged.camera.camera,
     viewportSize: paged.camera.viewportSize,
   });
+}
+
+/** A client-space pointer position in `layoutPages` DOCUMENT space, or
+ *  null when there is no measurable viewport to invert through.
+ *
+ *  `viewportToDoc` expects VIEWPORT coordinates, so the wrapper's rect
+ *  comes off first — `[data-paged-viewport]` tags it, the same hook the
+ *  guide and threading controllers invert through. */
+function clientPointToDoc(
+  paged: PagedEditor,
+  clientX: number,
+  clientY: number,
+): [number, number] | null {
+  const wrap = document.querySelector("[data-paged-viewport]");
+  if (!wrap) return null;
+  const cam = paged.camera.camera;
+  if (!cam || cam.scale <= 0) return null;
+  const r = wrap.getBoundingClientRect();
+  return viewportToDoc(cam, clientX - r.left, clientY - r.top);
+}
+
+/** The page whose rect contains a document-space point, or null for the
+ *  pasteboard between and around the pages. */
+function pageContaining(
+  paged: PagedEditor,
+  x: number,
+  y: number,
+): PageTarget | null {
+  const handle = paged.document.handle;
+  if (!handle || handle.pageIds.length === 0) return null;
+  const rects = layoutPages(handle.pageSizesPt);
+  for (let i = 0; i < rects.length; i++) {
+    const r = rects[i];
+    if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+      return { pageId: handle.pageIds[i], rect: r };
+    }
+  }
+  return null;
 }
 
 /** The inputs {@link currentPageTarget} actually reads. Split out so a
@@ -587,13 +626,25 @@ async function naturalImageSize(
 }
 
 /**
- * File ▸ Place… — pick an image, mint an aspect-fit frame centred on
- * the current page (≤ `PLACE_IMAGE_MAX_PAGE_FRACTION` of it, never
- * upscaled past natural size at 1 px = 1 pt), and fill it with the
- * picked bytes through `replaceImageBytes` (the inline-bytes lane —
- * `placeImage(uri)` has no resolver door here). Two mutations, frame
- * rolled back if the bytes half refuses — see fact 3 for why the
- * engine's batch executor cannot carry the pair.
+ * File ▸ Place… — pick an image, ask WHERE with the pointer, then mint
+ * an aspect-fit frame with its top-left at the clicked point
+ * (≤ `PLACE_IMAGE_MAX_PAGE_FRACTION` of the page, never upscaled past
+ * natural size at 1 px = 1 pt) and fill it with the picked bytes
+ * through `replaceImageBytes` (the inline-bytes lane — `placeImage(uri)`
+ * has no resolver door here). Two mutations, frame rolled back if the
+ * bytes half refuses — see fact 3 for why the engine's batch executor
+ * cannot carry the pair.
+ *
+ * CLICK-TO-PLACE. Every place used to land CENTRED on the current page,
+ * so placing four images built a pile of four and the user dragged
+ * three of them off it. After the picker returns, the pointer arms
+ * (copy cursor) and the next click decides the position; Escape
+ * cancels and places NOTHING, because a place that landed anyway after
+ * a cancel is worse than one that always centred.
+ *
+ * A click that misses every page still places — page-local bounds may
+ * sit outside the page rect, which is the pasteboard, and putting an
+ * image on the pasteboard while you decide is ordinary DTP practice.
  */
 export async function placeImage(
   paged: PagedEditor,
@@ -612,14 +663,35 @@ export async function placeImage(
   const maxW = target.rect.w * PLACE_IMAGE_MAX_PAGE_FRACTION;
   const maxH = target.rect.h * PLACE_IMAGE_MAX_PAGE_FRACTION;
   const scale = Math.min(1, maxW / size.width, maxH / size.height);
-  const bounds = centeredBoundsOn(
-    target.rect,
-    size.width * scale,
-    size.height * scale,
-  );
+  const w = size.width * scale;
+  const h = size.height * scale;
+
+  // Ask where. Cancelling is an ordinary answer — no report, exactly
+  // like cancelling the picker above.
+  const point = await awaitPlacementPoint();
+  if (!point) return REFUSED;
+
+  const doc = clientPointToDoc(paged, point.clientX, point.clientY);
+  let landing = target;
+  let bounds: [number, number, number, number];
+  if (doc) {
+    // Land on whichever page contains the click, so placing onto page 3
+    // while page 1 is "current" does what it looks like it does.
+    const hit = pageContaining(paged, doc[0], doc[1]);
+    if (hit) landing = hit;
+    const left = doc[0] - landing.rect.x;
+    const top = doc[1] - landing.rect.y;
+    bounds = [top, left, top + h, left + w];
+  } else {
+    // No viewport to measure against (the canvas is unmounted, or the
+    // camera has no scale). Falling back to centring is right here: the
+    // user asked to place and a refusal would discard the file they
+    // already chose.
+    bounds = centeredBoundsOn(landing.rect, w, h);
+  }
   const frameReply = await mutateAndSelect(
     paged,
-    { op: "insertFrame", args: { pageId: target.pageId, bounds } },
+    { op: "insertFrame", args: { pageId: landing.pageId, bounds } },
     "placeImage(frame)",
     refusedTap(report, "Place image"),
   );

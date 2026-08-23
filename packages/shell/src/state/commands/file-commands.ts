@@ -22,6 +22,7 @@
 // contribution so there's a single load path.
 
 import { createBlankDocument, loadDocumentFile } from "../document-loader";
+import { cancelPendingPlacement } from "../pending-placement";
 import { setPendingImportSource } from "../import-source";
 import type { PagedEditor } from "../paged-editor";
 import type { CommandContribution } from "../../registries";
@@ -54,6 +55,13 @@ const LETTER_PT: readonly [number, number] = [612, 792];
  *
  *  Returns true when it is safe to proceed. */
 async function confirmDiscard(editor: PagedEditor, what: string): Promise<boolean> {
+  // A placement armed against the OUTGOING document must not resolve
+  // into the incoming one. Clicking a MENU already cancels it (a click
+  // outside the canvas stands the placement down), but the keyboard
+  // route — Cmd+N with an image loaded — reaches here with the
+  // placement still armed, and the next canvas click would drop that
+  // image into a document the user never chose it for.
+  cancelPendingPlacement();
   let dirty = false;
   try {
     dirty = (await editor.client.documentMeta()).dirty;

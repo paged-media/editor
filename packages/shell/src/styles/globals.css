@@ -126,6 +126,11 @@
 [fill="var(--overlay-selection)"] {
   fill: var(--overlay-selection);
 }
+/* B4 — the thread-line direction marker. `guide` had a stroke rule and
+ * no fill rule, so a filled violet shape silently rendered black. */
+[fill="var(--overlay-guide)"] {
+  fill: var(--overlay-guide);
+}
 [fill="var(--overlay-snap)"] {
   fill: var(--overlay-snap);
 }

@@ -33,6 +33,7 @@ export { rulerGuidesContribution } from "./ruler-guides";
 export { guideOverlayContribution } from "./guide-overlay";
 export { selectionChromeContribution } from "./selection-chrome";
 export { threadingPortsContribution } from "./threading-ports";
+export { threadLinesContribution } from "./thread-lines";
 export { tableCellOverlayContribution } from "./table-cell-overlay";
 export { snapLinesContribution } from "./snap-lines";
 

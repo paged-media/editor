@@ -148,12 +148,16 @@ function commandTables(sourceFiles) {
  *  the app ACTUALLY LOADS (the published canaries), not what the plugin
  *  repos happen to have on disk.
  *
- *  There are twelve contribution types in the 0.2.32 contract:
+ *  There are twelve MANIFEST contribution types:
  *    bindingProvider command editContext exporter importer keybinding
  *    objectType overlay panel sceneLayer schemaPanel tool
- *  There is deliberately NO `menu` — which is why every plugin's
- *  creation verb is reachable only through Cmd+K, and why the host has
- *  to curate an Insert menu on their behalf.
+ *
+ *  `menu` is NOT among them and that is not a gap: `contribute.menu()`
+ *  (contract 0.2.33) is a RUNTIME call made during activate, not a
+ *  manifest declaration, so a menu entry cannot be counted by reading
+ *  manifests the way everything above is. This gate therefore stays
+ *  silent about plugin menu items rather than reporting zero — see the
+ *  note printed at the end of the run.
  */
 function pluginSurface() {
   // Resolve through the CANVAS APP's own node_modules, not by scanning
@@ -300,7 +304,9 @@ if (unused.length) {
       `so this gate cannot speak to them: ${unused.join(", ")}.`,
   );
   console.log(
-    "  (`menu` is absent from the contract entirely — plugins cannot inject menu items.)\n",
+    "  (`menu` is a RUNTIME contribution — `contribute.menu()`, contract 0.2.33 — " +
+      "not a manifest field, so no manifest-reading gate can count it. Its absence " +
+      "from the list above is a limit of this measurement, NOT a missing feature.)\n",
   );
 }
 

@@ -36,6 +36,7 @@ import {
   snapLinesContribution,
   tableCellOverlayContribution,
   threadingPortsContribution,
+  threadLinesContribution,
   loadDocumentFile,
   fetchDefaultFont,
   takePendingImportSource,
@@ -273,6 +274,9 @@ const BUILT_IN_OVERLAYS: OverlayContribution[] = [
   rotateHandleContribution,
   // W2.9 — text-frame threading ports on the selection chrome.
   threadingPortsContribution,
+  // B4 — the story's route across the spread (View ▸ Show text
+  // threads). Draws nothing and fetches nothing until toggled on.
+  threadLinesContribution,
   // W3.A2 — selected table cell outline.
   tableCellOverlayContribution,
   contentGrabberContribution,

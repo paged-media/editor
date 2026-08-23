@@ -534,6 +534,20 @@ test.describe("plugin surface · paged.image", () => {
       mimeType: "image/png",
       buffer: samplePng(),
     });
+    // Place ASKS WHERE now: after the picker returns, the pointer arms
+    // and the command does not resolve until a click inside the canvas
+    // positions the image. Without this click the command waits
+    // forever — which is exactly how this spec first reported the
+    // change, as a 5-minute timeout.
+    await expect(page.locator("html[data-paged-placement='armed']")).toHaveCount(
+      1,
+      { timeout: 15_000 },
+    );
+    const vp = (await page.locator("[data-paged-viewport]").boundingBox())!;
+    await page.mouse.click(
+      Math.round(vp.x + vp.width * 0.45),
+      Math.round(vp.y + vp.height * 0.4),
+    );
     await invoked;
 
     // The native path worked: a frame exists and carries the bytes.
