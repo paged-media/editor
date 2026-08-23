@@ -148,7 +148,14 @@ test.describe("journey · paged.web render output", () => {
     //    further edit and assert the page is STABLE (the deterministic
     //    tiny-skia readback diffs to ~0 for an unchanged page, so the
     //    visible-paint signal above is real, not snapshot jitter). ──
+    // `expectRenderChangesFrom` above POLLS and returns the changed-pixel
+    // count, not the bytes — so the settled frame is re-sampled here to be
+    // this control's baseline. (Merging #17's polling helper onto the
+    // branch that added this control silently orphaned the old `after`
+    // binding: neither side conflicted, and the test tree is outside
+    // `tsc -b`, so only the runner caught it.)
+    const settled = await designer.renderBytes();
     const again = await designer.renderBytes();
-    await designer.expectRenderStable(after, again);
+    await designer.expectRenderStable(settled, again);
   });
 });
