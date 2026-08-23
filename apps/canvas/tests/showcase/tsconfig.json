@@ -1,0 +1,20 @@
+{
+  // The showcase tree gets its own typecheck because the app's
+  // `tsconfig.json` includes only `src` — `pnpm typecheck` has never
+  // covered `tests/`, so a wrong argument name in a page module would
+  // otherwise be found by a twenty-minute document build rather than by
+  // the compiler. Run it with `pnpm --filter paged-canvas typecheck:showcase`.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "types": ["node"]
+  },
+  "include": [".", "../journey/driver", "../e2e/harness", "../fidelity"]
+}

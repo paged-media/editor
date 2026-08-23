@@ -217,7 +217,7 @@ test.describe("gestures.md DR-08…DR-11 — built-in Pen tool (E2E-03)", () => 
     await expect.poll(() => countKind(page, "polygon")).toBe(before);
   });
 
-  test("DR-08 — click-drag pulls a smooth anchor with mirrored handles @feat:editor-tools.draw.pen @level:gesture", async ({
+  test("DR-08 — click-drag pulls a smooth anchor with mirrored handles @feat:editor-tools.draw.pen @feat:geometry-coordinates.bezier-path-geometry @level:gesture", async ({
     page,
   }) => {
     const before = await countKind(page, "polygon");
@@ -249,7 +249,7 @@ test.describe("gestures.md DR-08…DR-11 — built-in Pen tool (E2E-03)", () => 
     await expect.poll(() => countKind(page, "polygon")).toBe(before);
   });
 
-  test("DR-09 — Alt during the drag breaks handle symmetry @feat:editor-tools.draw.pen @level:gesture", async ({
+  test("DR-09 — Alt during the drag breaks handle symmetry @feat:editor-tools.draw.pen @feat:geometry-coordinates.bezier-path-geometry @level:gesture", async ({
     page,
   }) => {
     const before = await countKind(page, "polygon");

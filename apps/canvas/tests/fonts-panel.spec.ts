@@ -35,7 +35,7 @@ import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/text.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/text.idml`;
 
 test.describe("W2.12 — Fonts panel", () => {
   test("AC-FONTS-1 — fonts-in-use list renders non-empty @feat:editor-shell.panels.fonts @feat:the-renderer.font-registry @level:edge", async ({ page }) => {
@@ -95,7 +95,7 @@ test.describe("W2.12 — Fonts panel", () => {
     // deterministically (vs the incidental Open Sans substitution that
     // AC-FONTS-2 tolerates either way).
     await openCanvas(page);
-    await loadIdml(page, `${REPO_ROOT}/corpus/generated/preflight.idml`);
+    await loadIdml(page, `${REPO_ROOT}/corpus/idml/generated/preflight.idml`);
     await openPanel(page, "paged.fonts");
     await expect(page.locator('[data-fonts-panel="ready"]')).toBeVisible();
     await expect(

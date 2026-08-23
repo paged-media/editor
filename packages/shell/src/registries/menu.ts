@@ -21,7 +21,7 @@ import type { Disposable, VisibilityPredicate } from "./types";
 
 /**
  * Declarative menu item. Items contribute themselves to a path-based
- * tree — `"File/Open IDML…"` → File menu, "Open IDML…" leaf. The
+ * tree — `"File/Open…"` → File menu, "Open…" leaf. The
  * shell renders top-level path segments as drop-down menus; nested
  * paths nest as sub-menus.
  *
@@ -31,7 +31,7 @@ import type { Disposable, VisibilityPredicate } from "./types";
  * same command id.
  */
 export interface MenuItemContribution {
-  /** Slash-separated path. `"File/Open IDML…"`, `"View/Show: Pages"`. */
+  /** Slash-separated path. `"File/Open…"`, `"View/Show: Pages"`. */
   path: string;
 
   /** Command id this item invokes when selected. */
@@ -43,6 +43,19 @@ export interface MenuItemContribution {
   /** Optional separator group. Items with the same group cluster;
    * different groups render with a visual separator between them. */
   group?: string;
+
+  /** E4 — a human heading for this item's group.
+   *
+   *  The Window menu already computes these (`WINDOW_MENU_CATEGORIES`:
+   *  Workspace / Structure / Styles / Text / Properties / Object /
+   *  Output / Developer) and then threw them away, because `MenuBar`
+   *  only ever emitted a separator on a group change. So ~90 panel
+   *  entries rendered as one flat list divided by unlabelled hairlines —
+   *  the grouping was done and the user could not see it.
+   *
+   *  Optional: a menu whose groups need no names (File's open/save
+   *  clusters) keeps the bare separator. */
+  groupLabel?: string;
 
   /** Visible-but-disabled seam — a kit menu item whose backing
    * doesn't exist yet. Renders greyed with a "soon" marker and

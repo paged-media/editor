@@ -25,21 +25,21 @@
 // asserts the wire surface reflects the change. Single-undo restores
 // each toggle bytewise.
 //
-// Fixture: `resume-template-teacher` ships multiple layers and at
-// least one ruler-guide layer ("Guides" by IDML convention).
+// Fixture: `corpus/idml/generated/layers-z.idml` — license-clear, runs in
+// lean CI. Ships exactly two `<Layer>` elements ("Foreground" /
+// "Background"), which is all this read+toggle surface needs.
 
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
-const PACK_NAME = "resume-template-teacher";
-const PACK_PATH = `${REPO_ROOT}/corpus/envato/packs/${PACK_NAME}/template.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/layers-z.idml`;
 
 interface LayerSummary {
   selfId: string;
@@ -71,7 +71,7 @@ test.describe("Track M.1 — layers read + toggle", () => {
         const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
         await c.client.loadDocument(bytes);
       },
-      { pack: PACK_PATH },
+      { pack: FIXTURE },
     );
 
     const layers = await page.evaluate(async () => {

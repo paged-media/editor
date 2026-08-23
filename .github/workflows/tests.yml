@@ -10,34 +10,23 @@ name: tests
 # server process and works headless, so the chromium runner gets a
 # cross-origin-isolated context with no extra flags.
 #
-# Plugin link chain (W3+): `apps/canvas/package.json` pulls seven bundles
-# in via pnpm `link:` — draw-bundle (../../../plugin-draw/…), plugin-api
-# + plugin-sdk (../../../plugin-sdk/…), web-bundle (../../../plugin-web/…),
-# data-bundle (../../../plugin-data/…), sheet-bundle
-# (../../../plugin-sheets/…), and image-glue (../../../plugin-image/glue).
-# Those `../../..` paths are relative to `apps/canvas/`, so they resolve
-# to SIBLINGS of the editor repo root. We mirror the local ~/paged layout:
-# check the editor out under `editor/` and the six plugin repos under their
-# bare names, so e.g.
-# `editor/apps/canvas/../../../plugin-draw` == `$GITHUB_WORKSPACE/plugin-draw`.
-# The plugin repos are private; `STATE_DISPATCH_TOKEN` carries read scope
-# across the paged-media org (same token plugin-draw's vitest.yml uses
-# for its sdk checkout), with a github.token fallback for same-org runs.
-# Install order is the workspace rule (plugin-sdk → plugin-draw →
-# plugin-web → plugin-data → plugin-sheets → plugin-image → editor): each
-# plugin repo's own internal `link:`s point at plugin-sdk, and the editor's
-# `link:`s need all six sibling dirs present + installed before its own
-# `--frozen-lockfile` install resolves.
+# Plugin bundles: `apps/canvas/package.json` consumes every plugin package
+# (@paged-media/plugin-api, plugin-sdk, draw, web, data, sheet, image,
+# publish, pdf) as PUBLISHED npm versions — the historical pnpm `link:`
+# sibling chain is gone, so `pnpm install` alone resolves all plugins with
+# no sibling checkouts. (The link:-era sibling checkout/install lattice —
+# and the build-image-wasm artifact lane — are gone: every published
+# bundle is self-contained, @paged-media/image ships its own wasm.)
 #
 # Scope: the behaviour surface (panels + gesture + e2e op-sandwiches),
 # NOT the Envato fidelity gate. That gate needs the 4.4 GB
-# `corpus/envato` LFS packs, their InDesign reference PDFs, poppler's
+# `corpus/idml` LFS packs, their InDesign reference PDFs, poppler's
 # `pdftoppm`, and the `paged-diff` Rust binary built from a `core`
 # checkout — none of which the package-boundary runner carries. It stays
 # a local / core-CI concern; `PAGED_CI_LEAN=1` drops `fidelity.spec.ts`
 # + `extensive-corpus.spec.ts` from collection (both read the envato
 # manifest at import time). The lean surface (~412 tests) still needs the
-# small license-clear `corpus/generated` fixtures + `corpus/fonts`, which
+# small license-clear `corpus/idml/generated` fixtures + `corpus/fonts`, which
 # the harness loads — those come from a sparse LFS checkout of the
 # private `paged-media/corpus` repo (≈25 MB, not the 4.4 GB envato tier).
 #
@@ -47,13 +36,20 @@ name: tests
 # blobs into one Playwright JSON and uploads it as the `playwright-results`
 # artifact. The private `paged-media/state` repo PULLS that artifact
 # (siblings-pull.yml), converts it to contract-v1, applies
-# `ingest/test-map.yaml` (the editor specs carry no @feat: tags yet), and
+# `ingest/test-map.yaml` plus the journeys' inline `@feat:` tags, and
 # gates feature ids against the registry. See the step comment at the
 # hand-off for why the direction is inverted.
 
 on:
   push:
-    branches: [main]
+    # feat/plugin-panel-surfaces added 2026-08-18: main is frozen (standing
+    # branch decision, 2026-07-26) while development lives on this branch,
+    # so main-only push triggers meant NO fresh playwright-results artifact
+    # ever reached the state matrix — every editor evidence lane starved.
+    # The state puller accepts this branch via the artifacts.yaml `branch`
+    # override. Remove the extra branch here (and there) when the branch
+    # merges.
+    branches: [main, feat/plugin-panel-surfaces]
   pull_request:
     paths:
       - "apps/canvas/**"
@@ -85,10 +81,7 @@ jobs:
   # fidelity-thresholds JSON schema guard (every gated pack has an entry,
   # so the gate can't silently skip). They're fast (seconds) and depend
   # only on the root devDependencies, so a plain editor checkout + root
-  # frozen install is the whole setup. apps/canvas's `link:` deps resolve
-  # to absent siblings as dangling symlinks — pnpm install does not fail
-  # on that, and none of these scripts import plugin code (same property
-  # the `publish` job relies on below).
+  # frozen install is the whole setup.
   checks:
     name: checks (lint + boundaries + boot-coi + thresholds)
     runs-on: ubuntu-latest
@@ -133,145 +126,79 @@ jobs:
       - name: fidelity thresholds schema
         run: pnpm test:thresholds
 
-  # Build the paged.image wasm ONCE (image_js.js + .d.ts + image_js_bg.wasm)
-  # and publish it as an artifact the playwright shards download. Doing it in
-  # one dedicated job — its own generous timeout + cargo cache — instead of
-  # inline in each of the 3 shards is what stopped the cold cargo wasm build
-  # from blowing the shard timeout (and, because cancelled shards never saved
-  # their cache, never warming it). image-js is a Rust crate in plugin-image's
-  # Cargo workspace; the build is self-contained there (no plugin-sdk / node).
-  # Mirrors build-wasm.sh's two essential steps (cargo wasm build +
-  # wasm-bindgen), skipping wasm-opt + the 8 MiB gate (the editor's dev/test
-  # path doesn't need the optimized artifact). wasm-bindgen-cli is pinned to
-  # plugin-image/Cargo.lock.
-  build-image-wasm:
-    name: build paged.image wasm
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    steps:
-      - name: checkout plugin-image
-        uses: actions/checkout@v4
-        with:
-          repository: paged-media/plugin-image
-          path: plugin-image
-          token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
+      # The app-wide wasm budget: 100 MB for the editor AND every plugin
+      # together (2026-08-19). Every other wasm ceiling in the platform is
+      # per-artifact or per-bundle, so until now nothing measured the sum —
+      # eight bundles could each pass their own gate and the app could still
+      # ship a quarter of a gigabyte. This job is the only place that sees
+      # the whole assembled app, so this is where the sum is checked.
+      - name: app-wide wasm budget (100 MB, editor + all plugins)
+        # `--json-out` writes the measurement artifact as a SIDE EFFECT and
+        # still exits on the budget. Deliberately not `--json | tee`: a pipe
+        # replaces this step's exit code with tee's, which would turn the
+        # budget gate into a gate that always passes.
+        run: pnpm test:wasm-budget --json-out "$RUNNER_TEMP/paged-measurements-wasm.json"
 
-      - name: rust toolchain + wasm32
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: "1.93.0" # mirrors plugin-image/rust-toolchain.toml — bump together
-          targets: wasm32-unknown-unknown
-
-      - name: install wasm-bindgen-cli (pinned to plugin-image Cargo.lock)
-        uses: taiki-e/install-action@v2
-        with:
-          tool: wasm-bindgen-cli@0.2.122
-
-      - name: cache image-js cargo build
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            plugin-image/target
-          key: image-js-wasm-${{ runner.os }}-${{ hashFiles('plugin-image/Cargo.lock') }}
-          restore-keys: image-js-wasm-${{ runner.os }}-
-
-      - name: build image-js wasm
-        working-directory: plugin-image
-        run: |
-          cargo build --release --target wasm32-unknown-unknown -p image-js
-          wasm-bindgen target/wasm32-unknown-unknown/release/image_js.wasm \
-            --target web --out-dir manifest/wasm
-          test -f manifest/wasm/image_js.js
-          test -f manifest/wasm/image_js.d.ts
-          echo "paged.image wasm built (unoptimized — wasm-opt + size gate skipped)"
-
-      - name: upload image-js wasm
+      # The number, kept. The gate above answers "are we under 100 MB today";
+      # only a series answers "which way is it moving, and how fast". Uploaded
+      # `if: always()` because a FAILING run's number is precisely the one
+      # worth having in the trend.
+      - name: upload wasm measurement
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: image-js-wasm
-          path: plugin-image/manifest/wasm
-          retention-days: 7
+          name: paged-measurements-wasm
+          path: ${{ runner.temp }}/paged-measurements-wasm.json
+          if-no-files-found: warn
+          retention-days: 90
+      # Every panel / tool / keybinding / menu item the host registers, and
+      # every contribution the loaded plugin bundles inject, must be named
+      # by some spec or sit under a per-kind ceiling that only ever falls.
+      - name: editor surface coverage
+        run: pnpm test:surface-coverage
+      # A seam may not outlive the gap it names: a capability lands and
+      # the UI still says it is missing, which is the same lie as
+      # claiming an unbuilt feature works, only harder to notice.
+      - name: seam guard
+        run: pnpm test:seam-guard
+      # One vocabulary for "this doesn't apply here". The four rules that
+      # existed were four independent reasonable decisions, which is why
+      # no review caught them — there was nothing for them to disagree with.
+      - name: applicability vocabulary
+        run: pnpm test:applicability
 
   playwright:
     name: playwright (shard ${{ matrix.shard }}/3)
-    needs: build-image-wasm
     runs-on: ubuntu-latest
-    # 50, not 30: the COLD (uncached) image-js cargo wasm build + paged-gen
-    # build + the multi-repo install chain consumed most of a 30-min budget,
-    # leaving no room for the sharded tests (they got cancelled). After run 1
-    # both `core/target` and `plugin-image/target` are cached and the job
-    # drops back to ~20-25 min; the headroom only matters on a cold cache.
-    timeout-minutes: 50
+    # 50, not 30: the COLD (uncached) paged-gen fixture-generator build
+    # consumed most of a 30-min budget, leaving no room for the sharded
+    # tests. After run 1 `core/target` is cached and the job drops back to
+    # ~20-25 min; the headroom only matters on a cold cache.
+    #
+    # Then 75, not 50: that budget was never actually exercised — the job
+    # had never once reached its tests (see the chromium note below), so
+    # "~20-25 min" described a job that spent its life in `apt`. A second
+    # cold rust build (the paged.doc engine wasm) now shares it too. The
+    # long steps carry their OWN bounds — chromium install 10 min, doc
+    # wasm 25 min — so a hang still reports as a hang at the step that
+    # hung, and this number only buys the tests room to finish. Re-measure
+    # and bring it back down once a green run says what the suite costs.
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
         shard: [1, 2, 3]
     steps:
-      # The editor goes under `editor/` so the apps/canvas `link:` paths
-      # (../../../<plugin>) land on siblings under $GITHUB_WORKSPACE.
+      # The editor goes under `editor/` (not the workspace root) so the
+      # corpus checkout below can land at `editor/corpus` — the colocated
+      # path the vite config prefers — and for path parity with the
+      # publish job.
       - name: checkout editor
         uses: actions/checkout@v4
         with:
           path: editor
 
-      # The six plugin sibling repos the apps/canvas link: chain needs
-      # (apps/canvas/package.json link:s data-bundle + sheet-bundle +
-      # image-glue too). plugin-sdk first (the others link: at it), then
-      # plugin-draw + plugin-web + plugin-data + plugin-sheets +
-      # plugin-image. Private repos → STATE_DISPATCH_TOKEN (read scope on
-      # the org), github.token fallback for same-org runs.
-      - name: checkout plugin-sdk (link target)
-        uses: actions/checkout@v4
-        with:
-          repository: paged-media/plugin-sdk
-          path: plugin-sdk
-          token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
-
-      - name: checkout plugin-draw (link target)
-        uses: actions/checkout@v4
-        with:
-          repository: paged-media/plugin-draw
-          path: plugin-draw
-          token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
-
-      - name: checkout plugin-web (link target)
-        uses: actions/checkout@v4
-        with:
-          repository: paged-media/plugin-web
-          path: plugin-web
-          token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
-
-      - name: checkout plugin-data (link target)
-        uses: actions/checkout@v4
-        with:
-          repository: paged-media/plugin-data
-          path: plugin-data
-          token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
-
-      - name: checkout plugin-sheets (link target)
-        uses: actions/checkout@v4
-        with:
-          repository: paged-media/plugin-sheets
-          path: plugin-sheets
-          token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
-
-      # plugin-image (the paged.image bundle) — apps/canvas/src/main.tsx
-      # imports its `imageBundle` from `@paged-media/image-glue`
-      # (link:../../../plugin-image/glue). Without this sibling the link:
-      # symlink dangles, `tsc` fails (TS2307) and vite can't serve the app,
-      # so the WHOLE canvas surface (not just journeys) goes red. The glue
-      # package is TS-source-consumed (no build step) and link:s plugin-sdk,
-      # exactly like the other bundles.
-      - name: checkout plugin-image (link target)
-        uses: actions/checkout@v4
-        with:
-          repository: paged-media/plugin-image
-          path: plugin-image
-          token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
-
-      # License-clear fixtures the harness loads (corpus/generated/*.idml
+      # License-clear fixtures the harness loads (corpus/idml/generated/*.idml
       # + corpus/fonts). Sparse + LFS so we pull ~25 MB, not the 4.4 GB
       # envato tier. The editor's vite config + tests resolve the corpus
       # as a sibling of the repo root (`editor/corpus`), so check it out
@@ -304,15 +231,27 @@ jobs:
           path: editor/corpus
           token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
           lfs: true
+          # Cone entries are TOP-LEVEL directory names and a stale one
+          # yields an EMPTY checkout, not an error — the "verify corpus
+          # fixtures are materialized" step below is what turns that into
+          # a loud failure. `vendor` is deliberately absent: it is the
+          # heavy tier (1.3 GB of packs) and no test on this surface
+          # reads it.
+          # NESTED cone paths — verified working. Naming `idml` whole
+          # would drag in idml/packs (1.3 GB of Envato packs) on every
+          # shard of every push; these two subtrees are 10 MB. The
+          # "verify corpus fixtures are materialized" step below is what
+          # catches a stale name, because a wrong cone yields an EMPTY
+          # checkout rather than an error.
           sparse-checkout: |
-            generated
-            samples
+            idml/generated
+            idml/samples
             fonts
-            envato/overrides
+            config
           sparse-checkout-cone-mode: true
 
       # The canvas Playwright surface loads ~33 per-feature IDML fixtures
-      # from `corpus/generated/*.idml` (61 of the lean specs reference
+      # from `corpus/idml/generated/*.idml` (61 of the lean specs reference
       # them). Those files are NOT committed to the corpus repo — its
       # `generated/.gitignore` excludes `*.idml` because they are
       # reproducible from `cargo run -p paged-gen` (core). So neither a
@@ -321,8 +260,8 @@ jobs:
       # absent) or "invalid Zip: Could not find EOCD" (LFS-pointer parse).
       #
       # Provision them by building the `paged-gen` fixture generator from
-      # a pinned `core` checkout and emitting every sample into
-      # corpus/generated. This is the same build-from-core pattern the
+      # a `core` checkout and emitting every sample into
+      # corpus/idml/generated. This is the same build-from-core pattern the
       # `viewer`/`docs` repos use (their `core.pin`); it does NOT touch
       # the Decision-B *wasm* boundary (the engine still arrives as the
       # published npm package — this only generates test fixtures).
@@ -332,38 +271,52 @@ jobs:
           repository: paged-media/core
           path: core
           token: ${{ secrets.STATE_DISPATCH_TOKEN || github.token }}
+          # NOT pinned — this deliberately follows core's default branch, so
+          # a new paged-gen sample reaches these fixtures without a bump
+          # here. (The comment above used to call it "a pinned core
+          # checkout"; there has never been a `ref:`.) The cost is a real
+          # ordering coupling: a core change this step depends on must be
+          # PUSHED BEFORE the editor change that uses it, or the run picks
+          # up the older core and fails. That happened on 2026-08-19 with
+          # `emit-all` — editor pushed first, and all three shards died on
+          # "unrecognized subcommand". If this ever needs to stop moving
+          # under the editor, adopt the `core.pin` file docs/viewer use
+          # rather than hand-editing a ref here.
 
       - name: rust toolchain (for paged-gen)
         uses: dtolnay/rust-toolchain@stable
 
+      # Covers BOTH rust builds this job does: paged-gen (fixtures) and the
+      # paged.doc engine wasm. Without plugin-doc/target in here the doc
+      # wasm is a cold release build of a vendored-ooxmlsdk workspace on
+      # every single run — the thing this cache exists to prevent.
       - name: cache cargo + paged-gen build
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
+            ~/.cargo/bin
             core/target
-          key: paged-gen-${{ runner.os }}-${{ hashFiles('core/Cargo.lock') }}
-          restore-keys: paged-gen-${{ runner.os }}-
+            plugins/plugin-doc/target
+          key: paged-rust-${{ runner.os }}-${{ hashFiles('core/Cargo.lock') }}
+          restore-keys: paged-rust-${{ runner.os }}-
 
-      - name: generate corpus/generated/*.idml from paged-gen
+      - name: generate corpus/idml/generated/*.idml from paged-gen
         working-directory: core
         run: |
           cargo build --release -p paged-gen --bin paged-gen
-          GEN="$GITHUB_WORKSPACE/editor/corpus/generated"
+          GEN="$GITHUB_WORKSPACE/editor/corpus/idml/generated"
           mkdir -p "$GEN"
-          # The full sample set the lean canvas surface loads (matches the
-          # 33 *.idml the local corpus/generated dir carries; mirrors the
-          # match arm list in core/crates/paged-gen/src/bin/paged-gen.rs).
-          for s in geometry geometry-groups strokes-fills text text-advanced \
-                   text-autosize text-letterspacing text-on-path text-overset \
-                   text-in-shape text-wrap effects footnotes gradients tables \
-                   images image-clipping anchored transparency markers masters \
-                   corners links-broken links-ok preflight numbering variables \
-                   conditions swatches navigation styles-cascade layout \
-                   nested-groups; do
-            ./target/release/paged-gen emit --sample "$s" --out "$GEN"
-          done
+          # `emit-all`, NOT a hand-copied name list. This step used to
+          # carry its own copy of paged-gen's sample names — the fourth
+          # copy of that list in the project — and it had silently lost
+          # `layers-z` and `paste-into`. The guard on the other copies only
+          # ever caught an UNKNOWN name; a name left OUT is invisible. The
+          # result: four layers-panel specs failed here with "Could not
+          # find EOCD", fetching a fixture CI had never emitted, and the
+          # suite had never run far enough for anyone to see it.
+          ./target/release/paged-gen emit-all --out "$GEN"
 
       # Guard: the IDML fixtures must now be real bytes on disk, or the
       # whole canvas surface fails with opaque parse errors mid-suite.
@@ -372,8 +325,15 @@ jobs:
       - name: verify corpus fixtures are materialized
         working-directory: editor/corpus
         run: |
-          for f in generated/text.idml generated/text-overset.idml \
-                   generated/geometry.idml generated/links-broken.idml; do
+          # Paths are corpus-root-relative. They said `generated/…` until
+          # 2026-08-19, when assets were grouped by format under `idml/`
+          # — and this guard is what caught the stale list, before 170
+          # specs per shard could fail on a fixture that was simply
+          # somewhere else. Keep it that way: it is the only thing
+          # standing between a mis-typed sparse cone and a mystery.
+          for f in idml/generated/text.idml idml/generated/text-overset.idml \
+                   idml/generated/geometry.idml idml/generated/links-broken.idml \
+                   idml/samples/sample.idml fonts/Inter.ttf; do
             if [ ! -f "$f" ]; then
               echo "::error::$f is missing — paged-gen provisioning failed"
               exit 1
@@ -384,26 +344,6 @@ jobs:
             fi
           done
           echo "corpus fixtures materialized OK"
-
-      # paged.image wasm (image_js.js + .d.ts + image_js_bg.wasm) — built
-      # ONCE by the `build-image-wasm` job (this job `needs:` it) and
-      # downloaded here, NOT rebuilt per shard. apps/canvas/src/main.tsx
-      # wires the paged.image bundle; its glue re-exports types from
-      # decode-worker.ts which imports `@paged-media/image-manifest/wasm/
-      # image_js.js` — a gitignored wasm-bindgen output produced by no other
-      # CI. Without it `tsc` fails (TS2307) and vite can't serve the canvas
-      # app. Downloading (vs the cold ~15-min cargo wasm build × 3 shards)
-      # is what keeps the shard inside its timeout.
-      - name: download paged.image wasm (from build-image-wasm)
-        uses: actions/download-artifact@v4
-        with:
-          name: image-js-wasm
-          path: plugin-image/manifest/wasm
-      - name: verify image wasm present
-        run: |
-          test -f plugin-image/manifest/wasm/image_js.js
-          test -f plugin-image/manifest/wasm/image_js.d.ts
-          echo "paged.image wasm present (downloaded)"
 
       # Pin pnpm: with the editor checked out under editor/ (not at the
       # workspace root), action-setup can't read `packageManager` from a
@@ -417,45 +357,85 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: |
-            editor/pnpm-lock.yaml
-            plugin-sdk/pnpm-lock.yaml
-            plugin-draw/pnpm-lock.yaml
-            plugin-web/pnpm-lock.yaml
-            plugin-data/pnpm-lock.yaml
-            plugin-sheets/pnpm-lock.yaml
-            plugin-image/pnpm-lock.yaml
+          cache-dependency-path: editor/pnpm-lock.yaml
 
-      # Install the link chain bottom-up (workspace rule): plugin-sdk,
-      # then plugin-draw + plugin-web + plugin-data + plugin-sheets (which
-      # link: at plugin-sdk), then the editor (whose link:s need all five
-      # present + installed). Each repo is its own workspace with a
-      # committed lockfile-v9, so all stay --frozen-lockfile.
-      - name: install plugin-sdk (link root)
-        working-directory: plugin-sdk
+      # @paged-media/doc is the ONE bundle still consumed via a pnpm
+      # `link:` — its first publish is pending (user action). The link
+      # resolves to ../plugins/plugin-doc relative to the editor root, so
+      # check the (public) repo out there and install its deps; without it
+      # the dangling link leaves `@paged-media/doc` unresolvable and
+      # typecheck fails before a single test runs. DROP both steps when
+      # the package publishes and the pin replaces the link.
+      - name: checkout plugin-doc (the one link-consumed bundle)
+        uses: actions/checkout@v4
+        with:
+          repository: paged-media/plugin-doc
+          path: plugins/plugin-doc
+
+      - name: install plugin-doc (the link target needs its own deps)
+        working-directory: plugins/plugin-doc
         run: pnpm install --frozen-lockfile
 
-      - name: install plugin-draw
-        working-directory: plugin-draw
-        run: pnpm install --frozen-lockfile
+      # …and its wasm, which `pnpm install` does not produce. Once the
+      # chromium hang was fixed and the suite finally reached the dev
+      # server, THIS is what it hit: vite dies transforming
+      # doc-bundle/src/engine.ts with `Failed to resolve import
+      # "../bin/docx_js.js"`. `packages/doc-bundle/bin/*.js` is gitignored
+      # (it is a build artifact), so a fresh checkout never has it, and
+      # main.tsx imports `@paged-media/doc` at module scope — one missing
+      # bundle takes the whole app down, so all 260 tests in the shard
+      # fail before the first assertion.
+      #
+      # engine.ts DOES guard this: a try/catch around the dynamic import
+      # that raises "engine wasm not built — run scripts/build-wasm.sh".
+      # It cannot fire. Vite resolves the specifier during import-analysis
+      # at TRANSFORM time, long before any of that code runs — a guard
+      # that is declared but structurally unreachable.
+      #
+      # Building it is the faithful fix rather than a workaround: the
+      # published @paged-media/doc will ship exactly this artifact inside
+      # the package, so CI reproduces production instead of dodging it.
+      # The toolchain and cargo cache are already here for paged-gen.
+      # DROP this together with the checkout above when doc publishes.
+      - name: install pinned wasm-bindgen-cli (plugin-doc Cargo.lock version)
+        working-directory: plugins/plugin-doc
+        timeout-minutes: 15
+        run: |
+          V=$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | grep version | head -1 | cut -d'"' -f2)
+          # The cargo cache now covers ~/.cargo/bin, so a warm run already
+          # HAS these binaries and a plain `cargo install` dies with
+          # "binary `wasm-bindgen` already exists in destination". Skip
+          # when the cached version is the one the lockfile pins —
+          # cheaper than --force, and it keeps the pin check meaningful
+          # (build-wasm.sh hard-fails on a version mismatch).
+          if wasm-bindgen --version 2>/dev/null | grep -qw "$V"; then
+            echo "wasm-bindgen $V already installed (cache hit)"
+          else
+            cargo install wasm-bindgen-cli --version "$V" --locked --force
+          fi
 
-      - name: install plugin-web
-        working-directory: plugin-web
-        run: pnpm install --frozen-lockfile
+      # build-wasm.sh runs a hard 8 MiB budget gate and only applies
+      # wasm-opt when it is on PATH — without it the artifact lands at
+      # 10.9 MiB and the gate correctly refuses. The version is pinned
+      # rather than apt-installed: an old binaryen miscompiles
+      # wasm-bindgen's externref table grow ("Table.grow failed" at
+      # runtime). Same pin plugin-doc's own rust.yml uses; keep them
+      # together.
+      - name: install pinned binaryen (reftypes-safe wasm-opt)
+        run: |
+          curl -fsSL https://github.com/WebAssembly/binaryen/releases/download/version_119/binaryen-version_119-x86_64-linux.tar.gz | tar xz
+          echo "$PWD/binaryen-version_119/bin" >> "$GITHUB_PATH"
 
-      - name: install plugin-data
-        working-directory: plugin-data
-        run: pnpm install --frozen-lockfile
+      - name: build the paged.doc engine wasm
+        working-directory: plugins/plugin-doc
+        timeout-minutes: 25
+        run: |
+          rustup target add wasm32-unknown-unknown
+          bash scripts/build-wasm.sh
+          test -f packages/doc-bundle/bin/docx_js.js \
+            || { echo "::error::doc wasm glue absent after build"; exit 1; }
 
-      - name: install plugin-sheets
-        working-directory: plugin-sheets
-        run: pnpm install --frozen-lockfile
-
-      - name: install plugin-image
-        working-directory: plugin-image
-        run: pnpm install --frozen-lockfile
-
-      - name: install editor (engine wasm resolves from the npm package)
+      - name: install editor (engine wasm + all plugin bundles resolve from npm)
         working-directory: editor
         run: pnpm install --frozen-lockfile
 
@@ -470,10 +450,55 @@ jobs:
         working-directory: editor
         run: pnpm --filter ./apps/canvas run typecheck
 
-      - name: install chromium + system deps
+      # NO `--with-deps`. That flag shells out to `apt-get update` as root,
+      # and on the ubuntu-24.04 runner that hangs: azure.archive.ubuntu.com
+      # answers every index request with `Ign:`, apt falls back to
+      # archive.ubuntu.com, and then it simply stops — the last log line is
+      # `Get:5 …noble-security InRelease` and nothing follows until the
+      # job's 50-minute timeout kills it. Deterministic, not flaky: all
+      # three shards hung at the same line in the same run, and this is why
+      # `tests.yml` has never once published a green Playwright result (30
+      # runs: 18 failure, 12 timed-out-as-cancelled, 0 success). Because
+      # the evidence artifact is produced by this job, every downstream
+      # consumer starved too — state's coverage gate reports "0 linked
+      # tests" for eight features whose specs exist and are tagged.
+      #
+      # The flag was never needed: the runner image ships Playwright's
+      # browser libraries preinstalled. Without it, `playwright install`
+      # only fetches the browser from Playwright's own CDN and touches apt
+      # never. And if a library IS ever missing, the browser fails to
+      # launch with a named error in seconds instead of a silent 50-minute
+      # stall — strictly better feedback either way.
+      #
+      # (`demo-capture.yml` still uses `--with-deps chrome`, which is a
+      # different case: installing real Google Chrome genuinely goes
+      # through apt. That lane is release-triggered and would hit the same
+      # wall; it needs its own fix, not this one.)
+      - name: install chromium
         working-directory: editor
-        run: pnpm --filter ./apps/canvas exec playwright install --with-deps chromium
+        # A browser download is ~1 minute. Bounding the step means a future
+        # stall here is reported AS a stall, in ten minutes, instead of
+        # eating the job's whole 50-minute budget and surfacing as
+        # "cancelled" — which is indistinguishable from a concurrency
+        # cancel and is precisely why this went unnoticed.
+        timeout-minutes: 10
+        run: pnpm --filter ./apps/canvas exec playwright install chromium
 
+      # --project is REQUIRED here, not tidiness. Without it Playwright
+      # runs EVERY project in the config, which on a Linux runner means
+      # `journeys-gpu` and `demo-capture` — both of which need real Chrome
+      # (`channel: "chrome"`), and `journeys-gpu` additionally passes
+      # `--use-angle=metal`, a macOS-only flag. playwright.config.ts says
+      # of that lane, in its own words, "it cannot run on the Linux CI
+      # runners, and no workflow invokes it". That was false: this step
+      # invoked it, its one WebGPU test failed for want of an adapter, and
+      # because the converter drops the project dimension the failure
+      # collided with the SAME test's pass from the CPU `journeys` lane on
+      # one test_id — red winning. That single phantom failure is what put
+      # THREE features red on state.paged.media (command-palette,
+      # context-toolbars, panels.properties — the latter two attached only
+      # because the ingest test-map unions them onto every journey spec).
+      # Naming the two real gating projects fixes all of it.
       - name: playwright (lean surface, shard ${{ matrix.shard }})
         working-directory: editor/apps/canvas
         env:
@@ -481,6 +506,8 @@ jobs:
           PAGED_CI_LEAN: "1"
         run: |
           npx playwright test \
+            --project=chromium \
+            --project=journeys \
             --shard=${{ matrix.shard }}/${{ env.SHARDS }} \
             --reporter=blob
 
@@ -553,12 +580,9 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      # merge-reports only needs apps/canvas's @playwright/test (a real
-      # npm dep), not the plugin link targets, so the editor checkout
-      # alone suffices here. Keep it under `editor/` for path parity with
-      # the playwright job. The apps/canvas `link:` deps resolve to
-      # absent siblings as dangling symlinks (pnpm install does not fail
-      # on that), and merge-reports never imports plugin code.
+      # merge-reports only needs apps/canvas's @playwright/test, so the
+      # editor checkout alone suffices here. Keep it under `editor/` for
+      # path parity with the playwright job.
       - name: checkout editor
         uses: actions/checkout@v4
         with:
@@ -596,15 +620,17 @@ jobs:
             > /dev/null
           test -s "${{ github.workspace }}/playwright-results.json"
 
-      # Evidence hand-off, INVERTED (2026-07-25). This step used to call
-      # paged-media/state/actions/publish-results@main, but that action lives in the
-      # PRIVATE paged-media/state repo, and GitHub refuses to resolve a private
-      # repo's action from a public workflow ("Unable to resolve action
-      # paged-media/state, not found") — so the job died at SET-UP, before any step
-      # ran, and this lane never published a single result. Follow the inverted
-      # pattern core/ci.yml and plugin-doc use: upload the results as an artifact
-      # and let state PULL it (private state can read a public repo's artifacts).
-      # Consumer: state/.github/workflows/siblings-pull.yml (source=editor,
+      # Evidence hand-off, INVERTED (2026-07-25, PR #16 on main; ported to
+      # this branch 2026-08-17). This step used to call
+      # paged-media/state/actions/publish-results@main, but that action lives
+      # in the PRIVATE paged-media/state repo, and GitHub refuses to resolve a
+      # private repo's action from a public workflow ("Unable to resolve
+      # action paged-media/state, not found") — so the job died at SET-UP,
+      # before any step ran, and this lane never published a single result.
+      # Follow the inverted pattern core/ci.yml and plugin-doc use: upload the
+      # results as an artifact and let state PULL it (private state can read a
+      # public repo's artifacts). Consumer:
+      # state/.github/workflows/siblings-pull.yml (source=editor,
       # suite=playwright-e2e, format=playwright-json).
       - name: upload playwright-e2e results artifact
         if: ${{ !cancelled() }}

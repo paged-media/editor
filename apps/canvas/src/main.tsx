@@ -36,18 +36,24 @@ import {
   snapLinesContribution,
   tableCellOverlayContribution,
   threadingPortsContribution,
+  loadDocumentFile,
+  fetchDefaultFont,
+  takePendingImportSource,
   useCamera,
   useCanvasClient,
   useContentSelection,
   useDocument,
   usePaged,
   useRegistries,
+  useSelection,
   useEditContextStack,
   SchemaPanelRenderer,
   CatalogRegistryProvider,
   type OverlayContribution,
+  type PagedEditor,
   type PanelContribution,
   type ShellSchemaPanelRendererProps,
+  writeToOpenFile,
 } from "@paged-media/shell";
 import "@paged-media/shell/styles/globals.css";
 
@@ -63,8 +69,20 @@ import { BUILT_IN_TOOLS } from "@paged-media/tools";
 import {
   loadBundle,
   createDataProviderRegistry,
+  createBindingProviderRegistry,
 } from "@paged-media/plugin-sdk";
 import type { SchemaPanelRenderer as SchemaPanelRendererType } from "@paged-media/plugin-api";
+import { errorIdent, identOf } from "@paged-media/client";
+import {
+  journal,
+  createHostConsole,
+  installGlobalErrorCapture,
+  exposeJournalForTests,
+  setJournalDrainer,
+  setDocumentShapeProvider,
+  notePluginLoaded,
+} from "./journal-sink";
+import { createGuardedLoader } from "./plugin-load-guard";
 import { drawBundle } from "@paged-media/draw";
 import { webBundle } from "@paged-media/web";
 import { dataBundle } from "@paged-media/data";
@@ -72,6 +90,7 @@ import { sheetBundle } from "@paged-media/sheet";
 import { imageBundle } from "@paged-media/image";
 import { publishBundle } from "@paged-media/publish";
 import { pdfBundle } from "@paged-media/pdf";
+import { docBundle } from "@paged-media/doc";
 import { createEditorAssetSource } from "./plugin-asset-source";
 import { createEditorBlobStore } from "./plugin-blob-store";
 import { createEditorClipboardBackend } from "./plugin-clipboard";
@@ -88,6 +107,7 @@ import { createEditorSecretStore } from "./plugin-secret-store";
 import { SecretPromptDialog } from "./SecretPromptDialog";
 import { createEditorNativeDocumentBackend } from "./plugin-native-document";
 import { pickFiles } from "./shell-file-picker";
+import { saveFileBytes } from "./shell-file-saver";
 
 // W3.1 — the schema-panel renderer the host injects. The shell renderer
 // walks a `PanelSchema` through the catalog's `CompositionRenderer`,
@@ -118,6 +138,33 @@ import {
   APP_MENU_ITEMS,
   buildAppCommands,
 } from "./app-commands";
+import {
+  arrangeSelection,
+  buildObjectCommands,
+  groupSelection,
+  OBJECT_DIAGNOSTIC_SOURCE,
+  OBJECT_KEYBINDINGS,
+  OBJECT_MENU_ITEMS,
+  selectParentGroup,
+  ungroupSelection,
+  type ObjectCommandDeps,
+} from "./object-commands";
+import {
+  addPage,
+  buildInsertCommands,
+  INSERT_DIAGNOSTIC_SOURCE,
+  INSERT_KEYBINDINGS,
+  INSERT_MENU_ITEMS,
+  insertEllipse,
+  insertLine,
+  insertRectangle,
+  insertTable,
+  insertTextFrame,
+  placeImage,
+  pageTargetFor,
+  type InsertReport,
+  deleteCurrentPage,
+} from "./insert-commands";
 import { COCKPIT_MODES, PANEL_RAIL } from "./cockpit-modes";
 import { COCKPIT_MENU_SEAMS } from "./cockpit-menus";
 import { appCatalogRegistry } from "./panels/catalog-registry";
@@ -162,6 +209,8 @@ import { PagesListPanel } from "./panels/pages-list-panel";
 import { SpreadsPanel } from "./panels/spreads-panel";
 import { TableStylesPanel } from "./panels/table-styles-panel";
 import { SwatchesPanel } from "./panels/swatches-panel";
+import { SchemaListDemoPanel } from "./panels/schema-list-demo-panel";
+import { SchemaTreeDemoPanel } from "./panels/schema-tree-demo-panel";
 import { TextFrameOptionsPanel } from "./panels/text-frame-options-panel";
 import { TextWrapPanel } from "./panels/text-wrap-panel";
 import { ParagraphPanel } from "./panels/paragraph-panel";
@@ -171,18 +220,21 @@ import { InspectorPanel } from "./panels/inspector-panel";
 import { LayersPanel } from "./panels/layers-panel";
 import { NavigatorPanel } from "./panels/navigator-panel";
 import { OutlinePanel } from "./panels/outline-panel";
+import { ActionsPanel } from "./panels/actions-panel";
 import { ReplPanel } from "./panels/repl-panel";
 import { ScriptEditorPanel } from "./panels/script-editor";
+import { KeyboardShortcutsPanel } from "./panels/keyboard-shortcuts-panel";
 import { ProblemsPanel } from "./panels/problems-panel";
+import { JournalPanel } from "./panels/journal-panel";
 import { problemsSink } from "./panels/problems-store";
 import { TreePanel } from "./panels/tree-panel";
 import { ExportCenterPanel } from "./panels/cockpit/export-center-panel";
 import { PreflightPanel } from "./panels/cockpit/preflight-panel";
 import { PublicationHealthPanel } from "./panels/cockpit/publication-health-panel";
+import { SeparationsPanel } from "./panels/cockpit/separations-panel";
 import {
   CommentsPanel,
   ComponentLibraryPanel,
-  DataMappingPanel,
 } from "./panels/cockpit/stub-panels";
 import { StoriesPanel } from "./panels/cockpit/stories-panel";
 import { DocumentMapPanel } from "./panels/cockpit/document-map-panel";
@@ -262,6 +314,14 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     icon: "ui-target",
   },
   {
+    id: "paged.separations",
+    title: "Separations",
+    component: SeparationsPanel,
+    defaultDock: "right",
+    defaultGroup: "cockpit",
+    icon: "ui-swatch-fill",
+  },
+  {
     id: "paged.publication-health",
     title: "Health",
     component: PublicationHealthPanel,
@@ -285,14 +345,9 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultGroup: "cockpit",
     icon: "ui-comment",
   },
-  {
-    id: "paged.data-mapping",
-    title: "Data",
-    component: DataMappingPanel,
-    defaultDock: "left",
-    defaultGroup: "cockpit",
-    icon: "ui-database",
-  },
+  // U8 — the old `paged.data-mapping` ComingSoon stub is retired: the
+  // LIVE paged.data bindings panel (media.paged.data.panel.bindings)
+  // superseded it and nothing referenced the stub's id.
   {
     id: "paged.component-library",
     title: "Library",
@@ -321,8 +376,11 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     icon: "ui-export",
   },
   {
+    // U8 — the LIVE paged.data plugin panels own the data surface;
+    // this built-in stays only as the honest data-suite seam, titled
+    // so it can't be mistaken for the live plugin panel.
     id: "paged.data-source",
-    title: "Data Source",
+    title: "Data suite (preview)",
     component: DataSourcePanel,
     defaultDock: "left",
     defaultGroup: "cockpit",
@@ -401,7 +459,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
   },
   {
     id: "paged.color-groups",
-    title: "Color Groups",
+    title: "Color groups",
     component: ColorGroupsPanel,
     defaultDock: "right",
     defaultGroup: "styles",
@@ -415,7 +473,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
   },
   {
     id: "paged.color-settings",
-    title: "Colour Settings",
+    title: "Color settings",
     component: ColorSettingsPanel,
     defaultDock: "right",
     defaultGroup: "styles",
@@ -460,7 +518,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
   // documentCollection accessor.
   {
     id: "paged.pages-list",
-    title: "Pages (list)",
+    title: "Pages list",
     component: PagesListPanel,
     defaultDock: "left",
     defaultGroup: "structure",
@@ -607,6 +665,35 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     id: "paged.swatches",
     title: "Swatches",
     component: SwatchesPanel,
+    defaultDock: "right",
+    defaultGroup: "styles",
+  },
+  {
+    // B-01/G3 (schema v1.1) — the list-widget + applyEntity CONSUMER
+    // PROOF: a schema-driven panel over the REAL swatches collection
+    // (row selection published back as a binding; Fill = applyEntity
+    // write, Stroke = command dispatch with the row id as payload).
+    // Rendered through the SAME SchemaPanelRenderer the bundle host
+    // injects. Driven by tests/e2e/schema-list-panel.spec.ts.
+    id: "paged.schema-list-demo",
+    devOnly: true,
+    title: "Swatch list (schema)",
+    component: SchemaListDemoPanel,
+    defaultDock: "right",
+    defaultGroup: "styles",
+  },
+  {
+    // Schema v1.2 — the TREE ROWS / DRAG-REORDER / INLINE RENAME
+    // consumer proof (ADR 023 phase B). Two declared lists: the real
+    // scene outline as a tree whose drag emits the engine's
+    // `reorderElement`, and the live `layers` collection whose rename
+    // and reorder go through commands (`layerSetName` / `layerMove`
+    // are dedicated ops, not property writes). NOT the Layers panel —
+    // phase C owns that. Driven by tests/e2e/schema-tree-panel.spec.ts.
+    id: "paged.schema-tree-demo",
+    devOnly: true,
+    title: "Structure (schema tree)",
+    component: SchemaTreeDemoPanel,
     defaultDock: "right",
     defaultGroup: "styles",
   },
@@ -762,6 +849,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
   },
   {
     id: "paged.repl",
+    devOnly: true,
     title: "REPL",
     component: ReplPanel,
     defaultDock: "bottom",
@@ -769,10 +857,30 @@ const BUILT_IN_PANELS: PanelContribution[] = [
   },
   {
     id: "paged.script-editor",
+    devOnly: true,
     title: "Script",
     component: ScriptEditorPanel,
     defaultDock: "bottom",
     defaultGroup: "console",
+  },
+  {
+    // Actions — record/replay a command sequence. Sits beside the REPL
+    // and the script editor because it is the third member of the
+    // automation family (Illustrator's "scripting / actions / plugins"
+    // row); the recorder itself lives in the shell, above the dock.
+    id: "paged.actions",
+    title: "Actions",
+    component: ActionsPanel,
+    defaultDock: "right",
+    defaultGroup: "console",
+    icon: "panel-actions",
+  },
+  {
+    id: "paged.keyboard-shortcuts",
+    title: "Keyboard shortcuts",
+    component: KeyboardShortcutsPanel,
+    defaultDock: "right",
+    defaultGroup: "workspace",
   },
   {
     // paged.web W-05 — the host problems panel: consumes
@@ -781,6 +889,17 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     id: "paged.problems",
     title: "Problems",
     component: ProblemsPanel,
+    defaultDock: "bottom",
+    defaultGroup: "console",
+  },
+  {
+    // ADR 025 — the journal: a LOCAL flight recorder. Sits beside Problems
+    // because they are the two halves of the same question and are read
+    // together: Problems is what is wrong with the DOCUMENT, the journal is
+    // what the PROGRAM did. Nothing here is ever transmitted.
+    id: "paged.journal",
+    title: "Journal",
+    component: JournalPanel,
     defaultDock: "bottom",
     defaultGroup: "console",
   },
@@ -899,6 +1018,32 @@ if (!import.meta.env.PROD) {
 // — a plugin never reads a secret back (the no-get trust line; the SDK surface
 // has no get). Module scope so the two stay in sync across StrictMode remounts.
 const editorSecrets = createEditorSecretStore();
+
+// ADR 023 phase C — THE binding-provider registry. ONE per app, module
+// scope, for the same two reasons `dataProviders` is shared: resolution
+// is CROSS-BUNDLE (a host panel asks "who resolves `layers` right now?"
+// without knowing which bundles exist), and the shell needs the SAME
+// instance the bundle hosts were built with.
+//
+// It is handed to TWO places and they must be the same object:
+//   · every `createBundleHost` call, as `bindingProviders` — that wires
+//     `contribute.bindingProvider` AND makes the SDK adapter wrap each
+//     edit context's own `onEnter`/`onExit`, which is where a provider's
+//     lifetime comes from (borrowed from the shell's context stack, so
+//     there is exactly one notion of "who is active");
+//   · `<PagedShell bindingProviders>`, so host panels can read it.
+const bindingProviders = createBindingProviderRegistry();
+if (!import.meta.env.PROD) {
+  // Test affordance (the `__shellDoors` / `__consent` pattern): an e2e
+  // spec can observe the ACTIVE provider stack — the thing the retarget
+  // proof is actually about — without a bundle of its own.
+  (globalThis as unknown as { __bindingProviders?: unknown }).__bindingProviders =
+    {
+      active: () => bindingProviders.activeProviders(),
+      readCollection: (collection: string) =>
+        bindingProviders.readCollection({ collection: collection as never }),
+    };
+}
 if (!import.meta.env.PROD) {
   // Test affordance: drive a synthetic set prompt + observe/resolve it, and
   // flip the persistence tier by setting a passphrase, without a
@@ -918,6 +1063,18 @@ function PluginBundles() {
   const paged = usePaged();
   const pagedRef = useRef(paged);
   pagedRef.current = paged;
+  // Test affordance (like `__consent`/`__secrets`) — the aggregate
+  // PagedEditor handle, i.e. the object the plugin-sdk host reads via
+  // `getEditor()`. E2E specs probe the members capability flags gate
+  // on (`text` → text.measure@1, `sceneLayers` → rendering.sceneLayer@1).
+  (globalThis as unknown as { __paged?: unknown }).__paged = paged;
+  // The document context (setHandle + snapshot sinks) so a plugin importer that
+  // opens a NEW document via host.nativeDocument.open activates it in the view,
+  // exactly like File▸Open. Held in a ref — the mount-once effect below reads
+  // the live setters (useState setters are stable across renders).
+  const doc = useDocument();
+  const docRef = useRef(doc);
+  docRef.current = doc;
   useEffect(() => {
     // Shell actions the host APP owns (the cockpit's panel
     // placement) — injected so the SDK's adapter stays a pure
@@ -931,6 +1088,20 @@ function PluginBundles() {
         accept?: readonly string[];
         multiple?: boolean;
       }) => pickFiles(options),
+      // K-10: the WRITE half of the file door — a bundle hands bytes +
+      // a suggested name and the host delivers them through the same
+      // anchor-download the Export Center uses for plugin exporters
+      // (shell-file-saver.ts owns that mechanism now). Answers false
+      // rather than throwing when delivery fails. Flips
+      // supports("shell.saveFile@1") true once the pinned plugin-sdk
+      // knows the member; until that canary bump it rides along inert
+      // (the SDK's shell wrapper simply never calls it), exactly like
+      // `textCaret` did.
+      saveFile: (options: {
+        suggestedName: string;
+        bytes: Uint8Array;
+        mimeType?: string;
+      }) => saveFileBytes(options),
     };
     // W-04: the host owns the code-editor widget (one editor across
     // every scripting-adjacent plugin). W-05: diagnostics fan out to
@@ -958,6 +1129,35 @@ function PluginBundles() {
     // lands a real grid. Flips supports("clipboard@1") true; the SDK door owns
     // the "full"/"vector"/"none" capability tiers.
     const clipboard = createEditorClipboardBackend();
+    // C-9: the caret reader behind host.text.caret() — lets a
+    // text-inserting bundle (paged.data first-insert placement) target
+    // the user's insertion point instead of story start. The caret lives
+    // in EDITOR state, not the engine: this reads the LIVE
+    // content-selection ref (the same state useTextEditing writes), so
+    // the value tracks typing/clicks without re-render lag. The answered
+    // offset is the engine text-op convention (`ContentSelection`
+    // story-local offsets — exactly what `insertText.offset` consumes).
+    // Collapsed caret → its offset; RANGE → its start (where a replace
+    // inserts); cell-qualified (table cell) → null — cell-local offsets
+    // must not leak as story-local (the documented v1 gap). Flips
+    // supports("text.caret@1") true once the pinned plugin-sdk knows the
+    // `textCaret` option; until that canary bump the option rides along
+    // inert (loadBundle ignores unknown options).
+    const textCaret = {
+      read: (): { storyId: string; offset: number } | null => {
+        const sel =
+          pagedRef.current?.contentSelection.contentSelectionRef.current ??
+          null;
+        if (!sel || sel.cell) return null;
+        return { storyId: sel.storyId, offset: sel.start };
+      },
+    };
+    if (!import.meta.env.PROD) {
+      // Test affordance (like `__consent`/`__secrets`): e2e asserts the
+      // injected reader's shape without needing a caret-consuming bundle.
+      (globalThis as unknown as { __textCaret?: unknown }).__textCaret =
+        textCaret;
+    }
     // K-3 / S-07 / I-02: the worker backend behind host.workers — lets a
     // bundle (paged.image's decode pool) spawn an off-main-thread worker.
     // The SDK door owns the capability gate, the count cap, the SAB byte
@@ -1002,48 +1202,127 @@ function PluginBundles() {
     // flips supports("document.readNative@1"/"…openNative@1") true; the SDK
     // door owns the readNative/openNative capability gates. Absent it the
     // door answers honest null/[]/reject.
+    // The full document-open orchestration (loadDocumentFile: load with the
+    // default font, setHandle, snapshot) — the SAME flow File▸Open runs — so an
+    // importer-opened native document actually renders. Mirrors PagedShell's
+    // own drop handler; status/warnings go to the plugin's own log, so they no-op.
+    const openBytes = async (bytes: Uint8Array, name: string) => {
+      const client = pagedRef.current?.client;
+      if (!client) return;
+      const d = docRef.current;
+      // U14 — `nativeDocument.open(bytes)` carries no file name, so the
+      // backend hands a generic one ("Imported document"); the shell
+      // parked the REAL picked/dropped file name when it dispatched the
+      // import. Single-shot take: only an importer that actually opens
+      // consumes it.
+      const sourceFileName = takePendingImportSource() ?? name;
+      // Copy into a fresh (non-shared) ArrayBuffer — the plugin bytes may be
+      // SharedArrayBuffer-backed, which isn't a valid BlobPart.
+      const ab = new ArrayBuffer(bytes.byteLength);
+      new Uint8Array(ab).set(bytes);
+      await loadDocumentFile(client, new File([ab], sourceFileName), {
+        setHandle: d.setHandle,
+        setSourceName: d.setSourceName,
+        setLoading: d.setLoading,
+        setStatus: () => {},
+        setSnapshotsReady: d.setSnapshotsReady,
+        addSnapshot: (pageId, url) =>
+          d.setSnapshots((prev) => {
+            const next = new Map(prev);
+            next.set(pageId, url);
+            return next;
+          }),
+        resetForNewDocument: d.resetForNewDocument,
+        pushWarning: () => {},
+      });
+    };
     const nativeDocument = createEditorNativeDocumentBackend(
       () => pagedRef.current?.client ?? null,
+      openBytes,
     );
-    const hostOptions = {
+    const sharedHostOptions = {
       shell,
       widgets,
       assetSource,
       blobStore,
       clipboard,
+      textCaret,
       workers,
       dataProviders,
+      // ADR 023 phase A/C — see the module-scope registry above.
+      bindingProviders,
       consent,
       secrets,
       nativeDocument,
       diagnosticsSink: problemsSink,
       schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
     };
+    // ADR 025 §4a — identical doors for every bundle, but a PER-PLUGIN
+    // console so `host.log` is attributed at the source rather than parsed
+    // back out of the `[id]` prefix the SDK prints. The sink censuses
+    // (severity + a site hash), never mirrors, the text.
+    const hostOptionsFor = (pluginId: string) => ({
+      ...sharedHostOptions,
+      console: createHostConsole(pluginId),
+    });
+    // One bundle's activation failure must not take the seven after it down.
+    // The guard lives in `plugin-load-guard.ts` so its FAILURE path is
+    // unit-testable without a browser.
+    const loadGuarded = createGuardedLoader({
+      load: (bundle: Parameters<typeof loadBundle>[1]) =>
+        loadBundle(
+          () => pagedRef.current,
+          bundle,
+          hostOptionsFor(bundle.manifest.id),
+        ),
+      record: (entry) => journal.record(entry),
+      notePlugin: notePluginLoaded,
+      publishProblem: (bundleId, key, diagnostics) =>
+        problemsSink.publish(bundleId, key, diagnostics),
+    });
+    // Test affordance (the `__overlaySignals` pattern): the shell doors the
+    // host app injects, reachable so an E2E spec can drive them as a bundle
+    // would. K-10's saveFile is only reachable this way until the pinned
+    // plugin-sdk canary knows the member. Dev-only — stripped in PROD.
+    const isProd =
+      (import.meta as unknown as { env?: { PROD?: boolean } }).env?.PROD ===
+      true;
+    if (!isProd) {
+      (globalThis as unknown as { __shellDoors?: unknown }).__shellDoors =
+        shell;
+    }
     const loaded = [
-      loadBundle(() => pagedRef.current, drawBundle, hostOptions),
-      loadBundle(() => pagedRef.current, webBundle, hostOptions),
+      loadGuarded(drawBundle),
+      loadGuarded(webBundle),
       // paged.data (the §7.1 PROVIDER — publishes a governed query) + paged.sheet
       // (the future consumer, S-15). Both rendezvous through `dataProviders`
       // above. Engines boot lazily, so loading them is cheap; a missing engine /
       // DuckDB degrades honestly in-panel (never crashes the app).
-      loadBundle(() => pagedRef.current, dataBundle, hostOptions),
-      loadBundle(() => pagedRef.current, sheetBundle, hostOptions),
+      loadGuarded(dataBundle),
+      loadGuarded(sheetBundle),
       // paged.image (M4 ingest slice): C-5 placed bytes → engine-wasm
       // decode → GPU adjustments → C-1 Stage-A in-frame composite. The
       // engine wasm boots lazily on first ingest (the GPU device lives
       // in the bundle realm — I-07); a missing artifact / no WebGPU
       // degrades honestly in-panel.
-      loadBundle(() => pagedRef.current, imageBundle, hostOptions),
+      loadGuarded(imageBundle),
       // ADR-022 Phase 4/5 — paged.publish: the IDML importer (routes .idml to
       // host.nativeDocument.open) + exporter (reuses the engine serializer).
       // Replaces the Export Center's built-in static IDML target.
-      loadBundle(() => pagedRef.current, publishBundle, hostOptions),
+      loadGuarded(publishBundle),
       // paged.pdf — Phase 0: opens a .pdf as full-page image frames (pdf.js
       // raster -> inline-image IDML -> host.nativeDocument.open).
-      loadBundle(() => pagedRef.current, pdfBundle, hostOptions),
-    ];
+      loadGuarded(pdfBundle),
+      // paged.doc — Word/DOCX: .docx/.dotx importer + "Place Word document…"
+      // places lowered native stories into the OPEN document (no destructive
+      // open; the docx→native standalone producer is deferred). Save-back
+      // export needs the v54/v55 doors — degrades to verbatim on older hosts.
+      loadGuarded(docBundle),
+    ].filter((l): l is NonNullable<typeof l> => l !== null);
     return () => {
       for (const l of loaded) l.dispose();
+      delete (globalThis as unknown as { __shellDoors?: unknown })
+        .__shellDoors;
     };
     // Mount-once by design; the ref keeps the handle live.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1057,12 +1336,94 @@ function PluginBundles() {
  * specifics (page rect math, IDML mutation API). Renders nothing —
  * mounted inside PagedShell as a side-effect-only child.
  */
+/** File-command failures the user must see.
+ *
+ *  Save and export both end in a browser download, so "nothing happened"
+ *  is indistinguishable from "it went to your Downloads folder" — and
+ *  there is no autosave behind either. A console.error is invisible to
+ *  the person who just lost the save. Routes to the same Problems
+ *  channel the insert refusals use, and keeps the console line for a
+ *  developer reading a trace. */
+const FILE_DIAGNOSTIC_SOURCE = "paged.file";
+function reportFileFailure(what: string, err: unknown): void {
+  const message = err instanceof Error ? err.message : String(err);
+  problemsSink.publish(FILE_DIAGNOSTIC_SOURCE, "file", [
+    { severity: "error", message: `${what} failed — ${message}`, source: "file" },
+  ]);
+  // eslint-disable-next-line no-console
+  console.error(`${what} failed:`, err);
+}
+
 function CanvasAppIntegration() {
   const client = useCanvasClient();
   const { camera, setCamera, viewportSize } = useCamera();
-  const { handle } = useDocument();
+  const { handle, sourceName } = useDocument();
   const { contentSelection, setContentSelection } = useContentSelection();
   const registries = useRegistries();
+  // ADR 025 — THE COMMAND TAP. `commands.observe` is the one place a command
+  // handler is ever called, so this single subscription sees every menu item,
+  // keybinding, palette entry, tool activation, panel toggle and plugin
+  // command — including ones registered after we subscribed.
+  //
+  // What it CANNOT see is not a mystery: `shell/src/actions/model.ts` already
+  // enumerates it (canvas gestures over the SAB, typing, panel field edits,
+  // selection, camera), and the journal DECLARES the same gaps in
+  // KNOWN_BLIND_SPOTS rather than letting silence read as calm.
+  useEffect(() => {
+    const startedAt = new Map<number, number>();
+    const off = registries.commands.observe((event) => {
+      if (event.phase === "started") {
+        startedAt.set(event.invocation.seq, performance.now());
+        return;
+      }
+      const t0 = startedAt.get(event.invocation.seq);
+      startedAt.delete(event.invocation.seq);
+      journal.record({
+        code: "shell.command",
+        severity: event.error ? "error" : "info",
+        corr: event.invocation.seq,
+        durMs: t0 === undefined ? undefined : performance.now() - t0,
+        data: {
+          // Command ids are code-authored constants, but many are camelCase —
+          // `identOf` normalises rather than widening the identifier rule
+          // (which would start admitting font families).
+          id: identOf(event.invocation.id) ?? "unknown",
+          ok: !event.error,
+          ...(event.error ? { error: errorIdent(event.error) } : {}),
+        },
+      });
+    });
+    return () => off.dispose();
+  }, [registries]);
+  // ADR 025 — hand the sink a way to drain the render worker's ring. The
+  // worker keeps its OWN buffer (different realm); it is pulled on demand
+  // rather than streamed, so the render loop pays one array push instead of
+  // a structured clone per frame.
+  useEffect(() => {
+    setJournalDrainer(() => client.drainJournal());
+    return () => setJournalDrainer(null);
+  }, [client]);
+  // ADR 025 — the opt-in `documentShape` export section. The engine's
+  // `DocumentStats` is already pure counts, so this carries structure and no
+  // content. A PROVIDER, not a snapshot: the dialog must show the document
+  // open at EXPORT time, not whatever was open when the panel mounted.
+  useEffect(() => {
+    setDocumentShapeProvider(() => {
+      const stats = handle?.stats;
+      if (!stats) return undefined;
+      return {
+        spreads: stats.spreads,
+        pages: stats.pages,
+        frames: stats.frames,
+        stories: stats.stories,
+        paragraphs: stats.paragraphs,
+        lines: stats.lines,
+        glyphs: stats.glyphs,
+        oversetStories: stats.overset_stories,
+      };
+    });
+    return () => setDocumentShapeProvider(null);
+  }, [handle]);
   // ADR-012 Tier 1 — the MENU path of the undo routing (the controller
   // owns the keyboard chords): while a modal context declares undo
   // ownership, Edit/Undo + Edit/Redo drive ITS op-log, not the document
@@ -1071,6 +1432,12 @@ function CanvasAppIntegration() {
   const editContextStack = useEditContextStack();
   const editContextRef = useRef(editContextStack);
   editContextRef.current = editContextStack;
+  // `paged.object.*` reads the LIVE element selection. Through a ref
+  // for the same reason the edit-context stack is: the command effect
+  // must not re-register on every click.
+  const selection = useSelection();
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
 
   const animateCamera = useAnimatedCamera(camera, setCamera);
   useKeyboardShortcuts({
@@ -1087,6 +1454,27 @@ function CanvasAppIntegration() {
   });
   usePathEditMode();
 
+  // Tell the client which page the user is on, so plugins can ask.
+  //
+  // `host.document.meta().activePage` is how every first-party bundle
+  // picks the page it mints into — paged.web, paged.data, paged.doc,
+  // paged.draw and paged.sheet all read it and fall back to `pages[0]`.
+  // The ENGINE always answers null (it does not track application
+  // state and says so), and nothing here folded the answer back in, so
+  // that fallback was the only branch: on a multi-page document every
+  // plugin dropped its work onto page 1 regardless of where the user
+  // was looking. `MoveNode`'s reparenting is deliberately off the wire,
+  // so it could not even be corrected afterwards.
+  //
+  // The page is the one `paged.insert.*` already targets — viewport
+  // centre, then the containing page, then the nearest — so the host's
+  // own insert verbs and a plugin's insert now agree about "here",
+  // which is the property that was actually missing.
+  useEffect(() => {
+    const target = pageTargetFor({ handle, camera, viewportSize });
+    client.setActivePage(target?.pageId ?? null);
+  }, [client, handle, camera, viewportSize]);
+
   // Cockpit — the thumbnail filmstrip / document map navigate by
   // page indices; the camera-fit math (page layout convention) is
   // app-side, registered with the shell's navigation hand-off.
@@ -1095,10 +1483,16 @@ function CanvasAppIntegration() {
       const pageSizes = handle?.pageSizesPt ?? [];
       if (pageSizes.length === 0 || pageIndices.length === 0) return;
       const rects = layoutPages(pageSizes);
-      const targets = pageIndices.map((i) => rects[i]).filter((r) => r != null);
-      if (targets.length === 0) return;
+      // `layoutPages` stacks ALL pages vertically (spreads are not
+      // side-by-side), so fitting the union rect of a multi-page
+      // spread lands the camera on the inter-page GAP. Fit the
+      // spread's FIRST page instead; a spread-aware `layoutPages`
+      // (pages of one spread side by side) is the structural fix
+      // (follow-up).
+      const target = rects[pageIndices[0]];
+      if (!target) return;
       const [vw, vh] = viewportSize;
-      animateCamera(fitCamera(vw, vh, documentBounds(targets)));
+      animateCamera(fitCamera(vw, vh, target));
     });
     return () => setCockpitPageNavigator(null);
   }, [animateCamera, handle, viewportSize]);
@@ -1130,6 +1524,21 @@ function CanvasAppIntegration() {
         }
         void client.redo();
       },
+      // File ▸ Open PDF… — pick a `.pdf` and route it to the paged.pdf
+      // importer (pdf.js reconstruction → host.nativeDocument.open). The
+      // menu-driven counterpart to drag-drop; resolves the importer by the
+      // file's extension, so it degrades quietly if the plugin isn't loaded.
+      openPdf: async () => {
+        const [file] = await pickFiles({ accept: [".pdf", "application/pdf"] });
+        if (!file) return;
+        const importer = registries.importers.resolve(file.name);
+        if (!importer) return;
+        await importer.import({
+          name: file.name,
+          bytes: file.bytes,
+          mimeType: "application/pdf",
+        });
+      },
       // W3.B2 — Save As IDML: serialise the loaded document to an
       // `.idml` package and trigger a browser download (mirrors the
       // PDF export's Blob → object-URL → anchor-click pattern). The
@@ -1139,12 +1548,14 @@ function CanvasAppIntegration() {
         if (!handle || handle.pageCount === 0) return;
         try {
           const bytes = await client.exportIdml();
-          let baseName = "document";
+          // U14 — same identity preference as the doc title bar:
+          // meta.documentName, else the loaded file's name.
+          let baseName = sourceName || "document";
           try {
             const meta = await client.documentMeta();
             if (meta.documentName) baseName = meta.documentName;
           } catch {
-            /* meta unavailable — keep the default name */
+            /* meta unavailable — keep the fallback name */
           }
           const blob = new Blob([bytes.slice()], {
             type: "application/vnd.adobe.indesign-idml-package",
@@ -1156,8 +1567,53 @@ function CanvasAppIntegration() {
           a.click();
           URL.revokeObjectURL(url);
         } catch (err) {
-          // eslint-disable-next-line no-console
-          console.error("Save As IDML failed:", err);
+          reportFileFailure("Save As IDML", err);
+        }
+      },
+      // Save (.paged) — the native container. Same download shape as
+      // Save As IDML, and deliberately so: the bytes ARE an IDML
+      // package, with `manifest.json`, `paged/core/model/document.pgm`
+      // and the loaded bundles' `paged/<plugin>/…` parts appended. The
+      // difference that matters to a user is what survives a reopen —
+      // a sheet's workbook, a web frame's source, a Word file's
+      // original OPC — none of which an IDML export can carry.
+      savePaged: async () => {
+        if (!handle || handle.pageCount === 0) return;
+        try {
+          const bytes = await client.exportPaged();
+          let baseName = sourceName || "document";
+          try {
+            const meta = await client.documentMeta();
+            if (meta.documentName) baseName = meta.documentName;
+          } catch {
+            /* meta unavailable — keep the fallback name */
+          }
+          // A5 — write BACK to the file the document was opened from,
+          // when there is one. Until now every save minted a download,
+          // so a second Cmd+S produced "document (1).paged" and the file
+          // the user opened was never touched: a save-AS wearing the
+          // word Save, with no autosave behind it.
+          //
+          // Falls back to the download whenever the write cannot happen
+          // — no handle, no platform support, a declined permission
+          // prompt, a moved file.  returns false rather
+          // than throwing for exactly that reason: a save that did not
+          // happen must not look like one that did.
+          if (await writeToOpenFile(bytes, "application/x-paged+zip")) return;
+          const blob = new Blob([bytes.slice()], {
+            type: "application/x-paged+zip",
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${baseName.replace(/\.(paged|idml)$/i, "")}.paged`;
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          // A failed save that reaches only the devtools console is a
+          // failed save the user believes succeeded — and with no
+          // autosave behind it, believing wrongly is how work is lost.
+          reportFileFailure("Save (.paged)", err);
         }
       },
       zoomIn: () => {
@@ -1196,19 +1652,97 @@ function CanvasAppIntegration() {
         animateCamera(fitCamera(vw, vh, documentBounds(rects)));
       },
     });
-    const cmdDisposables = commands.map((c) => registries.commands.register(c));
-    const menuDisposables = [...APP_MENU_ITEMS, ...COCKPIT_MENU_SEAMS].map(
-      (m) => registries.menus.register(m),
-    );
-    const keyDisposables = APP_KEYBINDINGS.map((k) =>
-      registries.keybindings.register(k),
-    );
+    // `paged.object.*` — the structural verbs (Arrange ×4, Group,
+    // Ungroup, Select parent group). The deps bag is the ONLY place the
+    // module touches the app: the live selection through the ref, the
+    // worker-first selection write the overlays key on, and a report
+    // channel that lands in the Problems panel rather than the console.
+    const objectDeps: ObjectCommandDeps = {
+      client,
+      getSelection: () => selectionRef.current.elementSelection,
+      // ADR 024 — read through the SAME ref the undo routing uses, so
+      // the two cannot disagree about which context is active.
+      activeEditContext: () => editContextRef.current.active,
+      setSelection: async (ids) => {
+        const applied = await client.setElementSelection(ids, "replace");
+        selectionRef.current.setElementSelection(applied);
+        try {
+          selectionRef.current.setElementGeometry(
+            await client.elementGeometry(applied),
+          );
+        } catch {
+          /* geometry is selection CHROME — its absence never blocks the edit. */
+        }
+      },
+      report: (severity, message) =>
+        problemsSink.publish(OBJECT_DIAGNOSTIC_SOURCE, "object", [
+          { severity, message, source: "object" },
+        ]),
+    };
+    // Every object verb starts from a clean slate, so the panel shows
+    // the LAST invocation's outcome and never a stale one.
+    const fresh = (run: () => Promise<void>) => async () => {
+      problemsSink.clear(OBJECT_DIAGNOSTIC_SOURCE);
+      await run();
+    };
+    const objectCommands = buildObjectCommands({
+      bringToFront: fresh(() => arrangeSelection(objectDeps, "front")),
+      bringForward: fresh(() => arrangeSelection(objectDeps, "forward")),
+      sendBackward: fresh(() => arrangeSelection(objectDeps, "backward")),
+      sendToBack: fresh(() => arrangeSelection(objectDeps, "back")),
+      group: fresh(() => groupSelection(objectDeps)),
+      ungroup: fresh(() => ungroupSelection(objectDeps)),
+      selectParentGroup: fresh(() => selectParentGroup(objectDeps)),
+    });
+    // `paged.insert.*` — the object-authoring verbs (U7). Unlike the
+    // object layer's deps bag, every runner reads its state (camera,
+    // page layout, caret, edit context) off the LIVE `PagedEditor` the
+    // command registry materialises at invoke time — nothing here is
+    // captured, so the effect's re-run cadence cannot stale a
+    // placement. Same Problems-panel report channel + clean-slate
+    // discipline as `paged.object.*`.
+    const insertReport: InsertReport = (severity, message) =>
+      problemsSink.publish(INSERT_DIAGNOSTIC_SOURCE, "insert", [
+        { severity, message, source: "insert" },
+      ]);
+    const freshInsert =
+      (run: (paged: PagedEditor) => Promise<unknown>) =>
+      async (paged: PagedEditor) => {
+        problemsSink.clear(INSERT_DIAGNOSTIC_SOURCE);
+        return run(paged);
+      };
+    const insertCommands = buildInsertCommands({
+      deletePage: freshInsert((p) => deleteCurrentPage(p, insertReport)),
+      textFrame: freshInsert((p) => insertTextFrame(p, insertReport)),
+      rectangle: freshInsert((p) => insertRectangle(p, insertReport)),
+      ellipse: freshInsert((p) => insertEllipse(p, insertReport)),
+      line: freshInsert((p) => insertLine(p, insertReport)),
+      table: freshInsert((p) => insertTable(p, insertReport)),
+      placeImage: freshInsert((p) => placeImage(p, insertReport)),
+      newPage: freshInsert((p) => addPage(p, insertReport)),
+    });
+    const cmdDisposables = [
+      ...commands,
+      ...objectCommands,
+      ...insertCommands,
+    ].map((c) => registries.commands.register(c));
+    const menuDisposables = [
+      ...APP_MENU_ITEMS,
+      ...OBJECT_MENU_ITEMS,
+      ...INSERT_MENU_ITEMS,
+      ...COCKPIT_MENU_SEAMS,
+    ].map((m) => registries.menus.register(m));
+    const keyDisposables = [
+      ...APP_KEYBINDINGS,
+      ...OBJECT_KEYBINDINGS,
+      ...INSERT_KEYBINDINGS,
+    ].map((k) => registries.keybindings.register(k));
     return () => {
       for (const d of cmdDisposables) d.dispose();
       for (const d of menuDisposables) d.dispose();
       for (const d of keyDisposables) d.dispose();
     };
-  }, [registries, client, camera, viewportSize, handle, animateCamera]);
+  }, [registries, client, camera, viewportSize, handle, sourceName, animateCamera]);
 
   return null;
 }
@@ -1228,6 +1762,28 @@ function CanvasAppRoot() {
     // the package boundary (the D6/E8 prod-dist bug).
     const c = new CanvasClient({
       workerFactory: () => new CanvasRenderWorker(),
+      // U5/A7 — the default-font invariant. Any document load that
+      // reaches the client WITHOUT explicit font bytes (the plugin
+      // native-document fallback, a direct `client.loadDocument` from
+      // scripts/tests) still gets the editor's Inter, so text set in
+      // fonts the document doesn't resolve renders through the default
+      // instead of silently disappearing. The shell's own loaders pass
+      // Inter explicitly and never hit this. Failure is LOUD: an
+      // unfetchable default font is exactly the "blank text" precondition.
+      defaultFontProvider: async () => {
+        const bytes = await fetchDefaultFont();
+        if (!bytes) {
+          problemsSink.publish("paged.editor", "default-font", [
+            {
+              severity: "warning",
+              message:
+                "default font unavailable — text in documents with missing fonts will not render",
+              source: "fonts",
+            },
+          ]);
+        }
+        return bytes;
+      },
     });
     setClient(c);
     return () => {
@@ -1260,6 +1816,7 @@ function CanvasAppRoot() {
       panelRail={PANEL_RAIL}
       canvasComponent={CanvasPanel}
       headerExtras={<CorpusPicker />}
+      bindingProviders={bindingProviders}
     >
       <CanvasAppIntegration />
       <PluginBundles />
@@ -1281,6 +1838,17 @@ function CanvasAppRoot() {
 // worker's SharedArrayBuffer needs — otherwise the app dies deep in the worker
 // with an opaque SecurityError far from the real cause (W0.17).
 assertCrossOriginIsolated();
+
+// ADR 025 — the journal's global net. The editor had exactly ONE React error
+// boundary (at the shell root) and NO window.onerror / unhandledrejection
+// handler at all, so any throw outside a React render was invisible: nothing
+// to attribute it to, nothing to put in a bug report. Installed before render
+// so a crash DURING the first render is caught.
+installGlobalErrorCapture();
+if (!import.meta.env.PROD) {
+  // Test affordance, same shape as `__overlaySignals` / `__pagedCrash`.
+  exposeJournalForTests();
+}
 
 const root = document.getElementById("root");
 if (!root) {

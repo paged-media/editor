@@ -7,14 +7,15 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./sab/*": "./src/sab/*.ts"
+    "./sab/*": "./src/sab/*.ts",
+    "./journal": "./src/journal/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint src"
   },
   "dependencies": {
-    "@paged-media/canvas-wasm": "0.51.0"
+    "@paged-media/canvas-wasm": "0.62.0"
   },
   "devDependencies": {
     "typescript": "^5.6.3"

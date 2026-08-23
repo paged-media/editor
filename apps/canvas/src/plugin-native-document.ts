@@ -57,6 +57,14 @@ const CORE_PARTS_PREFIX = "paged/core/";
  */
 export function createEditorNativeDocumentBackend(
   getClient: () => CanvasClient | null,
+  // Full-document open orchestration (loadDocumentFile-equivalent: load with
+  // the default font, then setHandle + snapshot). Injected so an importer that
+  // OPENS a new document (paged.publish's .idml, paged.pdf's .pdf) actually
+  // ACTIVATES it in the view. Without it, a bare `client.loadDocument` loads
+  // the worker model but leaves the app's document handle null — the canvas +
+  // document-map gate on `handle.pageCount`, so nothing renders. Optional: the
+  // backend still works (worker-only) in isolation / tests when it's absent.
+  openBytes?: (bytes: Uint8Array, name: string) => Promise<void>,
 ): NativeDocumentBackend {
   async function readPart(path: string): Promise<Uint8Array | null> {
     const client = getClient();
@@ -97,6 +105,17 @@ export function createEditorNativeDocumentBackend(
       const client = getClient();
       if (!client)
         throw new Error("no engine client to load the document into");
+      // Prefer the full shell orchestration so the opened document activates
+      // in the view (setHandle + snapshot + default font). Fall back to the
+      // bare worker load when no orchestration is injected — that call
+      // passes no font bytes, and the default face now arrives through the
+      // client's `defaultFontProvider` (U5/A7), so text in fonts the
+      // imported document cannot resolve still renders instead of
+      // silently disappearing.
+      if (openBytes) {
+        await openBytes(bytes, "Imported document");
+        return;
+      }
       await client.loadDocument(bytes);
     },
   };

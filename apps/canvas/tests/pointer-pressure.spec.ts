@@ -54,7 +54,7 @@ import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry-groups.idml`;
 
 test.describe("B-08 — pointer pressure/tilt plumbing", () => {
   test("a real DOM PointerEvent exposes the pressure/tilt/pointerType fields ViewportCanvas reads @feat:editor-tools.gesture-lifecycle @feat:frames-paths.stroke-variable-width @level:happy", async ({

@@ -235,7 +235,26 @@ test.describe("E2E edit-context (W3.2 — B-02 + W-03)", () => {
       breadcrumb.locator('[data-edit-context-crumb="vectorGraphic"]'),
     ).toHaveText(/Vector graphic/);
 
-    // Esc pops one level → back to the default surface (breadcrumb gone).
+    // Tool-set restriction (the K-1 residual, now enforced): the context
+    // declares its anchor tools, so a NON-context rail tool dims…
+    const selectSlot = page.locator(
+      '[data-tool-rail="ready"] [data-tool="paged.tool.select"]',
+    );
+    await expect(selectSlot).toHaveAttribute("data-context-dimmed", "true");
+    // …while a context tool does not.
+    await expect(
+      page.locator(
+        '[data-tool-rail="ready"] [data-tool="media.paged.draw.tool.addAnchor"]',
+      ),
+    ).not.toHaveAttribute("data-context-dimmed", "true");
+    // Picking a dimmed tool is an EXIT, not a trap: it commits the
+    // context and activates the tool.
+    await selectSlot.click();
+    await expect(breadcrumb).toHaveCount(0, { timeout: 5_000 });
+
+    // Re-enter, then Esc pops one level → back to the default surface.
+    await page.mouse.dblclick(at!.x, at!.y);
+    await expect(breadcrumb).toBeVisible({ timeout: 5_000 });
     await page.keyboard.press("Escape");
     await expect(breadcrumb).toHaveCount(0, { timeout: 5_000 });
   });
@@ -283,5 +302,41 @@ test.describe("E2E edit-context (W3.2 — B-02 + W-03)", () => {
         '[data-edit-context-breadcrumb] [data-edit-context-crumb="webFrame"]',
       ),
     ).toBeVisible({ timeout: 5_000 });
+  });
+
+  test("AC-EDITCTX-3 — SELECTING a classified object surfaces its owner in the properties panel", async ({
+    page,
+  }) => {
+    // Insert a webFrame — it is selected on insert (no double-click, no
+    // context entry: this is the SELECTION-time object-type branch).
+    await invokeCommand(page, INSERT_COMMAND);
+    await expect
+      .poll(() => selectedElement(page), { timeout: 5_000 })
+      .not.toBeNull();
+
+    // Raise the properties panel and let the async classification land:
+    // the inspector shows the OWNING BUNDLE — the object-type section
+    // inline-hosts the web source panel, and the header reads the
+    // humanized type instead of the generic "Frame".
+    await page.evaluate(async () => {
+      await (
+        globalThis as unknown as {
+          __canvas: {
+            registries: {
+              commands: { invoke: (id: string) => Promise<unknown> };
+            };
+          };
+        }
+      ).__canvas.registries.commands.invoke(
+        "paged.panel.show.paged.properties",
+      );
+    });
+    const section = page.locator(
+      '[data-properties-section="object-type"][data-object-type="webFrame"]',
+    );
+    await expect(section).toBeVisible({ timeout: 5_000 });
+    await expect(
+      page.locator('[data-properties-panel][data-inspector-kind="frame"]'),
+    ).toBeVisible();
   });
 });

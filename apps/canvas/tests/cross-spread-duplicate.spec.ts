@@ -41,8 +41,9 @@
 // the duplicate's `pageId` — same as source's = AC-K-1, different
 // = AC-K-2.
 //
-// Fixture: `corpus/generated/geometry.idml` (40 spreads, one page
-// each, so consecutive pageIds belong to different spreads).
+// Fixture: `corpus/idml/generated/layout.idml` (6 single-page spreads;
+// the last two carry non-identity spread ItemTransforms, so their
+// pages occupy distinct world-space rects — see the FIXTURE note).
 
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -54,13 +55,32 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
-// Real InDesign-exported pack with distinct per-spread
-// item_transforms. The `corpus/generated/*.idml` fixtures all use
-// identity spread transforms (every spread overlaps at world (0,0)),
-// which would make the cross-spread routing untestable through the
-// gesture spine's world-pointer reconstruction.
-const FIXTURE = `${REPO_ROOT}/corpus/envato/packs/brand-guidelines/template.idml`;
-const FIXTURE_PACK = "brand-guidelines";
+// License-clear generated fixture (runs in lean CI). Most generated
+// fixtures use identity spread transforms (every spread overlaps at
+// world (0,0)), which would make cross-spread routing untestable
+// through the gesture spine's world-pointer reconstruction — but
+// `layout.idml`'s two spread-transform variant spreads have real
+// translation origins, giving them distinct world rects:
+//
+//   spreads 1–4  identity        → pages at world x 0..595.276,
+//                                  y 0..841.89 (overlapping)
+//   spread 5     rotate-15       → origin (238.1104, 336.756);
+//                                  page world rect x 238.11..833.39,
+//                                  y 336.76..1178.65 (the spine's
+//                                  containment test uses only the
+//                                  spread's translation origin)
+//   spread 6     scale-1p25      → origin (178.5828, 252.567)
+//
+// A world pointer at y > 841.89 escapes every identity spread; if it
+// also lands inside spread 5's rect, `resolve_destination_spread`
+// (first match in document order) routes there deterministically.
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/layout.idml`;
+
+// World-space target for the cross-spread drags: below the identity
+// spreads' shared page rect (y > 841.89) and inside the rotate-15
+// spread's world rect. Deltas are derived per-test from the picked
+// frame's measured centre, so the pointer lands here exactly.
+const CROSS_SPREAD_WORLD_TARGET: [number, number] = [450, 950];
 
 type ElementId =
   | { kind: "textFrame"; id: string }
@@ -193,7 +213,7 @@ test.describe("Track K — cross-spread Alt-duplicate", () => {
 
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
-    const loaded = await loadIdml(page, FIXTURE, FIXTURE_PACK);
+    const loaded = await loadIdml(page, FIXTURE);
     expect(loaded.pages.length).toBeGreaterThanOrEqual(2);
     pageAId = loaded.pages[0].pageId;
     pageBId = loaded.pages[1].pageId;
@@ -265,23 +285,19 @@ test.describe("Track K — cross-spread Alt-duplicate", () => {
     });
     const src = await pickFrame(page, pageAId, pageAW, pageAH);
 
-    // Drag distance that overshoots the source page's height plus
-    // typical pasteboard gap. geometry.idml uses single-page
-    // landscape spreads; pageB sits below pageA in world coords.
-    // 1.5x the page height is a robust overshoot to land the
-    // pointer inside pageB's bounds.
-    // brand-guidelines' spreads stack DOWN from the source
-    // spread `uc8` (world x ∈ [0, 841.89], y ∈ [-297.638,
-    // 297.638]). The next spread `u1d273` hosts two facing
-    // pages: a left page at world x ∈ [-841.89, 0], y ∈ [495.6,
-    // 1090.9] and a right page at world x ∈ [0, 841.89], y ∈
-    // [495.6, 1090.9]. A delta of (-200, 700) from the source's
-    // center (~556, 203) places the world pointer at (356, 903),
-    // inside u1d273's right page → routes to that spread.
-    const delta: [number, number] = [-200, 700];
+    // The source spread is identity, so world pointer = anchor
+    // (the frame's centre, page-local == spread-local here) +
+    // delta. Derive the delta that lands the pointer exactly on
+    // CROSS_SPREAD_WORLD_TARGET — below every identity spread's
+    // page rect and inside the rotate-15 spread's world rect, so
+    // the spine routes the clone to that spread.
     const anchorPoint: [number, number] = [
       (src.bounds[1] + src.bounds[3]) / 2,
       (src.bounds[0] + src.bounds[2]) / 2,
+    ];
+    const delta: [number, number] = [
+      CROSS_SPREAD_WORLD_TARGET[0] - anchorPoint[0],
+      CROSS_SPREAD_WORLD_TARGET[1] - anchorPoint[1],
     ];
     await page.evaluate(
       async ({ id, delta, pageAId, anchorPoint }) => {
@@ -343,9 +359,12 @@ test.describe("Track K — cross-spread Alt-duplicate", () => {
       (src.bounds[1] + src.bounds[3]) / 2,
       (src.bounds[0] + src.bounds[2]) / 2,
     ];
-    // Same cross-spread delta used by AC-K-2 — lands on
-    // spread `u1d273`'s right page (see AC-K-2's rationale).
-    const delta: [number, number] = [-200, 700];
+    // Same cross-spread targeting as AC-K-2 — the pointer lands on
+    // the rotate-15 spread's page (see AC-K-2's rationale).
+    const delta: [number, number] = [
+      CROSS_SPREAD_WORLD_TARGET[0] - anchorPoint[0],
+      CROSS_SPREAD_WORLD_TARGET[1] - anchorPoint[1],
+    ];
     await page.evaluate(
       async ({ id, delta, pageAId, anchorPoint }) => {
         const c = (globalThis as unknown as { __canvas: CanvasGlobal }).__canvas;

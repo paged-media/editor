@@ -35,6 +35,10 @@ import { useOverlaySignals } from "./overlay-signals-context";
 import { useContentSelection } from "./content-selection-context";
 import { useToolSettings } from "./tool-settings-context";
 import {
+  useOptionalEditContextStack,
+  type EditContextFrame,
+} from "./edit-context-stack";
+import {
   RegistriesProvider,
   useRegistries,
   type ShellRegistries,
@@ -109,7 +113,14 @@ export interface PagedEditor {
    * plugin-sdk host calls from `host.contribute.sceneLayer()`.
    */
   sceneLayers: {
-    submit(elementId: string, layer: SceneLayer): Promise<void>;
+    /** `caller` (C-34) — the plugin whose render this is, filled by the
+     *  SDK adapter from the manifest id. Optional: omitting it records
+     *  no owner and enforces nothing, which is the prior behaviour. */
+    submit(
+      elementId: string,
+      layer: SceneLayer,
+      caller?: string,
+    ): Promise<void>;
     clear(elementId: string): Promise<void>;
   };
 
@@ -143,6 +154,32 @@ export interface PagedEditor {
       listener: (need: ResourceTilesNeededWire) => void,
     ): () => void;
   };
+
+  /**
+   * ADR 024 — WHAT THE USER IS CURRENTLY EDITING. `null` at the
+   * document root; the top frame when inside a plugin content type.
+   *
+   * This exists because its absence was the root cause of a whole
+   * class of defect. `PagedEditor` is the handle every command
+   * handler, panel and `when` predicate receives, so without a member
+   * here a predicate literally COULD NOT ASK "what am I inside?" — and
+   * the consequence was not theoretical: the Object menu's arrange and
+   * group commands read the host element selection, which inside a
+   * context IS the frame you entered, and silently reordered or
+   * grouped the host frame while the user believed they were editing
+   * its contents.
+   *
+   * READ-ONLY BY DESIGN — the frame, never the stack's verbs. A
+   * command may ask where it is; moving the user between contexts is
+   * the shell's business, and handing out `pop`/`commit` here would
+   * make every handler a potential navigation.
+   *
+   * `null` also when the shell mounts outside an
+   * `EditContextStackProvider` (the standalone-panel case), which is
+   * indistinguishable from "at the document root" and correctly so:
+   * both mean no context owns the surface.
+   */
+  editContext: EditContextFrame | null;
 
   /** The four shell registries. */
   registries: ShellRegistries;
@@ -198,6 +235,11 @@ function PagedEditorBinder({
   const contentSelection = useContentSelection();
   const toolSettings = useToolSettings();
   const registries = useRegistries();
+  // OPTIONAL on purpose: this binder can mount outside the stack
+  // provider (standalone panels, tests), and "no provider" and "no
+  // context active" are the same fact to every consumer.
+  const editContextStack = useOptionalEditContextStack();
+  const editContext = editContextStack?.active ?? null;
 
   const editor = useMemo<PagedEditor>(
     () => ({
@@ -215,7 +257,8 @@ function PagedEditorBinder({
           client.measureText(family, style, str, sizePt),
       },
       sceneLayers: {
-        submit: (elementId, layer) => client.submitSceneLayer(elementId, layer),
+        submit: (elementId, layer, caller) =>
+          client.submitSceneLayer(elementId, layer, caller),
         clear: (elementId) => client.clearSceneLayer(elementId),
       },
       images: {
@@ -226,6 +269,7 @@ function PagedEditorBinder({
         onResourceTilesNeeded: (listener) =>
           client.onResourceTilesNeeded(listener),
       },
+      editContext,
       registries,
     }),
     [
@@ -238,6 +282,7 @@ function PagedEditorBinder({
       overlaySignals,
       contentSelection,
       toolSettings,
+      editContext,
       registries,
     ],
   );

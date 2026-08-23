@@ -77,9 +77,6 @@ export interface ModeContribution {
   toolbarLeft?: ComponentType<ModeToolbarProps>;
   /** Cockpit slot assignment (the fixed layout). */
   slots?: ModeCockpitSlots;
-  /** Legacy dockview panel sets — superseded by `slots`; removed
-   * with the docking substrate. */
-  panelSet?: { left?: string[]; right?: string[]; bottom?: string[] };
   /** Command ids surfaced as "Suggested in <Mode>" in the palette. */
   paletteSuggestions?: string[];
 }

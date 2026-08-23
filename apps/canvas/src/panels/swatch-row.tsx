@@ -26,6 +26,20 @@
 //
 // The popover PORTALS to document.body with a fixed position — the
 // dockview panel clips overflow (the tool-rail flyout lesson).
+//
+// ADR 023 phase C/D: this row no longer owns its writes. `onMutate`
+// carries core's own op to the panel's provider-first lane, and
+// `canEdit` / `canDelete` are the capability answers for whoever owns
+// the CURRENT rows — booleans, never a plugin id. A row a provider
+// serves and a row core serves render through the SAME component,
+// because the vocabulary rule makes them the same shape.
+//
+// THE CHIP IS THE ONE THING THE SEAM CANNOT CARRY. `SwatchSummary`
+// holds no channels, and the colour comes from a separate core RPC
+// (`colorPreview`) keyed by a DOCUMENT swatch id. A provider row whose
+// id names no document swatch therefore has no resolvable chip; it is
+// marked `data-swatch-preview="unresolved"` rather than shown as a
+// plausible grey, which would be a colour panel lying about a colour.
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -35,6 +49,7 @@ import { ColorMixer, type MixerValue } from "@paged-media/ui";
 import type {
   ColorGroupSummary,
   ColorPreview,
+  Mutation,
   SwatchSummary,
 } from "@paged-media/client";
 
@@ -49,14 +64,31 @@ export function SwatchRow({
   groups,
   groupOf,
   onAssignGroup,
+  onMutate,
+  canEdit = true,
+  canDelete = true,
+  canAssignGroup = true,
 }: {
   swatch: SwatchSummary;
   groups: ColorGroupSummary[];
   groupOf: string | null;
   onAssignGroup: (swatchId: string, groupId: string | null) => void;
+  /** The panel's provider-first write lane (`useProviderFirstMutate`
+   *  wrapped with reporting). Core's own op goes in; who honours it is
+   *  not this row's business. */
+  onMutate: (mutation: Mutation, what: string) => Promise<void>;
+  /** Does the ACTIVE owner of the `swatches` rows serve `editSwatch`? */
+  canEdit?: boolean;
+  /** …and `deleteSwatch`? */
+  canDelete?: boolean;
+  /** Does the ACTIVE owner of the `colorGroups` rows serve
+   *  `editColorGroup`? (A separate collection, so a separate question —
+   *  a provider may own the swatch list without owning the groups.) */
+  canAssignGroup?: boolean;
 }) {
   const client = useCanvasClient();
   const [preview, setPreview] = useState<ColorPreview | null>(null);
+  const [previewResolved, setPreviewResolved] = useState<boolean | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [editorAt, setEditorAt] = useState<{
     left: number;
@@ -68,16 +100,52 @@ export function SwatchRow({
 
   useEffect(() => {
     let cancelled = false;
-    void client.colorPreview(swatch.selfId).then((p) => {
-      if (!cancelled) setPreview(p);
+    let resolvedOnce = false;
+    setPreviewResolved(null);
+    const read = () => {
+      void client
+        .colorPreview(swatch.selfId)
+        .then((p) => {
+          if (cancelled) return;
+          setPreview(p);
+          setPreviewResolved(p !== null);
+          if (p !== null) resolvedOnce = true;
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setPreview(null);
+          setPreviewResolved(false);
+        });
+    };
+    read();
+    // A row core cannot resolve keeps WATCHING for its swatch to appear.
+    // This is the provider case and only the provider case: a palette
+    // entry a plugin serves may not be a document swatch YET (paged.sheet
+    // mints on first edit), and a chip that stayed grey after the mint
+    // would be a colour panel lying about a colour it now has.
+    //
+    // Scoped to unresolved rows on purpose. A blanket re-read would fire
+    // one `colorPreview` per row per mutation, and a document with a
+    // bundled library loaded carries ~380 of them.
+    const off = client.subscribe((msg) => {
+      if (resolvedOnce) return;
+      if (
+        msg.kind === "mutationApplied" ||
+        msg.kind === "undoApplied" ||
+        msg.kind === "redoApplied" ||
+        msg.kind === "documentLoaded"
+      ) {
+        read();
+      }
     });
     return () => {
       cancelled = true;
+      off();
     };
   }, [client, swatch.selfId]);
 
   const openEditor = () => {
-    if (reserved) return;
+    if (reserved || !canEdit) return;
     // Seed the mixer from the RAW authored channels (lossless — a
     // Lab swatch edits in Lab); display-derived fallbacks only when
     // the raw read is absent.
@@ -90,8 +158,8 @@ export function SwatchRow({
   };
 
   const commitEdit = (v: MixerValue) => {
-    void client
-      .mutate({
+    void onMutate(
+      {
         op: "editSwatch",
         args: {
           swatchId: swatch.selfId,
@@ -107,22 +175,24 @@ export function SwatchRow({
             alpha: null,
           },
         },
-      })
-      .catch(() => {});
+      } as Mutation,
+      "editSwatch",
+    );
   };
 
   const rename = (name: string) => {
     setRenaming(false);
     if (!name || name === swatch.name) return;
-    void client
-      .mutate({
+    void onMutate(
+      {
         op: "editSwatch",
         args: {
           swatchId: swatch.selfId,
           spec: previewSpec(swatch, preview, name),
         },
-      })
-      .catch(() => {});
+      } as Mutation,
+      "editSwatch",
+    );
   };
 
   return (
@@ -132,17 +202,31 @@ export function SwatchRow({
       data-swatch-id={swatch.selfId}
       data-swatch-reserved={reserved || undefined}
     >
-      {/* Chip — doubles as the edit affordance. */}
+      {/* Chip — doubles as the edit affordance. An UNRESOLVED chip
+          (a provider row core cannot look up) says so instead of
+          painting a plausible grey; see the module header. */}
       <button
         type="button"
         data-action="edit-swatch"
-        title={reserved ? "Reserved swatch" : "Edit colour"}
-        disabled={reserved}
+        data-swatch-preview={
+          previewResolved === false ? "unresolved" : undefined
+        }
+        title={
+          previewResolved === false
+            ? "No document swatch carries this id — colour unresolved"
+            : reserved
+              ? "Reserved swatch"
+              : canEdit
+                ? "Edit colour"
+                : "The active content type does not serve swatch edits"
+        }
+        disabled={reserved || !canEdit}
         onClick={openEditor}
         className="w-5 h-5 rounded border border-input shrink-0"
         style={{
           background: preview?.rgbHex ?? "#d1d5db",
-          cursor: reserved ? "default" : "pointer",
+          borderStyle: previewResolved === false ? "dashed" : undefined,
+          cursor: reserved || !canEdit ? "default" : "pointer",
         }}
       />
       {renaming ? (
@@ -161,8 +245,14 @@ export function SwatchRow({
         <span
           className="flex-1 select-none truncate"
           data-swatch-name
-          onDoubleClick={() => !reserved && setRenaming(true)}
-          title={reserved ? undefined : "Double-click to rename"}
+          onDoubleClick={() => !reserved && canEdit && setRenaming(true)}
+          title={
+            reserved
+              ? undefined
+              : canEdit
+                ? "Double-click to rename"
+                : "The active content type does not serve swatch renames"
+          }
         >
           {swatch.name}
         </span>
@@ -193,10 +283,15 @@ export function SwatchRow({
       {!reserved && (
         <select
           data-action="assign-group"
-          className="text-[10px] border border-input rounded max-w-[70px]"
+          className="text-[10px] border border-input rounded max-w-[70px] disabled:opacity-40"
           value={groupOf ?? ""}
+          disabled={!canAssignGroup}
           onChange={(e) => onAssignGroup(swatch.selfId, e.target.value || null)}
-          title="Colour group"
+          title={
+            canAssignGroup
+              ? "Color group"
+              : "The active content type does not serve color groups"
+          }
         >
           <option value="">—</option>
           {groups.map((g) => (
@@ -209,14 +304,23 @@ export function SwatchRow({
       {!reserved && (
         <button
           type="button"
-          title="delete swatch"
-          data-action="remove-swatch"
-          onClick={() =>
-            void client
-              .mutate({ op: "deleteSwatch", args: { swatchId: swatch.selfId } })
-              .catch(() => {})
+          title={
+            canDelete
+              ? "delete swatch"
+              : "The active content type does not serve swatch deletion"
           }
-          className="px-1 hover:text-status-error"
+          data-action="remove-swatch"
+          disabled={!canDelete}
+          onClick={() =>
+            void onMutate(
+              {
+                op: "deleteSwatch",
+                args: { swatchId: swatch.selfId },
+              } as Mutation,
+              "deleteSwatch",
+            )
+          }
+          className="px-1 hover:text-status-error disabled:opacity-40"
         >
           ✕
         </button>

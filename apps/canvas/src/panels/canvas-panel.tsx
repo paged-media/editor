@@ -38,6 +38,7 @@ import {
   useSelection,
   useOptionalEditContextStack,
   useOptionalTableSelection,
+  useRegistries,
   tableCellElementId,
   type PanelProps,
   type SelectionState,
@@ -59,6 +60,13 @@ export function CanvasPanel(_props: PanelProps) {
   // Hand/Zoom (incl. Space / Cmd+Space spring-loads) reuse the legacy
   // pan machinery + a click-zoom rather than gesture handlers.
   const { toolGesture, cursor: toolCursor, effectiveTool } = useGestureSpine();
+  // A tool whose click and drag are different halves of one tool (Type:
+  // caret on click, new text frame on drag) declares BOTH a legacyKey
+  // and a gesture. ViewportCanvas needs to know, because otherwise the
+  // gesture branch commits and returns before the click branch ever runs.
+  const registries = useRegistries();
+  const legacyKeyForTool =
+    registries.tools.get(effectiveTool)?.legacyKey ?? null;
   const forcePan = effectiveTool === "paged.tool.hand";
   const zoomClick = effectiveTool === "paged.tool.zoom";
   const client = useCanvasClient();
@@ -407,6 +415,7 @@ export function CanvasPanel(_props: PanelProps) {
         onCameraChange={setCamera}
         activeTool={activeTool}
         toolGesture={toolGesture}
+        legacyKeyForTool={legacyKeyForTool}
         cursor={toolCursor}
         forcePan={forcePan}
         zoomClick={zoomClick}

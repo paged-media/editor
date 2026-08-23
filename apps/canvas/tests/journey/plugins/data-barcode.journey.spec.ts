@@ -70,9 +70,14 @@ const invoke = (page: Page, id: string) =>
 async function importCsv(page: Page): Promise<boolean> {
   await invoke(page, IMPORT_COMMAND);
   await openPanel(page, SOURCES_PANEL);
-  const fileInput = page.locator('input[type="file"][accept*="csv"]');
-  await expect(fileInput).toBeVisible({ timeout: 10_000 });
-  await fileInput.setInputFiles(CSV_FIXTURE);
+  // data canary.6: the sources panel imports through the shell.pickFile@1
+  // door (programmatic input.click -> Playwright filechooser, the
+  // doc.journey idiom); the raw <input> survives only in the SDK harness.
+  const importButton = page.locator("[data-data-import-csv]");
+  await expect(importButton).toBeVisible({ timeout: 10_000 });
+  const chooser = page.waitForEvent("filechooser");
+  await importButton.click();
+  await (await chooser).setFiles(CSV_FIXTURE);
   const status = page.locator("[data-status]").last();
   try {
     await expect
@@ -87,7 +92,7 @@ async function importCsv(page: Page): Promise<boolean> {
 }
 
 test.describe("journey · paged.data barcode symbology", () => {
-  test("a designer binds a Code-128 barcode to a frame and the engine encodes the VECTOR modules @feat:data.barcode.symbology @feat:data.plugin.bundle @level:happy", async ({
+  test("a designer binds a Code-128 barcode to a frame and the engine encodes the VECTOR modules @feat:data.barcode.symbology @feat:data.bind.authoring @feat:data.plugin.bundle @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -123,9 +128,11 @@ test.describe("journey · paged.data barcode symbology", () => {
     //    barcode binding bound to the selected rectangle (the engine will encode
     //    the symbology + scale the module grid to the frame's content box). ──
     await openPanel(page, BINDINGS_PANEL);
-    await expect(page.getByText(/paged\.data · bindings/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("[data-data-bind-author]")).toBeVisible({ timeout: 10_000 });
 
-    // The symbology select is the one whose options name the symbologies.
+    // data canary.6 (U12): the symbology select only renders once the
+    // binding KIND is barcode — pick the kind first, then the symbology.
+    await page.locator("[data-data-bind-kind]").selectOption("barcode");
     const symbology = page
       .locator("select")
       .filter({ has: page.locator('option[value="code128"]') })

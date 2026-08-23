@@ -74,6 +74,7 @@ import { WorkerRenderer, type RendererWasm } from "./render";
 // a fingerprinted asset and the URL is inlined. We pass that URL to
 // `default(wasmUrl)` below.
 import canvasWasmUrl from "@paged-media/canvas-wasm/paged_canvas_wasm_bg.wasm?url";
+import { drainWorkerJournal } from "./journal";
 
 interface CanvasWorkerInstance {
   protocolVersion: number;
@@ -346,7 +347,11 @@ type IncomingMessage =
     }
   // Demo capture only (CI): tap rendered document frames for rrweb replay.
   | { kind: "startFrameTap"; fps: number }
-  | { kind: "stopFrameTap" };
+  | { kind: "stopFrameTap" }
+  // ADR 025 — hand the worker's journal ring to the main thread. A TS-ONLY
+  // side-channel: it never touches `channel.rs`, so the whole worker->main
+  // journal path costs zero engine wire surface and no protocol bump.
+  | { kind: "journalDrain"; seq: number };
 
 const messageQueue: IncomingMessage[] = [];
 let pumping = false;
@@ -401,6 +406,19 @@ async function dispatch(data: IncomingMessage): Promise<void> {
         [f.bytes],
       );
     });
+    return;
+  }
+  if (data.kind === "journalDrain") {
+    // Drain, never stream: the cost lands when somebody actually looks
+    // (panel open, export), not on the render loop.
+    const drained = drainWorkerJournal();
+    postBack({
+      kind: "journalDrainReply",
+      seq: data.seq,
+      entries: drained.entries,
+      ledger: drained.ledger,
+      epochWallMs: drained.epochWallMs,
+    } as unknown as WorkerToMain);
     return;
   }
   if (data.kind === "stopFrameTap") {

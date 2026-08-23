@@ -311,6 +311,40 @@ test.describe("gestures.md TH — text-frame threading ports", () => {
     await expect.poll(() => portState(page, "out")).toBe("empty");
     expect(await treeCount(page, "textFrame")).toBe(beforeFrames);
   });
+
+  test("TH-05: a loaded thread SHOWS the mode with a cursor @feat:editor-tools.text.threading-ports @level:edge", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await openCanvas(page);
+    const fx = await loadViaReactPath(page, "text");
+    const source = fx.firstTextFrame as ElementRef;
+    await selectElements(page, [source]);
+    await expect.poll(() => portState(page, "out")).toBe("empty");
+
+    const rootCursor = () =>
+      page.evaluate(() =>
+        document.documentElement.style.getPropertyValue("cursor"),
+      );
+    const idle = await rootCursor();
+
+    // While loaded, the controller's window listeners run in CAPTURE
+    // phase and stopPropagation the next pointerdown ANYWHERE on screen,
+    // including over a panel — the app is modal and the user's next
+    // click is already spoken for. The only feedback used to be the
+    // source out-port turning magenta, an 18px square the pointing hand
+    // is usually covering.
+    const outPt = await portPoint(page, "out");
+    await page.mouse.click(outPt.x, outPt.y);
+    await expect.poll(() => portState(page, "out")).toBe("loaded");
+    await expect.poll(rootCursor, { timeout: 5_000 }).toBe("copy");
+
+    // And it must not outlive the mode: an Escape that left the whole
+    // app showing a copy cursor would be worse than the bug it fixes.
+    await page.keyboard.press("Escape");
+    await expect.poll(() => portState(page, "out")).toBe("empty");
+    await expect.poll(rootCursor, { timeout: 5_000 }).toBe(idle);
+  });
 });
 
 test.describe("gestures.md TH-04 — overset badge", () => {

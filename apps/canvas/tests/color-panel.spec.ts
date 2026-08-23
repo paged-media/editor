@@ -28,7 +28,7 @@ import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry-groups.idml`;
 
 test.describe("Phase 5 — Color panel", () => {
   test.beforeEach(async ({ page }) => {

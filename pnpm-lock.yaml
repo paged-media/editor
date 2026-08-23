@@ -6,6 +6,7 @@ settings:
 
 overrides:
   esbuild@>=0.27.3 <0.28.1: ^0.28.1
+  '@paged-media/doc': link:../plugins/plugin-doc/packages/doc-bundle
 
 importers:
 
@@ -27,8 +28,8 @@ importers:
   apps/canvas:
     dependencies:
       '@paged-media/canvas-wasm':
-        specifier: 0.51.0
-        version: 0.51.0
+        specifier: 0.62.0
+        version: 0.62.0
       '@paged-media/catalog':
         specifier: workspace:*
         version: link:../../packages/catalog
@@ -36,29 +37,32 @@ importers:
         specifier: workspace:*
         version: link:../../packages/client
       '@paged-media/data':
-        specifier: 0.1.0-canary.1
-        version: 0.1.0-canary.1(react@18.3.1)
+        specifier: 0.1.0-canary.6
+        version: 0.1.0-canary.6(@paged-media/plugin-api@0.2.32-canary.0)(@paged-media/plugin-sdk@0.2.32-canary.0(react@18.3.1))(react@18.3.1)
+      '@paged-media/doc':
+        specifier: link:../../../plugins/plugin-doc/packages/doc-bundle
+        version: link:../../../plugins/plugin-doc/packages/doc-bundle
       '@paged-media/draw':
-        specifier: 0.1.0-canary.1
-        version: 0.1.0-canary.1(react@18.3.1)
+        specifier: 0.1.0-canary.9
+        version: 0.1.0-canary.9(@paged-media/plugin-api@0.2.32-canary.0)(@paged-media/plugin-sdk@0.2.32-canary.0(react@18.3.1))(react@18.3.1)
       '@paged-media/image':
-        specifier: 0.1.0-canary.0
-        version: 0.1.0-canary.0(react@18.3.1)
+        specifier: 0.1.0-canary.14
+        version: 0.1.0-canary.14(@paged-media/plugin-api@0.2.32-canary.0)(@paged-media/plugin-sdk@0.2.32-canary.0(react@18.3.1))(react@18.3.1)
       '@paged-media/pdf':
-        specifier: 0.2.0-canary.0
-        version: 0.2.0-canary.0(@paged-media/plugin-api@0.2.27-canary.0)(@paged-media/plugin-sdk@0.2.27-canary.0(react@18.3.1))
+        specifier: 0.2.5-canary.0
+        version: 0.2.5-canary.0(@paged-media/plugin-api@0.2.32-canary.0)(@paged-media/plugin-sdk@0.2.32-canary.0(react@18.3.1))
       '@paged-media/plugin-api':
-        specifier: 0.2.27-canary.0
-        version: 0.2.27-canary.0
+        specifier: 0.2.32-canary.0
+        version: 0.2.32-canary.0
       '@paged-media/plugin-sdk':
-        specifier: 0.2.27-canary.0
-        version: 0.2.27-canary.0(react@18.3.1)
+        specifier: 0.2.32-canary.0
+        version: 0.2.32-canary.0(react@18.3.1)
       '@paged-media/publish':
         specifier: 0.1.0-canary.0
-        version: 0.1.0-canary.0(@paged-media/plugin-api@0.2.27-canary.0)(@paged-media/plugin-sdk@0.2.27-canary.0(react@18.3.1))
+        version: 0.1.0-canary.0(@paged-media/plugin-api@0.2.32-canary.0)(@paged-media/plugin-sdk@0.2.32-canary.0(react@18.3.1))
       '@paged-media/sheet':
-        specifier: 0.1.0-canary.1
-        version: 0.1.0-canary.1(react@18.3.1)
+        specifier: 0.1.0-canary.6
+        version: 0.1.0-canary.6(@paged-media/plugin-api@0.2.32-canary.0)(@paged-media/plugin-sdk@0.2.32-canary.0(react@18.3.1))(react@18.3.1)
       '@paged-media/shell':
         specifier: workspace:*
         version: link:../../packages/shell
@@ -69,8 +73,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@paged-media/web':
-        specifier: 0.1.0-canary.1
-        version: 0.1.0-canary.1(react@18.3.1)
+        specifier: 0.1.0-canary.6
+        version: 0.1.0-canary.6(@paged-media/plugin-api@0.2.32-canary.0)(@paged-media/plugin-sdk@0.2.32-canary.0(react@18.3.1))(react@18.3.1)
       apache-arrow:
         specifier: ^17.0.0
         version: 17.0.0
@@ -127,8 +131,8 @@ importers:
   apps/devtools:
     dependencies:
       '@paged-media/introspect-wasm':
-        specifier: 0.51.0
-        version: 0.51.0
+        specifier: 0.62.0
+        version: 0.62.0
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@18.3.7(@types/react@18.3.29))(@types/react@18.3.29)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -237,8 +241,8 @@ importers:
   packages/client:
     dependencies:
       '@paged-media/canvas-wasm':
-        specifier: 0.51.0
-        version: 0.51.0
+        specifier: 0.62.0
+        version: 0.62.0
     devDependencies:
       typescript:
         specifier: ^5.6.3
@@ -887,76 +891,6 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@napi-rs/canvas-android-arm64@0.1.100':
-    resolution: {integrity: sha512-hjhCKhntPv9+t4ckHymdx0phYNcVW+GKQR6Lzw2zE+pOVjOplSmtx9nNNknTjbEDLcuLZqA1y8ufKg1XfgftzQ==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [android]
-
-  '@napi-rs/canvas-darwin-arm64@0.1.100':
-    resolution: {integrity: sha512-2PcswRaC7Ly645DGt88///zuFDhJxJYdKAs1uU3mfk1atYkXufgcgLfBpk6Tm12nCQBaNt1wpybuPZ4qOhTo8A==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [darwin]
-
-  '@napi-rs/canvas-darwin-x64@0.1.100':
-    resolution: {integrity: sha512-ePNZtj7pNIva/siZMg+HmbeozkIjqUIYdoymH8HaA3qK7LfzFN4WMBM8G6HQ9ZC+H3+Dnn5pqtiXpgLykaPOhw==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [darwin]
-
-  '@napi-rs/canvas-linux-arm-gnueabihf@0.1.100':
-    resolution: {integrity: sha512-d5cDB48oWFGU8/XPhUOFAlySgb/VAu7D+s8fi55K1Pcfg8aPplHWqMgibhVLU8ky7Pyg/fuiVLz4Nf3JrSTuUA==}
-    engines: {node: '>= 10'}
-    cpu: [arm]
-    os: [linux]
-
-  '@napi-rs/canvas-linux-arm64-gnu@0.1.100':
-    resolution: {integrity: sha512-rDxgxRu69RvDlX/bh9o22DxLsGr8EqsNgotL9+RwQE1S0b0cqeatqsw6aW45mukm0B42DIAaAacKaYQ8cqS1nw==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [linux]
-
-  '@napi-rs/canvas-linux-arm64-musl@0.1.100':
-    resolution: {integrity: sha512-K3mDW66N+xT2/V439u1alFANiBUjdEx2gLiNYnCmUsva5jZMxWTjafBYwTzYK+EMFMHrUoabuU+T1BIP5CgbYQ==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [linux]
-
-  '@napi-rs/canvas-linux-riscv64-gnu@0.1.100':
-    resolution: {integrity: sha512-mooqUBTIsccZpnoQC4NgrC1v6C1vof39etLNMnBwCY+p0gajWJvAHLGQ6g/gGyS5YrpDW+GefSN4+Cvcr08UWw==}
-    engines: {node: '>= 10'}
-    cpu: [riscv64]
-    os: [linux]
-
-  '@napi-rs/canvas-linux-x64-gnu@0.1.100':
-    resolution: {integrity: sha512-1eCvkDCazm7FFhsT7DfGOdSaHgZVK3bt/dSBl5EWHOWmnz+I7j8tPseJqqD81NF+MH21jKUK4wQSDjN0mdhnTg==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [linux]
-
-  '@napi-rs/canvas-linux-x64-musl@0.1.100':
-    resolution: {integrity: sha512-20arT6lnI19S68qNlii73TSEDbECNgzMz2EpldC1V3mZFuRkeujXkcebRk0LRJe9SEUAooYiLokfMViY8IX7yA==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [linux]
-
-  '@napi-rs/canvas-win32-arm64-msvc@0.1.100':
-    resolution: {integrity: sha512-DZFFT1wIAg37LJw37yhMRFfjATd3vTQzjZ1Yki8u2vhO6Hi5VE6BVaGQ1aaDu7xb4iMErz+9EOwjpS7xcxFeBw==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [win32]
-
-  '@napi-rs/canvas-win32-x64-msvc@0.1.100':
-    resolution: {integrity: sha512-MyT1j3mHC2+Lu4pBi9mKyMJhtP6U7k7EldY7sj/uS5gJA65gTXt8MefJQXLJo5d/vZbuWmfxzkEUNc/urV3pHA==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [win32]
-
-  '@napi-rs/canvas@0.1.100':
-    resolution: {integrity: sha512-xglYA6q3XO5P3BNJYxVZ1IV7DLVjp1Py6nwag88YntrS+3vKHyYcMqXVS4ZztJmwz2uGvz1FWhI/4LgbR5uQDA==}
-    engines: {node: '>= 10'}
-
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
     engines: {node: '>= 8'}
@@ -969,27 +903,38 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@paged-media/canvas-wasm@0.51.0':
-    resolution: {integrity: sha512-UAUR93rq4joam/RjxH3dNjUcbhBi5w3pnv8BkzPHEE+xXvcgiwLf1R5tANwo4pTjxOIdVAUu2kup+bqIlkvUCw==}
+  '@paged-media/canvas-wasm@0.62.0':
+    resolution: {integrity: sha512-KKSyJ+4dn5iKIlp8ukzh4Yxcd1ceiAB4b81yQ6yTye+Ji+v8CPBcY1mCyUI54zkspMdaWMBHasE/GUy3qcdegg==}
 
-  '@paged-media/data@0.1.0-canary.1':
-    resolution: {integrity: sha512-00CoiLjoNQhGG1q87gkcousy3lynBUS2gZYI6Qq4vbMhfLarhU9u8BcbiWdit3vTyZRuSqX4nKQfn9V3S+Rx9Q==}
+  '@paged-media/data@0.1.0-canary.6':
+    resolution: {integrity: sha512-5l8Dj+s382ODZ3MRd8viHVUHI8cSKlOkk9A02NjrDJuLzEbvY6gJShfR95KL+xXfJrqVDCx7GdazzSSQwf1NAA==}
     peerDependencies:
+      '@paged-media/plugin-api': '>=0.2.29-canary.0'
+      '@paged-media/plugin-sdk': '>=0.2.29-canary.0'
       react: ^18.3.0
 
   '@paged-media/draw@0.1.0-canary.1':
     resolution: {integrity: sha512-FeRvXwQ1OwNVo1YU6R71Wse/48bT30Eqai2+akx8052w3byc98Xxq0BaP4u6VmS5GSIQ4dFy96prXg/48cJrcA==}
 
-  '@paged-media/image@0.1.0-canary.0':
-    resolution: {integrity: sha512-mAU4evK4km+RFBB/zGxy148ng7pkTbRc3kNm4AoOMR7vxeolSIFa/TQitWWNumzS1ZUG/uIWf8Pmje8Jbvgj4w==}
+  '@paged-media/draw@0.1.0-canary.9':
+    resolution: {integrity: sha512-vvz030d5kISvMYPWeEx0JOUK2AOxPlhPR4IaUrUGPxilFE0jVV46ZvprhG2nceacUMpyn1bKxDXFjMZQ7d5OYQ==}
     peerDependencies:
+      '@paged-media/plugin-api': '>=0.2.29-canary.0'
+      '@paged-media/plugin-sdk': '>=0.2.29-canary.0'
       react: ^18.3.0
 
-  '@paged-media/introspect-wasm@0.51.0':
-    resolution: {integrity: sha512-MkI2HyPWgByy3rjR5KKtb4+y4kMowc/8JQuDh6gDciuVPAv9SLA1IbJsjdj2NQ6fPummQp+pqOCUmos7RKM4oQ==}
+  '@paged-media/image@0.1.0-canary.14':
+    resolution: {integrity: sha512-KERqUCHTZf/Nemy7BVSCHSrIvtf9iKxxGC0bTaDx+Cl0dEQwiBjYnMOhhSqxj6gSQMtqyo7U/2paUj3Kp8AlqQ==}
+    peerDependencies:
+      '@paged-media/plugin-api': '>=0.2.29-canary.0'
+      '@paged-media/plugin-sdk': '>=0.2.29-canary.0'
+      react: ^18.3.0
 
-  '@paged-media/pdf@0.2.0-canary.0':
-    resolution: {integrity: sha512-XNhJwvYIYKY5HfvXVoqszvrB9Dfwv5HyGSwImu4mLtAl0TPZcf/K9Glb3AbMfwAgN7uh5I5X15HASLzq6qHPWQ==}
+  '@paged-media/introspect-wasm@0.62.0':
+    resolution: {integrity: sha512-k+0ac4aMdA8we5n1yb7fOOaCiuvF4L6cfKHOZmlNHT7tYLFMj9mI2klbpMoCkxtB5ECAoAnF924dmcGFdncFkA==}
+
+  '@paged-media/pdf@0.2.5-canary.0':
+    resolution: {integrity: sha512-zBFcIxjWz1HlgyWZ/OZEEymRazGHfxWohWNRrFFen8DwP6IRPGWusZl5ML51ZBh2QDPzChTCI15VYRE9TPXH/g==}
     peerDependencies:
       '@paged-media/plugin-api': 0.2.27-canary.0
       '@paged-media/plugin-sdk': 0.2.27-canary.0
@@ -997,8 +942,8 @@ packages:
   '@paged-media/plugin-api@0.2.25-canary.0':
     resolution: {integrity: sha512-yPB4aQ+/WWhipsSUdcCZt7Uzox4KG8r2c9WN0GXAUAhC2/+Oa8+li/adp9Ubx8pSdEtNBh13N0IiIPTBhc2eDQ==}
 
-  '@paged-media/plugin-api@0.2.27-canary.0':
-    resolution: {integrity: sha512-GHaRexHXfK7WcZBek8X8I7SVpAfZMYMXj8hhN90GezKdoz4re/Z7VCHBQDcWuBUx30RpLQ+Md65MxkuRDPyCqA==}
+  '@paged-media/plugin-api@0.2.32-canary.0':
+    resolution: {integrity: sha512-wONa9/d+1+hBOorVkBuYvh8qaGOs8Yt6jyT/jbFmDempAmgv9i/2n6mMdF+47tX6NsZC02H/WCNKryqNZRd8ug==}
 
   '@paged-media/plugin-sdk@0.2.25-canary.0':
     resolution: {integrity: sha512-CAOG3q39foJCLJrowG//eKD5ORnufiAOmzT1sjOeHjtqHTkVe6MYc4ppFbdXMtPtrwfLddEx4g9YGWRmMclPLA==}
@@ -1008,8 +953,8 @@ packages:
       react:
         optional: true
 
-  '@paged-media/plugin-sdk@0.2.27-canary.0':
-    resolution: {integrity: sha512-2VIrsHG6Rsui83aVlW5ebqD5uuh4srMfaCpcguAHlY1+xtTuSwZkg4svZ3chdE8gqCywhSzORK9z6DpzxnEwyw==}
+  '@paged-media/plugin-sdk@0.2.32-canary.0':
+    resolution: {integrity: sha512-ecQVP0bzuu94aKRoMl/V3Wazs2apg8aoPgZuF0utoUcXByZjFj45mcy3PMdoKfB37Tm9TzYw2fltLfMJu2SK5g==}
     peerDependencies:
       react: ^18.3.0
     peerDependenciesMeta:
@@ -1022,14 +967,18 @@ packages:
       '@paged-media/plugin-api': 0.2.27-canary.0
       '@paged-media/plugin-sdk': 0.2.27-canary.0
 
-  '@paged-media/sheet@0.1.0-canary.1':
-    resolution: {integrity: sha512-36OTy4tSeBuyqgny8T/0FCsglqp2h0el4VNRrQpN8rDBTorKF9EkO/IVS3o1GH8Fsp0OwtVCbg9V1bYLkFmVGQ==}
+  '@paged-media/sheet@0.1.0-canary.6':
+    resolution: {integrity: sha512-iPcfL15r7mL3v4sxyHGA3HjnvT0kITDPASRwaWkKvl1xGq3k6kWZkfu3nD8Pof63Ea+t3siF3FXFekvBcwr/+w==}
     peerDependencies:
+      '@paged-media/plugin-api': '>=0.2.29-canary.0'
+      '@paged-media/plugin-sdk': '>=0.2.29-canary.0'
       react: ^18.3.0
 
-  '@paged-media/web@0.1.0-canary.1':
-    resolution: {integrity: sha512-n7MgvjJkWx1iNmb2Lh455TsbTu3MXpIT3JUB40tPvZKsgyrWTzCcJI04KBe04K9eiI5dF8PrVhiukzuW4pVvZA==}
+  '@paged-media/web@0.1.0-canary.6':
+    resolution: {integrity: sha512-IRHEUQU4lVJi7IEfGSaaF0ASsZFh6Wuyj9YanZOYIzM3YVdezP6rKsPCY9H2kwlDb2bHopCoySfpdhSvq5pLCA==}
     peerDependencies:
+      '@paged-media/plugin-api': '>=0.2.29-canary.0'
+      '@paged-media/plugin-sdk': '>=0.2.29-canary.0'
       react: ^18.3.0
 
   '@playwright/test@1.60.0':
@@ -2316,10 +2265,6 @@ packages:
   path-parse@1.0.7:
     resolution: {integrity: sha512-LDJzPVEEEPR+y48z93A0Ed0yXb8pAByGWo/k5YYdYgpY2/2EsOsksJrq7lOHxryrVOn1ejG6oAp8ahvOIQD8sw==}
 
-  pdfjs-dist@4.10.38:
-    resolution: {integrity: sha512-/Y3fcFrXEAsMjJXeL9J8+ZG9U01LbuWaYypvDW2ycW1jL269L3js3DVBjDJ0Up9Np1uqDXsDrRihHANhZOlwdQ==}
-    engines: {node: '>=20'}
-
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
@@ -3103,54 +3048,6 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@napi-rs/canvas-android-arm64@0.1.100':
-    optional: true
-
-  '@napi-rs/canvas-darwin-arm64@0.1.100':
-    optional: true
-
-  '@napi-rs/canvas-darwin-x64@0.1.100':
-    optional: true
-
-  '@napi-rs/canvas-linux-arm-gnueabihf@0.1.100':
-    optional: true
-
-  '@napi-rs/canvas-linux-arm64-gnu@0.1.100':
-    optional: true
-
-  '@napi-rs/canvas-linux-arm64-musl@0.1.100':
-    optional: true
-
-  '@napi-rs/canvas-linux-riscv64-gnu@0.1.100':
-    optional: true
-
-  '@napi-rs/canvas-linux-x64-gnu@0.1.100':
-    optional: true
-
-  '@napi-rs/canvas-linux-x64-musl@0.1.100':
-    optional: true
-
-  '@napi-rs/canvas-win32-arm64-msvc@0.1.100':
-    optional: true
-
-  '@napi-rs/canvas-win32-x64-msvc@0.1.100':
-    optional: true
-
-  '@napi-rs/canvas@0.1.100':
-    optionalDependencies:
-      '@napi-rs/canvas-android-arm64': 0.1.100
-      '@napi-rs/canvas-darwin-arm64': 0.1.100
-      '@napi-rs/canvas-darwin-x64': 0.1.100
-      '@napi-rs/canvas-linux-arm-gnueabihf': 0.1.100
-      '@napi-rs/canvas-linux-arm64-gnu': 0.1.100
-      '@napi-rs/canvas-linux-arm64-musl': 0.1.100
-      '@napi-rs/canvas-linux-riscv64-gnu': 0.1.100
-      '@napi-rs/canvas-linux-x64-gnu': 0.1.100
-      '@napi-rs/canvas-linux-x64-musl': 0.1.100
-      '@napi-rs/canvas-win32-arm64-msvc': 0.1.100
-      '@napi-rs/canvas-win32-x64-msvc': 0.1.100
-    optional: true
-
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -3163,12 +3060,12 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
 
-  '@paged-media/canvas-wasm@0.51.0': {}
+  '@paged-media/canvas-wasm@0.62.0': {}
 
-  '@paged-media/data@0.1.0-canary.1(react@18.3.1)':
+  '@paged-media/data@0.1.0-canary.6(@paged-media/plugin-api@0.2.32-canary.0)(@paged-media/plugin-sdk@0.2.32-canary.0(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@paged-media/plugin-api': 0.2.25-canary.0
-      '@paged-media/plugin-sdk': 0.2.25-canary.0(react@18.3.1)
+      '@paged-media/plugin-api': 0.2.32-canary.0
+      '@paged-media/plugin-sdk': 0.2.32-canary.0(react@18.3.1)
       react: 18.3.1
 
   '@paged-media/draw@0.1.0-canary.1(react@18.3.1)':
@@ -3178,26 +3075,31 @@ snapshots:
     transitivePeerDependencies:
       - react
 
-  '@paged-media/image@0.1.0-canary.0(react@18.3.1)':
+  '@paged-media/draw@0.1.0-canary.9(@paged-media/plugin-api@0.2.32-canary.0)(@paged-media/plugin-sdk@0.2.32-canary.0(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@paged-media/plugin-api': 0.2.25-canary.0
-      '@paged-media/plugin-sdk': 0.2.25-canary.0(react@18.3.1)
+      '@paged-media/plugin-api': 0.2.32-canary.0
+      '@paged-media/plugin-sdk': 0.2.32-canary.0(react@18.3.1)
       react: 18.3.1
 
-  '@paged-media/introspect-wasm@0.51.0': {}
-
-  '@paged-media/pdf@0.2.0-canary.0(@paged-media/plugin-api@0.2.27-canary.0)(@paged-media/plugin-sdk@0.2.27-canary.0(react@18.3.1))':
+  '@paged-media/image@0.1.0-canary.14(@paged-media/plugin-api@0.2.32-canary.0)(@paged-media/plugin-sdk@0.2.32-canary.0(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@paged-media/plugin-api': 0.2.27-canary.0
-      '@paged-media/plugin-sdk': 0.2.27-canary.0(react@18.3.1)
+      '@paged-media/plugin-api': 0.2.32-canary.0
+      '@paged-media/plugin-sdk': 0.2.32-canary.0(react@18.3.1)
+      react: 18.3.1
+
+  '@paged-media/introspect-wasm@0.62.0': {}
+
+  '@paged-media/pdf@0.2.5-canary.0(@paged-media/plugin-api@0.2.32-canary.0)(@paged-media/plugin-sdk@0.2.32-canary.0(react@18.3.1))':
+    dependencies:
+      '@paged-media/plugin-api': 0.2.32-canary.0
+      '@paged-media/plugin-sdk': 0.2.32-canary.0(react@18.3.1)
       jszip: 3.10.1
-      pdfjs-dist: 4.10.38
 
   '@paged-media/plugin-api@0.2.25-canary.0':
     dependencies:
       '@types/react': 18.3.29
 
-  '@paged-media/plugin-api@0.2.27-canary.0':
+  '@paged-media/plugin-api@0.2.32-canary.0':
     dependencies:
       '@types/react': 18.3.29
 
@@ -3207,27 +3109,27 @@ snapshots:
     optionalDependencies:
       react: 18.3.1
 
-  '@paged-media/plugin-sdk@0.2.27-canary.0(react@18.3.1)':
+  '@paged-media/plugin-sdk@0.2.32-canary.0(react@18.3.1)':
     dependencies:
-      '@paged-media/plugin-api': 0.2.27-canary.0
+      '@paged-media/plugin-api': 0.2.32-canary.0
     optionalDependencies:
       react: 18.3.1
 
-  '@paged-media/publish@0.1.0-canary.0(@paged-media/plugin-api@0.2.27-canary.0)(@paged-media/plugin-sdk@0.2.27-canary.0(react@18.3.1))':
+  '@paged-media/publish@0.1.0-canary.0(@paged-media/plugin-api@0.2.32-canary.0)(@paged-media/plugin-sdk@0.2.32-canary.0(react@18.3.1))':
     dependencies:
-      '@paged-media/plugin-api': 0.2.27-canary.0
-      '@paged-media/plugin-sdk': 0.2.27-canary.0(react@18.3.1)
+      '@paged-media/plugin-api': 0.2.32-canary.0
+      '@paged-media/plugin-sdk': 0.2.32-canary.0(react@18.3.1)
 
-  '@paged-media/sheet@0.1.0-canary.1(react@18.3.1)':
+  '@paged-media/sheet@0.1.0-canary.6(@paged-media/plugin-api@0.2.32-canary.0)(@paged-media/plugin-sdk@0.2.32-canary.0(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@paged-media/plugin-api': 0.2.25-canary.0
-      '@paged-media/plugin-sdk': 0.2.25-canary.0(react@18.3.1)
+      '@paged-media/plugin-api': 0.2.32-canary.0
+      '@paged-media/plugin-sdk': 0.2.32-canary.0(react@18.3.1)
       react: 18.3.1
 
-  '@paged-media/web@0.1.0-canary.1(react@18.3.1)':
+  '@paged-media/web@0.1.0-canary.6(@paged-media/plugin-api@0.2.32-canary.0)(@paged-media/plugin-sdk@0.2.32-canary.0(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@paged-media/plugin-api': 0.2.25-canary.0
-      '@paged-media/plugin-sdk': 0.2.25-canary.0(react@18.3.1)
+      '@paged-media/plugin-api': 0.2.32-canary.0
+      '@paged-media/plugin-sdk': 0.2.32-canary.0(react@18.3.1)
       react: 18.3.1
 
   '@playwright/test@1.60.0':
@@ -4526,10 +4428,6 @@ snapshots:
   path-key@3.1.1: {}
 
   path-parse@1.0.7: {}
-
-  pdfjs-dist@4.10.38:
-    optionalDependencies:
-      '@napi-rs/canvas': 0.1.100
 
   picocolors@1.1.1: {}
 

@@ -18,7 +18,7 @@
  */
 
 // Rasterise a reference PDF to one PNG per page via `pdftoppm`.
-// Mirrors the invocation in corpus/envato/test.sh — same DPI, same
+// Mirrors the invocation in corpus/idml/test.sh — same DPI, same
 // optional CMYK ICC profile — so the resulting reference PNGs are
 // bit-identical to the existing native harness.
 //

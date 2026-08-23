@@ -36,6 +36,7 @@
 // plugin-sdk/scripts/sync-wire.mjs --check, not here.
 
 import type * as Api from "@paged-media/plugin-api";
+import type { BindingProviderBackend } from "@paged-media/plugin-sdk";
 import type {
   CanvasPointerEvent as RealCanvasPointerEvent,
   CommandContribution as RealCommandContribution,
@@ -48,7 +49,10 @@ import type {
   OverlayContribution as RealOverlayContribution,
   PagedEditor as RealPagedEditor,
   PanelContribution as RealPanelContribution,
+  ShellActiveBindingProvider as RealActiveBindingProvider,
+  ShellBindingProviderHost as RealBindingProviderHost,
   ToolContribution as RealToolContribution,
+  ToolPreviewShape as RealToolPreviewShape,
 } from "@paged-media/shell";
 
 type Assert<T extends true> = T;
@@ -57,6 +61,15 @@ type Extends<A, B> = A extends B ? true : false;
 // Handle direction: the live editor satisfies the published contract.
 export type _PagedEditorSatisfiesContract = Assert<
   Extends<RealPagedEditor, Api.PagedEditor>
+>;
+
+// Overlay vocabulary direction: every CONTRACT tool-preview variant must
+// be renderable by the editor (the editor union stays a SUPERSET of the
+// contract's). Explicit because the handle assertion above can't catch a
+// missing variant — `setToolPreview` is a method, and method bivariance
+// lets a narrower parameter slip through.
+export type _ToolPreviewVocabularyRenderable = Assert<
+  Extends<Api.ToolPreviewShape, RealToolPreviewShape>
 >;
 
 // Contribution direction: contract-authored contributions register
@@ -94,6 +107,23 @@ export type _ImporterContributionRegistrable = Assert<
 >;
 export type _ExporterContributionRegistrable = Assert<
   Extends<Api.ExporterContribution, RealExporterContribution>
+>;
+
+// ADR 023 phase C — the BINDING-PROVIDER seam. `@paged-media/shell`
+// keeps a structural MIRROR of the registry's host-facing slice (it
+// cannot import plugin-sdk: it sits a layer below apps/canvas). THIS is
+// the drift alarm on that mirror — the real registry the app builds and
+// injects must satisfy what the shell's panels call, and a provider
+// entry the SDK hands out must be readable as the shell's own.
+//
+// Direction is HANDLE direction (Real extends Contract), the same rule
+// as PagedEditor: the app hands its richer registry where the shell
+// expects the narrow mirror.
+export type _BindingRegistrySatisfiesShellMirror = Assert<
+  Extends<BindingProviderBackend, RealBindingProviderHost>
+>;
+export type _ActiveProviderReadableByShell = Assert<
+  Extends<Api.ActiveBindingProvider, RealActiveBindingProvider>
 >;
 
 // Gesture seam, both ways: the spine feeds real events/handles to

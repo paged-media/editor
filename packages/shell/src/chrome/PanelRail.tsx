@@ -25,7 +25,10 @@
 // (`<PagedShell panelRail={...}>`) — the shell renders, never
 // hardcodes the list.
 
-import { Icon } from "../icons";
+import { useEffect, useMemo, useReducer } from "react";
+
+import { hasIcon, Icon } from "../icons";
+import { PluginGlyph } from "../icons/plugin-glyph";
 import { useRegistries } from "../state/registries-context";
 import { useOptionalCockpitState } from "../cockpit/cockpit-state-context";
 
@@ -46,7 +49,25 @@ export function PanelRail({ items }: { items: PanelRailItem[] }) {
   const cockpit = useOptionalCockpitState();
   const { panels } = useRegistries();
 
-  if (!cockpit || items.length === 0) return null;
+  // K-8 — the rail DOOR: registered panels that opted in (`rail: true`)
+  // render as launcher items after the app's built-ins. Registry-derived
+  // + live (a bundle activating later appears; a disposed one drops).
+  const [version, bump] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    const sub = panels.onChange(() => bump());
+    return () => sub.dispose();
+  }, [panels]);
+  const pluginItems = useMemo(
+    () =>
+      panels
+        .list()
+        .filter((p) => p.rail)
+        .map((p) => ({ panelId: p.id, title: p.title, icon: p.icon ?? "" })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [panels, version],
+  );
+
+  if (!cockpit || (items.length === 0 && pluginItems.length === 0)) return null;
 
   const isActive = (item: PanelRailItem) =>
     cockpit.activeTab === item.panelId &&
@@ -68,9 +89,7 @@ export function PanelRail({ items }: { items: PanelRailItem[] }) {
     }
   };
 
-  return (
-    <div data-panel-rail style={railStyle}>
-      {items.map((item) => {
+  const renderItem = (item: PanelRailItem, plugin: boolean) => {
         const active = isActive(item);
         return (
           <button
@@ -98,11 +117,30 @@ export function PanelRail({ items }: { items: PanelRailItem[] }) {
               color: active ? "var(--pg-primary)" : "var(--chrome-icon)",
             }}
           >
-            <Icon name={item.icon} size={17} />
+            {plugin && !hasIcon(item.icon) && panels.get(item.panelId)?.iconSvg ? (
+              <PluginGlyph svg={panels.get(item.panelId)!.iconSvg!} size={17} />
+            ) : (
+              <Icon name={item.icon} size={17} />
+            )}
             <span style={{ fontSize: 9.5, lineHeight: 1 }}>{item.title}</span>
           </button>
         );
-      })}
+  };
+
+  return (
+    <div data-panel-rail style={railStyle}>
+      {items.map((item) => renderItem(item, false))}
+      {pluginItems.length > 0 && items.length > 0 && (
+        <div
+          aria-hidden
+          style={{
+            width: 28,
+            borderTop: "1px solid var(--chrome-border)",
+            margin: "4px 0",
+          }}
+        />
+      )}
+      {pluginItems.map((item) => renderItem(item, true))}
     </div>
   );
 }

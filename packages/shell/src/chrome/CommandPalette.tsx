@@ -31,6 +31,8 @@ import {
 import { Icon } from "../icons";
 import type { CommandContribution } from "../registries";
 import { useRegistries } from "../state/registries-context";
+import { useOptionalPaged } from "../state/paged-editor";
+import { isEnabled } from "../registries/types";
 import { useOptionalWorkflowMode } from "../state/workflow-mode-context";
 
 /**
@@ -95,15 +97,67 @@ function looksLikePrompt(query: string): boolean {
 
 /**
  * Cmd+K-driven command bar. Reads from the active `CommandRegistry`
- * and invokes through the registry so visibility predicates + the
- * editor handle wiring apply uniformly. Cockpit additions: a Recent
- * group (localStorage), a "Suggested in <Mode>" group from the
- * active ModeContribution, and the AI-prompt affordance.
+ * and invokes through the registry.
+ *
+ * CORRECTED 2026-08-07: this comment used to say that invoking through
+ * the registry meant "visibility predicates apply uniformly". They did
+ * not — `invoke` never read `when`, and this list was unfiltered, so
+ * the palette offered every registered command in every context and ran
+ * whatever was picked. The claim was plausible enough that nobody
+ * checked, which is the more useful half of the lesson: a comment
+ * asserting a guarantee is worth exactly as much as the test pinning
+ * it. The gate now exists in `CommandRegistry.invoke`; the filtering
+ * below is noise reduction on top of it, not the safety.
+ *
+ * Cockpit additions: a Recent group (localStorage), a "Suggested in
+ * <Mode>" group from the active ModeContribution, and the AI-prompt
+ * affordance.
  */
+/** `cmd+shift+s` -> `\u2318\u21e7S`. Mac glyphs because the app is
+ *  Chromium-only and the tool rail already spells its hints this way. */
+function prettyKey(combo: string): string {
+  const parts = combo.split("+");
+  const key = parts.pop() ?? "";
+  const mods = parts
+    .map((m) =>
+      m === "cmd" || m === "meta"
+        ? "\u2318"
+        : m === "shift"
+          ? "\u21e7"
+          : m === "alt" || m === "option"
+            ? "\u2325"
+            : m === "ctrl" || m === "control"
+              ? "\u2303"
+              : m,
+    )
+    .join("");
+  return `${mods}${key.length === 1 ? key.toUpperCase() : key.charAt(0).toUpperCase() + key.slice(1)}`;
+}
+
 export function CommandPalette() {
+  const paged = useOptionalPaged();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const { commands, modes } = useRegistries();
+  const { commands, modes, keybindings } = useRegistries();
+
+  // E3 — command id -> the key that runs it. `KeybindingRegistry.list()`
+  // is the same source `Help > Keyboard shortcuts` renders, so the two
+  // cannot drift into disagreeing about what a key does. First binding
+  // wins: cmd+ and ctrl+ are registered as SEPARATE contributions for
+  // one command, and showing both would double the width of every row.
+  // NOT memoised on the registry. Its object identity never changes,
+  // while its CONTENTS grow as bundles load — so a memo keyed on it is
+  // built once at first render, before any plugin has registered a
+  // binding, and never recomputes. That is exactly what happened: 82
+  // bindings live and 0 accelerators drawn. Rebuilding per render costs
+  // one pass over ~80 entries, and only while the surface is open.
+  const keyFor = (() => {
+    const byCommand = new Map<string, string>();
+    for (const b of keybindings.list()) {
+      if (!byCommand.has(b.command)) byCommand.set(b.command, prettyKey(b.key));
+    }
+    return (id: string) => byCommand.get(id) ?? null;
+  })();
   const workflowMode = useOptionalWorkflowMode();
   const [recents, setRecents] = useState<string[]>(loadRecents);
   const [version, setVersion] = useState(0);
@@ -132,7 +186,16 @@ export function CommandPalette() {
     if (open) setQuery("");
   }, [open]);
 
-  const all = useMemo(() => commands.list(), [commands, open]);
+  // ADR 024 — HIDDEN, not greyed, and that differs from the menu on
+  // purpose. A menu has stable positions a user learns, so an
+  // inapplicable item greys in place; a palette is a SEARCH surface
+  // with no positions to preserve, and a dead hit is just a wrong
+  // answer to a query. `paged` supplies both the predicate's state and
+  // the re-render, since the handle is memoized on the active context.
+  const all = useMemo(
+    () => commands.list().filter((c) => isEnabled(c.when, () => paged)),
+    [commands, open, paged],
+  );
   const byId = useMemo(
     () => new Map(all.map((c) => [c.id, c] as const)),
     [all],
@@ -253,7 +316,17 @@ export function CommandPalette() {
                   onSelect={() => run(cmd)}
                 >
                   <span>{cmd.title}</span>
-                  <span className="ml-auto text-xs opacity-50">{cmd.id}</span>
+                  {/* E3 — the SHORTCUT, not the command id. A designer
+                      searching the palette was shown
+                      `media.paged.data.command.lowerBinding` where every
+                      other application puts the key, so the palette
+                      taught nobody a single accelerator. The id stays as
+                      the fallback: a command with no binding still needs
+                      something on the right, and for a plugin command
+                      the id is at least what a bug report can quote. */}
+                  <span className="ml-auto text-xs opacity-50">
+                    {keyFor(cmd.id) ?? cmd.id}
+                  </span>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -301,21 +374,11 @@ export function CommandPalette() {
         <span>
           <kbd style={kbdStyle}>↑↓</kbd> navigate
         </span>
-        <span
-          style={{
-            marginLeft: "auto",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-          }}
-        >
-          <Icon
-            name="ui-sparkle"
-            size={12}
-            style={{ color: "var(--pg-primary)" }}
-          />
-          AI-assisted
-        </span>
+        {/* E8 — the footer used to claim "AI-assisted" beside a
+              disabled assistant row. A promise the app does not keep is
+              not a seam; a seam SAYS it is unbuilt, and this asserted the
+              opposite. The assistant row itself already reads
+              "assistant coming soon", which is the honest form. */}
       </div>
     </CommandDialog>
   );

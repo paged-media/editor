@@ -2,7 +2,7 @@
 
 End-to-end fidelity suite that drives the canvas app in a real
 browser and diffs per-page PNG output against InDesign-exported
-reference PDFs from `corpus/envato/`.
+reference PDFs from `corpus/idml/`.
 
 ## Quickstart
 
@@ -34,14 +34,14 @@ Output lands in `/tmp/paged-canvas-fidelity/<pack>/`:
 - `pack.json`    — per-page mean ΔE / p99 ΔE / SSIM + worst-of-pack
 
 `/tmp/paged-canvas-fidelity/results.json` rolls every pack into one
-file for downstream analysis. `corpus/envato/canvas-fidelity-thresholds.json`
+file for downstream analysis. `corpus/config/canvas-fidelity-thresholds.json`
 is the gate spec — captured by `npm run test:fidelity:capture`.
 
 ## Environment
 
 | Var                 | Default                          | Meaning                                                                       |
 | ------------------- | -------------------------------- | ----------------------------------------------------------------------------- |
-| `FIDELITY_DPI`      | `144`                            | Resolution. Mirrors `corpus/envato/test.sh`'s `IDML_ENVATO_DPI`.              |
+| `FIDELITY_DPI`      | `144`                            | Resolution. Mirrors `corpus/harness/test.sh`'s `IDML_ENVATO_DPI`.              |
 | `FIDELITY_OUT`      | `/tmp/paged-canvas-fidelity`      | Output root.                                                                  |
 | `FIDELITY_PACKS`    | (all non-skip)                   | Comma- or space-separated pack-name subset.                                   |
 | `FIDELITY_MODE`     | `gate`                           | `gate` fails gated packs on threshold violation; `capture` writes baseline JSON; `advisory` logs only. |
@@ -64,7 +64,7 @@ is the gate spec — captured by `npm run test:fidelity:capture`.
   canvas's fractional-pt snapshot.
 - `tests/fidelity/diff.ts` — shells out to `target/release/paged-diff`.
 - `tests/fidelity/fonts.ts` — parses per-pack
-  `corpus/envato/overrides/<pack>/fonts.sh`. Source of truth for
+  `corpus/idml/overrides/<pack>/fonts.sh`. Source of truth for
   family → TTF substitution (mirrored to the canvas via the wasm
   `registerFont` method so canvas and reference PDF use the same
   fonts).
@@ -97,7 +97,7 @@ Mirrors `paged-inspect --font-family "Family=path"` and `--default-font`.
 
 ## Relation to the native gate
 
-`corpus/envato/test.sh` exercises the native renderer (`paged-inspect`
+`corpus/harness/test.sh` exercises the native renderer (`paged-inspect`
 CLI) against the same PDFs. The canvas suite exercises the
 `apps/canvas` worker + wasm path. They share the corpus, the
 overrides, and the diff binary but not the renderer driver, so each

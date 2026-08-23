@@ -48,3 +48,73 @@ export type DockEdge = "left" | "right" | "top" | "bottom" | "center";
 export type VisibilityPredicate =
   | string
   | ((state: unknown) => boolean);
+
+/**
+ * Evaluate a {@link VisibilityPredicate} against application state.
+ *
+ * THE ONE EVALUATOR. It lived inside `keybinding.ts` and was therefore
+ * the reason `when` was honoured by exactly one of the five registries
+ * that declare it — the other four had no way to ask without copying
+ * it. Sharing it is what lets `when` mean the same thing everywhere,
+ * which is the only way a contribution author can trust it.
+ *
+ * Absent ⇒ enabled: a contribution that says nothing is available.
+ * A THROWING predicate ⇒ DISABLED, deliberately. A predicate that
+ * cannot decide has not established that the command is safe to offer,
+ * and offering it anyway is how a broken guard becomes a live command.
+ *
+ * The string DSL form is inert (always false) until an evaluator lands
+ * — the same posture the type documents.
+ */
+export function isEnabled(
+  when: VisibilityPredicate | undefined,
+  getState: (() => unknown) | undefined,
+): boolean {
+  if (when === undefined) return true;
+  if (typeof when === "function") {
+    try {
+      return Boolean(when(getState?.()));
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+/**
+ * ADR 024 — may a panel be OFFERED where the user currently is?
+ *
+ * `false` only when ANOTHER edit context claims this panel and that
+ * context is not the active one. Deliberately narrow:
+ *
+ *   · a panel no context claims stays offered, because host panels and
+ *     the selection-driven plugin panels (paged.image's adjustments on
+ *     a selected frame) are legitimately usable without entering
+ *     anything;
+ *   · the ACTIVE context's own panels stay offered, obviously;
+ *   · only a panel that is somebody ELSE'S content surface is hidden —
+ *     "Vector stroke" while editing a Word document is a control for
+ *     content that is not on screen and cannot be reached from here.
+ *
+ * Pure and exported so it can be tested without a shell: `state` is the
+ * `PagedEditor` handle, read structurally rather than by type, because
+ * this lives below the module that defines it.
+ */
+export function panelBelongsHere(state: unknown, panelId: string): boolean {
+  const s = state as {
+    editContext?: { type?: string } | null;
+    registries?: { editContexts?: { list?: () => unknown[] } };
+  } | null;
+  const list = s?.registries?.editContexts?.list?.();
+  if (!list) return true; // No registry to ask — offer it.
+  const activeType = s?.editContext?.type ?? null;
+  for (const raw of list) {
+    const c = raw as { type?: string; panelIds?: readonly string[] };
+    if (!c.panelIds?.includes(panelId)) continue;
+    // Claimed by the active context → offered.
+    if (c.type === activeType) return true;
+    // Claimed by a context that is not active → not offered.
+    return false;
+  }
+  return true;
+}

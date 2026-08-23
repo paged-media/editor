@@ -33,12 +33,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
-// `square-catalog-brochure-template` is an image-heavy pack (82
-// `<Image>` elements across its spreads). Phase F's content grabber
-// only fires on image-bearing Rectangles; picking a pack that has
-// many of them keeps the spec robust.
-const PACK_NAME = "square-catalog-brochure-template";
-const PACK_PATH = `${REPO_ROOT}/corpus/envato/packs/${PACK_NAME}/template.idml`;
+// License-clear generated fixture (runs in lean CI).
+// `corpus/idml/generated/images.idml` carries 14 `<Image>` elements
+// across its 5 pages. Phase F's content grabber only fires on
+// image-bearing Rectangles; the finder below walks every page via
+// marquee + `hasImage`, so the fixture only needs to guarantee at
+// least one exists — which it does by construction.
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/images.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }
@@ -161,7 +162,7 @@ test.describe("Phase F — content grabber gesture", () => {
 
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
-    const loaded = await loadIdml(page, PACK_PATH, PACK_NAME);
+    const loaded = await loadIdml(page, FIXTURE);
     pageIds = loaded.pages.map((p) => p.pageId);
     pageSizesPt = loaded.pages.map((p) => [p.widthPt, p.heightPt]);
   });

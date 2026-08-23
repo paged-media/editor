@@ -52,7 +52,7 @@ async function sourceReadout(page: Page): Promise<string> {
   return page.evaluate(() => {
     const spans = Array.from(document.querySelectorAll("span"));
     const i = spans.findIndex((e) => e.textContent === "Source");
-    return i >= 0 ? spans[i + 1]?.textContent ?? "?" : "Source row not found";
+    return i >= 0 ? (spans[i + 1]?.textContent ?? "?") : "Source row not found";
   });
 }
 
@@ -70,12 +70,17 @@ test.describe("journey · paged.image render output", () => {
     if (!(await designer.gpuActive())) {
       test.skip(
         true,
-        "paged.image kernels are GPU-only (no CPU path) — render-verified on the journeys-gpu lane",
+        "paged.image kernels are GPU-only (no CPU path). This is NOT verified elsewhere in CI: the `journeys-gpu` lane needs real Chrome + Metal and no workflow runs it — verify locally with `pnpm --filter paged-canvas test:journeys:gpu` — the placed-image adjust composite is render-verified there",
       );
     }
 
     // A target frame for the composite.
-    const frame = await designer.drawRectangle({ x0: 90, y0: 120, x1: 360, y1: 320 });
+    const frame = await designer.drawRectangle({
+      x0: 90,
+      y0: 120,
+      x1: 360,
+      y1: 320,
+    });
     expect(frame, "drew a target frame").not.toBe("");
     await designer.selectElement("rectangle", frame);
 

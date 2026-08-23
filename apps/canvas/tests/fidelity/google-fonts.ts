@@ -41,7 +41,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 
 import { corpusFontsDir } from "./fixtures";
 
@@ -230,9 +230,17 @@ function writeMeta(path: string, downloads: ResolvedFontDownload[]): void {
 
 function readCachedMeta(path: string): ResolvedFontDownload[] {
   const meta = JSON.parse(readFileSync(path, "utf8")) as CacheMeta;
+  // DERIVE the TTF path from the cache directory — never trust the one
+  // stored in meta.json. Those were written as absolute paths under the
+  // pre-split monorepo (`/Users/drietsch/idml/corpus/fonts/.cache/...`),
+  // so after the 2026-05-30 move every cache hit returned a path that
+  // does not exist and the font silently fell back to a substitute — a
+  // fidelity run degrading quietly, which is the failure mode this
+  // corpus campaign exists to kill (found 2026-08-19).
+  const dir = dirname(path);
   return meta.styles.map((s) => ({
     family: meta.family,
     style: s.styleKey,
-    ttfPath: s.ttfPath,
+    ttfPath: resolve(dir, `${s.styleKey}.ttf`),
   }));
 }

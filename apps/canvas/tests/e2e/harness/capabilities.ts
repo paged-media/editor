@@ -46,6 +46,30 @@
 // Bullets & Numbering list-definition surface — probed on the `text`
 // fixture). Update via the same run when core lands new ops.
 //
+// 2026-08-09: RE-CAPTURED at protocol v61 (engine `canvas-wasm@0.61.1`).
+// Every op listed below still classifies as recorded — the probe passed
+// unchanged. But the recapture surfaced something the probe structurally
+// cannot: this table had drifted TWENTY-ONE protocol versions without a
+// red run, because the probe validates the ops the table LISTS and
+// nothing iterates the engine's own set. The header above said "v40"
+// while core was at 61; the table carried 94 ops, the engine declares
+// 117.
+//
+// The 23 it had never heard of include `insertHyperlink` and
+// `insertAnchoredFrame` — doors the plugin-doc campaign built and
+// shipped — plus the seven `pathfinder*` region verbs, both opacity-mask
+// ops, and text-on-a-path. They are now named in KNOWN_UNCLASSIFIED in
+// capability-matrix.spec.ts, guarded by AC-E2E-CAPS-COVER as a
+// shrink-only ratchet: a NEW engine op fails immediately, and an entry
+// that gets classified must leave the list.
+//
+// Why they are not classified here: a probe needs real args, and a probe
+// built on guessed args reports "unsupported" when the guess is wrong
+// rather than when the engine lacks the op. This table is where
+// paged-media/state's completeness-check.mjs gets its wire-op list, so
+// false evidence here propagates straight into the capability registry —
+// worse than the gap it would paper over.
+//
 // 2026-06-12: re-captured at protocol v40, closing the v36–v40 gap the
 // audit flagged (02 E5'). Added `setGroupTransform` — the group-transform
 // write that landed beside createGroup/dissolveGroup — and probed it

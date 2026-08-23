@@ -167,10 +167,10 @@ export function OutputReadinessPanel(_props: PanelProps) {
           <ReadinessRow key={c.key} check={c} />
         ))}
       </CockpitSection>
-      <CockpitSection title="Colour" defaultOpen={false}>
+      <CockpitSection title="Color" defaultOpen={false}>
         <span className="pg-ui-xs" style={{ lineHeight: 1.45 }}>
           Profile, rendering intent and ink limits read from the document's
-          colour settings — see the Colour Settings panel.
+          color settings — see the Color settings panel.
         </span>
       </CockpitSection>
     </div>

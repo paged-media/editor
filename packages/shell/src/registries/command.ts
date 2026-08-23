@@ -17,6 +17,7 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
+import { isEnabled } from "./types";
 import type { Disposable, VisibilityPredicate } from "./types";
 
 /**
@@ -39,12 +40,42 @@ export interface CommandContribution {
   when?: VisibilityPredicate;
 }
 
+/**
+ * One pass through `invoke`. `seq` is monotonic per registry instance
+ * so an observer can pair a `started` with its `settled` even when
+ * several async commands overlap.
+ */
+export interface CommandInvocation {
+  seq: number;
+  id: string;
+  title: string;
+  /** Exactly the payload the caller passed — NOT cloned. An observer
+   *  that wants to keep it must copy it; the caller may mutate. */
+  payload: unknown;
+}
+
+export type CommandInvocationEvent =
+  | { phase: "started"; invocation: CommandInvocation }
+  | { phase: "settled"; invocation: CommandInvocation; error: unknown };
+
+export type CommandObserver = (event: CommandInvocationEvent) => void;
+
 export interface CommandRegistry {
   register(contribution: CommandContribution): Disposable;
   unregister(id: string): void;
   invoke(id: string, payload?: unknown): Promise<unknown>;
   get(id: string): CommandContribution | undefined;
   list(): CommandContribution[];
+  /**
+   * Watch every invocation. `invoke` is the only place a command
+   * handler is ever called (grep `.handler(` — one hit), so this is
+   * THE tap for anything that needs to see user intent: the action
+   * recorder, a future history/telemetry surface.
+   *
+   * Observers are advisory — a throwing observer is caught and logged
+   * so a broken watcher can never break a command.
+   */
+  observe(observer: CommandObserver): Disposable;
 }
 
 /**
@@ -57,6 +88,20 @@ export function createCommandRegistry(
   getEditor: () => unknown,
 ): CommandRegistry {
   const byId = new Map<string, CommandContribution>();
+  const observers = new Set<CommandObserver>();
+  let nextSeq = 1;
+
+  const emit = (event: CommandInvocationEvent) => {
+    for (const observer of observers) {
+      try {
+        observer(event);
+      } catch (err) {
+        // An observer is a bystander. Swallowing keeps a bad watcher
+        // from turning every menu click into a failure.
+        console.error("CommandRegistry: observer threw", err);
+      }
+    }
+  };
 
   return {
     register(contribution) {
@@ -78,16 +123,60 @@ export function createCommandRegistry(
     async invoke(id, payload) {
       const cmd = byId.get(id);
       if (!cmd) {
+        // No observer event: an unknown id never ran, so there is
+        // nothing for a recorder to record.
         throw new Error(`CommandRegistry: unknown command "${id}"`);
       }
       const editor = getEditor();
-      return await cmd.handler(editor, payload);
+      // ADR 024 — THE GATE, here rather than in each caller.
+      //
+      // `when` was declared on this contribution type with the comment
+      // "Disabled commands appear greyed" and then never read, so a
+      // command could declare itself inapplicable and still run. Every
+      // entry point funnels through `invoke` — palette, menu, keybinding,
+      // toolbar, a plugin calling `runCommand` — so gating once here is
+      // what makes the declaration mean something everywhere instead of
+      // in whichever surface remembered to ask.
+      //
+      // REFUSED, not thrown. A command that does not apply right now is
+      // an ordinary answer to an ordinary question; throwing would turn
+      // every stale menu click into an error dialog. Observers still see
+      // nothing, because nothing ran.
+      if (!isEnabled(cmd.when, getEditor)) return undefined;
+      if (observers.size === 0) return await cmd.handler(editor, payload);
+
+      // Emit `started` BEFORE the handler so recorded order is call
+      // order. Two async commands that overlap would otherwise be
+      // recorded in completion order, which is not what the user did.
+      const invocation: CommandInvocation = {
+        seq: nextSeq++,
+        id,
+        title: cmd.title,
+        payload,
+      };
+      emit({ phase: "started", invocation });
+      try {
+        const result = await cmd.handler(editor, payload);
+        emit({ phase: "settled", invocation, error: null });
+        return result;
+      } catch (err) {
+        emit({ phase: "settled", invocation, error: err ?? new Error(id) });
+        throw err;
+      }
     },
     get(id) {
       return byId.get(id);
     },
     list() {
       return Array.from(byId.values());
+    },
+    observe(observer) {
+      observers.add(observer);
+      return {
+        dispose() {
+          observers.delete(observer);
+        },
+      };
     },
   };
 }

@@ -256,6 +256,32 @@ export function ThreadingController() {
 
   // ── loaded-cursor window listeners (bound only while loaded) ──────
   const cursorLoaded = loaded != null;
+
+  // B4 — SHOW the mode. While a thread is loaded these listeners run in
+  // CAPTURE phase and `stopPropagation` the next pointerdown ANYWHERE on
+  // screen, including over a panel: the app is modal and the user's next
+  // click is already spoken for. The only feedback was the source
+  // frame's own out-port turning magenta — an 18px square the user's
+  // hand is usually covering.
+  //
+  // Written on documentElement rather than a React style, because the
+  // pointer may be over any part of the app (panels, rails, the menu
+  // bar) and every one of those subtrees sets its own cursor. `!important`
+  // for the same reason. Restored on unload, including when the effect
+  // tears down mid-load — an Escape that left the whole app showing a
+  // copy cursor would be a worse bug than the one being fixed.
+  useEffect(() => {
+    if (!cursorLoaded) return;
+    const root = document.documentElement;
+    const previous = root.style.getPropertyValue("cursor");
+    const previousPriority = root.style.getPropertyPriority("cursor");
+    root.style.setProperty("cursor", "copy", "important");
+    return () => {
+      if (previous) root.style.setProperty("cursor", previous, previousPriority);
+      else root.style.removeProperty("cursor");
+    };
+  }, [cursorLoaded]);
+
   useEffect(() => {
     if (!cursorLoaded) return;
 
@@ -320,6 +346,12 @@ export function ThreadingController() {
       const next = new Set<string>();
       for (const g of geomRef.current) {
         if (g.id.kind !== "textFrame") continue;
+        // C-23 — a pasteboard frame has no page to index or hit-test
+        // against. Threading is a PAGE-level relationship (ports are
+        // drawn in page space, and `hitFrame` probes a page), so an
+        // off-page frame is correctly out of scope here rather than
+        // something to fall back for.
+        if (!g.pageId) continue;
         const pageIdx = pageIds.indexOf(g.pageId);
         const rect = rects[pageIdx];
         if (!rect) continue;

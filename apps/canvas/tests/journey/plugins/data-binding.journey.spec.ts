@@ -79,9 +79,14 @@ const invoke = (page: Page, id: string) =>
 async function importCsv(page: Page): Promise<boolean> {
   await invoke(page, IMPORT_COMMAND);
   await openPanel(page, SOURCES_PANEL);
-  const fileInput = page.locator('input[type="file"][accept*="csv"]');
-  await expect(fileInput).toBeVisible({ timeout: 10_000 });
-  await fileInput.setInputFiles(CSV_FIXTURE);
+  // data canary.6: the sources panel imports through the shell.pickFile@1
+  // door (programmatic input.click -> Playwright filechooser, the
+  // doc.journey idiom); the raw <input> survives only in the SDK harness.
+  const importButton = page.locator("[data-data-import-csv]");
+  await expect(importButton).toBeVisible({ timeout: 10_000 });
+  const chooser = page.waitForEvent("filechooser");
+  await importButton.click();
+  await (await chooser).setFiles(CSV_FIXTURE);
 
   const status = page.locator("[data-status]").last();
   try {
@@ -132,7 +137,7 @@ test.describe("journey · paged.data binding engine + expression DSL", () => {
     //    binding + a single-region table binding on the Rust ResolutionEngine
     //    (data.bind.engine). ──
     await openPanel(page, BINDINGS_PANEL);
-    await expect(page.getByText(/paged\.data · bindings/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("[data-data-bind-author]")).toBeVisible({ timeout: 10_000 });
 
     await page.getByRole("button", { name: /wire demo binding/i }).click();
     await page.waitForTimeout(300);

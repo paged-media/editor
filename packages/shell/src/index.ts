@@ -114,6 +114,9 @@ export {
   type ToolPreviewPath,
   type ToolPreviewPolyline,
   type ToolPreviewShape,
+  // K-9 — what the tool-preview slot holds: one shape or a list.
+  type ToolPreviewSlot,
+  type ToolPreviewText,
 } from "./state/overlay-signals-context";
 
 // W2.8 — guide creation/drag state (rulers + overlay + controller).
@@ -177,6 +180,9 @@ export {
 // ── Registry primitives ────────────────────────────────────────
 export {
   type CommandContribution,
+  type CommandInvocation,
+  type CommandInvocationEvent,
+  type CommandObserver,
   type CommandRegistry,
   type DockEdge,
   type Disposable,
@@ -201,6 +207,7 @@ export {
   type ToolId,
   type ToolGroupId,
   type ToolSectionId,
+  type ToolStatus,
   type ToolRegistry,
   type ToolRegistryEvent,
   type VisibilityPredicate,
@@ -218,6 +225,8 @@ export {
   createMenuRegistry,
   createOverlayRegistry,
   createToolRegistry,
+  isEnabled,
+  panelBelongsHere,
 } from "./registries";
 
 // ── W3.2 — edit-context + object-type registries (B-02 / W-03) ──
@@ -262,6 +271,10 @@ export {
   useEditContextEntry,
   type DoubleClickHit,
 } from "./state/use-edit-context-entry";
+export {
+  useSelectionObjectType,
+  type SelectionObjectType,
+} from "./state/use-selection-object-type";
 
 // ── Built-in commands ──────────────────────────────────────────
 export {
@@ -302,8 +315,13 @@ export { notifyExportPdfDialog } from "./chrome/ExportPdfDialog";
 // ── Loaders ────────────────────────────────────────────────────
 export {
   loadDocumentFile,
+  fetchDefaultFont,
   type DocumentLoaderCallbacks,
 } from "./state/document-loader";
+export {
+  setPendingImportSource,
+  takePendingImportSource,
+} from "./state/import-source";
 
 // ── Shell root ─────────────────────────────────────────────────
 export { PagedShell, type PagedShellProps } from "./PagedShell";
@@ -412,9 +430,77 @@ export type {
   SchemaGate as ShellSchemaGate,
   BindingsSurface as ShellBindingsSurface,
   SchemaPanelRendererProps as ShellSchemaPanelRendererProps,
+  // B-01/G3 (schema v1.1, additive) — the list widget + applyEntity
+  // vocabulary.
+  WidgetCollectionBinding as ShellWidgetCollectionBinding,
+  SchemaRowAction as ShellSchemaRowAction,
+  SchemaListAction as ShellSchemaListAction,
+  SchemaListSpec as ShellSchemaListSpec,
+  // Schema v1.2 (additive) — tree rows / drag-reorder / inline rename.
+  SchemaTreeSpec as ShellSchemaTreeSpec,
+  SchemaListReorder as ShellSchemaListReorder,
+  SchemaReorderAction as ShellSchemaReorderAction,
+  SchemaReorderPayload as ShellSchemaReorderPayload,
+  SchemaListRename as ShellSchemaListRename,
+  SchemaRenameAction as ShellSchemaRenameAction,
+  SchemaRenamePayload as ShellSchemaRenamePayload,
 } from "./catalog/schema-panel-types";
-export { TogglePill, displayName } from "./catalog/leaves";
-export { useBindings, type ResolvedBinding } from "./catalog/binding-hook";
+// ── ADR 023 phase C — the HOST side of the binding-provider seam: the
+//    hooks a host-owned panel uses to read/write through the shared
+//    registry, with fall-through to core. The app builds the ONE
+//    registry (plugin-sdk `createBindingProviderRegistry`) and injects
+//    it here; the shell keeps a structural MIRROR of its host-facing
+//    slice for the same reason schema-panel-types.ts mirrors the schema
+//    contract (the shell does not depend on plugin-api).
+export {
+  BindingProviderProvider,
+  useBindingProviderHost,
+  useActiveBindingProviders,
+  useCollectionPathOffered,
+  useCollectionOpOffered,
+  useProvidedCollection,
+  useProviderProperty,
+  useProviderFirstMutate,
+  useSelectionPathWritable,
+  resolveSelectionProperty,
+  writeSelectionProperty,
+  type ShellBindingProviderHost,
+  type ShellActiveBindingProvider,
+  type ShellBindingProviderScope,
+  type ShellBindingTarget,
+  type ShellBindingResolved,
+  type ShellBindingReadResult,
+  type ShellBindingWriteResult,
+  type ShellBindingCollectionResult,
+  type ProvidedCollection,
+  type ProvidedProperty,
+  type ProvidedWrite,
+  type SelectionResolution,
+} from "./catalog/binding-providers";
+// The tree arithmetic is pure and exported so a panel (or a future
+// virtualized primitive) can flatten the same way the renderer does.
+export {
+  buildSchemaTreeRows,
+  visibleSchemaTreeRows,
+  flatSchemaTreeRows,
+  type SchemaTreeRow,
+} from "./catalog/schema-tree";
+// Editor-side BindingsSurface for host-owned schema panels (demo /
+// consumer-proof panels, specs).
+export { createLocalBindingsSurface } from "./catalog/local-bindings";
+export {
+  TogglePill,
+  displayName,
+  type ListLeafAction,
+  type ListLeafTree,
+  type ListLeafReorder,
+  type ListLeafRename,
+} from "./catalog/leaves";
+export {
+  useBindings,
+  type ResolvedBinding,
+  type BindingState,
+} from "./catalog/binding-hook";
 export {
   useCollection,
   useDocumentMeta,
@@ -461,6 +547,7 @@ export {
   PAGED_INPUT_SELECT,
   PAGED_INPUT_TOGGLE_SWITCH,
   PAGED_READOUT,
+  PAGED_LIST,
   PAGED_LAYOUT_SECTION,
   PAGED_LAYOUT_CLUSTER,
   PAGED_LABEL,
@@ -495,3 +582,24 @@ export type {
   DemoInfoRequest,
   RunResult,
 } from "./demo";
+
+// ── Actions — record / replay a command sequence ────────────────
+export * from "./actions";
+
+export {
+  getOpenFileHandle,
+  setOpenFileHandle,
+  supportsFileHandles,
+  writeToOpenFile,
+  type WritableFileHandle,
+} from "./state/open-file-handle";
+
+export {
+  ALWAYS_IN_PALETTE,
+  applicabilityOf,
+  applicabilityHint,
+  applicabilityStyle,
+  type Applicability,
+  type ApplicabilityStyle,
+  type SurfaceKind,
+} from "./chrome/applicability";

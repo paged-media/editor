@@ -43,6 +43,14 @@ interface DocumentContextValue {
   handle: DocumentHandle | null;
   setHandle: (h: DocumentHandle | null) => void;
 
+  /** U14 — the loaded file's display name (extension stripped), set by
+   * the loader from `File.name`. Fallback identity for documents whose
+   * meta carries no `documentName` (most generated/corpus IDMLs):
+   * `meta.documentName || sourceName || "Untitled document"`. Null for
+   * a blank File ▸ New document or before anything loads. */
+  sourceName: string | null;
+  setSourceName: (name: string | null) => void;
+
   /** In-flight file load; null when idle. */
   loading: LoadingState | null;
   setLoading: (l: LoadingState | null) => void;
@@ -70,6 +78,7 @@ const Context = createContext<DocumentContextValue | null>(null);
 
 export function DocumentProvider({ children }: PropsWithChildren) {
   const [handle, setHandle] = useState<DocumentHandle | null>(null);
+  const [sourceName, setSourceName] = useState<string | null>(null);
   const [loading, setLoading] = useState<LoadingState | null>(null);
   const [snapshots, setSnapshots] = useState<Map<PageId, string>>(new Map());
   const [snapshotsReady, setSnapshotsReady] = useState(false);
@@ -82,12 +91,17 @@ export function DocumentProvider({ children }: PropsWithChildren) {
     });
     setResolution(null);
     setSnapshotsReady(false);
+    // The loader re-sets sourceName right after this reset; clearing
+    // here keeps a failed load from wearing the previous file's name.
+    setSourceName(null);
   }, []);
 
   const value = useMemo<DocumentContextValue>(
     () => ({
       handle,
       setHandle,
+      sourceName,
+      setSourceName,
       loading,
       setLoading,
       snapshots,
@@ -100,6 +114,7 @@ export function DocumentProvider({ children }: PropsWithChildren) {
     }),
     [
       handle,
+      sourceName,
       loading,
       snapshots,
       snapshotsReady,

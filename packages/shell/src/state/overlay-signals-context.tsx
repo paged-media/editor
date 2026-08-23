@@ -19,6 +19,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -102,12 +103,54 @@ export interface ToolPreviewPath {
   dashed?: boolean;
 }
 
+/**
+ * The overlay TEXT primitive (plugin RFI "overlay carries shapes only")
+ * — an on-canvas readout in the tool-preview family (paged.draw's
+ * Measure tool HUD; future: Dimension tool, crop HUDs, Ruler markers).
+ * `x`/`y` are page-local pt (the text BASELINE anchor); the overlay
+ * shifts by the page origin and renders at constant SCREEN size (the
+ * page-caption idiom), so `size` is screen px, not document pt.
+ * PLAIN TEXT ONLY — the renderer sanitizes (control chars stripped,
+ * no markup). Mirrors the plugin-api `ToolPreviewText` variant; the
+ * editor's union must stay a superset of the contract so the handle
+ * assigns (plugin-api-compat).
+ */
+export interface ToolPreviewText {
+  /** Explicit discriminant (the vocabulary's first — older variants
+   *  discriminate structurally). */
+  kind: "text";
+  pageId: PageId;
+  /** Text anchor x, page-local pt. */
+  x: number;
+  /** Text BASELINE y, page-local pt. */
+  y: number;
+  /** The label. Plain text; the renderer sanitizes + truncates. */
+  text: string;
+  /** Font size in screen px (constant under zoom). Default 11. */
+  size?: number;
+  /** Horizontal anchoring relative to `x` (SVG text-anchor). Default "start". */
+  anchor?: "start" | "middle" | "end";
+  /** Render a small backing plate behind the label for legibility. */
+  background?: boolean;
+}
+
 /** What a tool handler can publish as its in-progress preview. */
 export type ToolPreviewShape =
   | MarqueeRectPageLocal
   | ToolPreviewPolyline
   | ToolPreviewGrid
-  | ToolPreviewPath;
+  | ToolPreviewPath
+  | ToolPreviewText;
+
+/**
+ * K-9 — what the tool-preview SLOT holds: one shape (every built-in
+ * tool) or a LIST (a plugin publishing geometry AND a label at once,
+ * or a Shape Builder shading every collected face). One slot, two
+ * writers — never two stacked overlay layers. Shapes render in array
+ * order, first = bottom-most, and each carries its own `pageId`, so a
+ * list may span pages.
+ */
+export type ToolPreviewSlot = ToolPreviewShape | readonly ToolPreviewShape[];
 
 interface OverlaySignalsValue {
   /** Last click hit-result. Cleared when the user clicks empty space. */
@@ -122,9 +165,16 @@ interface OverlaySignalsValue {
   /** Concept 1 — the active tool handler's in-progress preview (the
    *  Rectangle rubber-band, the Line/Pencil polyline, …). Writer: the
    *  gesture handler via `paged.overlaySignals`; reader: the
-   *  tool-preview overlay contribution. */
-  toolPreview: ToolPreviewShape | null;
+   *  tool-preview overlay contribution. Holds a LIST when the writer
+   *  used `setToolPreviews` (K-9). */
+  toolPreview: ToolPreviewSlot | null;
   setToolPreview: (value: ToolPreviewShape | null) => void;
+  /** K-9 — publish MANY shapes into the SAME slot: the gap that made a
+   *  plugin tool choose between showing geometry and showing a label
+   *  (paged.draw's Measure swapped one for the other at pointer-up; its
+   *  Shape Builder could highlight one face but not shade the collected
+   *  set). Replaces whatever the slot holds; `null` or `[]` clears it. */
+  setToolPreviews: (value: readonly ToolPreviewShape[] | null) => void;
 }
 
 const Context = createContext<OverlaySignalsValue | null>(null);
@@ -146,8 +196,22 @@ export function OverlaySignalsProvider({ children }: PropsWithChildren) {
     null,
   );
   const [snapLines, setSnapLines] = useState<ReadonlyArray<SnapLine>>([]);
-  const [toolPreview, setToolPreview] = useState<ToolPreviewShape | null>(
+  const [toolPreview, setToolPreviewSlot] = useState<ToolPreviewSlot | null>(
     null,
+  );
+
+  // Both writers land in the ONE slot. Single-shape callers keep the
+  // exact signature they always had (every built-in tool handler is
+  // untouched); the list writer normalizes an empty list to null so
+  // "clear" is one state everywhere.
+  const setToolPreview = useCallback(
+    (value: ToolPreviewShape | null) => setToolPreviewSlot(value),
+    [],
+  );
+  const setToolPreviews = useCallback(
+    (value: readonly ToolPreviewShape[] | null) =>
+      setToolPreviewSlot(value && value.length > 0 ? value : null),
+    [],
   );
 
   const value = useMemo<OverlaySignalsValue>(
@@ -160,8 +224,16 @@ export function OverlaySignalsProvider({ children }: PropsWithChildren) {
       setSnapLines,
       toolPreview,
       setToolPreview,
+      setToolPreviews,
     }),
-    [hitSelection, marqueeRect, snapLines, toolPreview],
+    [
+      hitSelection,
+      marqueeRect,
+      snapLines,
+      toolPreview,
+      setToolPreview,
+      setToolPreviews,
+    ],
   );
 
   // Dev hook. PagedShell builds `__canvas` ABOVE this provider, so it

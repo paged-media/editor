@@ -33,8 +33,8 @@ import { openCanvas, openPanel } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/text.idml`;
-const OVERSET_FIXTURE = `${REPO_ROOT}/corpus/generated/text-overset.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/text.idml`;
+const OVERSET_FIXTURE = `${REPO_ROOT}/corpus/idml/generated/text-overset.idml`;
 
 async function loadFixtureReact(page: Page, fixture: string = FIXTURE) {
   await page.setInputFiles('input[type="file"]', fixture);

@@ -44,9 +44,11 @@ import {
   type ElementGeometryItem,
   type ElementId,
   type GestureAnchor,
+  type GestureFailure,
   type GestureHandle,
   type GestureModifiers,
   type ElementProperties,
+  type FrameChainLink,
   type GestureType,
   type GradientDetail,
   type LayerSummary,
@@ -73,6 +75,17 @@ import {
 } from "./protocol";
 import { CameraBuffer, type Camera } from "./sab/camera";
 import { GestureBuffer } from "./sab/gesture";
+import type { JournalEntry, UncapturedLedger } from "./journal";
+
+/** ADR 025 — what one worker-journal drain hands back. */
+export interface JournalDrain {
+  entries: JournalEntry[];
+  ledger: UncapturedLedger;
+  /** The worker ring's epoch, so the main thread can rebase relative
+   *  timestamps onto its own. Rebasing is APPROXIMATE and the export says so
+   *  (`clocks.skewNote`) rather than pretending the two clocks are one. */
+  epochWallMs: number;
+}
 
 type PendingReply = (msg: WorkerToMain) => void;
 
@@ -111,6 +124,30 @@ export interface CanvasClientOptions {
    *  worker from a URL passed across the package boundary — use
    *  `workerFactory` under Vite. */
   workerUrl?: URL;
+  /**
+   * U5/A7 — the default-font invariant. Invoked by `loadDocument` /
+   * `newBlankDocument` when the caller passes NO font bytes, so every
+   * load path shares one default-font door instead of each caller
+   * remembering to fetch one. Without a default font the engine has no
+   * fallback face for fonts the document declares but cannot resolve —
+   * their text shapes to nothing and silently renders BLANK. Resolve
+   * `undefined` when no font is available (the caller-visible behaviour
+   * is then exactly the pre-provider one); a throw is treated as
+   * `undefined`.
+   */
+  defaultFontProvider?: () => Promise<Uint8Array | undefined>;
+}
+
+/** Render a `GestureFailure` with its payload intact. The engine's
+ *  `Other { message }` (and the detail-bearing kinds) carry the actual
+ *  diagnosis — surfacing only `.kind` once left a corpus-sweep red
+ *  unclassifiable as literally "other" (audit 17082026). */
+function describeGestureFailure(error: GestureFailure): string {
+  const details = "details" in error ? error.details : undefined;
+  if (!details) return error.kind;
+  if ("message" in details) return `${error.kind}: ${details.message}`;
+  if ("reason" in details) return `${error.kind}: ${details.reason}`;
+  return `${error.kind}: ${JSON.stringify(details)}`;
 }
 
 export class CanvasClient {
@@ -122,10 +159,21 @@ export class CanvasClient {
   private readonly frameListeners = new Set<
     (f: { src: string; width: number; height: number }) => void
   >();
+  /** C-6 — the tile-fill subscribers (see {@link onResourceTilesNeeded}).
+   *  Kept apart from {@link listeners} because the engine delivers the
+   *  miss list on the CLAIM/SUBMIT ACK, not as an unsolicited event. */
+  private readonly tilesNeededListeners = new Set<
+    (need: ResourceTilesNeededWire) => void
+  >();
   readonly camera: CameraBuffer;
   readonly gestureSab: GestureBuffer;
+  /** See {@link CanvasClientOptions.defaultFontProvider}. */
+  private readonly defaultFontProvider?: () => Promise<Uint8Array | undefined>;
+  /** See {@link setActivePage}. Host-supplied, never engine-derived. */
+  private activePageHint: string | null = null;
 
   constructor(options: CanvasClientOptions) {
+    this.defaultFontProvider = options.defaultFontProvider;
     if (options.workerFactory) {
       this.worker = options.workerFactory();
     } else if (options.workerUrl) {
@@ -185,19 +233,25 @@ export class CanvasClient {
     font?: Uint8Array,
     cmykIccProfile?: Uint8Array,
   ): Promise<DocumentHandle> {
+    // U5/A7 — no explicit font ⇒ ask the provider, so a caller that
+    // never thought about fonts (the plugin native-document fallback,
+    // a bare test load) still gets the default-face fallback for
+    // unresolvable document fonts. The result rides the binary
+    // side-channel exactly like caller-passed bytes.
+    const fontBytes = font ?? (await this.resolveDefaultFont());
     const seq = this.nextSeq++;
     const promise = new Promise<DocumentHandle>((resolve, reject) => {
       this.loadDocPending.set(seq, { resolve, reject });
     });
     const transfer: Transferable[] = [bytes.buffer];
-    if (font) transfer.push(font.buffer);
+    if (fontBytes) transfer.push(fontBytes.buffer);
     if (cmykIccProfile) transfer.push(cmykIccProfile.buffer);
     this.worker.postMessage(
       {
         kind: "loadDocumentBinary",
         seq,
         bytes,
-        font: font ?? null,
+        font: fontBytes ?? null,
         cmykIccProfile: cmykIccProfile ?? null,
       },
       // Transfer ownership of the underlying buffers; the caller's
@@ -224,12 +278,16 @@ export class CanvasClient {
     heightPt: number,
     font?: Uint8Array,
   ): Promise<DocumentHandle> {
+    // U5/A7 — same default-font door as `loadDocument`; this path rides
+    // the JSON channel, so the bytes go as `number[]` like a
+    // caller-passed font would.
+    const fontBytes = font ?? (await this.resolveDefaultFont());
     const reply = await this.send({
       kind: "newBlankDocument",
       payload: {
         widthPt,
         heightPt,
-        font: font ? Array.from(font) : null,
+        font: fontBytes ? Array.from(fontBytes) : null,
       },
     });
     if (reply.kind === "documentLoaded") {
@@ -248,6 +306,18 @@ export class CanvasClient {
     number,
     { resolve: (h: DocumentHandle) => void; reject: (e: Error) => void }
   >();
+
+  /** The provider's answer, or `undefined` with no provider / on a
+   *  provider failure — the load itself must never fail because the
+   *  fallback font could not be fetched. */
+  private async resolveDefaultFont(): Promise<Uint8Array | undefined> {
+    if (!this.defaultFontProvider) return undefined;
+    try {
+      return await this.defaultFontProvider();
+    } catch {
+      return undefined;
+    }
+  }
 
   async requestPage(pageId: PageId, lod: LodTier): Promise<WorkerToMain> {
     return this.send({ kind: "requestPage", payload: { pageId, lod } });
@@ -425,8 +495,50 @@ export class CanvasClient {
     const reply = await this.send({
       kind: "requestDocumentMeta",
     });
-    if (reply.kind === "documentMetaReply") return reply.payload.meta;
-    throw new Error(`unexpected reply: ${reply.kind}`);
+    if (reply.kind !== "documentMetaReply") {
+      throw new Error(`unexpected reply: ${reply.kind}`);
+    }
+    const meta = reply.payload.meta;
+    // Fold the host's active page in. The engine deliberately reports
+    // `activePage: null` — `CanvasModel::document_meta` says active
+    // page is application state (camera focus + Pages-panel selection)
+    // that the worker does not track, and leaves it to "consumers to
+    // fold their own active-page state in when they need it". This is
+    // that fold, and until it existed nobody had done it.
+    //
+    // It is not cosmetic. Every first-party bundle that mints a page
+    // item resolves its target the same way — paged.web's `insert.ts`,
+    // paged.data's `lower.ts`, paged.doc's `place.ts`, paged.draw's
+    // `resolveTargetPage`, paged.sheet's `activePageId` all read
+    // `meta.activePage` and fall back to `pages[0]`. With the engine
+    // always answering null, that fallback was the ONLY branch: on a
+    // one-page document nothing looked wrong, and on a sixteen-page
+    // one every plugin dropped its work onto page 1 no matter which
+    // page the user was looking at. Reparenting cannot repair it after
+    // the fact either — `MoveNode`'s `new_parent` is deliberately not
+    // on the wire.
+    return this.activePageHint && !meta.activePage
+      ? { ...meta, activePage: this.activePageHint }
+      : meta;
+  }
+
+  /**
+   * Tell the client which page the user is working on, so
+   * `documentMeta()` can answer `activePage` for plugins.
+   *
+   * The client cannot derive this: it is a fact about the CANVAS —
+   * where the camera is pointed, what the Pages panel has selected —
+   * and the client is deliberately UI-agnostic. So the app that owns
+   * the viewport pushes it here. Passing `null` clears the hint and
+   * restores the engine's own answer.
+   */
+  setActivePage(pageId: string | null): void {
+    this.activePageHint = pageId;
+  }
+
+  /** The page most recently pushed by {@link setActivePage}. */
+  get activePage(): string | null {
+    return this.activePageHint;
   }
 
   /**
@@ -529,6 +641,36 @@ export class CanvasClient {
       return new Uint8Array(reply.payload.idmlBytes);
     }
     if (reply.kind === "exportIdmlFailed") {
+      throw new Error(reply.payload.error);
+    }
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
+   * Serialise the loaded document to a `.paged` container ("Save
+   * (.paged)"). Same one-shot shape as `exportIdml`, and the bytes are
+   * a superset: the engine carries every IDML entry through unchanged,
+   * then appends `manifest.json`, a freshly re-serialised
+   * `paged/core/model/document.pgm`, and every `paged/<plugin>/…` part
+   * a bundle wrote through `host.parts` (protocol 51).
+   *
+   * So the result opens BOTH ways. InDesign and any IDML reader see a
+   * valid UCF package and ignore the `paged/` namespace; this engine
+   * sniffs `document.pgm` on load and reconstructs the model without
+   * parsing the IDML projection at all. That is why the same bytes can
+   * be handed to a download, fed back into `loadDocument`, or renamed
+   * to `.idml` — and why a plugin's content survives a round-trip that
+   * a plain IDML export would flatten away.
+   *
+   * The failure reply is `pagedPartFailed`, shared with the three
+   * part-level doors rather than given an export-specific variant.
+   */
+  async exportPaged(): Promise<Uint8Array> {
+    const reply = await this.send({ kind: "exportPaged", payload: {} });
+    if (reply.kind === "pagedExported") {
+      return new Uint8Array(reply.payload.bytes);
+    }
+    if (reply.kind === "pagedPartFailed") {
       throw new Error(reply.payload.error);
     }
     throw new Error(`unexpected reply: ${reply.kind}`);
@@ -714,11 +856,21 @@ export class CanvasClient {
   /** C-1 — submit (replace) a plugin vector scene layer rendered inside
    *  the frame `elementId` (its `Self` id). The worker stores it + rebuilds
    *  so compose lowers it inside the frame; the next snapshot reflects it. */
-  async submitSceneLayer(elementId: string, layer: SceneLayer): Promise<void> {
+  async submitSceneLayer(
+    elementId: string,
+    layer: SceneLayer,
+    caller?: string,
+  ): Promise<void> {
     const reply = await this.send({
       kind: "submitSceneLayer",
-      payload: { elementId, layer },
-    });
+      // C-34 — `caller` names the plugin whose render this is. The
+      // engine records the frame's owner and refuses a foreign replace;
+      // a frame's in-frame render belongs to ONE content type and this
+      // door used to be an unconditional insert. OMITTED is the prior
+      // behaviour exactly (no owner recorded, nothing enforced), so
+      // this is additive and needs no protocol bump.
+      payload: caller ? { elementId, layer, caller } : { elementId, layer },
+    } as never);
     if (reply.kind === "sceneLayerApplied") return;
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
@@ -734,13 +886,25 @@ export class CanvasClient {
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
-  /** C-6 (I-06) — claim a placed image's tiled mip pyramid (the v44 wire).
-   *  The worker registers the claim and emits `resourceTilesNeeded`
-   *  (worker→main, surfaced via `subscribe`) when a build lacks tiles at
-   *  the level its scale needs; the plugin fills them through
-   *  `submitResourceTiles`. The reply `resourceClaimApplied` may carry the
-   *  initial `needed` set — those notifications also arrive unsolicited, so
-   *  the SDK's subscription is the single fill path; we just await the ack. */
+  /**
+   * C-6 (I-06) — claim a placed image's tiled mip pyramid (the v44 wire).
+   * The worker registers the claim, rebuilds, and answers with the tiles
+   * that build LACKED — carried on the `resourceClaimApplied` ack as
+   * `needed`. Routing that set to {@link onResourceTilesNeeded} is what
+   * closes the fill loop; the plugin's provider sources those tiles and
+   * posts them back through {@link submitResourceTiles}.
+   *
+   * THE ACK IS THE ONLY DELIVERY. The wire also declares an unsolicited
+   * `resourceTilesNeeded` notification, and this client used to wait for
+   * it alone — but nothing constructs it: `paged-canvas-wasm`'s dispatch
+   * returns the miss list additively on the ack and never posts the
+   * standalone kind. Waiting on it meant a claim EVICTED the frame's
+   * cached tiles (the worker drops them when a claim is replaced) and
+   * nothing ever refilled them, so every plugin-served frame rendered
+   * BLANK — measured on the showcase's raster page, where `claimTiles`
+   * turned a filled 228 × 240 pt frame into 0 px of content while the
+   * panel reported "Claimed tile resource".
+   */
   async claimImageResource(claim: {
     imageId: string;
     levels: number;
@@ -750,7 +914,10 @@ export class CanvasClient {
     revision: number;
   }): Promise<void> {
     const reply = await this.send({ kind: "claimImageResource", payload: claim });
-    if (reply.kind === "resourceClaimApplied") return;
+    if (reply.kind === "resourceClaimApplied") {
+      this.emitTilesNeeded(reply.payload.needed);
+      return;
+    }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
@@ -767,7 +934,11 @@ export class CanvasClient {
 
   /** C-6 — fill the worker-side tile cache for a claimed image at `level`.
    *  `generation` echoes the `resourceTilesNeeded` request so a stale reply
-   *  is dropped worker-side. */
+   *  is dropped worker-side. The ack re-states whatever is STILL missing
+   *  (a partial fill, or a level the provider skipped), so it feeds the
+   *  same loop the claim starts — which terminates because a provider that
+   *  returns nothing for a tile submits nothing, and a submit that carries
+   *  no tiles is never sent. */
   async submitResourceTiles(
     imageId: string,
     level: number,
@@ -778,20 +949,46 @@ export class CanvasClient {
       kind: "submitResourceTiles",
       payload: { imageId, level, tiles, generation },
     });
-    if (reply.kind === "resourceClaimApplied") return;
+    if (reply.kind === "resourceClaimApplied") {
+      this.emitTilesNeeded(reply.payload.needed);
+      return;
+    }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
-  /** C-6 — subscribe to the worker's `resourceTilesNeeded` notifications
-   *  (worker→main). A thin filter over `subscribe` (the events arrive
-   *  unsolicited, `seq === null`); the SDK adapter routes per-image and
-   *  pulls + submits the tiles. The returned function unsubscribes. */
+  /** C-6 — subscribe to the tiles a build is missing. Fed by the
+   *  claim/submit acks (the engine's only delivery — see
+   *  {@link claimImageResource}) AND by the unsolicited
+   *  `resourceTilesNeeded` notification, so a future engine that posts one
+   *  needs no change here. The SDK adapter routes per-image and pulls +
+   *  submits the tiles. The returned function unsubscribes. */
   onResourceTilesNeeded(
     listener: (need: ResourceTilesNeededWire) => void,
   ): () => void {
-    return this.subscribe((msg) => {
+    this.tilesNeededListeners.add(listener);
+    const offWire = this.subscribe((msg) => {
       if (msg.kind === "resourceTilesNeeded") listener(msg.payload);
     });
+    return () => {
+      this.tilesNeededListeners.delete(listener);
+      offWire();
+    };
+  }
+
+  /** Hand one ack's miss list to the tile-fill subscribers. A listener
+   *  that throws must not strand the rest of the fill (or the ack's
+   *  caller), so each is called defensively. */
+  private emitTilesNeeded(needed?: ResourceTilesNeededWire[]): void {
+    if (!needed || needed.length === 0) return;
+    for (const need of needed) {
+      for (const listener of [...this.tilesNeededListeners]) {
+        try {
+          listener(need);
+        } catch {
+          // a subscriber's failure is its own; the loop continues
+        }
+      }
+    }
   }
 
   /**
@@ -843,7 +1040,7 @@ export class CanvasClient {
     });
     if (reply.kind === "gestureBegun") return reply.payload.handle;
     if (reply.kind === "gestureFailed") {
-      throw new Error(`beginGesture failed: ${reply.payload.error.kind}`);
+      throw new Error(`beginGesture failed: ${describeGestureFailure(reply.payload.error)}`);
     }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
@@ -883,7 +1080,7 @@ export class CanvasClient {
       };
     }
     if (reply.kind === "gestureFailed") {
-      throw new Error(`updateGesture failed: ${reply.payload.error.kind}`);
+      throw new Error(`updateGesture failed: ${describeGestureFailure(reply.payload.error)}`);
     }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
@@ -907,7 +1104,7 @@ export class CanvasClient {
       };
     }
     if (reply.kind === "gestureFailed") {
-      throw new Error(`commitGesture failed: ${reply.payload.error.kind}`);
+      throw new Error(`commitGesture failed: ${describeGestureFailure(reply.payload.error)}`);
     }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
@@ -923,7 +1120,7 @@ export class CanvasClient {
     });
     if (reply.kind === "gestureCancelled") return reply.payload.pageIds;
     if (reply.kind === "gestureFailed") {
-      throw new Error(`cancelGesture failed: ${reply.payload.error.kind}`);
+      throw new Error(`cancelGesture failed: ${describeGestureFailure(reply.payload.error)}`);
     }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
@@ -1042,6 +1239,24 @@ export class CanvasClient {
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
+  /**
+   * v38 (Wave 2, C-2 / S-05) — the story's `NextTextFrame` thread,
+   * head-first: one `FrameChainLink` per frame the story flows
+   * through (`frameId` is the frame's `Self` id; `next` is its
+   * `NextTextFrame` target, `null` at end-of-chain; `overflow` marks
+   * the tail link of an overset story). Empty array when the story
+   * owns no frames. This is the story→frame map the Stories panel
+   * uses to select/reveal a story's first frame.
+   */
+  async frameChain(storyId: string): Promise<FrameChainLink[]> {
+    const reply = await this.send({
+      kind: "requestFrameChain",
+      payload: { storyId },
+    });
+    if (reply.kind === "frameChainResult") return reply.payload.links;
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
   async undo(): Promise<WorkerToMain> {
     return this.send({ kind: "undo" });
   }
@@ -1093,6 +1308,39 @@ export class CanvasClient {
     this.worker.postMessage({ kind: "renderPageVelloPng", seq, pageId, dpi });
     return promise;
   }
+
+  /**
+   * ADR 025 — drain the render worker's journal ring into the caller.
+   *
+   * A TS-ONLY side-channel, exactly like `requestVelloPng` above: it never
+   * touches the engine wire, so the whole worker->main journal path costs zero
+   * protocol surface. Drained rather than streamed so the cost lands when
+   * somebody looks (panel open, export), not on the render loop.
+   *
+   * Resolves to null if the worker does not answer within `timeoutMs` — a
+   * drain that silently hangs would leave the merged view quietly incomplete,
+   * so the caller counts the failure instead (`drainFailures`).
+   */
+  async drainJournal(timeoutMs = 2000): Promise<JournalDrain | null> {
+    const seq = this.nextJournalSeq++;
+    return new Promise<JournalDrain | null>((resolve) => {
+      const timer = setTimeout(() => {
+        this.journalPending.delete(seq);
+        resolve(null);
+      }, timeoutMs);
+      this.journalPending.set(seq, (drain) => {
+        clearTimeout(timer);
+        resolve(drain);
+      });
+      this.worker.postMessage({ kind: "journalDrain", seq });
+    });
+  }
+
+  private nextJournalSeq = 1;
+  private readonly journalPending = new Map<
+    number,
+    (drain: JournalDrain | null) => void
+  >();
 
   private nextVelloSeq = 1;
   private readonly velloPending = new Map<
@@ -1202,6 +1450,15 @@ export class CanvasClient {
     }
     // Sub-phase D side-channel: vello PNG readback replies bypass
     // the typed JSON envelope (transferable bytes ride directly).
+    if (raw && raw.kind === "journalDrainReply") {
+      const reply = event.data as JournalDrain & { seq: number };
+      const cb = this.journalPending.get(reply.seq);
+      if (cb) {
+        this.journalPending.delete(reply.seq);
+        cb(reply);
+      }
+      return;
+    }
     if (raw && raw.kind === "velloPngReply") {
       const reply = event.data as {
         kind: "velloPngReply";

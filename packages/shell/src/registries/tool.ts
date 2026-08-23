@@ -54,6 +54,29 @@ export type ToolGroupId = string;
  */
 export type ToolSectionId = "selection" | "drawType" | "transform" | "modNav";
 
+/**
+ * Honest-stub marker (design-system rule: "new product surfaces
+ * without engine support ship as VISIBLE stubs, never
+ * fake-interactive").
+ *
+ * `"ready"` (the default when omitted) — the tool does something when
+ * picked: it either carries a `gesture` or an app-level consumer
+ * routes its id.
+ *
+ * `"planned"` — the capability does not exist yet. The rail still
+ * renders the slot (so the toolbox reads complete and the eventual
+ * home of the tool is visible) but dims it, marks it
+ * `data-tool-status="planned"`, refuses activation, and the shell
+ * registers NEITHER an activation command NOR a keybinding for it.
+ * A `shortcut` on a planned tool is a RESERVATION only — it keeps the
+ * key off-limits for other bundles under INV-REG-1 without binding a
+ * dead key.
+ *
+ * There is deliberately no third state: a tool that neither works nor
+ * says so is the bug this type exists to prevent.
+ */
+export type ToolStatus = "ready" | "planned";
+
 export interface ToolContribution {
   /** Stable id. Format `<namespace>.<tool>`, e.g. `paged.tool.pen`. */
   id: ToolId;
@@ -91,6 +114,8 @@ export interface ToolContribution {
   options?: ToolOptionsSpec;
   /** Optional enablement predicate against application state. */
   when?: VisibilityPredicate;
+  /** Honest-stub marker — see {@link ToolStatus}. Omitted ⇒ `"ready"`. */
+  status?: ToolStatus;
   /** Transitional bridge to the legacy scalar `ActiveTool` union
    *  (`"select"` / `"text"`) the canvas spine still routes through.
    *  Drop once consumers read `ToolId` directly. */

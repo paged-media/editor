@@ -18,8 +18,10 @@ on:
     paths:
       - "packages/client/src/protocol.ts"
       - "packages/client/package.json"
+      - "apps/canvas/package.json"
       - "pnpm-lock.yaml"
       - "scripts/check-protocol-version.sh"
+      - "scripts/check-plugin-pins.mjs"
       - ".github/workflows/protocol-version.yml"
   workflow_dispatch:
 
@@ -45,3 +47,14 @@ jobs:
 
       - name: Check protocol-version / package agreement
         run: bash scripts/check-protocol-version.sh
+
+      # Release-lane half of the pins story (audit 17082026 E6): with no
+      # sibling checkouts in CI the script self-SKIPs (exit 0) — honest,
+      # because repo-ahead-of-pin is the normal in-flight state and only a
+      # RELEASE reconciles it. Running it here still catches the cheap
+      # mistakes (a pin referencing an unpublished version fails the
+      # install step above first; a malformed pin fails the script), and
+      # `pnpm check:pins` is the local release-time gate where the
+      # siblings DO exist.
+      - name: Check plugin pins (skips without sibling checkouts)
+        run: node scripts/check-plugin-pins.mjs

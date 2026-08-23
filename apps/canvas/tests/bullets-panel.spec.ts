@@ -36,8 +36,8 @@ import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/text.idml`;
-const NUMBERING_FIXTURE = `${REPO_ROOT}/corpus/generated/numbering.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/text.idml`;
+const NUMBERING_FIXTURE = `${REPO_ROOT}/corpus/idml/generated/numbering.idml`;
 
 async function seedCaret(page: import("@playwright/test").Page): Promise<boolean> {
   return page.evaluate(async () => {

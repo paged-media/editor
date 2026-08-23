@@ -41,7 +41,7 @@ import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry-groups.idml`;
 
 test.describe("Phase 5 — Pathfinder panel", () => {
   test.beforeEach(async ({ page }) => {
@@ -366,5 +366,255 @@ test.describe("Phase 5 — Pathfinder panel", () => {
     // After one undo, both frames exist again.
     expect(restored.keptExists).toBe(true);
     expect(restored.otherRestored).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------
+// B-22 (engine protocol v57) — the REGION Pathfinder row.
+//
+// Divide / Trim / Merge / Crop / Outline / Minus back shipped as
+// DISABLED SEAMS until v57; they are live buttons now. These specs drive
+// them through the PANEL (a real click on the tile), not through the
+// wire, because the thing under test is what the panel contributes on
+// top of the mutation: the TOP-TO-BOTTOM ordering it derives from the
+// scene tree, and the refusal it puts in front of the user.
+
+interface PanelElementId {
+  kind: string;
+  id: string;
+}
+
+/** Insert an axis-aligned closed quad on `pageId` and return its id.
+ *  (`loadIdml` reports the page ids; the React `__canvas.handle` mirror
+ *  stays null on the direct-load path the driver takes.) */
+async function insertQuad(
+  page: import("@playwright/test").Page,
+  pageId: string,
+  box: [number, number, number, number],
+): Promise<PanelElementId> {
+  return page.evaluate(
+    async ({ pageId, b }) => {
+      const dbg = (
+        window as unknown as {
+          __canvas?: { client?: { mutate(op: unknown): Promise<unknown> } };
+        }
+      ).__canvas;
+      if (!dbg?.client) throw new Error("no client");
+      const [l, t, r, bo] = b;
+      const pt = (x: number, y: number) => ({
+        anchor: [x, y],
+        left: [x, y],
+        right: [x, y],
+      });
+      const reply = (await dbg.client.mutate({
+        op: "insertPath",
+        args: {
+          pageId,
+          anchors: [pt(l, t), pt(r, t), pt(r, bo), pt(l, bo)],
+          open: false,
+        },
+      })) as { kind: string; payload: { createdId?: PanelElementId | null } };
+      if (reply.kind !== "mutationApplied" || !reply.payload.createdId) {
+        throw new Error(`insertPath failed: ${reply.kind}`);
+      }
+      return reply.payload.createdId;
+    },
+    { pageId, b: box },
+  );
+}
+
+/** Every selectable leaf in the scene tree, in paint order. */
+async function leafIds(
+  page: import("@playwright/test").Page,
+): Promise<PanelElementId[]> {
+  return page.evaluate(async () => {
+    const dbg = (
+      window as unknown as {
+        __canvas?: { client?: { sceneTree(): Promise<unknown[]> } };
+      }
+    ).__canvas;
+    if (!dbg?.client) throw new Error("no client");
+    const out: PanelElementId[] = [];
+    const walk = (
+      nodes: Array<{ id?: PanelElementId | null; children?: unknown[] }>,
+    ) => {
+      for (const n of nodes) {
+        if (n.id) out.push(n.id);
+        if (n.children) walk(n.children as never);
+      }
+    };
+    walk((await dbg.client.sceneTree()) as never);
+    return out;
+  });
+}
+
+async function anchorCount(
+  page: import("@playwright/test").Page,
+  id: PanelElementId,
+): Promise<number | null> {
+  return page.evaluate(async (target) => {
+    const dbg = (
+      window as unknown as {
+        __canvas?: {
+          client?: {
+            pathAnchors(id: unknown): Promise<{ anchors: unknown[] } | null>;
+          };
+        };
+      }
+    ).__canvas;
+    if (!dbg?.client) throw new Error("no client");
+    const t = await dbg.client.pathAnchors(target);
+    return t ? t.anchors.length : null;
+  }, id);
+}
+
+async function select(
+  page: import("@playwright/test").Page,
+  ids: PanelElementId[],
+): Promise<void> {
+  await page.evaluate((sel) => {
+    const dbg = (
+      window as unknown as {
+        __canvas?: { setElementSelection?(ids: unknown[], mode: string): void };
+      }
+    ).__canvas;
+    dbg?.setElementSelection?.(sel, "replace");
+  }, ids);
+  await page.waitForTimeout(120);
+}
+
+async function undo(page: import("@playwright/test").Page): Promise<void> {
+  await page.evaluate(async () => {
+    const dbg = (
+      window as unknown as {
+        __canvas?: { client?: { undo(): Promise<unknown> } };
+      }
+    ).__canvas;
+    await dbg?.client?.undo();
+  });
+  await page.waitForTimeout(200);
+}
+
+test.describe("B-22 — the region Pathfinder row", () => {
+  let pageId = "";
+
+  test.beforeEach(async ({ page }) => {
+    await openCanvas(page);
+    const doc = await loadIdml(page, FIXTURE);
+    pageId = doc.pages[0].pageId;
+    await openPanel(page, "paged.pathfinder");
+  });
+
+  test("AC-PF-4 — the six region verbs are LIVE buttons, not seams @feat:editor-shell.panels.pathfinder @feat:frames-paths.pathfinder-boolean @level:smoke", async ({
+    page,
+  }) => {
+    const verbs = page.locator(
+      '[data-pathfinder-panel="ready"] button[data-pathfinder-verb]',
+    );
+    await expect(verbs).toHaveCount(6);
+    // Disabled with an empty selection, but NOT `data-seam` — a seam is
+    // permanently dead, these wait for operands.
+    await expect(
+      page.locator(
+        '[data-pathfinder-panel="ready"] button[data-pathfinder-verb][data-seam]',
+      ),
+    ).toHaveCount(0);
+    // Convert shape stays an honest seam (no Operation behind it).
+    await expect(
+      page.locator("[data-convert-shape-seam] button[data-seam]"),
+    ).toHaveCount(4);
+
+    const a = await insertQuad(page, pageId, [100, 100, 300, 300]);
+    const b = await insertQuad(page, pageId, [200, 200, 400, 400]);
+    await select(page, [a, b]);
+    await expect(
+      page.locator('button[data-pathfinder-verb="pathfinderDivide"]'),
+    ).toBeEnabled();
+  });
+
+  test("AC-PF-5 — Divide splits the arrangement into one object per face @feat:editor-shell.panels.pathfinder @feat:frames-paths.pathfinder-boolean @level:happy", async ({
+    page,
+  }) => {
+    const a = await insertQuad(page, pageId, [100, 100, 300, 300]); // back
+    const b = await insertQuad(page, pageId, [200, 200, 400, 400]); // front
+    const before = (await leafIds(page)).length;
+    await select(page, [a, b]);
+
+    await page
+      .locator('button[data-pathfinder-verb="pathfinderDivide"]')
+      .click();
+    await page.waitForTimeout(400);
+
+    // Three faces from two overlapping squares: both inputs are reused
+    // as carriers and one FRESH object carries the surplus face.
+    const after = await leafIds(page);
+    expect(after.length, `leaves after Divide: ${after.length}`).toBe(
+      before + 1,
+    );
+    expect(after.some((e) => e.id === a.id)).toBe(true);
+    expect(after.some((e) => e.id === b.id)).toBe(true);
+    // No refusal was shown.
+    await expect(page.locator("[data-pathfinder-error]")).toHaveCount(0);
+
+    await undo(page);
+    expect((await leafIds(page)).length).toBe(before);
+  });
+
+  test("AC-PF-6 — Minus back reads the real z-order, not the click order @feat:editor-shell.panels.pathfinder @feat:frames-paths.pathfinder-boolean @level:happy", async ({
+    page,
+  }) => {
+    const back = await insertQuad(page, pageId, [100, 100, 300, 300]);
+    const front = await insertQuad(page, pageId, [200, 200, 400, 400]);
+    const before = (await leafIds(page)).length;
+    // Select BOTTOM-UP on purpose: click order says `back` is first.
+    // A panel that trusted click order would treat it as the topmost and
+    // keep `front` instead.
+    await select(page, [back, front]);
+
+    await page
+      .locator('button[data-pathfinder-verb="pathfinderMinusBack"]')
+      .click();
+    await page.waitForTimeout(400);
+
+    const after = await leafIds(page);
+    expect(after.length).toBe(before - 1);
+    expect(after.some((e) => e.id === back.id)).toBe(true);
+    expect(after.some((e) => e.id === front.id)).toBe(false);
+    // The survivor is the BACK square minus the front one — the
+    // six-vertex L, not the untouched four-vertex square.
+    expect(await anchorCount(page, back)).toBe(6);
+    await expect(page.locator("[data-pathfinder-error]")).toHaveCount(0);
+
+    await undo(page);
+    expect((await leafIds(page)).length).toBe(before);
+    expect(await anchorCount(page, back)).toBe(4);
+  });
+
+  test("AC-PF-7 — more than 12 inputs surfaces the engine's REASON, not a silent no-op @feat:editor-shell.panels.pathfinder @feat:frames-paths.pathfinder-boolean @level:edge", async ({
+    page,
+  }) => {
+    // Thirteen mutually overlapping quads — one past the planar
+    // kernel's input cap. The engine REFUSES rather than truncating.
+    const ids: PanelElementId[] = [];
+    for (let i = 0; i < 13; i++) {
+      const o = i * 5;
+      ids.push(
+        await insertQuad(page, pageId, [100 + o, 100 + o, 300 + o, 300 + o]),
+      );
+    }
+    const before = (await leafIds(page)).length;
+    await select(page, ids);
+
+    await page
+      .locator('button[data-pathfinder-verb="pathfinderDivide"]')
+      .click();
+    await page.waitForTimeout(400);
+
+    const status = page.locator("[data-pathfinder-error]");
+    await expect(status).toBeVisible();
+    await expect(status).toContainText("at most 12");
+    await expect(status).toContainText("13");
+    // Refused means nothing changed — not a partial, truncated result.
+    expect((await leafIds(page)).length).toBe(before);
   });
 });

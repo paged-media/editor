@@ -21,7 +21,7 @@
 //
 // We re-use the existing Rust diff implementation rather than
 // porting ΔE2000 + SSIM to TypeScript: one diff engine across both
-// the native gate (corpus/envato/test.sh) and the new canvas gate
+// the native gate (corpus/idml/test.sh) and the new canvas gate
 // keeps results comparable.
 //
 // The binary is built once via `cargo build --release --bin

@@ -291,12 +291,22 @@ export function ExportInspectorPanel(_props: PanelProps) {
     if (!handle) return;
     setImagePhase({ kind: "running" });
     try {
-      const { files } = await runImageExport(client, {
+      const { files, refused } = await runImageExport(client, {
         pageIds: handle.pageIds,
         pageSizesPt: handle.pageSizesPt,
         settings: image,
         baseName: meta?.documentName,
       });
+      if (refused === "range") {
+        // A refusal is a RESULT, not an exception — the range simply
+        // named no page in this document, and saying so beats both a
+        // thrown error and a silent zero-file "success".
+        setImagePhase({
+          kind: "error",
+          message: `"${image.range}" names no page in this ${handle.pageIds.length}-page document.`,
+        });
+        return;
+      }
       setImagePhase({ kind: "done", files });
     } catch (err) {
       setImagePhase({
@@ -363,6 +373,38 @@ export function ExportInspectorPanel(_props: PanelProps) {
                   <option value="300">300 ppi (print)</option>
                 </select>
               </SettingRow>
+              <SettingRow label="Format">
+                <select
+                  data-export-image-format
+                  value={image.format}
+                  disabled={!loaded}
+                  onChange={(e) =>
+                    setImageSettings({
+                      format: e.target.value as "png" | "jpeg",
+                    })
+                  }
+                >
+                  <option value="png">PNG (lossless, alpha)</option>
+                  <option value="jpeg">JPEG (smaller, no alpha)</option>
+                </select>
+              </SettingRow>
+              {image.format === "jpeg" ? (
+                <SettingRow label="Quality">
+                  <select
+                    data-export-image-quality
+                    value={String(image.quality)}
+                    disabled={!loaded}
+                    onChange={(e) =>
+                      setImageSettings({ quality: Number(e.target.value) })
+                    }
+                  >
+                    <option value="0.6">60% (smallest)</option>
+                    <option value="0.8">80%</option>
+                    <option value="0.9">90% (default)</option>
+                    <option value="1">100% (largest)</option>
+                  </select>
+                </SettingRow>
+              ) : null}
               <SettingRow label="Pages">
                 <select
                   data-export-image-scope
@@ -370,7 +412,7 @@ export function ExportInspectorPanel(_props: PanelProps) {
                   disabled={!loaded}
                   onChange={(e) =>
                     setImageSettings({
-                      scope: e.target.value as "all" | "current",
+                      scope: e.target.value as "all" | "current" | "range",
                     })
                   }
                 >
@@ -378,8 +420,21 @@ export function ExportInspectorPanel(_props: PanelProps) {
                     All ({loaded ? meta.pageCount : 0})
                   </option>
                   <option value="current">Current page</option>
+                  <option value="range">Range…</option>
                 </select>
               </SettingRow>
+              {image.scope === "range" ? (
+                <SettingRow label="Range">
+                  <input
+                    data-export-image-range
+                    type="text"
+                    placeholder="1-3, 5"
+                    value={image.range}
+                    disabled={!loaded}
+                    onChange={(e) => setImageSettings({ range: e.target.value })}
+                  />
+                </SettingRow>
+              ) : null}
             </div>
           </CockpitSection>
           <div style={{ padding: 14 }}>
@@ -401,7 +456,8 @@ export function ExportInspectorPanel(_props: PanelProps) {
                 className="pg-ui-xs"
                 style={{ marginTop: 8, color: "var(--status-approved)" }}
               >
-                Exported {imagePhase.files} PNG
+                Exported {imagePhase.files}{" "}
+                {image.format === "jpeg" ? "JPEG" : "PNG"}
                 {imagePhase.files === 1 ? "" : "s"}.
               </div>
             )}

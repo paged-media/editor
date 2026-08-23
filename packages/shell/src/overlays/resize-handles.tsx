@@ -51,7 +51,8 @@ function ResizeHandlesRender(props: OverlayProps) {
 }
 
 function renderSingle(item: ElementGeometryItem, props: OverlayProps) {
-  const pr = props.pageRects.get(item.pageId);
+  // C-23 — pageless ⇒ no page-local space to draw in.
+  const pr = item.pageId ? props.pageRects.get(item.pageId) : undefined;
   if (!pr) return null;
   const [top, left, bottom, right] = item.bounds;
   const cx = (left + right) * 0.5;

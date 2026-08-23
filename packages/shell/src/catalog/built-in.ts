@@ -32,6 +32,7 @@ import {
   LayoutClusterLeaf,
   LayoutSectionLeaf,
   LengthLeaf,
+  ListLeaf,
   NumericScrubLeaf,
   ReadoutLeaf,
   SelectLeaf,
@@ -49,6 +50,7 @@ export const PAGED_INPUT_TOGGLE_GROUP = "paged.input.toggle-group";
 export const PAGED_INPUT_SELECT = "paged.input.select";
 export const PAGED_INPUT_TOGGLE_SWITCH = "paged.input.toggle-switch";
 export const PAGED_READOUT = "paged.readout";
+export const PAGED_LIST = "paged.list";
 export const PAGED_LAYOUT_SECTION = "paged.layout.section";
 export const PAGED_LAYOUT_CLUSTER = "paged.layout.cluster";
 export const PAGED_LABEL = "paged.label";
@@ -209,6 +211,51 @@ const ENTRIES: CatalogEntry[] = [
     props: { label: "string", text: "string" },
     bindings: { reads: ["selectionProperty:*"], writes: [] },
     leaf: ReadoutLeaf,
+  },
+  {
+    // B-01 — the collection LIST widget (schema-panel lane + expert
+    // compositions). Rows come from a named document collection
+    // (`collectionName`, the same `useCollection` lane the
+    // collection-select leaf reads) or arrive pre-resolved as
+    // `items` (the schema renderer's path — it also resolves
+    // plugin-published `binding` collections + the G3 action
+    // dispatch there). The audit declaration mirrors the
+    // collection-select placeholder convention: a generic
+    // `documentCollection:swatches` read; the write surface is the
+    // G3 applyEntity path — `selectionProperty:*` through the same
+    // setElementProperty channel the scalar widgets commit on.
+    //
+    // Schema v1.2 adds `tree` / `reorder` / `rename` — RESOLVED
+    // objects the schema renderer builds (depth maps, drop and commit
+    // callbacks), declared `JsonValue` on the same footing as
+    // `actions`, which has carried callbacks since B-01. The audit
+    // declaration gains `zOrder` because a v1.2 drag can emit
+    // `reorderElement` — a real write surface that is NOT a
+    // `selectionProperty`, so recording it as one would be false.
+    id: PAGED_LIST,
+    kind: "leaf",
+    props: {
+      label: "string",
+      collectionName: "string",
+      labelField: "string",
+      secondaryField: "string",
+      idField: "string",
+      items: "JsonValue",
+      actions: "JsonValue",
+      tree: "JsonValue",
+      reorder: "JsonValue",
+      rename: "JsonValue",
+      // ADR 023 phase C — the plugin id that ANSWERED this collection
+      // through the binding-provider seam (absent = core). Declared so
+      // the catalog audit shows the seam exists; it is a DOM hook, not
+      // a binding.
+      provider: "string",
+    },
+    bindings: {
+      reads: ["documentCollection:swatches"],
+      writes: ["selectionProperty:*", "zOrder"],
+    },
+    leaf: ListLeaf,
   },
   {
     id: PAGED_LAYOUT_SECTION,

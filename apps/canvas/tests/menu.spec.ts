@@ -33,7 +33,7 @@ import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry-groups.idml`;
 
 test.describe("Phase 4 — menu via commands", () => {
   test.beforeEach(async ({ page }) => {
@@ -115,18 +115,52 @@ test.describe("Phase 4 — menu via commands", () => {
     await expect(page.getByRole("menuitem", { name: "Redo" })).toBeVisible();
   });
 
-  test("AC-MENU-5 — File menu lists 'Open IDML…' (registered by the shell, not the app)", async ({
+  test("AC-MENU-5 — File menu lists 'Open…' (registered by the shell, not the app)", async ({
     page,
   }) => {
     // The shell registers `paged.file.openIdml`; the app's menu
-    // projection maps it onto File/Open IDML…. This confirms the
+    // projection maps it onto File/Open…. This confirms the
     // convergence — same command id, different consumer surface.
     await page
       .locator('nav[aria-label="Main menu"]')
       .getByRole("button", { name: "File" })
       .click();
     await expect(
-      page.getByRole("menuitem", { name: "Open IDML…" }),
+      page.getByRole("menuitem", { name: "Open…" }),
+    ).toBeVisible();
+  });
+
+  test("AC-MENU-U11 — the Window menu is grouped into category sections @feat:editor-shell.menus @level:happy", async ({
+    page,
+  }) => {
+    // U11 — panels no longer land in one flat "panels" bucket: the
+    // Window menu clusters them by category (derived from each
+    // contribution's defaultGroup / plugin source), and the MenuBar
+    // renders a separator at every category boundary. With the
+    // built-in panel set spanning Workspace / Structure / Styles /
+    // Text / Properties / Object / Output / Developer (+ plugin
+    // panels), several separators must appear.
+    await page
+      .locator('nav[aria-label="Main menu"]')
+      .getByRole("button", { name: "Window" })
+      .click();
+    const menu = page.getByRole("menu");
+    await expect(menu).toBeVisible();
+    // Category boundaries render as separators — the flat bucket had
+    // none between panels.
+    const separators = menu.locator('[role="separator"]');
+    await expect
+      .poll(() => separators.count())
+      .toBeGreaterThanOrEqual(4);
+    // Two panels of the SAME category (structure) sit contiguously:
+    // no separator between Links and its structure siblings would be
+    // hard to assert positionally, so assert the cheap invariant
+    // instead — both categories' representatives are present.
+    await expect(
+      page.getByRole("menuitem", { name: "Links", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("menuitem", { name: "Swatches", exact: true }),
     ).toBeVisible();
   });
 });

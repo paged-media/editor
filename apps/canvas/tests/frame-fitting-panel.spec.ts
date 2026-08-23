@@ -32,7 +32,7 @@ import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/images.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/images.idml`;
 
 test.describe("Phase 5 — Frame Fitting panel", () => {
   test.beforeEach(async ({ page }) => {

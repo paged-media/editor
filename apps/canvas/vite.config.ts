@@ -42,23 +42,29 @@ function resolveCorpusSubdir(name: string): string {
 }
 
 const CORPUS_FONTS = resolveCorpusSubdir("fonts");
-const CORPUS_ENVATO = resolveCorpusSubdir("envato");
+const CORPUS_ENVATO = resolveCorpusSubdir("idml");
 
 // The vendored DuckDB-WASM dist (paged.data's query engine). The editor
 // consumes data-bundle through the pnpm `link:` chain, so the bundle's
 // `bootDuckDB` resolves the worker/wasm URLs relative to its own module at
-// `~/paged/plugin-data/packages/data-bundle/src/query/duckdb.ts` → the dist
-// at `~/paged/plugin-data/vendor/duckdb-wasm/dist/`.
-const DUCKDB_DIST = resolve(
-  __dirname,
-  "..",
-  "..",
-  "..",
-  "plugin-data",
-  "vendor",
-  "duckdb-wasm",
-  "dist",
-);
+// `plugin-data/packages/data-bundle/src/query/duckdb.ts` → the dist at
+// `plugin-data/vendor/duckdb-wasm/dist/`. Locally plugin repos live under
+// `~/paged/plugins/`; CI checks plugin-data out as a direct sibling.
+const DUCKDB_DIST = (() => {
+  const candidates = [
+    resolve(__dirname, "..", "..", "..", "plugins", "plugin-data"),
+    resolve(__dirname, "..", "..", "..", "plugin-data"),
+  ];
+  for (const dir of candidates) {
+    try {
+      if (statSync(dir).isDirectory())
+        return resolve(dir, "vendor", "duckdb-wasm", "dist");
+    } catch {
+      // try next candidate
+    }
+  }
+  return resolve(candidates[0], "vendor", "duckdb-wasm", "dist");
+})();
 
 // SharedArrayBuffer requires cross-origin isolation. Set the two
 // COOP / COEP headers Vite's dev server needs so the worker can
@@ -130,7 +136,9 @@ function fontsRoute(): import("vite").Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if (!req.url || !req.url.startsWith("/fonts/")) return next();
-        const rel = decodeURIComponent(req.url.slice("/fonts/".length).split("?")[0]);
+        const rel = decodeURIComponent(
+          req.url.slice("/fonts/".length).split("?")[0],
+        );
         if (rel.includes("/") || rel.includes("..") || rel === "") {
           res.statusCode = 400;
           return res.end("bad path");
@@ -144,7 +152,12 @@ function fontsRoute(): import("vite").Plugin {
           return next();
         }
         const ext = abs.split(".").pop()?.toLowerCase() ?? "";
-        const mime = ext === "ttf" ? "font/ttf" : ext === "otf" ? "font/otf" : "application/octet-stream";
+        const mime =
+          ext === "ttf"
+            ? "font/ttf"
+            : ext === "otf"
+              ? "font/otf"
+              : "application/octet-stream";
         res.setHeader("Content-Type", mime);
         res.setHeader("Cache-Control", "no-cache");
         createReadStream(abs).pipe(res);
@@ -156,7 +169,7 @@ function fontsRoute(): import("vite").Plugin {
 /**
  * Dev-only: browse + load the staged Envato fidelity corpus from the
  * running editor. The loadable IDML for each pack is
- * `corpus/envato/packs/<name>/template.idml` — note the *raw* Envato
+ * `corpus/idml/packs/<name>/template.idml` — note the *raw* Envato
  * `.zip` bundles often ship only an `.indd`, which the engine can't
  * parse, so we deliberately serve the staged `template.idml` that the
  * Playwright fidelity suite already relies on (manifest.json). Mirrors
@@ -169,19 +182,32 @@ function fontsRoute(): import("vite").Plugin {
  *
  *   GET /corpus/idml/list              -> [{ id, label, group, stage? }]
  *   GET /corpus/idml/file/<group>/<x>  -> the IDML bytes
- *        generated/<base>  -> corpus/generated/<base>.idml
- *        samples/<base>    -> corpus/samples/<base>.idml
- *        packs/<name>      -> corpus/envato/packs/<name>/template.idml
+ *        generated/<base>  -> corpus/idml/generated/<base>.idml
+ *        samples/<base>    -> corpus/idml/samples/<base>.idml
+ *        packs/<name>      -> corpus/idml/packs/<name>/template.idml
  *   (legacy `file/<name>` with no group still resolves a pack.)
  */
 function corpusIdmlRoute(): import("vite").Plugin {
-  const CORPUS_ROOT = resolve(CORPUS_ENVATO, "..");
+  // Resolve the corpus ROOT directly. It used to be
+  // `resolve(CORPUS_ENVATO, "..")` — derived from the envato path — and
+  // that broke the moment envato moved one level deeper into
+  // `vendor/envato`: the root silently became `corpus/vendor`, the
+  // generated/samples routes pointed at directories that do not exist,
+  // the corpus picker rendered nothing, and the failure surfaced as
+  // `getByLabel('Load corpus IDML')` not found. Deriving one path from
+  // another is exactly the coupling the restructure exists to remove.
+  const CORPUS_ROOT = resolveCorpusSubdir(".");
   const PACKS_DIR = resolve(CORPUS_ENVATO, "packs");
-  const GENERATED_DIR = resolve(CORPUS_ROOT, "generated");
-  const SAMPLES_DIR = resolve(CORPUS_ROOT, "samples");
+  // Assets are grouped by FORMAT since the corpus grew past IDML.
+  const GENERATED_DIR = resolve(CORPUS_ROOT, "idml", "generated");
+  const SAMPLES_DIR = resolve(CORPUS_ROOT, "idml", "samples");
   const MANIFEST = resolve(CORPUS_ENVATO, "manifest.json");
   const STAGE_RANK: Record<string, number> = { smoke: 0, gated: 1, skip: 2 };
-  const GROUP_RANK: Record<string, number> = { generated: 0, sample: 1, pack: 2 };
+  const GROUP_RANK: Record<string, number> = {
+    generated: 0,
+    sample: 1,
+    pack: 2,
+  };
   // List the *.idml basenames in a flat dir (generated / samples).
   const listIdml = (dir: string): string[] => {
     try {
@@ -197,7 +223,9 @@ function corpusIdmlRoute(): import("vite").Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if (!req.url || !req.url.startsWith("/corpus/idml/")) return next();
-        const rest = decodeURIComponent(req.url.slice("/corpus/idml/".length).split("?")[0]);
+        const rest = decodeURIComponent(
+          req.url.slice("/corpus/idml/".length).split("?")[0],
+        );
 
         if (rest === "list") {
           const entries: Array<{
@@ -208,10 +236,18 @@ function corpusIdmlRoute(): import("vite").Plugin {
           }> = [];
           // generated/* + samples/* — flat dirs of <base>.idml
           for (const base of listIdml(GENERATED_DIR)) {
-            entries.push({ id: `generated/${base}`, label: base, group: "generated" });
+            entries.push({
+              id: `generated/${base}`,
+              label: base,
+              group: "generated",
+            });
           }
           for (const base of listIdml(SAMPLES_DIR)) {
-            entries.push({ id: `samples/${base}`, label: base, group: "sample" });
+            entries.push({
+              id: `samples/${base}`,
+              label: base,
+              group: "sample",
+            });
           }
           // packs/* — <name>/template.idml, stage from the fidelity manifest
           const stageByName = new Map<string, string>();
@@ -228,7 +264,10 @@ function corpusIdmlRoute(): import("vite").Plugin {
           try {
             for (const name of readdirSync(PACKS_DIR)) {
               try {
-                if (!statSync(resolve(PACKS_DIR, name, "template.idml")).isFile()) continue;
+                if (
+                  !statSync(resolve(PACKS_DIR, name, "template.idml")).isFile()
+                )
+                  continue;
               } catch {
                 continue; // not a pack dir / no staged idml
               }
@@ -245,7 +284,8 @@ function corpusIdmlRoute(): import("vite").Plugin {
           entries.sort(
             (a, b) =>
               (GROUP_RANK[a.group] ?? 3) - (GROUP_RANK[b.group] ?? 3) ||
-              (STAGE_RANK[a.stage ?? ""] ?? 1) - (STAGE_RANK[b.stage ?? ""] ?? 1) ||
+              (STAGE_RANK[a.stage ?? ""] ?? 1) -
+                (STAGE_RANK[b.stage ?? ""] ?? 1) ||
               a.label.localeCompare(b.label),
           );
           res.setHeader("Content-Type", "application/json");
@@ -257,14 +297,17 @@ function corpusIdmlRoute(): import("vite").Plugin {
           const id = rest.slice("file/".length);
           const parts = id.split("/");
           // Accept "<group>/<name>" or legacy "<name>" (defaults to a pack).
-          const [group, name] = parts.length === 2 ? parts : ["packs", parts[0]];
-          const bad = (s: string) => s === "" || s.includes("..") || s.includes("\\");
+          const [group, name] =
+            parts.length === 2 ? parts : ["packs", parts[0]];
+          const bad = (s: string) =>
+            s === "" || s.includes("..") || s.includes("\\");
           let abs: string | null = null;
           if (bad(name)) {
             res.statusCode = 400;
             return res.end("bad name");
           }
-          if (group === "generated") abs = resolve(GENERATED_DIR, `${name}.idml`);
+          if (group === "generated")
+            abs = resolve(GENERATED_DIR, `${name}.idml`);
           else if (group === "samples" || group === "sample")
             abs = resolve(SAMPLES_DIR, `${name}.idml`);
           else if (group === "packs" || group === "pack")
@@ -329,14 +372,17 @@ function duckdbDistRoute(): import("vite").Plugin {
   // `.map` sourcemaps are matched too so the worker's lazy sourcemap fetch
   // doesn't trip the SPA fallback either.
   const isDuckDbAsset = (name: string): boolean =>
-    /^duckdb-(browser|coi|eh|mvp)[\w.-]*\.(js|cjs|mjs|wasm)(\.map)?$/.test(name);
+    /^duckdb-(browser|coi|eh|mvp)[\w.-]*\.(js|cjs|mjs|wasm)(\.map)?$/.test(
+      name,
+    );
   // The API-entry modules that carry the bare `apache-arrow` import (NOT the
   // worker IIFEs, which are self-contained). These get a body rewrite.
   const needsArrowRewrite = (name: string): boolean =>
     /^duckdb-browser\.(c?js|mjs)$/.test(name);
   const mimeFor = (name: string): string => {
     if (name.endsWith(".wasm")) return "application/wasm";
-    if (name.endsWith(".map") || name.endsWith(".json")) return "application/json";
+    if (name.endsWith(".map") || name.endsWith(".json"))
+      return "application/json";
     // .js / .cjs / .mjs — a worker script must be served as JS (a `<`-leading
     // HTML body is the exact failure this route fixes).
     return "text/javascript";
@@ -416,7 +462,7 @@ export default defineConfig({
         // Corpus root (resolved to the sibling `~/paged/corpus` in
         // side-by-side dev, or `editor/corpus` if colocated) so the
         // fidelity driver + ad-hoc `/@fs/` loads can fetch fixtures
-        // under corpus/generated/* and corpus/samples/*, not just the
+        // under corpus/idml/generated/* and corpus/idml/samples/*, not just the
         // envato packs the /corpus/idml/ route serves.
         resolve(CORPUS_ENVATO, ".."),
         // Sibling plugin checkouts (the pnpm `link:` chain): their
@@ -441,12 +487,43 @@ export default defineConfig({
       // reports duckdb-missing and data binding can't drive.
       "apache-arrow": resolve(__dirname, "node_modules/apache-arrow"),
     },
+    // One React only: a plugin bundle consumed through a local link:
+    // override resolves imports from ITS realpath (its own node_modules),
+    // which would mount panel components against a second React instance
+    // and break hooks. Harmless for registry installs (already deduped).
+    dedupe: ["react", "react-dom"],
   },
   optimizeDeps: {
     // Decision-B: the wasm loader ships in @paged-media/canvas-wasm.
     // Keep it out of the dep pre-bundle so the worker's dynamic import
     // + `?url` wasm asset resolve through Vite's module graph intact.
-    exclude: ["@paged-media/canvas-wasm"],
+    // @paged-media/pdf ships the same shape (the pdf-import wasm mapper +
+    // pdf.js worker, both loaded via `?url`); esbuild's dep-optimizer can't
+    // read a `?url` import, so exclude it too and let Vite resolve the assets.
+    // @paged-media/doc likewise (bin/docx_js_bg.wasm via `?url`).
+    //
+    // @paged-media/plugin-sdk for a different reason, and it is worth
+    // stating because it will bite the next canary bump: the SDK's
+    // React-optional fallbacks (`schema-panel.tsx`, `widgets-fallback.tsx`)
+    // do a TOP-LEVEL `await import("react")`, which its own tsup build
+    // emits verbatim at target es2022. Vite's dep-optimizer compiles
+    // pre-bundled deps down to the browserslist floor (chrome87 …), where
+    // top-level await does not exist, so pre-bundling it fails the dev
+    // server outright. Excluding it lets Vite serve the module through
+    // the normal graph, where the app's own es2022 target applies.
+    // @paged-media/data ships the same wasm shape as pdf/doc, but loads
+    // its glue via a RUNTIME-relative dynamic import ("../bin/data_js.js",
+    // @vite-ignore). Pre-bundled, the importer lives in .vite/deps and the
+    // relative path 404s ("data-js wasm not built" — how the six data
+    // journeys went dark when the link: override left, 2026-08-18); the
+    // link era masked it because linked packages skip pre-bundling.
+    exclude: [
+      "@paged-media/canvas-wasm",
+      "@paged-media/pdf",
+      "@paged-media/doc",
+      "@paged-media/data",
+      "@paged-media/plugin-sdk",
+    ],
     // Pre-bundle apache-arrow at server startup. The DuckDB-WASM API entry's
     // bare `apache-arrow` import is rewritten to a virtual module (see
     // duckdbDistRoute) that pulls in apache-arrow; if Vite first discovers it

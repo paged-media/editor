@@ -36,8 +36,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
-const PACK_NAME = "brand-guidelines";
-const PACK_PATH = `${REPO_ROOT}/corpus/envato/packs/${PACK_NAME}/template.idml`;
+// License-clear generated fixture (runs in lean CI). The centre
+// probes land on page 1's un-rotated 100×100 Rectangle — a square,
+// so the rotate/scale matrix assertions (which are analytic in the
+// gesture math, not fixture-derived) run against clean geometry.
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }
@@ -164,7 +167,7 @@ test.describe("Phase D — rotate + scale gestures", () => {
 
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
-    const loaded = await loadIdml(page, PACK_PATH, PACK_NAME);
+    const loaded = await loadIdml(page, FIXTURE);
     pageId = loaded.pages[0].pageId;
     pageW = loaded.pages[0].widthPt;
     pageH = loaded.pages[0].heightPt;

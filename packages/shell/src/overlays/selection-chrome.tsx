@@ -44,8 +44,8 @@ function SelectionChromeRender(props: OverlayProps) {
 
   const out: ReactNode[] = [];
   for (const g of elementGeometry) {
-    const pr = props.pageRects.get(g.pageId);
-    if (!pr) continue;
+    const pr = g.pageId ? props.pageRects.get(g.pageId) : undefined;
+    if (!pr) continue; // C-23 — pageless ⇒ no page-local chrome
     const [top, left, bottom, right] = g.bounds;
     const corners: Array<[number, number]> = [
       [left, top],
@@ -114,6 +114,13 @@ export function groupByPage(
 ): Map<string, ElementGeometryItem[]> {
   const byPage = new Map<string, ElementGeometryItem[]>();
   for (const g of geometry) {
+    // C-23 — `pageId` is nullable once the engine reports PASTEBOARD
+    // elements (it used to omit them entirely). An element on no page
+    // has no page-local space to draw chrome in, so it is not grouped
+    // and gets no chrome. Written as a guard NOW, ahead of the wasm
+    // bump that narrows the type, so the change lands in one place
+    // instead of surfacing as a type error across six overlays.
+    if (!g.pageId) continue;
     const list = byPage.get(g.pageId) ?? [];
     list.push(g);
     byPage.set(g.pageId, list);

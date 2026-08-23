@@ -47,6 +47,21 @@ export interface PanelProps {
  * title, a React component, and placement / visibility metadata.
  */
 export interface PanelContribution {
+  /** E6 — a DEVELOPER surface: kept out of the Window menu.
+   *
+   *  The menu listed every registered panel, so an end user browsing it
+   *  found the REPL, the script editor and two panels titled "Swatch
+   *  list (schema)" and "Structure (schema tree)" — which exist to give
+   *  the schema tiers a real consumer for their tests. Four developer
+   *  tools in a designer's Window menu, indistinguishable from the
+   *  ninety real ones.
+   *
+   *  It stays REGISTERED and openable — `__canvas.openPanel`, the
+   *  command palette, and any test that wants it — because the panel is
+   *  not the problem; offering it to a designer browsing for a workspace
+   *  is. */
+  devOnly?: boolean;
+
   /** Stable identifier. Format: `<namespace>.<panel>`. */
   id: string;
 
@@ -65,6 +80,15 @@ export interface PanelContribution {
 
   /** Optional icon name for the tab header. */
   icon?: string;
+
+  /** K-8 — opt into the panel rail: the rail renders a launcher item
+   *  for this panel after the app's built-in items. Off by default. */
+  rail?: boolean;
+
+  /** K-8 — a self-contained SVG glyph (inner markup of a 24×24 viewBox,
+   *  currentColor, no script/event handlers). SANITIZED before render;
+   *  used when `icon` names no host glyph. */
+  iconSvg?: string;
 
   /** Optional visibility predicate against application state. */
   when?: VisibilityPredicate;

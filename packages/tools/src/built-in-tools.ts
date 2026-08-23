@@ -20,11 +20,25 @@
 // Concept 1 — the built-in InDesign tool catalog, transcribed from
 // `thoughts/docs/paged/editor/media/toolbar.png`. DATA only here:
 // id / title / icon / shortcut / flyout group / section / default.
-// Gesture handler factories are attached to the implemented tools
-// (Rectangle, Line, Pencil, Shear, Scissors, Gradient Swatch,
-// Gradient Feather, Page — protocol v24); tools without a `gesture`
-// appear in the rail but are inert until their handler / engine op
-// lands.
+//
+// EVERY entry in this list must be one of exactly two things:
+//
+//   1. WORKING — it carries a `gesture`, or an app-level consumer
+//      routes its id (Selection / Direct Selection / Type via the
+//      `legacyKey` bridge, Hand / Zoom via canvas-panel).
+//   2. AN HONEST STUB — `status: "planned"`, which the rail renders
+//      dimmed and refuses to activate and for which the shell
+//      registers no command and no keybinding.
+//
+// The third state this file used to be full of — a rail entry with
+// neither a gesture nor a consumer, which accepts a click and then
+// silently does nothing — is a bug, not a placeholder: the user gets
+// no signal, so the dead affordance reads as a fault in their own
+// input. It is strictly worse than a visible stub.
+//
+// A `shortcut` on a planned tool is a RESERVATION (INV-REG-1 keeps
+// tool keys globally unique across the built-ins and every plugin
+// bundle) — the key is held for the real implementation, never bound.
 //
 // Registration order == toolbox reading order, so the rail's slot
 // order (first-seen group order) and section order come out right.
@@ -32,6 +46,7 @@
 import type { CursorSpec, ToolContribution } from "@paged-media/shell";
 
 import { createEllipseHandler } from "./handlers/ellipse-tool";
+import { createEyedropperHandler } from "./handlers/eyedropper-tool";
 import { createGradientFeatherHandler } from "./handlers/gradient-feather-tool";
 import { createGradientSwatchHandler } from "./handlers/gradient-tool";
 import { createLineHandler } from "./handlers/line-tool";
@@ -40,8 +55,11 @@ import { createPageHandler } from "./handlers/page-tool";
 import { createPencilHandler } from "./handlers/pencil-tool";
 import { createPenHandler } from "./handlers/pen-tool";
 import { createRectangleHandler } from "./handlers/rectangle-tool";
+import { createTypeHandler } from "./handlers/type-tool";
 import { createScissorsHandler } from "./handlers/scissors-tool";
 import { createShearHandler } from "./handlers/shear-tool";
+import { createSmoothHandler } from "./handlers/smooth-tool";
+import { createRotateHandler, createScaleHandler } from "./handlers/transform-tools";
 
 export const BUILT_IN_TOOLS: ToolContribution[] = [
   // ── A · Selection tools ──────────────────────────────────────
@@ -76,6 +94,10 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     // Delete removes the armed page (engine ops landed, protocol v24).
     gesture: createPageHandler,
   },
+  // STUB — the Gap tool resizes the WHITESPACE between neighbouring
+  // frames, which needs a neighbourhood solver on top of `resizeFrame`
+  // (the engine op exists; the editor-side geometry does not). `u` is
+  // reserved, not bound.
   {
     id: "paged.tool.gap",
     title: "Gap",
@@ -84,7 +106,12 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "gap",
     section: "selection",
     isGroupDefault: true,
+    status: "planned",
   },
+  // STUB — the Content Conveyor collects page items into a holding bin
+  // and places COPIES of them elsewhere. There is no element-duplicate
+  // arm on the wire at all (`duplicatePage` is page-scoped), so this
+  // pair cannot be built editor-side today. `b` is reserved, not bound.
   {
     id: "paged.tool.contentCollector",
     title: "Content Collector",
@@ -94,6 +121,7 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     section: "selection",
     order: 0,
     isGroupDefault: true,
+    status: "planned",
   },
   {
     id: "paged.tool.contentPlacer",
@@ -102,6 +130,7 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "content",
     section: "selection",
     order: 1,
+    status: "planned",
   },
 
   // ── B · Drawing and Type tools ───────────────────────────────
@@ -114,17 +143,21 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     section: "drawType",
     order: 0,
     isGroupDefault: true,
+    // `legacyKey` still routes the CLICK: ViewportCanvas sets the
+    // hit-test filter to "text" and places a caret. The gesture handles
+    // only the DRAG, because the pointer-up dispatch splits the two at
+    // CLICK_DRAG_THRESHOLD_PX. Both halves are the tool; neither
+    // replaces the other.
     legacyKey: "text",
+    gesture: createTypeHandler,
   },
-  {
-    id: "paged.tool.typePath",
-    title: "Type on a Path",
-    icon: "tool-typePath",
-    shortcut: "shift+t",
-    group: "type",
-    section: "drawType",
-    order: 1,
-  },
+  // RETIRED — "Type on a Path" used to sit here as an inert built-in
+  // holding `shift+t`. paged.draw ships the working tool
+  // (`media.paged.draw.tool.typeOnPath`, over core's v58
+  // `attachTextToPath`) in this same `type` slot at order 2; the dead
+  // built-in was shadowing it AND forcing it onto `shift+h`. Removing
+  // it FREES `shift+t` — paged.draw should claim the canonical key for
+  // `typeOnPath` (that assignment lives in the plugin's own repo).
   {
     id: "paged.tool.line",
     title: "Line",
@@ -172,15 +205,36 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "pencil",
     section: "drawType",
     order: 1,
+    // Click a path → one `simplifyPath` (whole-element; see the
+    // handler's honest-scope note). Tolerance is a tool option.
+    gesture: createSmoothHandler,
+    options: {
+      toolId: "paged.tool.smooth",
+      fields: [
+        {
+          kind: "number",
+          key: "tolerance",
+          label: "Tolerance",
+          min: 0.1,
+          max: 20,
+          step: 0.1,
+          unit: "pt",
+        },
+      ],
+    },
   },
-  {
-    id: "paged.tool.erase",
-    title: "Erase",
-    icon: "tool-erase",
-    group: "pencil",
-    section: "drawType",
-    order: 2,
-  },
+  // RETIRED — "Erase" was an inert built-in with no shortcut. paged.draw
+  // ships the working eraser (`media.paged.draw.tool.eraserBrush`,
+  // `shift+i`) in the `pen` slot.
+
+  // The three FRAME tools drive the same handlers as their Shape-slot
+  // twins. In InDesign a graphic frame differs from a shape only in its
+  // default fill; in the paged model there is no separate placeholder
+  // node kind at all — `insertFrame` / `insertOval` / `insertPath`
+  // produce the Rectangle / Oval / Polygon that `placeImage` targets,
+  // i.e. the frame. Wiring them to the existing handlers is therefore
+  // exactly what the rail promises (and `f` is also a live pill on the
+  // Design-mode context toolbar), not a second, parallel implementation.
   {
     id: "paged.tool.rectangleFrame",
     title: "Rectangle Frame",
@@ -190,6 +244,7 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     section: "drawType",
     order: 0,
     isGroupDefault: true,
+    gesture: createRectangleHandler,
   },
   {
     id: "paged.tool.ellipseFrame",
@@ -198,6 +253,7 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "frame",
     section: "drawType",
     order: 1,
+    gesture: createEllipseHandler,
   },
   {
     id: "paged.tool.polygonFrame",
@@ -206,6 +262,17 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "frame",
     section: "drawType",
     order: 2,
+    gesture: createPolygonHandler,
+    // Sides / star inset are read from the `paged.tool.polygon`
+    // settings key — InDesign likewise gives the Polygon and Polygon
+    // Frame tools ONE shared Polygon Settings dialog.
+    options: {
+      toolId: "paged.tool.polygon",
+      fields: [
+        { kind: "number", key: "sides", label: "Number of Sides", min: 3, max: 100, step: 1 },
+        { kind: "number", key: "starInset", label: "Star Inset", min: 0, max: 100, step: 1, unit: "%" },
+      ],
+    },
   },
   {
     id: "paged.tool.rectangle",
@@ -263,6 +330,13 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     // Editor-ops — anchor click → `pathOpenAt` (protocol v24).
     gesture: createScissorsHandler,
   },
+  // STUB — Free Transform is a MODE with its own unified handle box
+  // (translate + resize + rotate + shear from one frame), not another
+  // gesture arm. Every arm it would compose already exists engine-side;
+  // what is missing is the overlay + handle hit-testing, which is a
+  // feature, not a wiring. Until then the Selection tool's own handles
+  // (resize, the rotate handle, Cmd+drag to scale) are the real path.
+  // `e` is reserved, not bound.
   {
     id: "paged.tool.freeTransform",
     title: "Free Transform",
@@ -272,7 +346,13 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     section: "transform",
     order: 0,
     isGroupDefault: true,
+    status: "planned",
   },
+  // Rotate / Scale drive the engine's `{kind:"rotate"}` / `{kind:"scale"}`
+  // gesture arms — the same arms the selection chrome's rotate handle and
+  // Cmd+handle-drag already commit, and the same transforms the
+  // Object/Transform panel writes numerically. Both pivot on the
+  // selection centroid; Shift constrains engine-side.
   {
     id: "paged.tool.rotate",
     title: "Rotate",
@@ -281,6 +361,7 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "transform",
     section: "transform",
     order: 1,
+    gesture: createRotateHandler,
   },
   {
     id: "paged.tool.scale",
@@ -290,6 +371,7 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "transform",
     section: "transform",
     order: 2,
+    gesture: createScaleHandler,
   },
   {
     id: "paged.tool.shear",
@@ -326,6 +408,9 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
   },
 
   // ── D · Modification and Navigation tools ────────────────────
+  // STUB — an editorial Note is a story-level annotation. The engine
+  // has no Note in its model and no wire op to create one, so this is
+  // engine-blocked rather than unbuilt. No shortcut to reserve.
   {
     id: "paged.tool.note",
     title: "Note",
@@ -333,7 +418,22 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "note",
     section: "modNav",
     isGroupDefault: true,
+    status: "planned",
   },
+  // C-32 — the Eyedropper is BACK in the host, and this time it works.
+  //
+  // It was retired as an inert built-in because paged.draw shipped a
+  // real one; that freed the rail but made the capability unreachable
+  // for paged.image, which cannot import from a sibling bundle under
+  // the isolation contract. A capability whose vocabulary is HOST
+  // vocabulary belongs to the host once a second plugin needs it, and
+  // colour is host vocabulary.
+  //
+  // The two Eyedroppers are NOT duplicates and both stay: paged.draw's
+  // samples typed ELEMENT PROPERTIES (fill/stroke/weight/opacity) and
+  // says in its own header that it does not do pixels; this one samples
+  // the COMPOSITED PIXEL, which only the host can see. Reclaiming `i`
+  // is safe — paged.draw's lives on `shift+d`.
   {
     id: "paged.tool.eyedropper",
     title: "Eyedropper",
@@ -341,18 +441,25 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     shortcut: "i",
     group: "eyedropper",
     section: "modNav",
+    // Order 0 + group default, ahead of paged.draw's `order: 2`. Not a
+    // land-grab: the group needs a default that WORKS EVERYWHERE, and
+    // this one does — draw's exists only when that bundle is loaded and
+    // is about vector appearance, while sampling a colour is something
+    // every context wants. The slot holds both; only the face changes.
     order: 0,
     isGroupDefault: true,
+    gesture: createEyedropperHandler,
   },
-  {
-    id: "paged.tool.measure",
-    title: "Measure",
-    icon: "tool-measure",
-    shortcut: "k",
-    group: "eyedropper",
-    section: "modNav",
-    order: 1,
-  },
+  // RETIRED — Measure was an inert built-in holding `k` while
+  // paged.draw shipped a working version
+  // (`media.paged.draw.tool.eyedropper` on `shift+d`, joining this same
+  // `eyedropper` slot, and `media.paged.draw.tool.measure` on `shift+m`
+  // in its own slot). The dead built-in Eyedropper was even the slot's
+  // group DEFAULT, so the rail face was the broken one. Removing both
+  // FREES `i` and `k` for paged.draw to claim (its repo, not ours), and
+  // hands the `eyedropper` slot to the plugin — which also means the
+  // slot now takes its rail position from bundle-load order; paged.draw
+  // can pin it back with `slotOrder`.
   {
     id: "paged.tool.hand",
     title: "Hand",
@@ -381,12 +488,10 @@ const TEXT: CursorSpec = { kind: "css", token: "text" };
 const CROSS: CursorSpec = { kind: "css", token: "crosshair" };
 const TOOL_CURSORS: Record<string, CursorSpec> = {
   "paged.tool.type": TEXT,
-  "paged.tool.typePath": TEXT,
   "paged.tool.line": CROSS,
   "paged.tool.pen": CROSS,
   "paged.tool.pencil": CROSS,
   "paged.tool.smooth": CROSS,
-  "paged.tool.erase": CROSS,
   "paged.tool.rectangleFrame": CROSS,
   "paged.tool.ellipseFrame": CROSS,
   "paged.tool.polygonFrame": CROSS,
@@ -396,8 +501,6 @@ const TOOL_CURSORS: Record<string, CursorSpec> = {
   "paged.tool.scissors": CROSS,
   "paged.tool.gradientSwatch": CROSS,
   "paged.tool.gradientFeather": CROSS,
-  "paged.tool.eyedropper": CROSS,
-  "paged.tool.measure": CROSS,
   "paged.tool.hand": { kind: "css", token: "grab" },
   "paged.tool.zoom": { kind: "css", token: "zoom-in" },
 };

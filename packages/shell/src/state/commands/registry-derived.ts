@@ -51,6 +51,12 @@ export function installRegistryDerivedContributions(
 
   const addTool = (tool: ToolContribution) => {
     if (perTool.has(tool.id)) return;
+    // Honest stubs contribute NOTHING executable — no activation
+    // command (a command-palette entry that silently does nothing is
+    // the same lie as an inert rail slot) and no keybinding. A
+    // `shortcut` on a planned tool is an INV-REG-1 reservation, not a
+    // binding; see `ToolStatus`. Applies to bundle tools too.
+    if (tool.status === "planned") return;
     const ds: Disposable[] = [];
     const command = TOOL_ACTIVATE_COMMAND_PREFIX + tool.id;
     ds.push(

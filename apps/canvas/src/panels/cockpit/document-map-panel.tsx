@@ -80,7 +80,7 @@ import type {
   StorySummary,
 } from "@paged-media/client";
 
-import { documentBounds, layoutPages, fitCamera } from "../../ui/layout";
+import { layoutPages, fitCamera } from "../../ui/layout";
 import { useAnimatedCamera } from "../../ui/useAnimatedCamera";
 
 /** Map a `LinkSummary.hostKind` (parse-side frame kind: `"Rectangle"`,
@@ -159,6 +159,10 @@ function useMissingLinksByPage(
         if (cancelled) return;
         const next = new Map<number, number>();
         for (const g of geoms) {
+          // C-23 — a pasteboard element belongs to no page, so it is
+          // not counted in a PER-PAGE map. Skipping is the honest
+          // answer here; a document map is page-indexed by definition.
+          if (!g.pageId) continue;
           const idx = pageIndexOf.get(g.pageId);
           if (idx == null) continue;
           next.set(idx, (next.get(idx) ?? 0) + 1);
@@ -271,12 +275,14 @@ export function DocumentMapPanel(_props: PanelProps) {
   }, [entries, query]);
 
   const jumpToIndices = (pageIndices: number[]) => {
-    const spreadRects = pageIndices
-      .map((i) => rects[i])
-      .filter((r) => r != null);
-    if (spreadRects.length === 0) return;
-    const union = documentBounds(spreadRects);
-    animateCamera(fitCamera(viewportSize[0], viewportSize[1], union));
+    // `layoutPages` stacks ALL pages vertically (spreads are not
+    // side-by-side), so fitting the union rect of a multi-page spread
+    // lands the camera on the inter-page GAP. Fit the spread's FIRST
+    // page instead; a spread-aware `layoutPages` (pages of one spread
+    // side by side) is the structural fix (follow-up).
+    const first = pageIndices.map((i) => rects[i]).find((r) => r != null);
+    if (!first) return;
+    animateCamera(fitCamera(viewportSize[0], viewportSize[1], first));
   };
 
   const jumpTo = (entry: SpreadEntry) => {

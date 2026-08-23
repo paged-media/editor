@@ -19,11 +19,24 @@
 
 // SDK Phase 5 / panel-gallery pass — Pages list panel.
 //
-// Gallery list shape over `documentCollection:pages`, now with the
-// LIVE toolbar: New rides `insertPage` (after the selected page or
-// the document end) and Delete rides `deletePage` against the
-// selected row. Duplicate stays an honest seam (no duplicatePage
-// Operation yet); the master column waits on per-page master reads.
+// Gallery list shape over `documentCollection:pages`, with the LIVE
+// toolbar: New rides `insertPage` (after the selected page or the
+// document end) and Delete rides `deletePage` against the selected row.
+// Duplicate stays an honest seam (no duplicatePage Operation yet); the
+// master column waits on per-page master reads.
+//
+// B3 — CLICKING A ROW ALSO NAVIGATES. InDesign's Pages panel is one
+// surface that both goes to a page and edits the page list; paged split
+// those in half and shipped the halves separately. `paged.pages` (the
+// navigator, in Design mode's left dock by default) has thumbnails and
+// jumps, and cannot add or delete. This panel could add and delete, is
+// in no mode's slots, and its rows only toggled a local `selected`
+// flag — so the half a designer can reach cannot edit, and the half
+// that edits cannot be reached and did not navigate.
+//
+// Selection still toggles, because Delete needs a selected row. The
+// jump is additive: click a row and the canvas goes there AND the row
+// becomes the delete target, which is what the two-in-one panel does.
 
 import { useState } from "react";
 
@@ -32,14 +45,35 @@ import {
   PanelToolbar,
   ToolbarBtn,
   useCanvasClient,
+  useCamera,
   useCollection,
+  useDocument,
 } from "@paged-media/shell";
 import type { PageSummary } from "@paged-media/client";
+
+import { fitCamera, layoutPages } from "../ui/layout";
+import { useAnimatedCamera } from "../ui/useAnimatedCamera";
 
 export function PagesListPanel() {
   const client = useCanvasClient();
   const items = useCollection<PageSummary>("pages");
   const [selected, setSelected] = useState<string | null>(null);
+  const { handle } = useDocument();
+  const { camera, setCamera, viewportSize } = useCamera();
+  const animateCamera = useAnimatedCamera(camera, setCamera);
+
+  // Page rects come from the same `layoutPages` the navigator and the
+  // Home/PageUp shortcuts use, so "go to page 3" means the identical
+  // camera wherever it is asked for.
+  const jumpTo = (pageId: string) => {
+    const [vw, vh] = viewportSize;
+    if (vw < 10 || vh < 10 || !handle) return;
+    const idx = handle.pageIds.indexOf(pageId);
+    if (idx < 0) return;
+    const rects = layoutPages(handle.pageSizesPt);
+    const rect = rects[idx];
+    if (rect) animateCamera(fitCamera(vw, vh, rect));
+  };
 
   if (items === null) {
     return (
@@ -64,6 +98,19 @@ export function PagesListPanel() {
       .catch(() => {});
   };
 
+  // The seam here read "Duplicate page — awaiting engine support" while
+  // `duplicatePage` sat in the capability matrix as MEASURED SUPPORTED.
+  // A seam that outlives its gap tells the user a shipped feature is
+  // missing, which is the same lie as claiming an unbuilt one works —
+  // just harder to notice, because it still looks deliberate.
+  const onDuplicate = selectedPage
+    ? () => {
+        void client
+          .mutate({ op: "duplicatePage", args: { page: selectedPage.selfId } })
+          .catch(() => {});
+      }
+    : undefined;
+
   const onDelete = selectedPage
     ? () => {
         void client
@@ -86,7 +133,10 @@ export function PagesListPanel() {
         />
         <ToolbarBtn
           icon="ui-component"
-          label="Duplicate page — awaiting engine support"
+          label={
+            selectedPage ? "Duplicate page" : "Duplicate page (select one first)"
+          }
+          onClick={onDuplicate}
         />
       </PanelToolbar>
       {items.length === 0 ? (
@@ -102,8 +152,10 @@ export function PagesListPanel() {
               primary: `Page ${p.index}`,
               secondary: `${p.sizePt[0].toFixed(0)} × ${p.sizePt[1].toFixed(0)} pt`,
               selected: p.selfId === selected,
-              onClick: () =>
-                setSelected((cur) => (cur === p.selfId ? null : p.selfId)),
+              onClick: () => {
+                setSelected((cur) => (cur === p.selfId ? null : p.selfId));
+                jumpTo(p.selfId);
+              },
             }))}
           />
         </div>

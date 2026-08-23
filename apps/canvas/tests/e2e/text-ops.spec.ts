@@ -178,19 +178,25 @@ test.describe("E2E text ops", () => {
   test("AC-E2E-TEXT-3 — applyStyle attributes a contrasting paragraph style and REPAINTS the run @feat:stories-text.text.delete @feat:stories-text.text.insert @level:happy", async ({
     page,
   }) => {
-    // W2.1 — the `text` fixture now ships a deliberately-contrasting
-    // named paragraph style "Emphasis Display" (28pt / RGB cyan /
-    // centred vs the 12pt black left default — see the paged-gen `text`
-    // sample). It is the LAST entry in the paragraphStyles collection, so
-    // `lastCollectionId` resolves to it. Applying it to the page-0 body
-    // paragraph now produces a real render delta, upgrading the former
-    // "honest seam" to a full op-sandwich: the mutation lands, the story
-    // length is unchanged (attribute-only), the frame REPAINTS, and undo
-    // restores the model + pixels byte-identically (verified on 0.35.1).
+    // W2.1 — the `text` fixture ships a deliberately-contrasting named
+    // paragraph style "Emphasis Display" (28pt / RGB cyan / centred vs
+    // the 12pt black left default — see the paged-gen `text` sample).
+    // Resolve it BY NAME: this spec once took the LAST collection entry,
+    // and when core ac30eb9 appended a visually-no-op NestedDemo style to
+    // the regenerated fixture, "last" silently became a zero-pixel apply
+    // and the repaint assertion went red for two months while the engine
+    // was innocent (audit 17082026). Applying the named style produces a
+    // real render delta: the mutation lands, the story length is
+    // unchanged (attribute-only), the frame REPAINTS, and undo restores
+    // the model + pixels byte-identically.
     const story = fx.firstStory!;
     expect(story, "text fixture has a story").toBeTruthy();
-    const styleId = await lastCollectionId(page, "paragraphStyles");
-    expect(styleId, "fixture has the contrasting Emphasis style").toBeTruthy();
+    const styleId = await collectionIdByName(
+      page,
+      "paragraphStyles",
+      "Emphasis Display",
+    );
+    expect(styleId, "fixture ships the Emphasis Display style").toBeTruthy();
     const frame = fx.frames.find((f) => f.ref.kind === "textFrame")!;
     const pageInfo = fx.pages[frame.pageIndex];
     const region = (await elementPageRectPt(page, frame.ref))!;
@@ -263,23 +269,37 @@ test.describe("E2E text ops", () => {
   });
 });
 
-/** Last (most-recently-defined) id in a style/swatch collection — the
- *  applyStyle test needs a real paragraph-style ref to attribute. */
-async function lastCollectionId(
+/** Resolve a style/swatch collection entry BY NAME. Positional lookups
+ *  ("the last entry") couple the spec to fixture regeneration order —
+ *  the exact drift that broke AC-E2E-TEXT-3 (audit 17082026). */
+async function collectionIdByName(
   page: import("@playwright/test").Page,
-  name: string,
+  collection: string,
+  styleName: string,
 ): Promise<string | null> {
-  return page.evaluate(async (n) => {
-    const c = (
-      globalThis as unknown as {
-        __canvas: {
-          client: {
-            collection: (n: string) => Promise<Array<{ selfId: string }>>;
+  return page.evaluate(
+    async ({ n, wanted }) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              collection: (
+                n: string,
+              ) => Promise<Array<{ selfId: string; name?: string }>>;
+            };
           };
-        };
-      }
-    ).__canvas;
-    const items = await c.client.collection(n);
-    return items[items.length - 1]?.selfId ?? null;
-  }, name);
+        }
+      ).__canvas;
+      const items = await c.client.collection(n);
+      return (
+        items.find((i) => i.name === wanted)?.selfId ??
+        // Fall back to a selfId substring match — some collections carry
+        // the display name only inside the IDML self id.
+        items.find((i) => i.selfId.includes(wanted.replace(/\s+/g, "")))
+          ?.selfId ??
+        null
+      );
+    },
+    { n: collection, wanted: styleName },
+  );
 }

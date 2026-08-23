@@ -19,8 +19,10 @@
 
 // Cockpit — Data-layout mode's surfaces (kit: left Data Source nav,
 // canvas-area generated grid). Both are honest seams until the
-// data-publishing engine lands; the existing DataMappingPanel
-// (stub-panels.tsx) stays the right inspector.
+// data-publishing engine lands. U8: the LIVE paged.data plugin panels
+// own the mode surface; this suite is titled "Data suite (preview)"
+// so it can't be mistaken for them (the old DataMappingPanel stub is
+// retired).
 
 import {
   CockpitPanelHeader,
@@ -43,7 +45,7 @@ export function DataSourcePanel(_props: PanelProps) {
         fontFamily: "var(--font-sans)",
       }}
     >
-      <CockpitPanelHeader title="Data Source" />
+      <CockpitPanelHeader title="Data suite (preview)" />
       <CockpitSection
         title="Source"
         right={<StatusPill tone="draft">not connected</StatusPill>}

@@ -463,4 +463,174 @@ export const TOOL_GLYPHS: Record<string, ReactNode> = {
       <path d="M3 8 L16 8 L16 21" {...LINE} strokeWidth={1.7} />
     </>
   ),
+
+  // Corner radius — a square corner whose elbow is rounded away, with
+  // the radius shown as a short tick to the arc's centre. paged.draw.
+  "tool-cornerRadius": (
+    <>
+      <path d="M4 20 L4 10 A6 6 0 0 1 10 4 L20 4" {...LINE} strokeWidth={1.7} />
+      <path d="M10 10 L13.5 6.5" {...LINE} strokeWidth={1.4} />
+      <circle cx="10" cy="10" r="1.1" />
+    </>
+  ),
+
+  // Paintbrush — angled handle into a ferrule, splaying to a soft tip.
+  // paged.draw brush family.
+  "tool-paintbrush": (
+    <>
+      <path d="M20 4 L11.5 12.5" {...LINE} strokeWidth={1.8} />
+      <path
+        d="M12.6 11.4 L8.5 15.5 L10.7 17.7 L14.8 13.6 Z"
+        {...LINE}
+        strokeWidth={1.6}
+      />
+      <path
+        d="M8.5 15.5 C6.6 17.4 6.9 19.4 4 20 C4.6 17.1 6.6 17.4 8.5 15.5"
+        {...LINE}
+        strokeWidth={1.6}
+      />
+    </>
+  ),
+
+  // Blob brush — the same nib laying down a filled blob that merges
+  // with what it touches. paged.draw.
+  "tool-blobBrush": (
+    <>
+      <path d="M19.5 4.5 L13 11" {...LINE} strokeWidth={1.8} />
+      <path
+        d="M13.9 10.1 L10.4 13.6 L12.2 15.4 L15.7 11.9 Z"
+        {...LINE}
+        strokeWidth={1.6}
+      />
+      <path d="M9.6 14.6 C6.2 15.4 4 17 4 19 C4 20.7 5.6 21 7.4 20.3 C9.7 19.4 11.4 17.6 11.4 16.4 Z" />
+    </>
+  ),
+
+  // Eraser — a tilted block with its wear edge marked. paged.draw.
+  "tool-eraserBrush": (
+    <>
+      <path
+        d="M9.5 4.8 L19.2 14.5 L14.5 19.2 L4.8 9.5 Z"
+        {...LINE}
+        strokeWidth={1.7}
+      />
+      <path d="M7.2 12.1 L11.9 16.8" {...LINE} strokeWidth={1.4} />
+      <path d="M4 21 L20 21" {...LINE} strokeWidth={1.7} />
+    </>
+  ),
+
+  // Width — a stroke whose two sides bow apart and back, the variable
+  // width profile. paged.draw.
+  "tool-width": (
+    <>
+      <path d="M3 12 C7 12 8 5.5 12 5.5 C16 5.5 17 12 21 12" {...LINE} strokeWidth={1.7} />
+      <path d="M3 12 C7 12 8 18.5 12 18.5 C16 18.5 17 12 21 12" {...LINE} strokeWidth={1.7} />
+      <path d="M12 5.5 L12 18.5" {...LINE} strokeWidth={1.3} />
+    </>
+  ),
+
+  // Lasso — a drawn loop closing onto its own tail. paged.draw's
+  // element-region select.
+  "tool-lassoSelect": (
+    <>
+      <path
+        d="M12 4.2 C16.9 4.2 20.5 6.9 20.5 10.3 C20.5 13.7 16.9 16.4 12 16.4 C7.1 16.4 3.5 13.7 3.5 10.3 C3.5 7.4 6.1 5 9.7 4.4"
+        {...LINE}
+        strokeWidth={1.7}
+      />
+      <path d="M7.6 15.4 C7 17.6 7.6 19.4 9.2 20.3" {...LINE} strokeWidth={1.6} />
+      <circle cx="9.9" cy="20.6" r="1.4" {...LINE} strokeWidth={1.4} />
+    </>
+  ),
+
+  // Rectangular marquee — the dashed selection rectangle. paged.image.
+  "tool-marquee-rect": (
+    <>
+      <path
+        d="M4 4 L9 4 M13 4 L20 4 L20 8 M20 12 L20 20 L15 20 M11 20 L4 20 L4 16 M4 12 L4 4"
+        {...LINE}
+        strokeWidth={1.7}
+      />
+    </>
+  ),
+
+  // Elliptical marquee — the dashed selection ellipse. paged.image.
+  "tool-marquee-ellipse": (
+    <>
+      <path
+        d="M12 3.6 C16.6 3.6 20.4 7.4 20.4 12 C20.4 14.1 19.6 16.1 18.3 17.6"
+        {...LINE}
+        strokeWidth={1.7}
+      />
+      <path
+        d="M15.6 19.6 C14.5 20.1 13.3 20.4 12 20.4 C7.4 20.4 3.6 16.6 3.6 12"
+        {...LINE}
+        strokeWidth={1.7}
+      />
+      <path d="M4.5 8.2 C5.6 5.6 8.1 3.9 11 3.7" {...LINE} strokeWidth={1.7} />
+    </>
+  ),
+
+  // Freehand lasso — an open drawn loop. paged.image selection.
+  "tool-lasso": (
+    <>
+      <path
+        d="M12 4 C17 4 20.6 7 20.6 10.6 C20.6 14.2 17 17.1 12 17.1 C7 17.1 3.4 14.2 3.4 10.6 C3.4 7.6 5.9 5 9.6 4.3"
+        {...LINE}
+        strokeWidth={1.7}
+      />
+      <path d="M8.4 16.2 C7.6 18.4 8.4 20.2 10.4 20.8" {...LINE} strokeWidth={1.6} />
+    </>
+  ),
+
+  // Magic wand — a wand on the diagonal with a spark at its tip.
+  // paged.image colour-region select.
+  "tool-magic-wand": (
+    <>
+      <path d="M4 20 L14 10" {...LINE} strokeWidth={1.8} />
+      <path d="M12.4 8.4 L15.6 11.6" {...LINE} strokeWidth={1.6} />
+      <path
+        d="M17.5 3.5 L18.4 6.1 L21 7 L18.4 7.9 L17.5 10.5 L16.6 7.9 L14 7 L16.6 6.1 Z"
+        {...LINE}
+        strokeWidth={1.4}
+      />
+    </>
+  ),
+
+  // Clone stamp — the rubber stamp: knob handle, stem, shouldered base
+  // block over its impression line. paged.image retouch.
+  "tool-clone": (
+    <>
+      <circle cx={12} cy={5.4} r={2.4} {...LINE} strokeWidth={1.6} />
+      <line x1={10.9} y1={7.7} x2={10.9} y2={14.4} {...LINE} strokeWidth={1.6} />
+      <line x1={13.1} y1={7.7} x2={13.1} y2={14.4} {...LINE} strokeWidth={1.6} />
+      <path
+        d="M5 18 L5 16.5 C5 15.2 6.1 14.4 7.5 14.4 L16.5 14.4 C17.9 14.4 19 15.2 19 16.5 L19 18 Z"
+        {...LINE}
+        strokeWidth={1.6}
+      />
+      <line x1={4.5} y1={20.5} x2={19.5} y2={20.5} {...LINE} strokeWidth={1.7} />
+    </>
+  ),
+
+  // Healing brush — the plaster/bandage on the diagonal, its pad marked
+  // by the four pore dots. paged.image retouch.
+  "tool-heal": (
+    <>
+      <rect
+        x={4.6}
+        y={8.7}
+        width={14.8}
+        height={6.6}
+        rx={3.3}
+        transform="rotate(-45 12 12)"
+        {...LINE}
+        strokeWidth={1.6}
+      />
+      <circle cx={12} cy={9.7} r={0.9} />
+      <circle cx={9.7} cy={12} r={0.9} />
+      <circle cx={14.3} cy={12} r={0.9} />
+      <circle cx={12} cy={14.3} r={0.9} />
+    </>
+  ),
 };

@@ -27,9 +27,19 @@
 // valid). This journey drives the real command surface, reads the baked
 // corner option/radius back through the typed inspector, AND
 // render-verifies that rounding a FILLED square's corners visibly changes
-// the page (the corner ink is removed). The engine apply arm is
-// Rectangle-only (gap B-23) — this journey targets a rectangle, which is
-// exactly what the command supports.
+// the page (the corner ink is removed).
+//
+// A RECTANGLE, but no longer because that is all the engine takes. B-23
+// (Rectangle + Polygon) and C-18 (the rest) closed the apply arm, and a
+// polygon's corners round in this very editor — probed on a closed
+// triangle through the same wire: both writes applied and the page moved
+// by 2,019 px. paged.draw's own `supportsLiveCorners` gate kept saying
+// "rectangle" long after, so the presets were a silent no-op on a
+// polygon; that is fixed in the bundle and pinned there, against the
+// real engine, in `draw-bundle/test/conformance/live-corners.spec.ts`.
+// It is NOT exercised here because the editor loads the PUBLISHED
+// `@paged-media/draw` canary — a journey for it would be red until that
+// package ships.
 //
 // A negative control runs first: the blank page is render-stable.
 

@@ -74,9 +74,14 @@ const invoke = (page: Page, id: string) =>
 async function importCsv(page: Page): Promise<boolean> {
   await invoke(page, IMPORT_COMMAND);
   await openPanel(page, SOURCES_PANEL);
-  const fileInput = page.locator('input[type="file"][accept*="csv"]');
-  await expect(fileInput).toBeVisible({ timeout: 10_000 });
-  await fileInput.setInputFiles(CSV_FIXTURE);
+  // data canary.6: the sources panel imports through the shell.pickFile@1
+  // door (programmatic input.click -> Playwright filechooser, the
+  // doc.journey idiom); the raw <input> survives only in the SDK harness.
+  const importButton = page.locator("[data-data-import-csv]");
+  await expect(importButton).toBeVisible({ timeout: 10_000 });
+  const chooser = page.waitForEvent("filechooser");
+  await importButton.click();
+  await (await chooser).setFiles(CSV_FIXTURE);
   const status = page.locator("[data-status]").last();
   try {
     await expect
@@ -116,7 +121,7 @@ test.describe("journey · paged.data dataset panel", () => {
     // ── 2. DEFINE A QUERY — the dataset panel materializes a query; the demo
     //    binding adds the `q_all` query (SELECT * FROM the source). ──
     await openPanel(page, BINDINGS_PANEL);
-    await expect(page.getByText(/paged\.data · bindings/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("[data-data-bind-author]")).toBeVisible({ timeout: 10_000 });
     await page.getByRole("button", { name: /wire demo binding/i }).click();
     await page.waitForTimeout(300);
 
@@ -124,40 +129,42 @@ test.describe("journey · paged.data dataset panel", () => {
     //    palette entry). It mounts and shows the query selector (no longer the
     //    "No queries yet" empty state). ──
     await invoke(page, OPEN_DATASET_COMMAND);
-    await expect(page.getByText(/paged\.data · dataset/i)).toBeVisible({ timeout: 10_000 });
-    const datasetPanel = page
-      .locator("div")
-      .filter({ hasText: /paged\.data · dataset/i })
-      .last();
-    await expect(datasetPanel.getByText(/^query:/)).toBeVisible({ timeout: 8_000 });
+    // data canary.6 (U12): the v-header body text is gone — anchor the
+    // mounted panel on its stable variables block, then the query selector.
+    await expect(page.locator("[data-data-variables]")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/^query:/).last()).toBeVisible({ timeout: 8_000 });
 
     // ── 4. CATALOG (§7) — "Refresh + catalog" re-runs the DuckDB query
     //    (data.query.seam) and materializes the resolved schema: the panel
     //    headlines the column count of the imported source's records. The CSV
     //    fixture has 2 columns (name, role). ──
-    await datasetPanel.getByRole("button", { name: /refresh \+ catalog/i }).click();
-    await expect(datasetPanel.getByText(/catalog:\s*\d+\s*cols/i)).toBeVisible({ timeout: 10_000 });
-    await expect(datasetPanel.getByText(/catalog:\s*2\s*cols/i)).toBeVisible({ timeout: 6_000 });
+    await page.getByRole("button", { name: /refresh \+ catalog/i }).click();
+    await expect(page.getByText(/catalog:\s*\d+\s*cols/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/catalog:\s*2\s*cols/i)).toBeVisible({ timeout: 6_000 });
 
     // ── 5. LOCALE (§9.1, data.i18n.display) — switch the display locale en→de.
     //    The select drives the engine's formatting kernels; the panel reflects
     //    the chosen locale. ──
-    const localeSelect = datasetPanel.getByRole("combobox").first();
+    const localeSelect = page
+      .locator("select")
+      .filter({ has: page.locator('option[value="de"]') })
+      .first();
     await localeSelect.selectOption("de");
     await expect(localeSelect).toHaveValue("de");
 
     // ── 6. PUBLISH PROVIDER (§7.1 / D-09, data.provider.contract) — the engine
     //    produces the publication (id + revision etag). The panel renders the
-    //    provider id + revision; in a standalone editor (no host.dataProviders
-    //    door) it honestly says "registration deferred (D-09)". Either way the
-    //    publish surface drove + the engine returned a real publication. ──
-    await datasetPanel.getByRole("button", { name: /publish provider/i }).click();
-    await expect(datasetPanel.getByText(/provider ".*-dataset" ready · rev/i)).toBeVisible({
+    //    provider id + revision in user language (canary.6 / U12 dropped the
+    //    RFI-speak); the engine still returned a real publication either way. ──
+    await page.getByRole("button", { name: /publish provider/i }).click();
+    await expect(
+      page.getByText(/provider ".*-dataset" \(revision .*\) is ready/i),
+    ).toBeVisible({
       timeout: 10_000,
     });
 
     // Re-open via the panel id too (the openPanel door).
     await designer.openPanel(DATASET_PANEL);
-    await expect(page.getByText(/paged\.data · dataset/i)).toBeVisible();
+    await expect(page.locator("[data-data-variables]")).toBeVisible();
   });
 });

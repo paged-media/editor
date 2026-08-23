@@ -28,6 +28,8 @@ import {
 } from "../components/ui/dropdown-menu";
 import type { MenuItemContribution } from "../registries";
 import { useRegistries } from "../state/registries-context";
+import { useOptionalPaged } from "../state/paged-editor";
+import { isEnabled, type VisibilityPredicate } from "../registries/types";
 
 /**
  * Top-level menu bar. Reads from `MenuRegistry`, groups items by the
@@ -42,8 +44,32 @@ import { useRegistries } from "../state/registries-context";
  * later bundle needs them.
  */
 export function MenuBar() {
-  const { menus, commands } = useRegistries();
+  const { menus, commands, keybindings } = useRegistries();
+
+  // Same source and same formatting as the command palette, so the two
+  // surfaces cannot disagree about what a key does.
+  // NOT memoised on the registry. Its object identity never changes,
+  // while its CONTENTS grow as bundles load — so a memo keyed on it is
+  // built once at first render, before any plugin has registered a
+  // binding, and never recomputes. That is exactly what happened: 82
+  // bindings live and 0 accelerators drawn. Rebuilding per render costs
+  // one pass over ~80 entries, and only while the surface is open.
+  const keyFor = (() => {
+    const byCommand = new Map<string, string>();
+    for (const b of keybindings.list()) {
+      if (!byCommand.has(b.command)) byCommand.set(b.command, prettyKey(b.key));
+    }
+    return (id: string) => byCommand.get(id) ?? null;
+  })();
   const [version, setVersion] = useState(0);
+  // ADR 024 — the menu must reflect WHERE THE USER IS. `useOptionalPaged`
+  // both supplies the state a `when` predicate is evaluated against and
+  // provides the re-render: the handle is memoized on its slices, of
+  // which the active edit context is now one, so entering or leaving a
+  // context re-renders this bar. Optional so a standalone mount (tests,
+  // a detached panel) degrades to "everything enabled" rather than
+  // throwing.
+  const paged = useOptionalPaged();
 
   // Re-render when items are added or removed so palette-toggle
   // commands etc. show up as soon as the shell registers them.
@@ -54,7 +80,10 @@ export function MenuBar() {
     return () => sub.dispose();
   }, [menus]);
 
-  const groups = useMemo(() => groupByTopLevel(menus.list()), [menus, version]);
+  const groups = useMemo(
+    () => groupByTopLevel(menus.list()),
+    [menus, version],
+  );
 
   if (groups.length === 0) return null;
 
@@ -62,16 +91,42 @@ export function MenuBar() {
     <nav aria-label="Main menu" style={menuBarStyle}>
       {groups.map(([label, items]) => (
         <DropdownMenu key={label}>
-          <DropdownMenuTrigger style={triggerStyle}>
+          <DropdownMenuTrigger style={triggerStyle} data-menu-trigger={label}>
             {label}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" sideOffset={4}>
-            {renderItems(items, (id) => void commands.invoke(id))}
+            {renderItems(
+              items,
+              (id) => void commands.invoke(id),
+              paged,
+              keyFor,
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ))}
     </nav>
   );
+}
+
+/** `cmd+shift+s` -> `\u2318\u21e7S`. Mirrors the command palette's
+ *  formatter exactly; both read `KeybindingRegistry.list()`. */
+function prettyKey(combo: string): string {
+  const parts = combo.split("+");
+  const key = parts.pop() ?? "";
+  const mods = parts
+    .map((m) =>
+      m === "cmd" || m === "meta"
+        ? "\u2318"
+        : m === "shift"
+          ? "\u21e7"
+          : m === "alt" || m === "option"
+            ? "\u2325"
+            : m === "ctrl" || m === "control"
+              ? "\u2303"
+              : m,
+    )
+    .join("");
+  return `${mods}${key.length === 1 ? key.toUpperCase() : key.charAt(0).toUpperCase() + key.slice(1)}`;
 }
 
 interface GroupedItem {
@@ -81,7 +136,16 @@ interface GroupedItem {
   command: string;
   order: number;
   group?: string;
+  /** E4 — the group's human heading, carried through rather than
+   *  dropped. Dropping it is what made the Window menu read as ~90 flat
+   *  entries divided by unlabelled hairlines. */
+  groupLabel?: string;
   disabled?: boolean;
+  /** ADR 024 — carried through rather than dropped. This field was
+   *  declared on the contribution and discarded HERE, which is why a
+   *  menu item could declare itself inapplicable and still render live
+   *  and still run. */
+  when?: VisibilityPredicate;
 }
 
 function groupByTopLevel(
@@ -97,7 +161,9 @@ function groupByTopLevel(
       command: item.command,
       order: item.order ?? 100,
       group: item.group,
+      groupLabel: item.groupLabel,
       disabled: item.disabled,
+      when: item.when,
     };
     const bucket = groups.get(top);
     if (bucket) bucket.push(grouped);
@@ -133,6 +199,8 @@ function topLevelOrder(label: string): number {
 function renderItems(
   items: GroupedItem[],
   invoke: (commandId: string) => void,
+  state: unknown,
+  keyFor: (commandId: string) => string | null,
 ): React.ReactNode[] {
   const out: React.ReactNode[] = [];
   let lastGroup: string | undefined;
@@ -140,20 +208,66 @@ function renderItems(
     if (idx > 0 && item.group !== lastGroup) {
       out.push(<DropdownMenuSeparator key={`sep-${idx}`} />);
     }
+    // E4 — render the group's NAME when it has one. The Window menu
+    // computed these all along and MenuBar dropped them, so ~90 panel
+    // entries read as one flat list divided by unlabelled hairlines.
+    // A separator says "these differ"; a heading says how.
+    if (item.groupLabel && item.group !== lastGroup) {
+      out.push(
+        <div
+          key={`grouplabel-${idx}`}
+          data-menu-group-label={item.groupLabel}
+          className="pg-mono-meta"
+          style={{ padding: "4px 8px 2px", opacity: 0.55 }}
+        >
+          {item.groupLabel}
+        </div>,
+      );
+    }
     lastGroup = item.group;
+    // TWO REASONS TO GREY, and they are different facts the user needs
+    // told apart. `disabled` is a kit seam — the feature does not exist
+    // yet, marked "soon". A false `when` is "this does not apply where
+    // you are standing", which is not a promise about the future and
+    // must not wear a "soon" badge.
+    const inapplicable = !isEnabled(item.when, () => state);
+    const greyed = Boolean(item.disabled) || inapplicable;
     out.push(
       <DropdownMenuItem
         key={item.command}
-        disabled={item.disabled}
+        disabled={greyed}
         onSelect={() => {
-          if (!item.disabled) invoke(item.command);
+          // Re-checked at invoke, not trusted from render. A menu can be
+          // open across a context change, and the click that lands after
+          // it must not run against the surface the item was drawn for.
+          if (!greyed) invoke(item.command);
         }}
       >
         {item.label}
-        {item.disabled && (
+        {/* E2 — the accelerator column. The menus rendered a label and,
+            for seams, a `soon` pill, and nothing else — so Cmd+Z, Cmd+D,
+            Cmd+G, Cmd+] and the rest were undiscoverable from the one
+            surface that exists to list what the app can do. The TOOLS
+            advertised their keys in rail tooltips all along; commands
+            never did.
+
+            A seam shows `soon` instead: it has no key, and a blank
+            column beside a greyed item reads as a key that failed to
+            render rather than a feature that does not exist yet. */}
+        {item.disabled ? (
           <span className="pg-mono-meta" style={{ marginLeft: "auto" }}>
             soon
           </span>
+        ) : (
+          keyFor(item.command) && (
+            <span
+              className="pg-mono-meta"
+              style={{ marginLeft: "auto", opacity: 0.6 }}
+              data-menu-accelerator={item.command}
+            >
+              {keyFor(item.command)}
+            </span>
+          )
         )}
       </DropdownMenuItem>,
     );

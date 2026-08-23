@@ -161,18 +161,32 @@ export function gridCellsFor(
   return cells;
 }
 
+/** The worker reply `mutate` resolves with (refusals RESOLVE as
+ *  `mutationFailed` — they never reject). */
+export type MutateReply = Awaited<
+  ReturnType<PagedEditor["client"]["mutate"]>
+>;
+
 /**
  * Fire a mutation, warn on `mutationFailed`, and select the element
  * the engine reports as created (protocol v24's `createdId`) so the
  * fresh shape immediately carries selection chrome — the post-insert
  * flow InDesign users expect.
+ *
+ * Returns the worker reply (or `null` on a transport error) so a
+ * caller that needs the outcome — the `paged.insert.*` command layer
+ * reports refusals to the Problems panel rather than the console —
+ * can inspect it; `onRefused` fires on `mutationFailed` for callers
+ * that route the refusal to a user-visible channel. Both are additive:
+ * the drawing-tool handlers ignore them.
  */
 export function mutateAndSelect(
   paged: PagedEditor,
   mutation: Parameters<PagedEditor["client"]["mutate"]>[0],
   label: string,
-): void {
-  void paged.client
+  onRefused?: (reply: MutateReply) => void,
+): Promise<MutateReply | null> {
+  return paged.client
     .mutate(mutation)
     .then((reply) => {
       if (reply.kind === "mutationFailed") {
@@ -181,23 +195,28 @@ export function mutateAndSelect(
           `${label} rejected by engine:`,
           JSON.stringify((reply as { payload?: unknown }).payload),
         );
-        return;
+        onRefused?.(reply);
+        return reply;
       }
-      if (reply.kind !== "mutationApplied") return;
+      if (reply.kind !== "mutationApplied") return reply;
       const created = reply.payload.createdId ?? null;
-      if (!created) return;
-      void paged.client
+      if (!created) return reply;
+      return paged.client
         .setElementSelection([created], "replace")
         .then((ids) => {
           paged.selection.setElementSelection(ids);
           return paged.client.elementGeometry(ids);
         })
-        .then((items) => paged.selection.setElementGeometry(items))
-        .catch(() => {});
+        .then((items) => {
+          paged.selection.setElementGeometry(items);
+          return reply;
+        })
+        .catch(() => reply);
     })
     .catch((err) => {
       // eslint-disable-next-line no-console
       console.warn(`${label} failed:`, err);
+      return null;
     });
 }
 

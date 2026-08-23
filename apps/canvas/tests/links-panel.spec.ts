@@ -37,7 +37,7 @@ test.describe("Phase 5 — Links panel", () => {
     page,
   }) => {
     await openCanvas(page);
-    await loadIdml(page, `${REPO_ROOT}/corpus/generated/geometry-groups.idml`);
+    await loadIdml(page, `${REPO_ROOT}/corpus/idml/generated/geometry-groups.idml`);
     await openPanel(page, "paged.links");
     await expect(page.locator('[data-links-panel="ready"]')).toBeVisible();
     await expect(page.locator("[data-empty-links]")).toBeVisible();
@@ -47,7 +47,7 @@ test.describe("Phase 5 — Links panel", () => {
     page,
   }) => {
     await openCanvas(page);
-    await loadIdml(page, `${REPO_ROOT}/corpus/generated/images.idml`);
+    await loadIdml(page, `${REPO_ROOT}/corpus/idml/generated/images.idml`);
     await openPanel(page, "paged.links");
     await expect(page.locator('[data-links-panel="ready"]')).toBeVisible();
     const rows = page.locator("[data-link-list] [data-list-row]");
@@ -64,7 +64,7 @@ test.describe("Phase 5 — Links panel", () => {
     // (verified on 0.35.1). `links-broken.idml` can't host this case — it
     // deliberately mixes broken + lo-res rows.
     await openCanvas(page);
-    await loadIdml(page, `${REPO_ROOT}/corpus/generated/links-ok.idml`);
+    await loadIdml(page, `${REPO_ROOT}/corpus/idml/generated/links-ok.idml`);
     await openPanel(page, "paged.links");
     await expect(page.locator('[data-links-panel="ready"]')).toBeVisible();
     await expect(
@@ -83,7 +83,7 @@ test.describe("Phase 5 — Links panel", () => {
     // build classifies them LinkSummary.status === "missing" and the row
     // paints the [data-row-badge="missing"] badge.
     await openCanvas(page);
-    await loadIdml(page, `${REPO_ROOT}/corpus/generated/links-broken.idml`);
+    await loadIdml(page, `${REPO_ROOT}/corpus/idml/generated/links-broken.idml`);
     await openPanel(page, "paged.links");
     await expect(page.locator('[data-links-panel="ready"]')).toBeVisible();
     await expect(
@@ -100,7 +100,7 @@ test.describe("Phase 5 — Links panel", () => {
     // so the row gets the [data-row-badge="lo-res"] badge (missing wins
     // over lo-res, so this row must be the resolved-but-low one).
     await openCanvas(page);
-    await loadIdml(page, `${REPO_ROOT}/corpus/generated/links-broken.idml`);
+    await loadIdml(page, `${REPO_ROOT}/corpus/idml/generated/links-broken.idml`);
     await openPanel(page, "paged.links");
     await expect(page.locator('[data-links-panel="ready"]')).toBeVisible();
     await expect(

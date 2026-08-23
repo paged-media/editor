@@ -20,21 +20,36 @@
 // W2.12 — Preflight panel acceptance. "Validate output" runs the REAL
 // PDF export pipeline; the structured findings (PreflightFinding) ride
 // the pdfExported reply and land in the shared findings store. The
-// generated fixtures export cleanly (installed fonts, resolvable
-// images), so the live test asserts the clean path; the grouped-
-// findings-with-page-jump path is fixme'd until a fixture raises a
-// finding.
+// generated fixtures export cleanly ONCE THEIR FONTS ARE REGISTERED,
+// so the live test asserts the clean path; the grouped-findings-with-
+// page-jump path is fixme'd until a fixture raises a finding.
+//
+// That qualifier is load-bearing and was missing until protocol 62.
+// This spec never registered a font, so `geometry-groups.idml` — which
+// declares exactly one, Open Sans — was always rendered with the
+// engine's catch-all default standing in for it. Nothing said so: the
+// old resolver returned bytes and no provenance. Protocol 62's
+// `resolve_font_traced` reports the substitution, the PDF pipeline
+// promotes it to a `font_substituted` finding, and the "no findings"
+// affordance correctly stopped appearing. The premise was wrong, not
+// the engine — so the fix is to supply the face, which also means this
+// test now exercises the clean path for a real reason.
 
 import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas, loadIdml, preloadFonts } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry-groups.idml`;
+// The only family geometry-groups.idml applies. Registered so the
+// export has the real face and reports no substitution.
+const FIXTURE_FONTS = [
+  { family: "Open Sans", ttfPath: `${REPO_ROOT}/corpus/fonts/OpenSans.ttf` },
+];
 
 async function openPreflight(page: import("@playwright/test").Page) {
   await page.evaluate(() => {
@@ -49,6 +64,12 @@ test.describe("W2.12 — Preflight panel", () => {
     page,
   }) => {
     await openCanvas(page);
+    // BEFORE loadIdml, not after: RegisterFont seeds the worker's font
+    // registry, which the model reads when it LOADS a document. (Its
+    // neighbour RegisterColorProfile does sync the live model, so the
+    // asymmetry is easy to walk into — registering after the load is
+    // accepted, replied to, and has no effect on the open document.)
+    await preloadFonts(page, FIXTURE_FONTS);
     await loadIdml(page, FIXTURE);
     await openPreflight(page);
     await expect(page.locator("[data-preflight-panel]")).toBeVisible();
@@ -71,7 +92,7 @@ test.describe("W2.12 — Preflight panel", () => {
     // overset story + a "Phantom Display" missing font (it also powers
     // AC-FONTS-3), so exporting it raises at least one paged finding.
     await openCanvas(page);
-    await loadIdml(page, `${REPO_ROOT}/corpus/generated/preflight.idml`);
+    await loadIdml(page, `${REPO_ROOT}/corpus/idml/generated/preflight.idml`);
     await openPreflight(page);
     await page.locator('[data-cockpit-action="run-validation"]').click();
     // The validation pill lands once the export round-trips.

@@ -73,9 +73,23 @@ export interface EditContextFrame {
   type: string;
   /** The element the context was entered on — the write-scope root. */
   scopeRoot: ElementId;
-  /** Tool ids the rail is restricted to while this frame is top.
-   *  Empty = no restriction. */
-  toolIds: string[];
+  /**
+   * Tool ids the rail is restricted to while this frame is top.
+   *
+   * `null` = the context DECLARED NOTHING, so nothing is restricted —
+   * the permissive default for a context that has not thought about it.
+   * `[]` = the context declared that NO tool applies here, which is a
+   * statement and not the same fact.
+   *
+   * These used to collapse (`contribution.toolIds ?? []`, then
+   * `length > 0 ? … : null` at the rail), so an explicit empty
+   * declaration meant "unrestricted" — the exact opposite of what an
+   * author writing it would intend, and it left a plugin with no way
+   * to say "no canvas tool edits this content". ADR 024 decision 2
+   * asks authors to DECIDE; the type has to be able to record both
+   * answers or the decision has nowhere to go.
+   */
+  toolIds: readonly string[] | null;
   /** Panel ids the cockpit emphasizes while this frame is active. */
   panelIds: string[];
   /** A human label for the breadcrumb (the type, title-cased by the UI). */
@@ -142,7 +156,7 @@ export function EditContextStackProvider({ children }: PropsWithChildren) {
       const frame: EditContextFrame = {
         type: contribution.type,
         scopeRoot: on,
-        toolIds: contribution.toolIds ?? [],
+        toolIds: contribution.toolIds ?? null,
         panelIds: contribution.panelIds ?? [],
         label: contribution.type,
       };

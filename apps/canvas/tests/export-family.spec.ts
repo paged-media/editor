@@ -41,8 +41,8 @@ import { openCanvas, openPanel } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const CLEAN = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
-const BROKEN_LINKS = `${REPO_ROOT}/corpus/generated/links-broken.idml`;
+const CLEAN = `${REPO_ROOT}/corpus/idml/generated/geometry-groups.idml`;
+const BROKEN_LINKS = `${REPO_ROOT}/corpus/idml/generated/links-broken.idml`;
 
 // Load through the FILE INPUT (not the driver's `loadIdml`, which
 // bypasses the React onChange path) so the DocumentContext `handle`
@@ -226,6 +226,110 @@ test.describe("Export family — Export inspector", () => {
     // The done affordance reports a real file count.
     await expect(page.locator("[data-export-image-done]")).toBeVisible();
 
+    await setMode(page, "design");
+  });
+
+  test("E-2 — a page RANGE exports the named pages, and a nonsense range REFUSES @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @level:gesture", async ({
+    page,
+  }) => {
+    // The range exists because all/current is a BINARY and the common
+    // ask sits between its ends. This is paged's answer to Photoshop's
+    // "Export As → artboards": a page already IS the containment those
+    // artboards provide, so all that was missing was naming a subset.
+    await openCanvas(page);
+    await loadDoc(page, CLEAN);
+    await setMode(page, "export");
+    await page.locator('[data-output-nav="image"]').click();
+    await expect(page.locator("[data-export-inspector-panel]")).toBeVisible();
+
+    // The range input appears only for the range scope — a control
+    // that cannot act should not be on screen.
+    await expect(page.locator("[data-export-image-range]")).toHaveCount(0);
+    await page.locator("[data-export-image-scope]").selectOption("range");
+    await expect(page.locator("[data-export-image-range]")).toBeVisible();
+
+    // A range naming ONE page yields exactly one download. Asserted as
+    // a download rather than a file count, so it measures what the user
+    // gets rather than what the model reports.
+    await page.locator("[data-export-image-range]").fill("1");
+    const dl = page.waitForEvent("download");
+    await page
+      .locator('[data-cockpit-action="export-inspector-run-image"]')
+      .click();
+    expect((await dl).suggestedFilename()).toMatch(/\.png$/);
+    await expect(page.locator("[data-export-image-done]")).toBeVisible();
+
+    // A range naming NO page in this document REFUSES, and says so with
+    // the document's own page count. The alternative — falling back to
+    // every page — answers a typo with a folder full of files.
+    await page.locator("[data-export-image-range]").fill("999");
+    await page
+      .locator('[data-cockpit-action="export-inspector-run-image"]')
+      .click();
+    await expect(page.locator("[data-export-image-done]")).toHaveCount(0);
+    await expect(
+      page.getByText(/names no page in this .*-page document/),
+    ).toBeVisible();
+
+    await setMode(page, "design");
+  });
+
+  test("E-2 — JPEG is a real second FORMAT, flattened onto white @feat:editor-shell.panels.outputs @feat:plugin-platform.importer-exporter @level:gesture", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    await loadDoc(page, CLEAN);
+    await setMode(page, "export");
+    await page.locator('[data-output-nav="image"]').click();
+    await expect(page.locator("[data-export-inspector-panel]")).toBeVisible();
+
+    // Quality is a JPEG-only concern, so it is absent for PNG. A
+    // control that does nothing should not be on screen.
+    await expect(page.locator("[data-export-image-quality]")).toHaveCount(0);
+    await page.locator("[data-export-image-format]").selectOption("jpeg");
+    await expect(page.locator("[data-export-image-quality]")).toBeVisible();
+
+    await page.locator("[data-export-image-scope]").selectOption("current");
+    const dl = page.waitForEvent("download");
+    await page
+      .locator('[data-cockpit-action="export-inspector-run-image"]')
+      .click();
+    const download = await dl;
+
+    // THE EXTENSION FOLLOWS THE BYTES. `.jpg` here is not cosmetic —
+    // the encoder falls back to PNG in a realm without imaging
+    // primitives, and the filename tracks what was actually written, so
+    // a file is never mislabelled.
+    expect(download.suggestedFilename()).toMatch(/\.jpg$/);
+    // …and the JPEG magic confirms the re-encode really happened rather
+    // than PNG bytes wearing a .jpg name.
+    const stream = await download.createReadStream();
+    const head: Buffer[] = [];
+    for await (const chunk of stream) head.push(chunk as Buffer);
+    const bytes = Buffer.concat(head);
+    expect(bytes[0], "JPEG SOI marker").toBe(0xff);
+    expect(bytes[1]).toBe(0xd8);
+
+    await expect(page.locator("[data-export-image-done]")).toContainText(
+      "JPEG",
+    );
+
+    // THE FLATTEN IS UNTESTED, AND UNTESTABLE FROM HERE — which is a
+    // stronger statement than "this fixture happens to be opaque", and
+    // is why no follow-up test is filed.
+    //
+    // `encodePageImage` flattens onto white before JPEG encoding. That
+    // cannot be exercised through this path at all: core's
+    // `render_snapshot` paints a white background by construction and
+    // asserts an empty page returns (255,255,255,255) per pixel, so
+    // EVERY page snapshot is already opaque. No input reaching the
+    // encoder has alpha.
+    //
+    // The flatten is therefore defence against a change that has not
+    // happened — a transparent-background PNG export, the one reason to
+    // pick PNG over JPEG for a page. Whoever adds that option: the JPEG
+    // lane will silently render transparent regions BLACK without the
+    // flatten, and THAT is when this becomes testable.
     await setMode(page, "design");
   });
 

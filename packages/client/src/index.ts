@@ -24,7 +24,11 @@
 // The package is shared verbatim between the editor UI and the
 // embedded Boa script bridge (which sees the same types via tsify).
 
-export { CanvasClient, type CanvasClientOptions } from "./client";
+export {
+  CanvasClient,
+  type CanvasClientOptions,
+  type JournalDrain,
+} from "./client";
 
 // Wire-format types — re-exports of the tsify-generated types from
 // `crates/paged-canvas/src/channel.rs`. See `./protocol.ts`.
@@ -55,3 +59,62 @@ export {
   supportsGestureSab,
   type GestureUpdateRecord,
 } from "./sab/gesture";
+
+// The journal (ADR 025) — the local flight recorder. Lives here because
+// `packages/client` is the only package BOTH the render worker and the React
+// shell may import (eslint zones (a) and (b)): the worker may not reach the
+// shell barrel, and this package may not reach React.
+export {
+  IDENT_RE,
+  FORBIDDEN_KEYS,
+  MAX_DATA_KEYS,
+  SEVERITY_RANK,
+  sanitizeData,
+  errorIdent,
+  identOf,
+  siteHash,
+  type JournalEntry,
+  type JournalInput,
+  type JournalOrigin,
+  type JournalSeverity,
+  type JournalValue,
+  type SanitizeResult,
+} from "./journal/entry";
+export { journal } from "./journal/instance";
+export {
+  JournalBuffer,
+  recordThrow,
+  type CodePolicy,
+  type JournalBufferOptions,
+} from "./journal/buffer";
+export {
+  CODES,
+  policyFor,
+  textFor,
+  isRegistered,
+  type CodeSpec,
+} from "./journal/codes";
+export {
+  KNOWN_BLIND_SPOTS,
+  emptyLedger,
+  mergeLedger,
+  ledgerIsClean,
+  type BlindSpot,
+  type UncapturedLedger,
+} from "./journal/uncaptured";
+export {
+  JOURNAL_BUNDLE_VERSION,
+  buildJournalBundle,
+  serializeJournalBundle,
+  journalBundleFilename,
+  reduceUserAgent,
+  roundToHour,
+  type BuildBundleOptions,
+  type BundleApp,
+  type BundleClocks,
+  type BundleCrash,
+  type BundleDocumentShape,
+  type BundleEnv,
+  type BundlePlugin,
+  type JournalBundle,
+} from "./journal/export";

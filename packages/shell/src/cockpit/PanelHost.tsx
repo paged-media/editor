@@ -23,6 +23,7 @@
 // registered later resolve the same way — the registry stays the
 // single source of truth.
 
+import { PanelBindingScope } from "../catalog/panel-binding-surface";
 import { usePaged } from "../state/paged-editor";
 import { useRegistries } from "../state/registries-context";
 
@@ -33,10 +34,30 @@ export function PanelHost({ id }: { id: string }) {
   if (!contribution) {
     return (
       <div className="pg-ui-xs" style={{ padding: 12, opacity: 0.6 }}>
-        Panel <code>{id}</code> not registered.
+        {/* E7 — this reaches a USER, in the 262px left column, whenever
+            a mode slot or a persisted tab names a panel that is not
+            there — which happens when a plugin bundle fails to load.
+            "Panel media.paged.data.panel.sources not registered" is a
+            developer's sentence in a designer's workspace. The id stays,
+            in a title, because a bug report needs it. */}
+        <span title={id}>
+          This panel is unavailable. It may belong to a plugin that
+          failed to load.
+        </span>
       </div>
     );
   }
   const Component = contribution.component;
-  return <Component paged={paged} api={{ id }} />;
+  // ADR 023 follow-up — name the panel a subtree belongs to, so the
+  // binding-seam hooks can report WHAT this panel asks the seam about.
+  // That report is what lets the shell decide whether entering an edit
+  // context would displace a panel the context SERVES (see
+  // catalog/panel-binding-surface.tsx). Scoping here rather than in the
+  // dock covers every mount point at once — dock tab, the Properties
+  // panel's embedded plugin surface, a test harness.
+  return (
+    <PanelBindingScope panelId={id}>
+      <Component paged={paged} api={{ id }} />
+    </PanelBindingScope>
+  );
 }

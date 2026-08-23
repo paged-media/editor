@@ -47,7 +47,7 @@ async function sourceReadout(page: Page): Promise<string> {
   return page.evaluate(() => {
     const spans = Array.from(document.querySelectorAll("span"));
     const i = spans.findIndex((e) => e.textContent === "Source");
-    return i >= 0 ? spans[i + 1]?.textContent ?? "?" : "Source row not found";
+    return i >= 0 ? (spans[i + 1]?.textContent ?? "?") : "Source row not found";
   });
 }
 
@@ -56,7 +56,11 @@ const invoke = (page: Page, id: string) =>
     (cmd) =>
       (
         globalThis as unknown as {
-          __canvas: { registries: { commands: { invoke: (c: string) => Promise<unknown> } } };
+          __canvas: {
+            registries: {
+              commands: { invoke: (c: string) => Promise<unknown> };
+            };
+          };
         }
       ).__canvas.registries.commands.invoke(cmd),
     id,
@@ -64,7 +68,9 @@ const invoke = (page: Page, id: string) =>
 
 const activeTool = (page: Page) =>
   page.evaluate(
-    () => (globalThis as unknown as { __canvas: { activeTool?: string | null } }).__canvas.activeTool ?? null,
+    () =>
+      (globalThis as unknown as { __canvas: { activeTool?: string | null } })
+        .__canvas.activeTool ?? null,
   );
 
 test.describe("journey · paged.image crop", () => {
@@ -80,13 +86,18 @@ test.describe("journey · paged.image crop", () => {
     if (!(await designer.gpuActive())) {
       test.skip(
         true,
-        "paged.image kernels are GPU-only (no CPU path) — crop re-composite render-verified on the journeys-gpu lane",
+        "paged.image kernels are GPU-only (no CPU path). This is NOT verified elsewhere in CI: the `journeys-gpu` lane needs real Chrome + Metal and no workflow runs it — verify locally with `pnpm --filter paged-canvas test:journeys:gpu` — the crop re-composite is render-verified there",
       );
     }
 
     // A target frame for the composite (a non-square frame so the aspect-
     // locked crop is a genuine sub-region, not a near-identity).
-    const frame = await designer.drawRectangle({ x0: 80, y0: 110, x1: 380, y1: 300 });
+    const frame = await designer.drawRectangle({
+      x0: 80,
+      y0: 110,
+      x1: 380,
+      y1: 300,
+    });
     expect(frame, "drew a target frame").not.toBe("");
     await designer.selectElement("rectangle", frame);
 
@@ -127,7 +138,9 @@ test.describe("journey · paged.image crop", () => {
     await invoke(page, `paged.tool.activate.${CROP_TOOL}`).catch(() => {});
     // Record the legacy mirror for the trace (informational, not asserted).
     // eslint-disable-next-line no-console
-    console.log(`[journey] crop tool armed; legacy activeTool=${await activeTool(page)}`);
+    console.log(
+      `[journey] crop tool armed; legacy activeTool=${await activeTool(page)}`,
+    );
 
     // ── 4. CONSTRAIN — set a 1:1 aspect lock in the panel. The crop machine
     //    re-imposes the ratio on the rect (cropApplyDrag from the BR grip),
@@ -144,7 +157,10 @@ test.describe("journey · paged.image crop", () => {
     //    must report the NEW (square) dimensions and the page render must
     //    change from the un-cropped composite. HARD. ──
     const beforeCrop = await designer.renderBytes();
-    const cropBtn = page.getByRole("button", { name: "Apply crop", exact: true });
+    const cropBtn = page.getByRole("button", {
+      name: "Apply crop",
+      exact: true,
+    });
     await expect(cropBtn).toBeEnabled();
     await cropBtn.click();
 

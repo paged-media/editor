@@ -39,6 +39,8 @@ import { useSyncExternalStore } from "react";
 import type { CanvasClient } from "@paged-media/client";
 import type { ExporterContribution } from "@paged-media/shell";
 
+import { downloadBytes } from "../../shell-file-saver";
+
 export type ExportTargetId = "pdf-x4" | "image" | "web" | "social" | "package";
 
 export interface ExportTarget {
@@ -129,12 +131,71 @@ export function useSelectedExportTarget(): ExportTargetId {
 export interface ImageSettings {
   /** Output DPI — drives requestSnapshot's px width per page. */
   dpi: 72 | 150 | 300;
-  /** "all" = every page; "current" = the active page only. */
-  scope: "all" | "current";
+  /** "all" = every page; "current" = the active page only; "range" =
+   *  the pages named by `range`.
+   *
+   *  E-2 — the range exists because all/current is a BINARY and the
+   *  common ask sits between them ("pages 3-7", "the two covers"). This
+   *  is paged's answer to Photoshop's `Export As → artboards`: the
+   *  containment those artboards provide is already a page here, so
+   *  what was missing was only the ability to name a SUBSET. */
+  scope: "all" | "current" | "range";
+  /** Output container. PNG is lossless with alpha; JPEG is smaller and
+   *  has NO alpha, which is why the encoder flattens onto white first —
+   *  see `encodePageImage`. */
+  format: "png" | "jpeg";
+  /** JPEG quality, 0.5–1. Ignored for PNG. */
+  quality: number;
+  /** A 1-based page list like `"1-3,5,8-10"`. Only read when
+   *  `scope === "range"`. Kept as the typed STRING rather than a parsed
+   *  array so a half-typed entry survives a re-render — parsing on
+   *  every keystroke would fight the user. */
+  range: string;
+}
+
+/** Parse a 1-based page range into ZERO-based indices, clamped to
+ *  `pageCount` and de-duplicated, in ascending order.
+ *
+ *  Returns `null` for input that names no valid page, which the caller
+ *  must treat as a REFUSAL rather than as "export everything" — a typo
+ *  that silently writes 400 files is worse than one that writes none.
+ *  Empty input is `null` for the same reason.
+ *
+ *  Deliberately tolerant of the shapes people actually type: spaces
+ *  anywhere, a trailing comma, and a reversed pair (`7-3`) which reads
+ *  as the same span rather than as nothing. */
+export function parsePageRange(
+  spec: string,
+  pageCount: number,
+): number[] | null {
+  if (pageCount <= 0) return null;
+  const out = new Set<number>();
+  for (const part of spec.split(",")) {
+    const t = part.trim();
+    if (t === "") continue;
+    const m = /^(\d+)\s*(?:-\s*(\d+))?$/.exec(t);
+    if (!m) return null; // a malformed token invalidates the whole spec
+    const a = Number(m[1]);
+    const b = m[2] === undefined ? a : Number(m[2]);
+    if (!(a >= 1) || !(b >= 1)) return null;
+    const [lo, hi] = a <= b ? [a, b] : [b, a];
+    for (let n = lo; n <= hi; n++) {
+      if (n <= pageCount) out.add(n - 1);
+    }
+  }
+  return out.size === 0 ? null : [...out].sort((x, y) => x - y);
 }
 
 const IMAGE_KEY = "paged.export.image.v1";
-const IMAGE_DEFAULTS: ImageSettings = { dpi: 150, scope: "all" };
+const IMAGE_DEFAULTS: ImageSettings = {
+  dpi: 150,
+  scope: "all",
+  range: "",
+  format: "png",
+  // 0.9, not 0.8: these are PAGE renders with type on them, and JPEG
+  // ringing around glyph edges is the first thing a designer notices.
+  quality: 0.9,
+};
 
 let imageSettings: ImageSettings = loadImageSettings();
 const imageListeners = new Set<() => void>();
@@ -181,6 +242,9 @@ function pngWidthPx(pageWidthPt: number, dpi: number): number {
 export interface ImageExportResult {
   /** How many PNG files were produced (one per exported page). */
   files: number;
+  /** Why nothing was written, when that was a REFUSAL rather than an
+   *  empty document. `"range"` = the page range named no valid page. */
+  refused?: "range";
 }
 
 /**
@@ -208,10 +272,21 @@ export async function runImageExport(
   const { pageIds, pageSizesPt, settings } = args;
   if (pageIds.length === 0) return { files: 0 };
 
-  const indices =
-    settings.scope === "current"
-      ? [Math.min(Math.max(args.activePageIndex ?? 0, 0), pageIds.length - 1)]
-      : pageIds.map((_, i) => i);
+  let indices: number[];
+  if (settings.scope === "current") {
+    indices = [
+      Math.min(Math.max(args.activePageIndex ?? 0, 0), pageIds.length - 1),
+    ];
+  } else if (settings.scope === "range") {
+    const parsed = parsePageRange(settings.range ?? "", pageIds.length);
+    // REFUSE rather than fall back to every page. A range that parses
+    // to nothing is a typo, and answering a typo with 400 files is the
+    // worst of the three possible behaviours.
+    if (parsed === null) return { files: 0, refused: "range" };
+    indices = parsed;
+  } else {
+    indices = pageIds.map((_, i) => i);
+  }
 
   const base = (args.baseName || "document").replace(/\.idml$/i, "");
   const pad = String(pageIds.length).length;
@@ -222,11 +297,22 @@ export async function runImageExport(
     const widthPt = pageSizesPt[i]?.[0] ?? 595; // A4-ish fallback
     const widthPx = pngWidthPx(widthPt, settings.dpi);
     const snap = await client.requestSnapshot(pageId, widthPx, settings.dpi);
-    const bytes = Uint8Array.from(snap.pngBytes);
+    const png = Uint8Array.from(snap.pngBytes);
+    const encoded = await encodePageImage(
+      png,
+      settings.format,
+      settings.quality,
+    );
+    // A realm that cannot encode JPEG falls back to the PNG it already
+    // has rather than writing nothing — the page still lands, and the
+    // extension follows the bytes so the file is never mislabelled.
+    const isJpeg = settings.format === "jpeg" && encoded !== null;
+    const bytes = encoded ?? png;
+    const ext = isJpeg ? "jpg" : "png";
     const label =
       indices.length === 1
-        ? `${base}.png`
-        : `${base}-p${String(i + 1).padStart(pad, "0")}.png`;
+        ? `${base}.${ext}`
+        : `${base}-p${String(i + 1).padStart(pad, "0")}.${ext}`;
     triggerDownload(bytes, label);
     files += 1;
   }
@@ -235,13 +321,72 @@ export async function runImageExport(
 }
 
 function defaultDownload(bytes: Uint8Array, filename: string): void {
-  const blob = new Blob([bytes.slice()], { type: "image/png" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBytes(
+    bytes,
+    filename,
+    filename.endsWith(".jpg") ? "image/jpeg" : "image/png",
+  );
+}
+
+/**
+ * Re-encode a page snapshot, which the engine always hands back as PNG.
+ *
+ * PNG passes through untouched — no decode, no re-encode, so a lossless
+ * export stays byte-for-byte what the renderer produced.
+ *
+ * JPEG HAS NO ALPHA, so the bitmap is drawn onto an opaque WHITE canvas
+ * before encoding — white because that is what paper is, and because it
+ * matches what the PDF export puts behind the same page.
+ *
+ * BE PRECISE ABOUT WHY, because the obvious reason is not the true one
+ * TODAY. A page snapshot is ALREADY opaque: core's `render_snapshot`
+ * documents "background is white (matching the renderer's default for
+ * `render_document`)" and its own test asserts an empty page comes back
+ * `(255, 255, 255, 255)` in every pixel. So no transparency currently
+ * reaches this function, and the flatten changes nothing.
+ *
+ * It stays anyway, and this is the argument: the day a
+ * transparent-background PNG export appears — an ordinary ask, and the
+ * only reason anyone picks PNG over JPEG for a page — the alpha becomes
+ * real, and WITHOUT this the JPEG lane fails by rendering every
+ * transparent region BLACK. A silent, ugly, whole-page failure. One
+ * `fillRect` is a cheap price for removing that trapdoor, provided
+ * nobody later reads this as "transparency happens here" and builds on
+ * it. It does not, yet.
+ *
+ * Returns `null` when the realm has no imaging primitives (Node), so the
+ * caller can fall back rather than throw.
+ */
+export async function encodePageImage(
+  pngBytes: Uint8Array,
+  format: "png" | "jpeg",
+  quality: number,
+): Promise<Uint8Array | null> {
+  if (format === "png") return pngBytes;
+  if (
+    typeof createImageBitmap !== "function" ||
+    typeof OffscreenCanvas !== "function"
+  ) {
+    return null;
+  }
+  const bmp = await createImageBitmap(
+    new Blob([pngBytes.slice() as BlobPart], { type: "image/png" }),
+  );
+  try {
+    const canvas = new OffscreenCanvas(bmp.width, bmp.height);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, bmp.width, bmp.height);
+    ctx.drawImage(bmp, 0, 0);
+    const blob = await canvas.convertToBlob({
+      type: "image/jpeg",
+      quality: Math.min(Math.max(quality, 0.5), 1),
+    });
+    return new Uint8Array(await blob.arrayBuffer());
+  } finally {
+    bmp.close();
+  }
 }
 
 /** K-2 / S-06 — run a plugin-registered exporter: pull its bytes and
@@ -262,21 +407,10 @@ export async function runPluginExporter(
   return true;
 }
 
-function pluginDownload(
-  bytes: Uint8Array,
-  filename: string,
-  mimeType?: string,
-): void {
-  const blob = new Blob([bytes.slice()], {
-    type: mimeType || "application/octet-stream",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+// K-10 — plugin bytes leave the app through ONE mechanism: the exporter
+// registry's delivery here and the bundle-driven `host.shell.saveFile` door
+// are the same `downloadBytes` call, so the two paths cannot drift.
+const pluginDownload = downloadBytes;
 
 // runIdmlExport removed — IDML export is now the paged.publish plugin's
 // exporter (ADR-022 Phase 5), run through the shared runPluginExporter above.

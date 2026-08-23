@@ -30,7 +30,7 @@
 // AC-J-1 (insert preserves visible shape) and the subpath-collapse arm
 // of AC-J-4 wait on J.5b (segment hit zones + curve-preserving Batch).
 //
-// Fixture: corpus/generated/geometry-groups.idml carries Polygon
+// Fixture: corpus/idml/generated/geometry-groups.idml carries Polygon
 // `u0f396d` on the "compound-path · square-with-hole" page — 8
 // anchors split across 2 subpaths (outer square 0..3, inner hole
 // 4..7). Real compound geometry; matches AC-J-4.
@@ -45,7 +45,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry-groups.idml`;
 const POLYGON_ID = "u0f396d"; // square-with-hole; 8 anchors, 2 subpaths
 
 type ElementId =

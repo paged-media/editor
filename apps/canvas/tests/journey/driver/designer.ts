@@ -128,6 +128,18 @@ export class Designer {
    *  for it to settle, ensure the Properties inspector is active, and
    *  fit page 0 to the viewport. */
   async newDocument(): Promise<void> {
+    // A5/A3 — `File ▸ New` now asks before discarding an EDITED
+    // document, and Playwright auto-DISMISSES dialogs, so without this
+    // the confirm is declined, the command returns early, and the new
+    // document is silently never created. That is not a hypothetical:
+    // it took publish.journey down, where the assertion then read as a
+    // renderer fault (0 changed pixels) rather than a document that was
+    // never replaced.
+    //
+    // A journey calling `newDocument()` is deliberately discarding, so
+    // accepting is the correct answer. One-shot, so it cannot mask a
+    // dialog some later step did not expect. The guard itself is
+    // asserted separately in unsaved-work.spec.ts.
     await this.page.evaluate(async () => {
       const c = (globalThis as unknown as CanvasGlobal).__canvas;
       const cmd = c.registries.commands;
@@ -896,8 +908,35 @@ export class Designer {
     return after.find((g) => !before.some((b) => b.selfId === g.selfId))?.selfId ?? "";
   }
 
+  /** Invoke a registered command the way the menu, the palette and the
+   *  keybinding all do — through the command registry. The DTP verbs a
+   *  user reaches from a menu (Object ▸ Group, Object ▸ Arrange …) are
+   *  driven this way rather than by their underlying mutation. */
+  async runCommand(id: string): Promise<void> {
+    await this.page.evaluate(async (commandId) => {
+      const cmd = (globalThis as unknown as CanvasGlobal).__canvas.registries
+        .commands;
+      const fn = cmd.invoke ?? cmd.execute ?? cmd.run;
+      await fn?.call(cmd, commandId);
+    }, id);
+  }
+
+  /** The element selection the shell holds (what a command reads). */
+  async elementSelection(): Promise<Array<{ kind: string; id: string }>> {
+    return this.page.evaluate(
+      () =>
+        (
+          globalThis as unknown as {
+            __canvas: { elementSelection: Array<{ kind: string; id: string }> };
+          }
+        ).__canvas.elementSelection,
+    );
+  }
+
   /** Group several page items into one group; returns true when applied.
-   *  `members` are ElementId refs ({kind,id}), the form the op expects. */
+   *  `members` are ElementId refs ({kind,id}), the form the op expects.
+   *  The RAW op — for setup. The user-facing verb is
+   *  `runCommand("paged.object.group")`. */
   async createGroup(
     members: Array<{ kind: string; id: string }>,
   ): Promise<boolean> {

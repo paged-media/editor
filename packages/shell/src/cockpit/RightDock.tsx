@@ -25,6 +25,7 @@
 // never float or re-dock elsewhere.
 
 import { Icon, hasIcon } from "../icons";
+import { PluginGlyph } from "../icons/plugin-glyph";
 import { useRegistries } from "../state/registries-context";
 import { useCockpitState } from "./cockpit-state-context";
 import { PanelHost } from "./PanelHost";
@@ -66,6 +67,9 @@ export function RightDock() {
           {tabs.map((t) => {
             const a = active === t.id;
             const icon = t.icon && hasIcon(t.icon) ? t.icon : undefined;
+            // K-8 — a plugin-supplied sanitized glyph fills the gap a
+            // host-unknown icon name used to leave (an iconless tab).
+            const svg = !icon ? t.iconSvg : undefined;
             return (
               <button
                 key={t.id}
@@ -96,6 +100,7 @@ export function RightDock() {
                 {icon && (
                   <Icon name={icon} size={13} style={{ opacity: 0.85 }} />
                 )}
+                {svg && <PluginGlyph svg={svg} size={13} />}
                 {t.title}
                 {a && t.closable !== false && (
                   <span

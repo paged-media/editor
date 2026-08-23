@@ -17,69 +17,140 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// Concept 2 — Swatches panel v2.
+// THE Swatches panel — ADR 023 phase C/D, the SECOND host-owned panel
+// that retargets, and the one that tests the SCOPE axis.
 //
-// Hybrid (per panel-catalog §5.5): the composition chrome applies a
-// swatch to the selection; the expert grid below manages the
-// collection — colour chips resolved through the active CMM,
-// space/model/reserved badges + gamut flags, EDIT popover (the
-// shared ColorMixer, lossless raw-channel seed), inline rename,
-// group headers from `colorGroups` with per-row group-assign, and
-// delete. Reserved swatches are pinned non-editable. Merge /
-// delete-with-replacement stays v2: it needs a core
-// reassign-references op before deletion is safe on used swatches.
+// Concept 2 (unchanged, and deliberately not regressed): the composition
+// chrome applies a swatch to the selection; the expert grid below manages
+// the collection — chips through the active CMM, space/model/reserved
+// badges + gamut flags, the EDIT popover (the shared ColorMixer on a
+// lossless raw-channel seed), inline rename, group headers from
+// `colorGroups` with per-row assign, delete, and the ~380 bundled
+// libraries. All of that still works, over core, exactly as before.
+//
+// WHAT ADR 023 CHANGES HERE, and why colour is a DIFFERENT proof from
+// Layers rather than a second copy of it:
+//
+//   · Layers is an element COLLECTION addressed by row identity. Its
+//     per-row state IS core `PropertyPath`s (`layerName`, `layerVisible`,
+//     `layerLocked`), so the panel's capability question is a PATH
+//     question and `useCollectionPathOffered` answers it.
+//   · Swatches is a DOCUMENT-SCOPED RESOURCE the panel edits directly.
+//     It is neither element- nor range-scoped: there is no selection to
+//     address, and `readCollection` deliberately takes no target. And
+//     core models a swatch's whole MUTABLE surface as STRUCTURAL OPS
+//     (`createSwatch` / `editSwatch` / `deleteSwatch`, each carrying a
+//     complete `SwatchSpec`) — the `PropertyPath` union has no
+//     `swatchName` and no swatch colour. So the capability question here
+//     is an OP question, which is why this slice added
+//     `useCollectionOpOffered` beside its path-shaped sibling.
+//
+// There is not one `if (pluginId === …)` in this file and there must
+// never be. The only questions asked about providers are capability
+// questions, and every one of them answers a boolean.
+//
+// ONE THING THE SEAM CANNOT CARRY, named rather than papered over: a
+// swatch's COLOUR. `SwatchSummary` is `{selfId, name, kind}` — the row
+// shape the vocabulary rule obliges a provider to use carries no
+// channels — and the chip is resolved through a SEPARATE core RPC
+// (`client.colorPreview(selfId)`) that the binding-provider contract has
+// no lane for (`readProperty` needs a `PropertyPath`, and core models
+// none for a swatch). So a provider row whose id names no document
+// swatch gets an UNRESOLVED chip, marked as such
+// (`data-swatch-preview="unresolved"`) instead of quietly grey. That is
+// a contract-level gap, recorded in the report for this slice, not a
+// panel bug.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
   CatalogRegistryProvider,
   CompositionRenderer,
   importAseBytes,
+  useActiveBindingProviders,
   useCanvasClient,
+  useCollectionOpOffered,
+  useProvidedCollection,
+  useProviderFirstMutate,
 } from "@paged-media/shell";
 
-import type { ColorGroupSummary, SwatchSummary } from "@paged-media/client";
+import type {
+  ColorGroupSummary,
+  Mutation,
+  SwatchSummary,
+} from "@paged-media/client";
 
 import { appCatalogRegistry } from "./catalog-registry";
 import { swatchesComposition } from "./swatches.composition";
 import { SwatchRow } from "./swatch-row";
 import { BUNDLED_LIBRARIES } from "../assets/libraries";
 
+export const SWATCHES_PANEL_ID = "paged.swatches";
+
 function SwatchCollection() {
-  const client = useCanvasClient();
-  const [swatches, setSwatches] = useState<SwatchSummary[]>([]);
-  const [groups, setGroups] = useState<ColorGroupSummary[]>([]);
+  // The ONE declaration the ADR turns on, twice: two CORE collection
+  // names and nothing else. The active plugin edit context may answer
+  // either instead of the engine, and this panel never learns which.
+  const { rows: swatchRows, provider } =
+    useProvidedCollection<SwatchSummary>("swatches");
+  const { rows: groupRows } =
+    useProvidedCollection<ColorGroupSummary>("colorGroups");
+  const swatches = useMemo(() => swatchRows ?? [], [swatchRows]);
+  const groups = useMemo(() => groupRows ?? [], [groupRows]);
 
-  const refresh = useCallback(() => {
-    void client
-      .collection<SwatchSummary>("swatches")
-      .then((s) => setSwatches([...s]))
-      .catch(() => setSwatches([]));
-    void client
-      .collection<ColorGroupSummary>("colorGroups")
-      .then((g) => setGroups([...g]))
-      .catch(() => setGroups([]));
-  }, [client]);
+  const mutate = useProviderFirstMutate();
+  const active = useActiveBindingProviders();
 
-  useEffect(() => {
-    refresh();
-    const off = client.subscribe((msg) => {
-      if (
-        msg.kind === "documentLoaded" ||
-        msg.kind === "mutationApplied" ||
-        msg.kind === "undoApplied" ||
-        msg.kind === "redoApplied"
-      ) {
-        refresh();
+  // ------------------------------------------------------- capability
+  //
+  // Phase A §18.10: "phase C must actually READ `activeProviders()` and
+  // disable rather than assume". Over core (no active owner) every gate
+  // answers true and the panel is exactly what it was. Over a provider
+  // that serves the swatch list but declares only `editSwatch`, "+ New",
+  // Libraries and the per-row ✕ disable — because sending them anyway
+  // would apply them to the DOCUMENT's swatch list while the panel is
+  // showing somebody else's. That is the write-side form of the `absent`
+  // lie the contract forbids.
+  const canCreate = useCollectionOpOffered("swatches", "createSwatch");
+  const canEdit = useCollectionOpOffered("swatches", "editSwatch");
+  const canDelete = useCollectionOpOffered("swatches", "deleteSwatch");
+  const canImportLibrary = useCollectionOpOffered(
+    "swatches",
+    "importSwatchLibrary",
+  );
+  // Group-assign asks the owner of the SWATCHES rows, not of
+  // `colorGroups`, and the distinction is load-bearing rather than
+  // pedantic: a `ColorGroup`'s members are SWATCH IDS, so the question
+  // is "may these rows be put in a group?" — and the authority on these
+  // rows is whoever served them. Asking the group collection instead
+  // would answer `true` (core owns the groups) and let the panel write a
+  // group whose member id names a swatch the document does not carry.
+  const canAssignGroup = useCollectionOpOffered("swatches", "editColorGroup");
+
+  // Every write goes provider-first: offer CORE'S OWN OP to the active
+  // providers, send it to the engine only if nobody claimed it. The
+  // panel speaks one vocabulary; translating it into a plugin's own
+  // realm is that plugin's business.
+  const run = useCallback(
+    async (mutation: Mutation, what: string) => {
+      const out = await mutate(mutation);
+      if (!out.applied) {
+        // A claimed-but-refused write names its owner; an unclaimed one
+        // the engine rejected does not. Reporting both is the point — a
+        // silent no-op is the class of lie the platform refuses.
+        console.warn(
+          `paged.swatches: ${what} refused by ${out.provider ?? "the engine"}`,
+          out.error,
+        );
       }
-    });
-    return off;
-  }, [client, refresh]);
+    },
+    [mutate],
+  );
 
   const onAdd = () => {
-    void client
-      .mutate({
+    void run(
+      {
         op: "createSwatch",
         args: {
           spec: {
@@ -89,8 +160,9 @@ function SwatchCollection() {
             model: "Process",
           },
         },
-      })
-      .catch(() => {});
+      } as Mutation,
+      "createSwatch",
+    );
   };
 
   // Group-assign: move the swatch ref between ColorGroups via
@@ -100,34 +172,40 @@ function SwatchCollection() {
     const ops: Promise<unknown>[] = [];
     if (current && current.selfId !== groupId) {
       ops.push(
-        client.mutate({
-          op: "editColorGroup",
-          args: {
-            groupId: current.selfId,
-            spec: {
-              selfId: current.selfId,
-              name: current.name,
-              members: current.members.filter((m) => m !== swatchId),
+        run(
+          {
+            op: "editColorGroup",
+            args: {
+              groupId: current.selfId,
+              spec: {
+                selfId: current.selfId,
+                name: current.name,
+                members: current.members.filter((m) => m !== swatchId),
+              },
             },
-          },
-        }),
+          } as Mutation,
+          "editColorGroup",
+        ),
       );
     }
     if (groupId && current?.selfId !== groupId) {
       const target = groups.find((g) => g.selfId === groupId);
       if (target) {
         ops.push(
-          client.mutate({
-            op: "editColorGroup",
-            args: {
-              groupId,
-              spec: {
-                selfId: groupId,
-                name: target.name,
-                members: [...target.members, swatchId],
+          run(
+            {
+              op: "editColorGroup",
+              args: {
+                groupId,
+                spec: {
+                  selfId: groupId,
+                  name: target.name,
+                  members: [...target.members, swatchId],
+                },
               },
-            },
-          }),
+            } as Mutation,
+            "editColorGroup",
+          ),
         );
       }
     }
@@ -151,26 +229,48 @@ function SwatchCollection() {
           groups={groups}
           groupOf={groupOf(sw.selfId)}
           onAssignGroup={assignGroup}
+          onMutate={run}
+          canEdit={canEdit}
+          canDelete={canDelete}
+          canAssignGroup={canAssignGroup}
         />
       ))}
     </ul>
   );
 
+  // "Provided by" — the ADR's own affordance, and DISPLAY ONLY: the user
+  // is told which content type they are looking at, and no code reads it.
+  const ownerNote = useMemo(() => {
+    if (!provider) return null;
+    const owner = active.find((p) => p.plugin === provider);
+    return owner ? `${provider} · ${owner.contextType}` : provider;
+  }, [provider, active]);
+
   return (
     <div
       className="text-sm border-t border-input mt-2 pt-2"
       data-swatch-collection="ready"
+      data-swatches-provider={provider ?? "core"}
     >
       <div className="flex items-center justify-between px-1 pb-1">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">
-          Swatches
+        <span
+          className="text-xs uppercase tracking-wide text-muted-foreground"
+          data-swatches-source
+        >
+          {ownerNote ?? "Swatches"}
         </span>
         <div className="flex items-center gap-1">
-          <LibrariesMenu />
+          <LibrariesMenu enabled={canImportLibrary} />
           <button
             type="button"
-            className="px-2 py-0.5 rounded hover:bg-muted/60"
+            className="px-2 py-0.5 rounded hover:bg-muted/60 disabled:opacity-40"
             data-action="add-swatch"
+            disabled={!canCreate}
+            title={
+              canCreate
+                ? "New swatch"
+                : "The active content type does not own new document swatches"
+            }
             onClick={onAdd}
           >
             + New
@@ -213,7 +313,12 @@ function SwatchCollection() {
 // visible right in the menu (CC BY-ND: ship the original, attribute,
 // never re-bake). Portal + fixed position — the dockview panel clips
 // overflow.
-function LibrariesMenu() {
+//
+// `importSwatchLibrary` is a DOCUMENT-resource write like `createSwatch`,
+// so it is gated by the same capability question: pouring 300 swatches
+// into the document while the panel is showing a plugin's palette would
+// be the same lie, just louder.
+function LibrariesMenu({ enabled }: { enabled: boolean }) {
   const client = useCanvasClient();
   const [at, setAt] = useState<{ left: number; top: number } | null>(null);
   const [filter, setFilter] = useState("");
@@ -253,9 +358,14 @@ function LibrariesMenu() {
       <button
         ref={btnRef}
         type="button"
-        className="px-2 py-0.5 rounded hover:bg-muted/60 text-xs"
+        className="px-2 py-0.5 rounded hover:bg-muted/60 text-xs disabled:opacity-40"
         data-action="open-libraries"
-        title="Bundled swatch libraries"
+        disabled={!enabled}
+        title={
+          enabled
+            ? "Bundled swatch libraries"
+            : "The active content type does not own the document swatch library"
+        }
         onClick={open}
       >
         Libraries ▾

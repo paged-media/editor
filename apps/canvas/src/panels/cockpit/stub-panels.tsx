@@ -22,15 +22,11 @@
 // brand's honest empty-state language — a stub is visibly a stub
 // (no fake data, no dead interactive chrome).
 
-import {
-  CockpitPanelHeader,
-  ComingSoon,
-  CockpitSection,
-  StatusPill,
-} from "@paged-media/shell";
+import { CockpitPanelHeader, ComingSoon } from "@paged-media/shell";
 
 // StoriesPanel moved to `./stories-panel` (W2.12 — now a real story
-// list off `paged.stories()`).
+// list off `paged.stories()`). DataMappingPanel deleted (U8 — the
+// live paged.data bindings panel superseded the stub).
 
 /** Review mode — threaded comments. Needs the collaboration
  * backend. */
@@ -41,28 +37,6 @@ export function CommentsPanel() {
       <ComingSoon icon="ui-comment" title="No comments yet">
         Threaded review comments, approvals and version compare land with the
         collaboration backend.
-      </ComingSoon>
-    </div>
-  );
-}
-
-/** Data-layout mode — source connection + field mapping. */
-export function DataMappingPanel() {
-  return (
-    <div data-data-mapping-panel style={{ overflowY: "auto", height: "100%" }}>
-      <CockpitPanelHeader title="Data" />
-      <CockpitSection
-        title="Source"
-        right={<StatusPill tone="draft">not connected</StatusPill>}
-      >
-        <span className="pg-ui-xs">
-          Connect a structured source (PIM, CSV, API) and map its fields to
-          layout slots — repeatable data-driven pages.
-        </span>
-      </CockpitSection>
-      <ComingSoon icon="ui-database" title="Field mapping coming soon">
-        Field→slot mapping, record filters and generation rules land with the
-        data-publishing engine.
       </ComingSoon>
     </div>
   );

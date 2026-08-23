@@ -335,8 +335,32 @@ delete + "+ New group" via `createColorGroup` / `deleteColorGroup`
 
 Standard-Lab toggle (`setUseStandardLabForSpots`); per-spot: convert-to-process
 checkbox + alias select (`setInkSetting`); CMYK plates listed.
-**End state** — density/trapping when export consumes them; separations
-preview (prepress "Separations" toggle becomes real).
+**End state** — density/trapping when export consumes them.
+
+### Separations & Ink Limit — `paged.separations` ✓
+
+§21 advanced prepress, ink-coverage third. Press ink-limit presets
+(sheet-fed/web/uncoated/newsprint); **swatch** ink-limit audit from
+`SwatchSummary.totalAreaCoveragePct` (exact palette arithmetic — no render,
+no profile, resolution-free); the job's plate list and per-page coverage from
+the `inkCoverage` collection (max/mean TAC, per-plate area + max tint, TAC
+histogram so the limit re-thresholds without a re-render); page rows jump the
+canvas.
+
+Two honest seams, both load-bearing:
+- `separationAvailable === false` → no CMYK working profile is active, so the
+  renderer resolved every swatch to display RGB and no plate exists. Rendered
+  distinctly from "this page is all RGB artwork" — both read 0% measured and
+  mean different things.
+- Plate-isolated **preview on the canvas is NOT wired**. The canvas renders
+  through Vello/WebGPU, which keeps no page-level ink-plane state; only the CPU
+  rasterizer does. The engine can isolate plates
+  (`paged-inspect --separations DIR --cmyk-profile PROFILE`, unmeasured pixels
+  left transparent); the canvas cannot, and the panel says so instead of
+  showing a second differently-rendered image.
+
+**End state** — a WGSL separation pass (or a CPU-rasterised plate overlay) so
+the canvas can isolate a plate; density/trapping data.
 
 ### Colour Settings — `paged.color-settings` ✓
 

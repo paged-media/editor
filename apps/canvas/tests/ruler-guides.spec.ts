@@ -24,23 +24,23 @@
 // treats them as targets. Verifies the wire round-trip end-to-end:
 // parser → model → channel → main thread.
 //
-// Fixture: `resume-template-teacher` carries 14 ruler guides across
-// its body pages (canonical real-world InDesign export). The exact
-// count is fixture-pinned — if the upstream template changes, the
-// assertion should be updated to match.
+// Fixture: `corpus/idml/generated/layout.idml` — license-clear, runs in
+// lean CI. Its first body spread carries exactly 2 vertical `<Guide>`
+// elements (the asymmetric-3col column boundaries at x=219.4253 and
+// x=393.8507, PageIndex 0). The exact count is fixture-pinned — if
+// paged-gen's layout sample changes, update the assertion to match.
 
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
 
-import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { openCanvas } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
-const PACK_NAME = "resume-template-teacher";
-const PACK_PATH = `${REPO_ROOT}/corpus/envato/packs/${PACK_NAME}/template.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/layout.idml`;
 
 interface RulerGuideWire {
   pageId: string;
@@ -76,22 +76,31 @@ test.describe("Plan-2 §8.3 — ruler guides", () => {
         const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
         return c.client.loadDocument(bytes);
       },
-      { pack: PACK_PATH },
+      { pack: FIXTURE },
     );
     expect(handle.pageIds.length).toBeGreaterThan(0);
 
     const guides = handle.rulerGuides ?? [];
+    // layout.idml is generated deterministically: exactly 2 vertical
+    // guides on the first body page (the asymmetric-3col column
+    // boundaries). Pin the count — a drop to 0 is the regression
+    // this spec exists to catch, and a silent growth would mean the
+    // fixture changed under us.
     expect(
       guides.length,
-      "resume-template-teacher ships 14 ruler guides; the wire surface should expose them",
-    ).toBeGreaterThanOrEqual(14);
+      "layout.idml ships exactly 2 ruler guides; the wire surface should expose them",
+    ).toBe(2);
     // Each guide should carry a recognised orientation + a page id
-    // present in the document's page list.
+    // present in the document's page list. For this fixture both are
+    // vertical, at the generated column-boundary locations.
     const pageIds = new Set(handle.pageIds);
     for (const g of guides) {
-      expect(["vertical", "horizontal"]).toContain(g.orientation);
+      expect(g.orientation).toBe("vertical");
       expect(pageIds.has(g.pageId)).toBe(true);
       expect(Number.isFinite(g.location)).toBe(true);
     }
+    const locations = guides.map((g) => g.location).sort((a, b) => a - b);
+    expect(locations[0]).toBeCloseTo(219.4253, 3);
+    expect(locations[1]).toBeCloseTo(393.8507, 3);
   });
 });

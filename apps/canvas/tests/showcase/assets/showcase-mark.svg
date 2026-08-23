@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  "Signal" — the showcase's vector mark, authored for page 6 (paged.draw).
+
+  COORDINATES ARE PAGE POINTS. The paged.draw SVG importer lowers each
+  shape straight through `insertPath` with the SVG user units taken as
+  the page's own points, origin at the page's top-left corner. So this
+  file is not artwork that gets scaled to fit — it is drawn where it
+  lands, inside the US Letter live area (x 72–540, y 72–720).
+
+  Shape ORDER is load-bearing: the showcase page module addresses the
+  imported contours by their position in this file.
+
+    0  plate      overlapping square, blue        → pathfinder unite (with 1)
+    1  disc       overlapping circle, orange      → pathfinder unite (with 0)
+    2  ring       stroked circle, no fill         → dash preset
+    3  chevron    stroked open path               → stays as drawn
+    4  motif      small diamond                   → grid repeat source
+
+  © And The Next GmbH — authored for this repository, same dual licence
+  as the rest of it (AGPL-3.0-only OR PMEL). Not a third-party asset.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="612" height="792" viewBox="0 0 612 792">
+  <rect x="104" y="196" width="184" height="184" fill="#1c3f94"/>
+  <circle cx="316" cy="288" r="92" fill="#d94f2b"/>
+  <circle cx="316" cy="288" r="56" fill="none" stroke="#101418" stroke-width="7"/>
+  <path d="M 372 424 L 428 356 L 484 424" fill="none" stroke="#f0a02b" stroke-width="11"/>
+  <polygon points="112,470 130,452 148,470 130,488" fill="#1c3f94"/>
+</svg>

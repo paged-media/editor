@@ -134,6 +134,11 @@ export interface ViewportCanvasProps {
    * document coordinates and routes it here, bypassing the
    * select/text / pan / marquee path. Null (the default) for
    * select/text, so the proven legacy path runs untouched. */
+  /** Set when the ACTIVE tool declares a `legacyKey` as well as a
+   *  gesture — i.e. its click and its drag are different halves of one
+   *  tool (the Type tool: click places a caret, drag pulls out a text
+   *  frame). Drives the dual dispatch in onPointerDown/onPointerUp. */
+  legacyKeyForTool?: string | null;
   toolGesture?: {
     onDown: (e: CanvasPointerEvent) => void;
     onMove: (e: CanvasPointerEvent) => void;
@@ -502,7 +507,17 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       }
       // Phase 2 — a handler-bearing tool (Rectangle, …) intercepts the
       // pointer; the legacy select/text/pan path below is skipped.
-      if (props.toolGesture && e.button === 0) {
+      //
+      // EXCEPT for a tool that declares BOTH a gesture and a legacyKey.
+      // The Type tool is the case: its DRAG pulls out a text frame
+      // (gesture) and its CLICK places a caret (legacy "text" path), and
+      // those are two halves of one tool rather than rival
+      // implementations. Without this, adding the gesture silently took
+      // the caret away — `onPointerUp` commits the tool drag and RETURNS
+      // before the click branch, so double-click word/line selection
+      // stopped selecting anything at all.
+      const legacyAlso = Boolean(props.toolGesture && props.legacyKeyForTool);
+      if (props.toolGesture && e.button === 0 && !legacyAlso) {
         e.currentTarget.setPointerCapture(e.pointerId);
         toolDragRef.current = {
           startPointer: [e.clientX, e.clientY],
@@ -510,6 +525,14 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         };
         props.toolGesture.onDown(buildToolPointer(e, 0));
         return;
+      }
+      if (props.toolGesture && e.button === 0 && legacyAlso) {
+        // Feed the handler AND fall through, so both refs are armed.
+        toolDragRef.current = {
+          startPointer: [e.clientX, e.clientY],
+          maxDelta: 0,
+        };
+        props.toolGesture.onDown(buildToolPointer(e, 0));
       }
       e.currentTarget.setPointerCapture(e.pointerId);
       const modifiers: PointerModifiers = {
@@ -852,9 +875,17 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       const toolDrag = toolDragRef.current;
       if (toolDrag && props.toolGesture) {
         toolDragRef.current = null;
-        e.currentTarget.releasePointerCapture(e.pointerId);
+        const wasClick = toolDrag.maxDelta <= CLICK_DRAG_THRESHOLD_PX;
+        const legacyAlso = Boolean(props.legacyKeyForTool);
         props.toolGesture.onUp(buildToolPointer(e, toolDrag.maxDelta));
-        return;
+        // A dual tool's CLICK belongs to the legacy path (caret, click
+        // run, word/line granularity). Its handler has just been told
+        // the pointer went up, so it has cancelled itself, and the drag
+        // state armed at pointer-down is still there to fall through on.
+        if (!(wasClick && legacyAlso)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+          return;
+        }
       }
       const drag = dragStateRef.current;
       if (!drag) return;

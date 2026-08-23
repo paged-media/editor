@@ -20,11 +20,13 @@ Discovered 2026-06-05.
 > AC-E2E-PAGE-4 (promoted to a live render sandwich), AC-E2E-PROVE-3.
 > Per-finding details below.
 
-> **STATUS 2026-06-06 — W2 sweep adds #6 + #7 (OPEN).** The W2 gesture /
-> ops suite surfaced a batch-insertFrame duplicate-self_id bug (#6,
-> gridify) and a cluster of property paths that round-trip on the wire
-> but aren't yet consumed by core's render (#7). Both are filed for core
-> and anchored by markers that flip the day core fixes them.
+> **STATUS 2026-08-18 — #6 + #7 FIXED at the current pin.** The W2 sweep
+> surfaced a batch-insertFrame duplicate-self_id bug (#6, gridify) and a
+> cluster of wire-accepted-but-render-ignored property paths (#7); both
+> were fixed in core (verified against the v61 pin by the 17082026
+> audit's blind-spot pass — core 27f7d0a; the sandwich's zero-pixel rule
+> stays as the standing guard). This doc misreported them OPEN for two
+> months after the fix — status lines here must cite the verifying run.
 
 ## 1. Text undo/redo don't clear the body-story emit cache
 
@@ -217,6 +219,46 @@ relaxes only the pixel gate via the op-sandwich's `noRenderChange`
 pixels changed") the day core wires the render. Bullets
 (`paragraphBulletCharacter`) was in this list on first pass but core
 DOES composite it (~3.2k px), so its sandwich asserts a live render.
+
+## 8. DocumentMeta.dirty was hardcoded false (FIXED core-side, awaits pin)
+
+Discovered 2026-08-18 by the Info panel's first behaviour spec
+(`info-panel.spec.ts` AC-INFO-2): the engine's `document_meta()` returned
+`dirty: false` unconditionally, so EVERY consumer — the ModeSwitcher
+status chip ("No unsaved edits"), the DocTitleBar dirty dot, the Info
+panel's Dirty row — permanently claimed a clean document through any
+number of edits. The U14 honest-wording fix rode a dead flag.
+
+**Fixed in core** the same day: `dirty = !applied_log.is_empty()`
+(edits-since-load; undoing everything reads clean again; a pending redo
+does not differ from the loaded state) + a model test pinning the
+lifecycle. Rides the v0.61.2 tag; AC-INFO-2 is `test.fixme` until the
+canvas-wasm pin carries it — unfixme at the bump.
+
+## 9. resizeFrame repaint-stale on real templates (OPEN)
+
+The truthful 61-pack op sweep (2026-08-18, post harness-truthing) puts
+`resizeFrame` at 41/61 packs render-stale — "operation produced NO
+render change in the affected region" — with the model verified landed
+(real `expectModel` readback) and the whole host page diffed. One pack
+(`cultured-business-newsletter`) additionally shows the resize UNDO
+restoring non-byte-identically (3236 px, the determinism finding from
+the August audit). The same write repaints fine on the generated
+fixtures, so it smells like a geometry-write invalidation/rebuild gap
+that only real template documents hit. Needs a core-side reproduction
+against an envato pack; tracked for the next engine investigation.
+
+**NOT part of this finding (corrected 2026-08-19):** the first run of
+the expanded sweep showed `frameStrokeWeight` 0/59 and
+`frameStrokeColor` 27/59 stale, and it was tempting to read that as the
+same engine gap. It was the HARNESS: both stroke ops targeted the
+fill-picked rectangle, and a wider stroke of `Swatch/None` paints
+nothing exactly as a recoloured 0pt stroke does. With an honest target
+(visible stroke colour AND non-zero weight, else an explicit skip) both
+ops pass where a stroked rectangle exists and skip where none does.
+`paged-mutate` emits the `frame_style` invalidation hint for these
+paths correctly. Cost of the lesson: a harness target fact wearing an
+engine finding's clothes for one afternoon.
 
 ---
 

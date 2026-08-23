@@ -24,7 +24,8 @@
 //   · Esc POPS one level (the global keydown, skipped when an editable
 //     field has focus — same guard as usePathEditMode);
 //   · on the ACTIVE frame change → EMPHASIZE the context's panels
-//     (cockpit `openPanel` raises each) and FOCUS the first restricted
+//     (cockpit `openPanel` raises each — UNLESS the panel on screen is
+//     one this context SERVES, see below) and FOCUS the first restricted
 //     tool ("anchor tools focused" — the tool-set swap, v1 depth);
 //   · selection cleared / shrunk away from the scope root → EXIT ALL
 //     (a marquee elsewhere or an empty-pasteboard click leaves no
@@ -35,6 +36,8 @@
 
 import { useEffect, useRef } from "react";
 
+import { useBindingProviderHost } from "../catalog/binding-providers";
+import { panelServedBy } from "../catalog/panel-binding-surface";
 import { cockpitActions } from "../cockpit/cockpit-state-context";
 import { useEditContextStack } from "./edit-context-stack";
 import { useSelection } from "./selection-context";
@@ -53,6 +56,12 @@ export function EditContextController() {
     useEditContextStack();
   const { elementSelection } = useSelection();
   const tool = useOptionalTool();
+  // ADR 023 follow-up — held in a ref because the enter effect below is
+  // keyed on the frame identity and must NOT re-run because the registry
+  // emitted (entering a context emits, by construction).
+  const providerHost = useBindingProviderHost();
+  const providerHostRef = useRef(providerHost);
+  providerHostRef.current = providerHost;
 
   // K-1 — keyboard routing while a context is active (capture phase so the
   // context wins over the palette / path-edit; the editable-target guard
@@ -145,21 +154,149 @@ export function EditContextController() {
     ? `${active.type}:${JSON.stringify(active.scopeRoot)}`
     : null;
   const lastEnteredRef = useRef<string | null>(null);
+  /** The tool in hand as this entry began — see the leave-by-tool rule. */
+  const toolAtEntryRef = useRef<string | null>(null);
+  /** The live tool, readable from the entry effect without making that
+   *  effect depend on it (it is keyed on the frame, not the tool). */
+  const activeToolRef = useRef<string | null>(null);
+  /** The primary this entry ASKED FOR, until the tool store reports it
+   *  in hand. While it is pending the leave-by-tool rule must not act:
+   *  `setBaseTool` is a state update, so for at least one render the
+   *  tool still in hand is the OUTGOING one — which is outside the
+   *  context's set by construction, and would read as "the user reached
+   *  for another tool" on the very entry that requested the swap. */
+  const pendingPrimaryRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!active || enteredKey === lastEnteredRef.current) return;
+    if (!active) {
+      // FORGET the last entry when the stack empties. Without this the
+      // guard also suppresses a genuine RE-entry: leave a context with Esc
+      // and double-click the SAME element again and the key is unchanged,
+      // so neither the panel emphasis nor the tool focus ever ran a second
+      // time. Found while testing the ADR 023 non-displacement rule; the
+      // defect predates it.
+      lastEnteredRef.current = null;
+      return;
+    }
+    if (enteredKey === lastEnteredRef.current) return;
     lastEnteredRef.current = enteredKey;
     // Panel emphasis — raise each declared panel (cockpit owns
     // placement; openPanel is a no-op when the cockpit isn't mounted).
+    //
+    // ADR 023 follow-up — EXCEPT when raising would displace a panel this
+    // context SERVES. `panelIds` was written when every panel belonged to
+    // one owner, so "raise mine" and "keep the shared one visible" could
+    // not conflict; with a host panel that retargets they do, and the
+    // dock shows one panel at a time — so the shared panel would go off
+    // screen at the exact moment it retargets, which is the one moment
+    // the whole design exists to produce.
+    //
+    // The answer is NOT a second declaration beside `panelIds` (that
+    // would put host panel ids in plugin code and could drift from
+    // `provides`). It is inferred from what the context's own providers
+    // ALREADY declare, intersected with what the panel on screen actually
+    // asks the seam about — see catalog/panel-binding-surface.tsx. The
+    // authority is purely NEGATIVE: it can only withhold the raise, never
+    // open or close anything on the plugin's behalf.
+    const onScreen = cockpitActions.activeTab?.() ?? null;
+    const host = providerHostRef.current;
+    const serving =
+      onScreen !== null &&
+      host !== null &&
+      panelServedBy(
+        onScreen,
+        host
+          .activeProviders()
+          .filter((p) => p.contextType === active.type)
+          .map((p) => p.provides),
+      );
     for (const panelId of active.panelIds) {
-      cockpitActions.openPanel?.(panelId);
+      // Still OPENED either way — the context's own surface reaches the
+      // tab strip and is one click away; only the raise is withheld.
+      cockpitActions.openPanel?.(panelId, { activate: !serving });
     }
     // Tool-set swap (v1 depth): focus the first restricted tool. Full
     // rail graying-out of non-context tools is the documented residual;
     // focusing the primary anchor tool is the user-visible swap.
-    if (active.toolIds.length > 0 && tool) {
-      tool.setBaseTool(active.toolIds[0] as ToolId);
+    // Focus the context's primary tool. A declared-empty list has no
+    // primary and must not fall back to the host's — the context said
+    // no tool applies.
+    const primary = active.toolIds?.[0];
+    if (primary && tool) {
+      tool.setBaseTool(primary as ToolId);
+      // Latched only when a swap was actually REQUESTED. With no tool
+      // store there is nothing to wait for, and latching would disable
+      // the rule for the whole context.
+      pendingPrimaryRef.current = primary;
+    } else {
+      pendingPrimaryRef.current = null;
     }
+    // The tool this entry STARTS from. The leave-by-tool rule below
+    // fires on a CHANGE away from it, never on the tool that was
+    // already in hand — otherwise a context declaring `toolIds: []`
+    // would exit itself the instant it opened, since every tool is
+    // outside an empty set including the one the user already held.
+    toolAtEntryRef.current = (primary ?? activeToolRef.current) ?? null;
   }, [active, enteredKey, tool]);
+
+  // ADR 024 — LEAVING BY TOOL, derived rather than wired per entry point.
+  //
+  // Picking a tool the context does not own means "I am done in here",
+  // and the ToolRail already implemented exactly that: commit the
+  // context, then activate. The problem was that it was the ONLY caller
+  // to do so — `Tools: <name>` from the palette, the tool's keyboard
+  // shortcut, and the cockpit toolbar's pills all called `setBaseTool`
+  // straight, leaving the user inside a context whose declared tool set
+  // no longer matched the active tool. Four surfaces for one action,
+  // one of them right.
+  //
+  // Watching the RESULT instead of patching each caller covers all of
+  // them, plus the ones that do not exist yet — a plugin command, a
+  // script. The rail's own commit becomes redundant and stays harmless.
+  //
+  // Ordering: the enter effect above sets the tool to `toolIds[0]`,
+  // which is in the set by construction, so entry can never trip this.
+  // The `enteredKey` guard is shared for the same reason it exists
+  // there — a re-entry on the same element must not be suppressed.
+  //
+  // BASE, not effective: a spring-loaded hold (Space → hand, and the
+  // bare Meta keydown of every Cmd chord → direct-select) pushes a
+  // momentary OVERRIDE onto the tool state. That is modifier posture,
+  // not the user reaching for another tool — but `effectiveTool`
+  // reflects it, and for a context declaring `toolIds: []` this rule
+  // read the Meta-down of Cmd-Z as "left by tool" and committed the
+  // session before the `z` arrived. The undo then hit the DOCUMENT
+  // stack: sheet-modal AC-K1-2/3 + the sheet journey, deterministic,
+  // CPU and GPU (audit 17082026). Watching the deliberate base tool
+  // keeps the rule's intent exactly: it fires when the user PICKS a
+  // tool outside the context's set, never mid-chord or mid-pan.
+  const activeTool = tool?.toolState.base;
+  activeToolRef.current = activeTool ?? null;
+  useEffect(() => {
+    if (!active || !active.toolIds || !activeTool) return;
+    // The enter effect owns the first tool and has not run yet.
+    if (enteredKey !== lastEnteredRef.current) return;
+    // THE ENTRY'S SWAP IS STILL IN FLIGHT. Caught by the e2e suite
+    // after this rule first shipped: `setBaseTool` is a state update,
+    // so on the render right after entry the tool in hand is the
+    // OUTGOING one — outside the set by construction — and the rule
+    // exited the very context it was entering. The breadcrumb never
+    // appeared and four layers-retarget tests plus the sheet modal
+    // session went red.
+    //
+    // So wait for the requested primary to actually land before this
+    // rule may act at all.
+    if (pendingPrimaryRef.current !== null) {
+      if (activeTool !== pendingPrimaryRef.current) return;
+      pendingPrimaryRef.current = null;
+    }
+    // Unchanged since entry — the user has not reached for anything.
+    if (activeTool === toolAtEntryRef.current) return;
+    if (active.toolIds.includes(activeTool)) return;
+    // COMMIT, not cancel: the user reached for another tool, they did
+    // not press Esc. Discarding their in-flight edit because they
+    // clicked the wrong thing would be its own defect.
+    commit();
+  }, [active, activeTool, commit, enteredKey]);
 
   // Auto-exit when the selection no longer includes the scope root (the
   // user selected something outside the context — a marquee elsewhere,

@@ -31,7 +31,7 @@ import { openCanvas } from "./fidelity/canvas-driver";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/generated/geometry-groups.idml`;
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry-groups.idml`;
 
 declare global {
   interface Window {
@@ -60,10 +60,11 @@ test.describe("Cockpit — Export Center", () => {
 
     const center = page.locator("[data-export-center]");
     await expect(center).toBeVisible();
-    // W2.6 — six targets; three are LIVE (PDF/image/IDML). The
-    // honest-or-live invariant + per-target detail is covered in
+    // W2.6→ADR-022 Phase 5 — five built-in targets (two LIVE: PDF/image);
+    // IDML left the built-in set for the paged.publish plugin exporter.
+    // The honest-or-live invariant + per-target detail is covered in
     // export-family.spec.ts; here we just drive the PDF row through.
-    await expect(page.locator("[data-export-target]")).toHaveCount(6);
+    await expect(page.locator("[data-export-target]")).toHaveCount(5);
     await expect(
       page.locator('[data-status-pill="readiness-pdf-x4"]'),
     ).toBeVisible();
@@ -100,6 +101,43 @@ test.describe("Cockpit — Preflight", () => {
   });
 });
 
+test.describe("Cockpit — document title bar", () => {
+  test("U14 — the title shows the loaded file's name when the meta has none @feat:editor-shell.document-title @level:happy", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    // Before any load the bar says so honestly.
+    await expect(page.locator("[data-doc-title-bar]")).toContainText(
+      "No document",
+    );
+
+    // The file-input flow sets the document context's `sourceName`
+    // from the file name (extension stripped); the title prefers
+    // meta.documentName, then sourceName, then "Untitled document".
+    await loadFixture(page);
+    const metaName = await page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: { documentMeta: () => Promise<{ documentName?: string }> };
+          };
+        }
+      ).__canvas;
+      try {
+        return (await c.client.documentMeta()).documentName ?? "";
+      } catch {
+        return "";
+      }
+    });
+    const expected = metaName || "geometry-groups";
+    const title = page.locator("[data-doc-title-bar] span").first();
+    await expect(title).toHaveText(expected);
+    // Whatever the meta carries, a real file load must not fall
+    // through to the untitled placeholder.
+    await expect(title).not.toHaveText("Untitled document");
+  });
+});
+
 test.describe("Cockpit — Publication health + stubs", () => {
   test("health shows live metrics; stubs are visibly stubs @feat:editor-shell.panel-rail @level:happy", async ({
     page,
@@ -122,9 +160,9 @@ test.describe("Cockpit — Publication health + stubs", () => {
     ).toBeVisible();
 
     await page.evaluate(() => window.__canvas.setMode("data"));
-    await expect(
-      page.locator("[data-data-mapping-panel] [data-coming-soon]"),
-    ).toBeVisible();
+    // Data mode seeds the LIVE paged.data bindings panel (the mapping
+    // ComingSoon stub is off the mode surface, Window-menu only).
+    await expect(page.locator('text="Wire demo binding"')).toBeVisible();
 
     await page.evaluate(() => window.__canvas.setMode("design"));
   });

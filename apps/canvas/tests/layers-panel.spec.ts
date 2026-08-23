@@ -36,8 +36,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
-const PACK_NAME = "resume-template-teacher";
-const PACK_PATH = `${REPO_ROOT}/corpus/envato/packs/${PACK_NAME}/template.idml`;
+// Fixture: `corpus/idml/generated/layers-z.idml` — license-clear, runs in
+// lean CI. Two `<Layer>` elements, which satisfies AC-M-5's ≥2
+// precondition; the structural ops themselves are fixture-agnostic.
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/layers-z.idml`;
 
 interface LayerSummary {
   selfId: string;
@@ -66,7 +68,7 @@ async function load(page: import("@playwright/test").Page) {
       const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
       await c.client.loadDocument(bytes);
     },
-    { pack: PACK_PATH },
+    { pack: FIXTURE },
   );
 }
 

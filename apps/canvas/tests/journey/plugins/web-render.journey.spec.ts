@@ -125,6 +125,13 @@ test.describe("journey · paged.web render output", () => {
       `expected a submitted sceneLayer; logs: ${logs.join(" | ")}`,
     ).toBe(true);
 
+    // ADR-020 READOUT — the render outcome now lands in the source panel
+    // (frames submitted / not-loaded, overset, bake deferred counts), not
+    // just the log + Problems lane.
+    await expect(
+      page.locator('[data-web-render-report="renderFrame"]'),
+    ).toBeVisible({ timeout: 5_000 });
+
     // ── 3. VISIBLE PAINT — HARD. The submitted layer must composite into
     //    the deterministic CPU snapshot (the same path sheet + image scene
     //    layers ride). A solid-fill div over a 240×180pt content box lights

@@ -35,8 +35,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 
-const PACK_NAME = "brand-guidelines";
-const PACK_PATH = `${REPO_ROOT}/corpus/envato/packs/${PACK_NAME}/template.idml`;
+// License-clear generated fixture (runs in lean CI). Page 1's
+// un-rotated 100×100 Rectangle (page-local 247.6..347.6 ×
+// 370.9..470.9, A4 portrait) is what the centre probes find; every
+// resize delta below keeps its edges >4pt from any snap target, so
+// the exact-bounds assertions (2dp) are unaffected by the snap pass.
+const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry.idml`;
 
 type ElementId =
   | { kind: "textFrame"; id: string }
@@ -150,7 +154,7 @@ test.describe("Phase C — resize gesture", () => {
 
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
-    const loaded = await loadIdml(page, PACK_PATH, PACK_NAME);
+    const loaded = await loadIdml(page, FIXTURE);
     pageId = loaded.pages[0].pageId;
     pageW = loaded.pages[0].widthPt;
     pageH = loaded.pages[0].heightPt;

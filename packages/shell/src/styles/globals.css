@@ -126,6 +126,9 @@
 [fill="var(--overlay-selection)"] {
   fill: var(--overlay-selection);
 }
+[fill="var(--overlay-snap)"] {
+  fill: var(--overlay-snap);
+}
 [fill="var(--overlay-target)"] {
   fill: var(--overlay-target);
 }

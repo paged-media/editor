@@ -245,7 +245,7 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
     ).toBeVisible({ timeout: 5_000 });
   });
 
-  test("AC-WEB-5 — the Problems panel lists a published diagnostic and click focuses the source panel @feat:editor-shell.panels.problems @feat:plugin-web.insert-command @feat:plugin-web.metadata-persistence @feat:plugin-web.source-panel @level:gesture", async ({
+  test("AC-WEB-5 — the Problems panel lists a published diagnostic and click focuses the source panel @feat:editor-shell.panels.problems @feat:plugin-platform.font-asset-serving @feat:plugin-web.insert-command @feat:plugin-web.metadata-persistence @feat:plugin-web.source-panel @level:gesture", async ({
     page,
   }) => {
     await invokeCommand(page, INSERT_COMMAND);
@@ -296,7 +296,7 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
   // substitution badge shows in its `substituting` state and NEVER flips
   // to "document fonts shown". This is the honest null-path spec the
   // task calls for (the real-bytes path is unreachable today).
-  test("AC-WEB-6 — asset door is wired but serves null: the font badge stays HONEST (never flips to 'shown')", async ({
+  test("AC-WEB-6 — asset door is wired but serves null: the font badge stays HONEST (never flips to 'shown') @feat:plugin-platform.font-asset-serving @level:happy", async ({
     page,
   }) => {
     await invokeCommand(page, INSERT_COMMAND);

@@ -39,40 +39,27 @@ if (!process.env.NODE_OPTIONS) {
 
 // Lean CI surface (tests.yml): the published-wasm CI runs the behaviour
 // surface without the Envato fidelity gate, which needs the 4.4 GB
-// `corpus/envato` LFS packs + their InDesign reference PDFs + the
+// `corpus/idml` LFS packs + their InDesign reference PDFs + the
 // `paged-diff` Rust binary (built from a `core` checkout) + poppler's
 // `pdftoppm` — none of which the package-boundary runner has. Those two
-// specs read `corpus/envato/manifest.json` at import time, so set
+// specs read `corpus/config/manifest.json` at import time, so set
 // `PAGED_CI_LEAN=1` to drop them from collection entirely rather than
 // let the import throw. Local runs (no flag) keep the full surface.
 const LEAN_CI = process.env.PAGED_CI_LEAN === "1";
 
-// Specs that load a real `corpus/envato/packs/<pack>/template.idml` at
-// import/beforeAll time — the same 4.4 GB tier the lean runner omits, so
-// they hard-fail with "Could not find EOCD" before their own skip guards
-// run. They MUST be dropped from the lean collection, exactly like the two
-// fidelity specs above. COVERAGE NOTE (not a silent cap): these gesture
-// specs do NOT run in lean CI — they run only in a full-corpus lane
-// (local / the envato tier). Migrating them onto the license-clear
-// `corpus/generated` fixtures would return them to lean CI; tracked as a
-// follow-up, not done here.
-const ENVATO_LEAN_DROP = [
-  "content-grabber.spec.ts",
-  "cross-spread-duplicate.spec.ts",
-  "gesture-sab-snap.spec.ts",
-  "interaction.spec.ts",
-  "layers.spec.ts",
-  "layers-panel.spec.ts",
-  "multi-select-handles.spec.ts",
-  "multi-select-snap.spec.ts",
-  "resize.spec.ts",
-  "rotate-scale.spec.ts",
-  "ruler-guides.spec.ts",
-  "translate.spec.ts",
-];
-
+// The direct-manipulation specs (translate/resize/rotate-scale/
+// interaction/multi-select/gesture-sab-snap/content-grabber/
+// cross-spread-duplicate/layers/layers-panel/ruler-guides) used to sit
+// on an ENVATO_LEAN_DROP list here because they loaded
+// `corpus/idml/packs/<pack>/template.idml` — the same 4.4 GB LFS tier
+// the lean runner omits. They have since been migrated onto the
+// license-clear `corpus/generated` fixtures (geometry / numbering /
+// layers-z / layout / images), so they now run in lean CI and the list
+// is empty. Only the two specs below remain dropped: they read
+// `corpus/config/manifest.json` + reference PDFs at import time and are
+// inherently envato-tier (per-pack pixel fidelity), not migratable.
 const LEAN_DROP = LEAN_CI
-  ? ["fidelity.spec.ts", "e2e/extensive-corpus.spec.ts", ...ENVATO_LEAN_DROP]
+  ? ["fidelity.spec.ts", "e2e/extensive-corpus.spec.ts"]
   : [];
 
 export default defineConfig({
@@ -122,8 +109,10 @@ export default defineConfig({
     {
       name: "chromium",
       // The journey tier is its own project (below); keep it out of the
-      // behaviour-surface suite so each runs once.
-      testIgnore: [...LEAN_DROP, "journey/**"],
+      // behaviour-surface suite so each runs once. The showcase is its
+      // own project too — it builds a sixteen-page document and takes
+      // minutes, so it must not ride the behaviour suite.
+      testIgnore: [...LEAN_DROP, "journey/**", "showcase/**"],
       use: {
         ...devices["Desktop Chrome"],
         // WebGPU lights up when BACKEND=gpu — but headless Chromium
@@ -157,6 +146,21 @@ export default defineConfig({
       // The FULL DTP journey surface on the editor's real default backend
       // (WebGPU/Vello) — proving every workflow runs on GPU, not just the CPU
       // fallback the bundled-Chromium `journeys` lane exercises.
+      //
+      // LOCAL LANE, GATING NOTHING — say so plainly, because the specs that
+      // defer to it used to read as though it were a CI gate. It needs real
+      // Chrome (`channel: "chrome"`) and `--use-angle=metal`, so it cannot
+      // run on the Linux CI runners, and no workflow invokes it. Anything
+      // that skips with "verified on journeys-gpu" is therefore verified
+      // only when a human runs it on a Mac:
+      //
+      //     pnpm --filter paged-canvas test:journeys:gpu
+      //
+      // Keep it — it works, and it is the only place paged.image's GPU-only
+      // kernels are render-verified end-to-end — but do not treat a green
+      // `journeys` run as covering anything that defers here. Standing up a
+      // GPU-capable CI lane (scheduled macOS runner, or Linux + a software
+      // adapter) is the open follow-up.
       testMatch: "**/*.journey.spec.ts",
       snapshotPathTemplate:
         "{testDir}/__screenshots__/{testFileName}/{arg}-{projectName}-{platform}{ext}",
@@ -168,7 +172,11 @@ export default defineConfig({
         // an arg; `headless:false` keeps Playwright from forcing old headless.
         headless: false,
         launchOptions: {
-          args: ["--headless=new", "--enable-unsafe-webgpu", "--use-angle=metal"],
+          args: [
+            "--headless=new",
+            "--enable-unsafe-webgpu",
+            "--use-angle=metal",
+          ],
         },
       },
     },
@@ -205,6 +213,40 @@ export default defineConfig({
       },
     },
     {
+      // The showcase — one document that exercises the engine and every
+      // wired plugin, built by driving the real editor. Real Chrome in
+      // new-headless for a live WebGPU adapter, same as journeys-gpu and
+      // for the same reason: paged.image's kernels are GPU-only WGSL, so
+      // on the bundled Chromium its page would build but assert nothing.
+      // The spec degrades that one module to a note rather than a red
+      // when no adapter is present, so this still runs anywhere.
+      //
+      //   npx playwright test --project=showcase
+      //
+      // Writes apps/canvas/showcase/. Not part of any CI lane: it needs
+      // the core checkout beside the editor for the base fixture, and it
+      // is a build step for an artifact, not a gate.
+      name: "showcase",
+      testDir: "./tests/showcase",
+      // Both the document build and the driver's own tests. The driver
+      // is load-bearing for sixteen page modules, so it gets checked
+      // against a real editor rather than only by the type system.
+      testMatch: "**/*.spec.ts",
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: "chrome",
+        deviceScaleFactor: 1,
+        headless: false,
+        launchOptions: {
+          args: [
+            "--headless=new",
+            "--enable-unsafe-webgpu",
+            "--use-angle=metal",
+          ],
+        },
+      },
+    },
+    {
       // Demo capture — records the showcase flows as rrweb sessions (with the
       // WebGPU document frames bridged in) for the docs live demos. Real Chrome
       // + new headless for a true WebGPU render, same as journeys-gpu, so the
@@ -220,7 +262,11 @@ export default defineConfig({
         deviceScaleFactor: 1,
         headless: false,
         launchOptions: {
-          args: ["--headless=new", "--enable-unsafe-webgpu", "--use-angle=metal"],
+          args: [
+            "--headless=new",
+            "--enable-unsafe-webgpu",
+            "--use-angle=metal",
+          ],
         },
       },
     },

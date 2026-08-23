@@ -18,6 +18,7 @@
  */
 
 export type { Disposable, DockEdge, VisibilityPredicate } from "./types";
+export { isEnabled, panelBelongsHere } from "./types";
 
 export {
   createPanelRegistry,
@@ -31,6 +32,9 @@ export {
 export {
   createCommandRegistry,
   type CommandContribution,
+  type CommandInvocation,
+  type CommandInvocationEvent,
+  type CommandObserver,
   type CommandRegistry,
 } from "./command";
 
@@ -69,6 +73,7 @@ export {
   type ToolId,
   type ToolGroupId,
   type ToolSectionId,
+  type ToolStatus,
   type ToolRegistry,
   type ToolRegistryEvent,
 } from "./tool";

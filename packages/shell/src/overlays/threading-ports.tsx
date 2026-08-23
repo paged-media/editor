@@ -91,7 +91,9 @@ function ThreadingPortsRender(props: OverlayProps) {
   const item = elementGeometry[0];
   if (item.id.kind !== "textFrame") return null;
 
-  const pr = props.pageRects.get(item.pageId);
+  // C-23 — see ThreadingController: threading ports are page-space
+  // chrome, so a pasteboard frame draws none.
+  const pr = item.pageId ? props.pageRects.get(item.pageId) : undefined;
   if (!pr) return null;
 
   const frameId = item.id.id;
@@ -137,7 +139,9 @@ function ThreadingPortsRender(props: OverlayProps) {
         onDown: () =>
           threading.loadCursor({
             sourceFrameId: frameId,
-            sourcePageId: item.pageId,
+            // Non-null by the `pr` guard above — a port only renders
+            // for a page-owned frame.
+            sourcePageId: item.pageId ?? null,
           }),
       })}
     </>

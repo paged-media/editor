@@ -45,6 +45,9 @@ import React, {
 import type { CanvasClient } from "@paged-media/client";
 // eslint-disable-next-line import/no-relative-parent-imports
 import { supportsSharedArrayBuffer } from "@paged-media/client";
+// ADR 025 — the journal ring. Lives in `client` (React-free) precisely so
+// both this package and the canvas app reach the SAME buffer.
+import { journal, errorIdent, identOf } from "@paged-media/client";
 // eslint-disable-next-line import/no-relative-parent-imports
 import type { WorkerToMain } from "@paged-media/client";
 
@@ -57,7 +60,13 @@ import {
   ContentSelectionProvider,
   useContentSelection,
 } from "./state/content-selection-context";
+import { useDocumentMeta } from "./catalog/use-collection";
+import {
+  setOpenFileHandle,
+  type WritableFileHandle,
+} from "./state/open-file-handle";
 import { DocumentProvider, useDocument } from "./state/document-context";
+import { setPendingImportSource } from "./state/import-source";
 import {
   InstrumentationProvider,
   useInstrumentation,
@@ -67,7 +76,7 @@ import { GuideDragProvider } from "./state/guide-drag-context";
 import { ThreadingProvider } from "./state/threading-context";
 import { TableSelectionProvider } from "./state/table-selection-context";
 import { SelectionProvider, useSelection } from "./state/selection-context";
-import { ToolProvider } from "./state/tool-context";
+import { ToolProvider, useOptionalTool } from "./state/tool-context";
 import { ScreenModeProvider } from "./state/screen-mode-context";
 import { ThemeProvider, useTheme } from "./state/theme-context";
 import { useOptionalPaged } from "./state/paged-editor";
@@ -88,8 +97,13 @@ import {
   useOptionalEditContextStack,
 } from "./state/edit-context-stack";
 import { EditContextController } from "./state/edit-context-controller";
+import {
+  BindingProviderProvider,
+  type ShellBindingProviderHost,
+} from "./catalog/binding-providers";
 import { PagedEditorProvider } from "./state/paged-editor";
 import { useRegistries } from "./state/registries-context";
+import { ActionsProvider } from "./actions/actions-context";
 import { CommandPalette } from "./chrome/CommandPalette";
 import { DemoOverlay, DemoSpotlight } from "./demo/overlay";
 import { runDemoScriptWithHandle } from "./demo/runner";
@@ -133,6 +147,7 @@ import { useSpringLoadedTools } from "./tools/use-spring-loaded-tools";
 import type { PagedEditor } from "./state/paged-editor";
 import type { OverlayContribution } from "./registries/overlay";
 import type { PanelContribution, PanelProps } from "./registries/panel";
+import { panelBelongsHere } from "./registries/types";
 import type { ToolContribution } from "./registries/tool";
 import type { Disposable } from "./registries/types";
 import { useFps } from "./hooks/useFps";
@@ -165,6 +180,14 @@ export interface PagedShellProps {
    * CanvasPanel). Required for the fixed cockpit layout: the canvas
    * is a SLOT, not a dockview panel. */
   canvasComponent?: ComponentType<PanelProps>;
+  /** ADR 023 phase C — the app's ONE shared binding-provider registry
+   *  (built with plugin-sdk's `createBindingProviderRegistry` and
+   *  injected into every bundle host). Published to the panel tree so a
+   *  HOST-owned panel can resolve its values through the ACTIVE plugin
+   *  edit context, falling through to core. Omitted/null = every panel
+   *  reads core, which is exactly right for a shell that loads no
+   *  bundles. */
+  bindingProviders?: ShellBindingProviderHost | null;
 }
 
 /**
@@ -182,6 +205,7 @@ export function PagedShell({
   modes,
   panelRail,
   canvasComponent,
+  bindingProviders,
   children,
 }: PropsWithChildren<PagedShellProps>) {
   return (
@@ -220,7 +244,26 @@ export function PagedShell({
                                         chrome + canvas integration can
                                         read it. */}
                                     <EditContextStackProvider>
+                                    {/* ADR 023 phase C — the binding-
+                                        provider seam. Deliberately
+                                        INSIDE the edit-context stack:
+                                        a provider's lifetime is that
+                                        stack's, and reading them in
+                                        that order is the point. */}
+                                    <BindingProviderProvider
+                                      host={bindingProviders ?? null}
+                                    >
                                     <PagedEditorProvider>
+                                    {/* Actions — the command recorder.
+                                        INSIDE PagedEditorProvider (it
+                                        needs the registries) and OUTSIDE
+                                        ShellChrome, because the right
+                                        dock unmounts inactive tabs: a
+                                        recorder living in its own panel
+                                        would stop recording the moment
+                                        the user switched tabs to do the
+                                        thing they were recording. */}
+                                    <ActionsProvider>
                                       <ShellChrome
                                         panels={panels}
                                         overlays={overlays}
@@ -232,7 +275,9 @@ export function PagedShell({
                                       >
                                         {children}
                                       </ShellChrome>
+                                    </ActionsProvider>
                                     </PagedEditorProvider>
+                                    </BindingProviderProvider>
                                     </EditContextStackProvider>
                                     </InstrumentationProvider>
                                   </TableSelectionProvider>
@@ -252,6 +297,52 @@ export function PagedShell({
       </CanvasClientProvider>
     </DebugErrorBoundary>
   );
+}
+
+// U11 — Window-menu grouping. Panels cluster under a category label
+// derived from the contribution's `defaultGroup` (the dock-group
+// vocabulary the apps already register with), or — when a plugin
+// bundle stamps its display name on the contribution (`source`, being
+// added platform-side; read defensively) — under that bundle's name.
+// MenuBar sorts a menu's items by `order` and renders a separator
+// whenever the adjacent `group` label changes, so encoding the
+// category's rank in `order` yields visually grouped sections in the
+// table's order; unknown categories (plugin sources / the "Plugins"
+// fallback) land after the named ones in approximate alphabetical
+// order (first three characters — ties keep registration order).
+const WINDOW_MENU_CATEGORIES: ReadonlyArray<readonly [string, string]> = [
+  ["cockpit", "Workspace"],
+  ["chrome", "Workspace"],
+  ["structure", "Structure"],
+  ["styles", "Styles"],
+  ["text", "Text"],
+  ["properties", "Properties"],
+  ["inspector", "Properties"],
+  ["object", "Object"],
+  ["output", "Output"],
+  ["console", "Developer"],
+];
+
+const WINDOW_MENU_LABEL_ORDER: ReadonlyArray<string> = Array.from(
+  new Set(WINDOW_MENU_CATEGORIES.map(([, label]) => label)),
+);
+
+function windowMenuGroup(p: PanelContribution): {
+  label: string;
+  order: number;
+} {
+  const source = (p as { source?: string }).source;
+  const fromTable = p.defaultGroup
+    ? WINDOW_MENU_CATEGORIES.find(([g]) => g === p.defaultGroup)?.[1]
+    : undefined;
+  const label =
+    (typeof source === "string" && source.trim()) || fromTable || "Plugins";
+  if (!source) {
+    const idx = WINDOW_MENU_LABEL_ORDER.indexOf(label);
+    if (idx >= 0) return { label, order: idx * 10 };
+  }
+  const c = (i: number) => (label.toUpperCase().charCodeAt(i) || 0) & 0x7f;
+  return { label, order: 1000 + c(0) * 0x4000 + c(1) * 0x80 + c(2) };
 }
 
 /**
@@ -283,6 +374,7 @@ function ShellChrome({
     handle,
     snapshotsReady,
     setHandle,
+    setSourceName,
     setLoading,
     setSnapshots,
     setSnapshotsReady,
@@ -311,6 +403,9 @@ function ShellChrome({
     panels: { open: [], active: null },
     editContext: null,
     inspectorContext: null,
+    tools: { base: null, effective: null, registered: [] },
+    commands: [],
+    keybindings: [],
   });
   const {
     contentSelection,
@@ -422,13 +517,45 @@ function ShellChrome({
     const items = new Map<string, Disposable>();
     const add = (p: PanelContribution) => {
       if (p.id === "paged.canvas" || items.has(p.id)) return;
+      // E6 — developer surfaces stay out of the Window menu. The menu
+      // listed every registered panel, so a designer browsing for a
+      // workspace found the REPL, the script editor and two panels
+      // titled "Swatch list (schema)" / "Structure (schema tree)" —
+      // which exist to give the schema tiers a real consumer for their
+      // tests. They remain registered and openable (openPanel, the
+      // palette, any spec); they are simply not OFFERED.
+      if (p.devOnly) return;
+      // U11 — group by category (defaultGroup table / plugin source)
+      // instead of one flat "panels" bucket; see windowMenuGroup.
+      const { label, order } = windowMenuGroup(p);
       try {
         items.set(
           p.id,
           registries.menus.register({
             path: `Window/${p.title}`,
             command: `paged.panel.show.${p.id}`,
-            group: "panels",
+            group: label,
+            // E4 — the heading the user sees. This value was computed
+            // here all along and dropped by MenuBar, so ~90 entries read
+            // as one flat list divided by unlabelled hairlines.
+            groupLabel: label,
+            order,
+            // ADR 024 — a panel that belongs to a DIFFERENT content type
+            // is not offered here.
+            //
+            // The Window menu listed every registered panel in every
+            // context, so editing a Word document offered "Vector
+            // stroke" and the spreadsheet panel — surfaces for content
+            // that is not on screen and cannot be reached from where the
+            // user is standing.
+            //
+            // The rule is deliberately narrow: hide a panel only when
+            // ANOTHER context claims it and that context is not active.
+            // A panel no context claims stays listed, because host
+            // panels and the selection-driven plugin panels (paged.image
+            // adjustments on a selected frame) are legitimately usable
+            // without entering anything.
+            when: (state) => panelBelongsHere(state, p.id),
           }),
         );
       } catch {
@@ -537,18 +664,135 @@ function ShellChrome({
       buildOpenIdmlCommand({
         pickFile: async () =>
           new Promise<File | null>((resolve) => {
+            void (async () => {
+            // A5 — prefer the File System Access picker, which hands
+            // back a HANDLE, so Save can write to the file the user
+            // opened instead of minting "document (1).paged" every
+            // time. Falls back to `<input type=file>` when the platform
+            // has no such picker, and when the user cancels — the API
+            // throws on cancel rather than resolving empty.
+            let handled = false;
+            // WHEN THE NATIVE PICKER CANNOT BE USED AT ALL.
+            //
+            // `showOpenFilePicker` opens an OS dialog, and under
+            // WebDriver there is nothing to drive it with: the promise
+            // does not reject, it never settles, so `await` hangs
+            // forever and the catch below is never reached. A try/catch
+            // cannot rescue a promise that does not settle — the only
+            // fix is not to call it.
+            //
+            // That is how File > Open died in CI. It timed out after
+            // 300s waiting for a filechooser event that was never coming,
+            // because the `<input type=file>` fallback — the only thing
+            // that emits one — was never reached.
+            //
+            // Two things had to be measured rather than assumed. It is
+            // NOT about user activation: `navigator.userActivation`
+            // reads `isActive: true` in the test browser, because
+            // opening the app involves real clicks. And it is not about
+            // the API's absence: `typeof showOpenFilePicker` is
+            // "function" there. The discriminator is `navigator.webdriver`
+            // — automation, where a native dialog is unusable by
+            // construction. Skipping it there is a capability check, not
+            // a test accommodation.
+            const underAutomation =
+              (navigator as unknown as { webdriver?: boolean }).webdriver ===
+              true;
+            const fsPicker = (
+              globalThis as {
+                showOpenFilePicker?: (o: unknown) => Promise<WritableFileHandle[]>;
+              }
+            ).showOpenFilePicker;
+            if (typeof fsPicker === "function" && !underAutomation) {
+              try {
+                const [picked] = await fsPicker({
+                  multiple: false,
+                  types: [
+                    {
+                      description: "Paged and IDML documents",
+                      accept: {
+                        "application/x-paged+zip": [".paged"],
+                        "application/vnd.adobe.indesign-idml-package": [".idml"],
+                      },
+                    },
+                  ],
+                });
+                if (picked) {
+                  setOpenFileHandle(picked);
+                  const file = await (
+                    picked as unknown as { getFile(): Promise<File> }
+                  ).getFile();
+                  handled = true;
+                  resolve(file);
+                  return;
+                }
+                // No handle and no throw: the platform answered with
+                // nothing. Treat it as a cancel rather than falling
+                // through to a second dialog.
+                setOpenFileHandle(null);
+                handled = true;
+                resolve(null);
+                return;
+              } catch (err) {
+                // TWO DIFFERENT FAILURES, and conflating them broke
+                // File > Open outright.
+                //
+                // `AbortError` is the user cancelling the dialog. That
+                // is an answer, not a fault: resolve null and stop.
+                //
+                // ANYTHING ELSE means the picker exists and could not
+                // run — a sandboxed frame, a context without transient
+                // activation, headless automation. Falling through to
+                // the `<input type=file>` path is the whole point of
+                // keeping it. The first version of this treated every
+                // rejection as a cancel, so in exactly those contexts
+                // Open silently did nothing: no dialog, no error, no
+                // fallback. CI caught it as a 300s timeout waiting for
+                // a filechooser that was never going to arrive.
+                const aborted =
+                  err instanceof Error && err.name === "AbortError";
+                setOpenFileHandle(null);
+                if (aborted) {
+                  resolve(null);
+                  return;
+                }
+                // fall through to the input below
+              }
+              if (handled) return;
+            }
+
             const input = document.createElement("input");
             input.type = "file";
             // K-2 / S-06 — also offer the file types registered plugin
             // importers claim (e.g. paged.sheet's .xlsx), resolved at
             // click time so late-registered importers are included.
+            //
+            // `.paged` needs no importer and no separate load path: a
+            // container IS a valid IDML package, so the same bytes go
+            // through the same door, and the engine decides on the way
+            // in — it sniffs `paged/core/model/document.pgm` and
+            // reconstructs the native model, falling back to parsing
+            // the IDML projection when that part is absent or was
+            // written by an incompatible version. Listing it here is
+            // the whole change; leaving it out only meant the picker
+            // hid files it could already open.
             input.accept = [
               ".idml",
+              ".paged",
               "application/vnd.adobe.indesign-idml-package",
+              "application/x-paged+zip",
               ...registries.importers.acceptExtensions(),
             ].join(",");
-            input.onchange = () => resolve(input.files?.[0] ?? null);
+            input.onchange = () => {
+              // The input fallback yields no handle. CLEAR any previous
+              // one: keeping it would make the next Save write this new
+              // document over the file the LAST one came from, silently
+              // and with no undo.
+              setOpenFileHandle(null);
+              resolve(input.files?.[0] ?? null);
+            };
             input.click();
+            })();
           }),
         setStatus,
         pushWarning: (w) => setWarnings((prev) => [...prev, w]),
@@ -614,7 +858,7 @@ function ShellChrome({
     const items = registries.menus;
     const handles = [
       items.register({
-        path: "File/Open IDML…",
+        path: "File/Open…",
         command: PAGED_FILE_OPEN_IDML,
         order: 10,
         group: "open",
@@ -724,10 +968,26 @@ function ShellChrome({
   useEffect(() => {
     const off = client.subscribe((msg: WorkerToMain) => {
       if (msg.kind === "warning") {
-        setWarnings((prev) => [
-          ...prev,
-          `${msg.payload.kind}: ${msg.payload.details}`,
-        ]);
+        // ADR 025 — the worker ALREADY structures every failure it has
+        // (dispatchError, initFailed, protocolMismatch, SAB drift) into this
+        // envelope, with a `kind` discriminator. Flattening it straight to a
+        // string threw that structure away at the last possible moment. Record
+        // the structured form first; the human list below is unchanged.
+        //
+        // `details` deliberately does NOT cross: it is free text and carries
+        // font names, ids and message fragments. The `kind` is the signal.
+        journal.record({
+          code: WORKER_WARNING_CODES[msg.payload.kind] ?? "worker.dispatch.error",
+          severity: "error",
+          data: { kind: identOf(msg.payload.kind) ?? "unknown" },
+        });
+        setWarnings((prev) =>
+          // Bounded: this list was previously append-only for the life of the
+          // session, so a chatty worker grew it without limit.
+          [...prev, `${msg.payload.kind}: ${msg.payload.details}`].slice(
+            -MAX_VISIBLE_WARNINGS,
+          ),
+        );
       } else if (msg.kind === "attachReady") {
         setGpuActive(msg.payload.gpuActive);
       } else if (msg.kind === "resolutionDone") {
@@ -805,6 +1065,10 @@ function ShellChrome({
         void (async () => {
           try {
             const bytes = new Uint8Array(await file.arrayBuffer());
+            // U14 — park the file name for the open orchestration: an
+            // importer that OPENS a document does so through
+            // `nativeDocument.open(bytes)`, which carries no name.
+            setPendingImportSource(file.name);
             await importer.import({
               name: file.name,
               bytes,
@@ -817,12 +1081,15 @@ function ShellChrome({
               `import of ${file.name} via ${importer.title} failed: ` +
                 (err instanceof Error ? err.message : String(err)),
             ]);
+          } finally {
+            setPendingImportSource(null);
           }
         })();
         return;
       }
       void loadDocumentFile(client, file, {
         setHandle,
+        setSourceName,
         setLoading,
         setStatus,
         setSnapshotsReady,
@@ -841,6 +1108,7 @@ function ShellChrome({
       registries,
       resetForNewDocument,
       setHandle,
+      setSourceName,
       setLoading,
       setSnapshots,
       setSnapshotsReady,
@@ -859,10 +1127,7 @@ function ShellChrome({
 
       {!sabSupported && (
         <div style={warningStyle}>
-          SharedArrayBuffer unavailable — cross-origin isolation headers (COOP +
-          COEP) not set. Camera falls back to a regular ArrayBuffer; latency is
-          unaffected but reads may tear under contention.
-        </div>
+          Some features are running in a reduced mode. Reload the page; if it persists, the page is not being served with the headers the editor needs (cross-origin isolation).</div>
       )}
 
       {warnings.length > 0 && (
@@ -932,6 +1197,7 @@ function ShellChrome({
   // legacy dockview layout keys survive while the flag is off.
   return cockpitActive ? (
     <CockpitStateProvider>
+      <UnsavedChangesGuard />
       {!isProd && <DebugContextProbe targetRef={debugContextRef} />}
       {shellBody}
     </CockpitStateProvider>
@@ -946,6 +1212,56 @@ interface DebugContextSnapshot {
   panels: { open: string[]; active: string | null };
   editContext: { type: string; scopeRoot: unknown; label: string } | null;
   inspectorContext: string | null;
+  /** The tool the rail is acting as, plus every registered tool id.
+   *  `effective` folds spring-loaded overrides over the deliberate base
+   *  tool, which is the value the canvas actually dispatches on — a spec
+   *  asserting `base` would miss exactly the class of defect that put
+   *  AC-K1-2/3 red (a bare Meta keydown flipping the effective tool). */
+  tools: { base: string | null; effective: string | null; registered: string[] };
+  /** Registered command ids. The palette is the only place most of these
+   *  are visible to a user, so this is the only way a spec can assert a
+   *  command EXISTS separately from asserting the palette renders it. */
+  commands: string[];
+  /** Every `key -> command` the KeybindingRegistry holds.
+   *  `KeybindingRegistry.list()` was written "for diagnostics + the future
+   *  'Show keybindings' panel" and had ZERO call sites; this is the first.
+   *  It is also what a Help > Keyboard shortcuts panel needs, so exposing
+   *  it here means the panel and the tests read the same source rather
+   *  than two hand-kept lists that drift. */
+  keybindings: { key: string; command: string }[];
+}
+
+/** Renderless: warn before the tab closes on an edited document.
+ *
+ *  The editor displayed its dirty state honestly in two places — the
+ *  mode bar's "Edited — not saved" and the doc title bar's "Edited" —
+ *  and then never acted on it. There was no `beforeunload` handler
+ *  anywhere in the app, no autosave, and no `File > Open recent`, so a
+ *  closed tab took the work with it in silence.
+ *
+ *  `preventDefault()` plus a non-empty `returnValue` is the whole
+ *  contract; browsers show their own wording and ignore ours, which is
+ *  why there is no message to translate here. Registered ONLY while
+ *  dirty — a permanently-installed handler makes every navigation away
+ *  from a clean document prompt, which trains people to click through
+ *  the dialog that is supposed to stop them.
+ *
+ *  This does not make the document safe, and must not be read as
+ *  autosave. It buys a confirmation, nothing more. */
+function UnsavedChangesGuard() {
+  const meta = useDocumentMeta();
+  const dirty = meta?.dirty ?? false;
+  useEffect(() => {
+    if (!dirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Legacy Chrome still wants the assignment; the string is never shown.
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
+  return null;
 }
 
 /** Dev-only renderless probe: reads the cockpit tab state + edit-context
@@ -960,6 +1276,8 @@ function DebugContextProbe({
 }) {
   const cockpit = useOptionalCockpitState();
   const editStack = useOptionalEditContextStack();
+  const registries = useRegistries();
+  const tool = useOptionalTool();
   targetRef.current = {
     panels: {
       open: cockpit?.rightTabs ?? [],
@@ -973,9 +1291,33 @@ function DebugContextProbe({
         }
       : null,
     inspectorContext: cockpit?.inspectorContext ?? null,
+    tools: {
+      base: tool?.toolState.base ?? null,
+      effective: tool?.effectiveTool ?? null,
+      registered: registries.tools.list().map((t) => t.id),
+    },
+    commands: registries.commands.list().map((c) => c.id),
+    keybindings: registries.keybindings
+      .list()
+      .map((k) => ({ key: k.key, command: k.command })),
   };
   return null;
 }
+
+/** The worker's `warning` envelope carries a `kind` discriminator; map it onto
+ *  the journal's registered codes so a bundle reader gets a stable id rather
+ *  than a stringly-typed one. Unknown kinds fall back to dispatch-error rather
+ *  than being dropped — an unrecognised failure is still a failure. */
+const WORKER_WARNING_CODES: Readonly<Record<string, string>> = {
+  initFailed: "worker.init.failed",
+  protocolMismatch: "worker.protocol.mismatch",
+  sabDrift: "worker.sab.drift",
+  dispatchError: "worker.dispatch.error",
+  protocol: "worker.dispatch.error",
+};
+
+/** Cap on the visible warning list. The journal keeps the real record. */
+const MAX_VISIBLE_WARNINGS = 50;
 
 /**
  * Minimal error boundary so a panel / dockview crash leaves a
@@ -994,6 +1336,17 @@ class DebugErrorBoundary extends React.Component<
     console.error(`[${this.props.label}] caught:`, error);
     (globalThis as unknown as { __pagedCrash?: string }).__pagedCrash =
       `[${this.props.label}] ${error.message}\n${error.stack ?? ""}`;
+    // ADR 025 — record the crash. The console line and `__pagedCrash` are for
+    // a developer watching live; this is for the person who hits it once and
+    // exports a bundle. Neither the message nor the stack crosses: both
+    // routinely carry disk paths and document content, so only the error KIND
+    // and the boundary label do (stacks reach the export only through its
+    // opt-in, default-OFF `crash` section).
+    journal.record({
+      code: "shell.panel.crash",
+      severity: "error",
+      data: { label: identOf(this.props.label) ?? "unknown", error: errorIdent(error) },
+    });
   }
   render() {
     if (this.state.error) {

@@ -104,7 +104,8 @@ function PathEditRender(props: OverlayProps) {
   }, [client, target?.kind, target?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!target || !anchors || anchors.anchors.length === 0) return null;
-  const pr = props.pageRects.get(anchors.pageId);
+  // C-23 — pageless ⇒ no page-local space to draw in.
+  const pr = anchors.pageId ? props.pageRects.get(anchors.pageId) : undefined;
   if (!pr) return null;
 
   const inv = 1 / props.camera.scale;
