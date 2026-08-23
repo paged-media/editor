@@ -1248,13 +1248,19 @@ test.describe("plugin surface · paged.draw", () => {
     );
     expect(uncategorised, "every draw command has a palette category").toEqual([]);
 
-    // THE MENU BAR HAS NONE OF THEM. The plugin contract ships eleven
-    // contribution doors and `menu` is not one of them, so 92 verbs
-    // live behind Cmd+K and nowhere else. Pinned here so that if the
-    // contract ever GAINS a menu door and draw uses it, this assertion
-    // fails and someone deletes it deliberately rather than the
-    // "commands are unreachable from the menu bar" fact rotting
-    // silently into "commands used to be unreachable".
+    // THE MENU BAR NOW CARRIES THEM — and this assertion is the INVERSE
+    // of what it said until 2026-08-23, deliberately.
+    //
+    // It used to pin the opposite fact: "no draw command reaches the
+    // menu bar, Cmd+K is the only home", because the contract shipped
+    // eleven contribution doors and `menu` was not one of them. It said
+    // in its own comment that if the contract ever gained a menu door
+    // and draw used it, this should FAIL so someone inverted it
+    // deliberately rather than letting "commands are unreachable" rot
+    // into "commands used to be unreachable". That is exactly what
+    // happened — `contribute.menu()` landed in plugin-api 0.2.33, draw
+    // contributed 72 entries in canary.10, and this went red on the
+    // first CI run afterwards. The spec worked.
     const drawMenuItems = await page.evaluate(() =>
       (
         globalThis as unknown as {
@@ -1268,8 +1274,15 @@ test.describe("plugin surface · paged.draw", () => {
         .map((m) => m.path),
     );
     expect(
-      drawMenuItems,
-      "no draw command reaches the menu bar — Cmd+K is the only home",
-    ).toEqual([]);
+      drawMenuItems.length,
+      "draw's verbs reach the menu bar, not just Cmd+K",
+    ).toBeGreaterThan(50);
+    // Under a `Draw` top level, plus the deliberate merges into the
+    // host's own Object and Edit menus.
+    expect(drawMenuItems.some((p) => p.startsWith("Draw/"))).toBe(true);
+    expect(
+      drawMenuItems.some((p) => p.startsWith("Object/") || p.startsWith("Edit/")),
+      "the insert and select-same verbs merge into host menus",
+    ).toBe(true);
   });
 });
