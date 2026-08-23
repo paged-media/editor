@@ -24,6 +24,7 @@
 // assertion; bulk setup rides the fast channel (`mutate`/`script`).
 
 import { expect, type Page } from "@playwright/test";
+import { fitFirstPage } from "../../fidelity/canvas-driver";
 
 import { openCanvas } from "../../fidelity/canvas-driver";
 import { mutate, script, setCaret } from "../../e2e/harness/ui";
@@ -152,8 +153,12 @@ export class Designer {
       { timeout: 15_000 },
     );
     await this.openPanel("paged.properties");
-    await this.page.keyboard.press("Home"); // fit page 0
-    await this.page.waitForTimeout(800);
+    // Fit page 0. NOT `press("Home")` + a fixed sleep, which is what
+    // this was: `Home` is dropped entirely while the canvas is
+    // unmeasured, no-ops when page 0 is already current, and ANIMATES
+    // when it does fire — so an 800ms sleep is three different bets at
+    // once, and every journey in the suite was making them.
+    await fitFirstPage(this.page);
   }
 
   async openPanel(id: string): Promise<void> {

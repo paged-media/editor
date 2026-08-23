@@ -34,6 +34,7 @@
 // stack (the default surface is unchanged).
 
 import { expect, test, type Page } from "@playwright/test";
+import { fitFirstPage } from "../fidelity/canvas-driver";
 
 import { openCanvas } from "../fidelity/canvas-driver";
 import { fixturePath } from "./harness/fixtures";
@@ -169,8 +170,7 @@ async function invokeCommand(page: Page, id: string): Promise<void> {
 }
 
 async function fitHome(page: Page): Promise<void> {
-  await page.keyboard.press("Home");
-  await page.waitForTimeout(1200);
+  await fitFirstPage(page);
   await expect
     .poll(
       () =>

@@ -29,7 +29,7 @@
 
 import { existsSync } from "node:fs";
 import { basename } from "node:path";
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 import { FIDELITY_DPI } from "./fixtures";
 import { loadPackFonts } from "./fonts";
@@ -462,4 +462,89 @@ export async function openPanel(page: Page, panelId: string): Promise<void> {
       }
     ).__canvas.openPanel(id);
   }, panelId);
+}
+
+/**
+ * Fit page 1 and wait until the camera has actually stopped there.
+ *
+ * `Home` LOOKS like a deterministic "fit page 1" primitive and twenty
+ * spec files treat it as one. It is conditional twice over, and both
+ * conditions produce a green-then-flaky test rather than an honest
+ * failure:
+ *
+ *   1. `useKeyboardShortcuts` DROPS every page-navigation key while the
+ *      canvas is unmeasured (`vw < 10 || vh < 10`). Press Home before
+ *      the viewport has laid out and nothing happens at all — no error,
+ *      no camera change, and whatever the test does next runs against
+ *      an arbitrary camera.
+ *   2. It NO-OPS when the target page is already current
+ *      (`target === currentIdx`). So "press Home and wait for the camera
+ *      to change" hangs forever in exactly the case where the camera is
+ *      already right.
+ *
+ * And a third, found the hard way on 2026-08-23: the fit ANIMATES.
+ * A test that reads the camera, then clicks, gets a camera from one
+ * animation frame and a pointer landing on another — which showed up as
+ * a placement several points from its click, by a different amount every
+ * run.
+ *
+ * So this asserts the END STATE rather than the transition: wait for a
+ * measured viewport, press Home, then wait for two identical camera
+ * reads. All three conditions fall out of that — an unmeasured viewport
+ * is waited for rather than raced, a no-op is already settled and
+ * returns immediately, and the animation is allowed to finish.
+ */
+export async function fitFirstPage(page: Page): Promise<void> {
+  const readCamera = () =>
+    page.evaluate(
+      () =>
+        (
+          globalThis as unknown as {
+            __canvas?: {
+              client?: {
+                camera?: {
+                  read: () => { scale: number; tx: number; ty: number };
+                };
+              };
+            };
+          }
+        ).__canvas?.client?.camera?.read() ?? null,
+    );
+
+  // 1. A MEASURED viewport, or the keypress is dropped on the floor.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const el = document.querySelector("[data-paged-viewport]");
+          if (!el) return 0;
+          const r = el.getBoundingClientRect();
+          return Math.min(r.width, r.height);
+        }),
+      { timeout: 15_000 },
+    )
+    .toBeGreaterThanOrEqual(10);
+
+  await page.keyboard.press("Home");
+
+  // 2 + 3. Settled: two identical reads. A no-op is already settled, so
+  // this returns immediately rather than waiting for a change that is
+  // never coming.
+  await expect
+    .poll(
+      async () => {
+        const first = await readCamera();
+        await page.waitForTimeout(120);
+        const second = await readCamera();
+        if (!first || !second) return false;
+        return (
+          first.scale === second.scale &&
+          first.tx === second.tx &&
+          first.ty === second.ty &&
+          first.scale > 0
+        );
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(true);
 }

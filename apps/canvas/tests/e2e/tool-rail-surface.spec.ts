@@ -58,7 +58,7 @@
 
 import { expect, test, type Page } from "@playwright/test";
 
-import { openCanvas } from "../fidelity/canvas-driver";
+import { fitFirstPage, openCanvas } from "../fidelity/canvas-driver";
 import { fixturePath } from "./harness/fixtures";
 
 /** Tools under test: rail slot id (the tool's `group`) + shortcut. */
@@ -110,14 +110,6 @@ async function cameraScale(page: Page): Promise<number> {
 
 /** Fit page 0, retrying because `Home` is swallowed silently while the
  *  canvas is unmeasured (see the header note). */
-async function fitPageZero(page: Page): Promise<void> {
-  for (let attempt = 0; attempt < 6; attempt++) {
-    await page.keyboard.press("Home");
-    await page.waitForTimeout(300);
-    if ((await cameraScale(page)) > 0.2) return;
-  }
-  await expect.poll(() => cameraScale(page), { timeout: 8_000 }).toBeGreaterThan(0.2);
-}
 
 async function countKind(page: Page, kind: string): Promise<number> {
   return page.evaluate(async (k) => {
@@ -188,7 +180,7 @@ test.describe("tool rail — the six live tools no spec had named", () => {
         { timeout: 30_000 },
       )
       .toBe(true);
-    await fitPageZero(page);
+    await fitFirstPage(page);
   });
 
   for (const tool of TOOLS) {
@@ -260,7 +252,7 @@ test.describe("tool rail — the six live tools no spec had named", () => {
     await expect
       .poll(() => countKind(page, "textFrame"), { timeout: 15_000 })
       .toBe(0);
-    await fitPageZero(page);
+    await fitFirstPage(page);
 
     // Drag from the page CENTRE outward, not from an offset: the blank
     // document is one letter page, and a drag that starts off-page gives

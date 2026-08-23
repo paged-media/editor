@@ -36,6 +36,7 @@
 // is the readable proof of what the in-frame edit committed.
 
 import { expect, test, type Page } from "@playwright/test";
+import { fitFirstPage } from "../fidelity/canvas-driver";
 
 import { openCanvas, openPanel } from "../fidelity/canvas-driver";
 import { fixturePath } from "./harness/fixtures";
@@ -156,8 +157,7 @@ async function rotateFrame(
 }
 
 async function fitHome(page: Page): Promise<void> {
-  await page.keyboard.press("Home");
-  await page.waitForTimeout(1200);
+  await fitFirstPage(page);
   await expect
     .poll(
       () =>

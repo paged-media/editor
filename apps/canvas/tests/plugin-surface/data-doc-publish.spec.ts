@@ -69,6 +69,7 @@
 //   anywhere). That test authors a rectangle first and watches it vanish.
 
 import { expect, test, type Page } from "@playwright/test";
+import { fitFirstPage } from "../fidelity/canvas-driver";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -563,8 +564,7 @@ test.describe("plugin surface · paged.data", () => {
       "the x-paged:media.paged.data envelope applied",
     ).toBe(true);
 
-    await page.keyboard.press("Home");
-    await page.waitForTimeout(400);
+    await fitFirstPage(page);
 
     const at = await elementScreenCenter(page, { kind: "rectangle", id });
     expect(at, "the bound frame resolves to a screen point").not.toBeNull();
@@ -796,8 +796,7 @@ test.describe("plugin surface · paged.doc", () => {
       "the x-paged:media.paged.doc envelope applied",
     ).toBe(true);
 
-    await page.keyboard.press("Home");
-    await page.waitForTimeout(400);
+    await fitFirstPage(page);
 
     const at = await elementScreenCenter(page, { kind: "rectangle", id });
     expect(at, "the frame resolves to a screen point").not.toBeNull();

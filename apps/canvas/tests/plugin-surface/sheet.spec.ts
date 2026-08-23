@@ -61,6 +61,7 @@
 //   which is the only way a "known bad" note stays honest.
 
 import { expect, test, type Page } from "@playwright/test";
+import { fitFirstPage } from "../fidelity/canvas-driver";
 import { readFileSync } from "node:fs";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -204,8 +205,7 @@ async function bootWithDocument(page: Page): Promise<void> {
       { timeout: 30_000 },
     )
     .toBe(true);
-  await page.keyboard.press("Home"); // fit page 0
-  await page.waitForTimeout(1000);
+  await fitFirstPage(page);
 }
 
 async function invoke(page: Page, id: string): Promise<void> {

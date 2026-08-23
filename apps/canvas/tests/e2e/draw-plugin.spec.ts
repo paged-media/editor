@@ -35,6 +35,7 @@
 //              convert toggles corner→smooth on a vertex
 
 import { expect, test, type Page } from "@playwright/test";
+import { fitFirstPage } from "../fidelity/canvas-driver";
 
 import { openCanvas } from "../fidelity/canvas-driver";
 import { fixturePath } from "./harness/fixtures";
@@ -218,8 +219,7 @@ test.describe("E2E draw-plugin (pen + anchor tools, real viewport)", () => {
       )
       .toBe(true);
     // Home → fit page 0 to the viewport (a large, centred target).
-    await page.keyboard.press("Home");
-    await page.waitForTimeout(1200);
+    await fitFirstPage(page);
     await expect
       .poll(() => pageZeroScreenCenter(page).then((p) => p.scale), {
         timeout: 10_000,

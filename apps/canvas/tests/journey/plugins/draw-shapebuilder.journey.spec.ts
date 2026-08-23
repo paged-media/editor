@@ -36,6 +36,7 @@
 // proves the render oracle.
 
 import { expect, test } from "@playwright/test";
+import { fitFirstPage } from "../../fidelity/canvas-driver";
 
 import { dragMouse, screenPoint } from "../../e2e/harness/viewport";
 import { Designer } from "../driver/designer";
@@ -92,8 +93,7 @@ test.describe("journey · paged.draw shape builder", () => {
     expect(await designer.count("rectangle"), "two rectangles authored").toBe(2);
 
     // Re-fit so the live camera is settled for the drag mapping.
-    await page.keyboard.press("Home");
-    await page.waitForTimeout(400);
+    await fitFirstPage(page);
     const before = await designer.renderBytes();
 
     // ── 2. ACTIVATE the Shape Builder tool through the real activation

@@ -31,6 +31,7 @@
 // the stack and the context clears.
 
 import { expect, test } from "@playwright/test";
+import { fitFirstPage } from "../../fidelity/canvas-driver";
 
 import { Designer } from "../driver/designer";
 
@@ -109,8 +110,7 @@ test.describe("journey · paged.draw vectorGraphic edit context", () => {
     await designer.applyFill("rectangle", id, "Color/Black");
 
     // Re-fit so the live camera is settled for the double-click mapping.
-    await page.keyboard.press("Home");
-    await page.waitForTimeout(400);
+    await fitFirstPage(page);
 
     // ── 2. DOUBLE-CLICK → enter the vectorGraphic edit context. ──
     const at = await elementScreenCenter(page, ref);

@@ -42,7 +42,7 @@ import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
 import { PNG } from "pngjs";
 
-import { openCanvas } from "./fidelity/canvas-driver";
+import { fitFirstPage, openCanvas } from "./fidelity/canvas-driver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -184,66 +184,6 @@ async function loadFixture(page: Page, fixture: string): Promise<void> {
 
 /** Fit page 1 (the Home shortcut) so the viewport centre — the
  *  placement anchor — deterministically resolves to page 0. */
-async function fitFirstPage(page: Page): Promise<void> {
-  await page.keyboard.press("Home");
-  await expect
-    .poll(
-      () =>
-        page.evaluate(
-          () =>
-            (
-              globalThis as unknown as {
-                __canvas: {
-                  client: { camera: { read: () => { scale: number } } };
-                };
-              }
-            ).__canvas.client.camera.read().scale,
-        ),
-      { timeout: 10_000 },
-    )
-    .toBeGreaterThan(0.2);
-}
-
-/** Wait until the camera stops moving.
- *
- *  `Home` FIT-ANIMATES, and a placement clicked mid-animation reads the
- *  camera on one frame and lands the pointer on another — the frame
- *  then sits several pt from the click, by a different amount every
- *  run. That is a measurement artefact, not a placement bug: the
- *  SECOND placement in the same test was always exact to three
- *  decimals, because by then the animation had settled. */
-async function settleCamera(page: Page): Promise<void> {
-  await expect
-    .poll(
-      async () => {
-        const read = () =>
-          page.evaluate(
-            () =>
-              (
-                globalThis as unknown as {
-                  __canvas: {
-                    client: {
-                      camera: {
-                        read: () => { scale: number; tx: number; ty: number };
-                      };
-                    };
-                  };
-                }
-              ).__canvas.client.camera.read(),
-          );
-        const first = await read();
-        await page.waitForTimeout(120);
-        const second = await read();
-        return (
-          first.scale === second.scale &&
-          first.tx === second.tx &&
-          first.ty === second.ty
-        );
-      },
-      { timeout: 10_000 },
-    )
-    .toBe(true);
-}
 
 async function firstPageId(page: Page): Promise<string> {
   return page.evaluate(
@@ -591,7 +531,6 @@ test.describe("U7 — paged.insert.* command authoring", () => {
     // pages recover two DIFFERENT origins and the comparison below is
     // meaningless. (This fixture has several pages and the first
     // attempt at this test straddled two of them.)
-    await settleCamera(page);
     const a = await placeAt(page, 0.4, 0.35);
     const b = await placeAt(page, 0.52, 0.55);
     expect(a.pageId).toBe(b.pageId);

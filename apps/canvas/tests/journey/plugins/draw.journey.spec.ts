@@ -34,6 +34,7 @@
 // drive (the e2e proves them green); the stroke is best-effort.
 
 import { expect, test } from "@playwright/test";
+import { fitFirstPage } from "../../fidelity/canvas-driver";
 
 import { screenPoint, treeCount, treeIds } from "../../e2e/harness/viewport";
 import { Designer } from "../driver/designer";
@@ -184,8 +185,7 @@ test.describe("journey · paged.draw plugin", () => {
     expect(snap?.subpathOpen?.[0] ?? false, "Pen committed an open path").toBe(true);
 
     // Re-fit so the live camera is settled for the refinement clicks.
-    await page.keyboard.press("Home");
-    await page.waitForTimeout(400);
+    await fitFirstPage(page);
 
     // ── 2. ADD ANCHOR — `=` arms the bundle's Add tool; clicking the
     //    midpoint of the first (straight) segment splits it 3 → 4. ──

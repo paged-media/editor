@@ -26,6 +26,7 @@
 // same derivation as tools-ui.spec.ts).
 
 import { expect, type Page } from "@playwright/test";
+import { fitFirstPage } from "../../fidelity/canvas-driver";
 
 import {
   fixturePath,
@@ -56,8 +57,7 @@ export async function loadViaReactPath(
   // and keeps ref resolution in one place (loadFixture's tree walk).
   const fx = await loadFixture(page, name);
   // Home → fit page 0 to the viewport (large, centred drag target).
-  await page.keyboard.press("Home");
-  await page.waitForTimeout(1200);
+  await fitFirstPage(page);
   // Assert the fit produced a valid positive camera scale — NOT an
   // absolute floor. Fit scale is fixture-relative (a large spread fits at
   // a much smaller scale than a postcard); the old `> 0.2` floor assumed a

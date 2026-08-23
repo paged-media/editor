@@ -48,6 +48,7 @@
 // which the old code committed the context).
 
 import { expect, test, type Page } from "@playwright/test";
+import { fitFirstPage } from "../fidelity/canvas-driver";
 
 import { openCanvas } from "../fidelity/canvas-driver";
 import { fixturePath } from "./harness/fixtures";
@@ -195,11 +196,11 @@ async function fitHome(page: Page): Promise<void> {
           }
         ).__canvas.client.camera.read().scale,
     );
-  for (let attempt = 0; attempt < 6; attempt++) {
-    await page.keyboard.press("Home");
-    await page.waitForTimeout(400);
-    if ((await scale()) > 0.2) break;
-  }
+  // Was a six-attempt retry loop around `press("Home")`. The retries
+  // were compensating for `Home` being DROPPED while the canvas is
+  // unmeasured — the shared helper waits for a measured viewport
+  // instead, so one press is enough.
+  await fitFirstPage(page);
   await expect.poll(scale, { timeout: 10_000 }).toBeGreaterThan(0.2);
 }
 

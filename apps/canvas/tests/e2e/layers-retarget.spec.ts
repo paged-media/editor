@@ -74,6 +74,7 @@
 // a diagnostic, and this spec is the only thing that reads it.
 
 import { expect, test, type Page } from "@playwright/test";
+import { fitFirstPage } from "../fidelity/canvas-driver";
 
 import { openCanvas, openPanel } from "../fidelity/canvas-driver";
 import { fixturePath } from "./harness/fixtures";
@@ -286,8 +287,7 @@ test.describe("E2E layers-retarget (ADR 023 — one panel, many providers)", () 
         { timeout: 30_000 },
       )
       .toBe(true);
-    await page.keyboard.press("Home");
-    await page.waitForTimeout(1200);
+    await fitFirstPage(page);
     // The generated `geometry` fixture carries no `<Layer>` elements, so
     // seed two. Without this the CORE half of every assertion below is
     // vacuously true over an empty list — which is exactly the shape of

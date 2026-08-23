@@ -69,6 +69,7 @@
 // hook and a diagnostic; this spec is the only thing that reads it.
 
 import { expect, test, type Page } from "@playwright/test";
+import { fitFirstPage } from "../fidelity/canvas-driver";
 
 import { openCanvas, openPanel } from "../fidelity/canvas-driver";
 import { fixturePath } from "./harness/fixtures";
@@ -412,8 +413,7 @@ test.describe("E2E text-retarget (ADR 023 — the VALUE axis)", () => {
         { timeout: 30_000 },
       )
       .toBe(true);
-    await page.keyboard.press("Home");
-    await page.waitForTimeout(1200);
+    await fitFirstPage(page);
   });
 
   test("AC-TEXT-RETARGET-1/2/3 — the SAME panel is answered by core, then by paged.sheet, then by core again", async ({

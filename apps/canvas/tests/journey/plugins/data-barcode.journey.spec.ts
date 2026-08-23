@@ -40,6 +40,7 @@
 // modules paint. Pure bundle-side — works on the published engine. Asserted HARD.
 
 import { expect, test, type Page } from "@playwright/test";
+import { fitFirstPage } from "../../fidelity/canvas-driver";
 
 import { openPanel } from "../../fidelity/canvas-driver";
 import { Designer } from "../driver/designer";
@@ -120,8 +121,7 @@ test.describe("journey · paged.data barcode symbology", () => {
     const rect = await designer.drawRectangle({ x0: 150, y0: 150, x1: 360, y1: 290 });
     expect(rect, "drew the barcode frame").not.toBe("");
     await designer.selectElement("rectangle", rect);
-    await page.keyboard.press("Home"); // re-fit the camera
-    await page.waitForTimeout(300);
+    await fitFirstPage(page);
 
     // ── 3. PICK A SYMBOLOGY + BIND — open the bindings panel, choose Code-128
     //    (encodes arbitrary text → modules), then "Bind barcode →" defines the
