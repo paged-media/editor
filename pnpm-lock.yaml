@@ -43,8 +43,8 @@ importers:
         specifier: link:../../../plugins/plugin-doc/packages/doc-bundle
         version: link:../../../plugins/plugin-doc/packages/doc-bundle
       '@paged-media/draw':
-        specifier: 0.1.0-canary.9
-        version: 0.1.0-canary.9(@paged-media/plugin-api@0.2.33-canary.0)(@paged-media/plugin-sdk@0.2.33-canary.0(react@18.3.1))(react@18.3.1)
+        specifier: 0.1.0-canary.10
+        version: 0.1.0-canary.10(@paged-media/plugin-api@0.2.33-canary.0)(@paged-media/plugin-sdk@0.2.33-canary.0(react@18.3.1))(react@18.3.1)
       '@paged-media/image':
         specifier: 0.1.0-canary.14
         version: 0.1.0-canary.14(@paged-media/plugin-api@0.2.33-canary.0)(@paged-media/plugin-sdk@0.2.33-canary.0(react@18.3.1))(react@18.3.1)
@@ -916,8 +916,8 @@ packages:
   '@paged-media/draw@0.1.0-canary.1':
     resolution: {integrity: sha512-FeRvXwQ1OwNVo1YU6R71Wse/48bT30Eqai2+akx8052w3byc98Xxq0BaP4u6VmS5GSIQ4dFy96prXg/48cJrcA==}
 
-  '@paged-media/draw@0.1.0-canary.9':
-    resolution: {integrity: sha512-vvz030d5kISvMYPWeEx0JOUK2AOxPlhPR4IaUrUGPxilFE0jVV46ZvprhG2nceacUMpyn1bKxDXFjMZQ7d5OYQ==}
+  '@paged-media/draw@0.1.0-canary.10':
+    resolution: {integrity: sha512-QO70N5/ips7917N1Pqw6mfN/o7NV/UoflMSmqIgVxR5Xkqwyib8flVHAkyO7Os3Gmhms+7HipiTHg2bW/hFeoA==}
     peerDependencies:
       '@paged-media/plugin-api': '>=0.2.29-canary.0'
       '@paged-media/plugin-sdk': '>=0.2.29-canary.0'
@@ -3075,7 +3075,7 @@ snapshots:
     transitivePeerDependencies:
       - react
 
-  '@paged-media/draw@0.1.0-canary.9(@paged-media/plugin-api@0.2.33-canary.0)(@paged-media/plugin-sdk@0.2.33-canary.0(react@18.3.1))(react@18.3.1)':
+  '@paged-media/draw@0.1.0-canary.10(@paged-media/plugin-api@0.2.33-canary.0)(@paged-media/plugin-sdk@0.2.33-canary.0(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@paged-media/plugin-api': 0.2.33-canary.0
       '@paged-media/plugin-sdk': 0.2.33-canary.0(react@18.3.1)
