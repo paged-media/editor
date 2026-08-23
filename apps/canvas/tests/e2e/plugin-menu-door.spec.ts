@@ -75,17 +75,22 @@ test.describe("F1 — the host end of contribute.menu()", () => {
       // `scope: { editContext: "sheet" }` — a `when` asking what context
       // is active. No context is active here, so it must NOT show.
       const off = menus.register({
-        path: "Sheet/Sort range…",
+        // A PATH NO BUNDLE OWNS. This probe used "Sheet/Sort range…"
+        // as a realistic example, which stopped being a free slot the
+        // day paged.sheet contributed its own menu — the registry threw
+        // on the duplicate and the probe took the test down with it. A
+        // synthetic path cannot collide with a real one.
+        path: "Probe/Menu door…",
         command: "media.paged.sheet.command.sortRange",
         when: (state: unknown) =>
           (state as { editContext?: { type?: string } } | null)?.editContext
             ?.type === "sheet",
       });
-      const present = menus.list().some((m) => m.path === "Sheet/Sort range…");
+      const present = menus.list().some((m) => m.path === "Probe/Menu door…");
       off.dispose();
       const goneAfterDispose = !menus
         .list()
-        .some((m) => m.path === "Sheet/Sort range…");
+        .some((m) => m.path === "Probe/Menu door…");
       return { reachable: true as const, present, goneAfterDispose };
     });
 

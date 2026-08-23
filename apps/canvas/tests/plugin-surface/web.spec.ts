@@ -609,26 +609,34 @@ test.describe("plugin surface · paged.web", () => {
     // — "paged.web contributes no menu item" — and it was written to go
     // RED the day that stopped being true, which is exactly what it did.
     //
-    // The plugin still contributes none: the contract has twelve
-    // contribution types and `menu` is not one of them. What changed is
-    // that the HOST now curates an `Object ▸ Insert web frame…` entry
-    // pointing at the plugin's own command, the same courtesy it already
-    // extended to paged.pdf via `File ▸ Open PDF…`. So the menu item
-    // exists and its OWNER is still the host.
-    // UPDATED 2026-08-22 by C1. This read `.toEqual([])` — "paged.web
-    // contributes no menu item" — and was written to go RED the day that
-    // stopped being true. It did, which is the ratchet working.
+    // THIRD STATE OF THIS ASSERTION, and the history is the point.
     //
-    // Note what this list actually measures: menu entries whose COMMAND
-    // belongs to paged.web. The plugin still contributes none itself
-    // (the contract has twelve contribution types and `menu` is not one
-    // of them); the entry is the HOST curating a front door onto the
-    // plugin's own command, the same courtesy already extended to
-    // paged.pdf via `File ▸ Open PDF…`.
+    //   · originally `.toEqual([])` — "paged.web contributes no menu
+    //     item", true when the contract had no menu door at all;
+    //   · 2026-08-22 (C1): one entry, owned by the HOST, curating a
+    //     front door onto the plugin's command;
+    //   · 2026-08-23 (F1): the plugin owns its own menu.
+    //
+    // Each step was written to go RED the day it stopped being true, and
+    // each one did. That is the ratchet working twice.
+    //
+    // `contribute.menu()` (plugin-api 0.2.33) is what changed: paged.web
+    // now files its render / thread / bake verbs under a `Web` top level
+    // and keeps `Object ▸ Insert web frame…` where users already found
+    // it. The host's courtesy entry at that same path STOOD DOWN — see
+    // `fallbackFor` — so the insert verb appears once, not twice.
     expect(
-      reach.menuItems,
-      "the host curates exactly one front door onto paged.web's creation verb",
+      reach.menuItems.length,
+      "paged.web contributes its own menu entries now",
+    ).toBeGreaterThanOrEqual(6);
+    expect(
+      reach.menuItems.filter((p) => p === "Object/Insert web frame…"),
+      "the insert verb appears exactly once — the host's courtesy stood down",
     ).toEqual(["Object/Insert web frame…"]);
+    expect(
+      reach.menuItems.some((p) => p.startsWith("Web/")),
+      "and the flow verbs get a top level of their own",
+    ).toBe(true);
     expect(reach.keybindings, "paged.web contributes no keybinding").toEqual([]);
     expect(reach.railPanels, "no panel opted into the K-8 rail launcher").toEqual([]);
     expect(reach.insertTitle).toBe("Insert web frame");

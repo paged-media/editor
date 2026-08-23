@@ -66,6 +66,27 @@ export interface MenuItemContribution {
    * (function evaluated against application state; DSL string is
    * inert until the evaluator lands in a later step). */
   when?: VisibilityPredicate;
+
+  /** F1 — this entry is a HOST COURTESY for a plugin's command, and
+   *  stands down the moment that plugin contributes its own.
+   *
+   *  The host curates `Object ▸ Insert web frame…` and three Data verbs
+   *  on behalf of bundles that cannot reach the menu bar (C1). Once
+   *  `contribute.menu()` shipped, a bundle CAN — and then the courtesy
+   *  entry is a second route to the same command, in a place the plugin
+   *  did not choose, that the plugin cannot remove.
+   *
+   *  Set to the command id this entry stands in for. A non-fallback
+   *  entry naming the same command supersedes it: at the SAME path it
+   *  replaces it outright (rather than throwing, which would take the
+   *  bundle's activation down over a menu), and at a DIFFERENT path it
+   *  hides it from `list()`.
+   *
+   *  The host keeps registering these unconditionally, so a bundle that
+   *  declares no menu of its own still gets a front door. That is the
+   *  whole point of a fallback: it is not deleted when the door opens,
+   *  it is deleted when someone walks through it. */
+  fallbackFor?: string;
 }
 
 export type MenuRegistryEvent =
@@ -95,7 +116,29 @@ export function createMenuRegistry(): MenuRegistry {
 
   return {
     register(contribution) {
-      if (byPath.has(contribution.path)) {
+      const existing = byPath.get(contribution.path);
+      if (existing) {
+        // A real entry SUPERSEDES a courtesy one at the same path. It
+        // must not throw: the thrower is a bundle's `activate`, and
+        // taking a plugin down because the host was already being
+        // helpful there is the worst of the available outcomes.
+        if (existing.fallbackFor && !contribution.fallbackFor) {
+          byPath.set(contribution.path, contribution);
+          emit({ kind: "registered", contribution });
+          return {
+            dispose() {
+              if (byPath.get(contribution.path) === contribution) {
+                byPath.delete(contribution.path);
+                emit({ kind: "unregistered", path: contribution.path });
+              }
+            },
+          };
+        }
+        // The reverse: a courtesy entry arriving after the real one is
+        // simply not needed. Inert handle, no throw, no duplicate.
+        if (contribution.fallbackFor && !existing.fallbackFor) {
+          return { dispose() {} };
+        }
         throw new Error(
           `MenuRegistry: path "${contribution.path}" already registered`,
         );
@@ -119,7 +162,14 @@ export function createMenuRegistry(): MenuRegistry {
       return byPath.get(path);
     },
     list() {
-      return Array.from(byPath.values());
+      const all = Array.from(byPath.values());
+      // A courtesy entry hides once the command it stands in for is
+      // claimed by a real entry ANYWHERE — the plugin will usually put
+      // it somewhere the host did not guess.
+      const claimed = new Set(
+        all.filter((m) => !m.fallbackFor).map((m) => m.command),
+      );
+      return all.filter((m) => !m.fallbackFor || !claimed.has(m.fallbackFor));
     },
     onChange(handler) {
       listeners.add(handler);

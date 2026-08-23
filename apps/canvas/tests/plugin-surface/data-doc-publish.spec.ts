@@ -345,16 +345,29 @@ test.describe("plugin surface · paged.data", () => {
     expect(dataIo.exporters.filter((e) => e.startsWith("media.paged.data"))).toEqual(
       [],
     );
-    // UPDATED 2026-08-22 by C1. Was `.toEqual([])`, written to go red
-    // when the exposure improved — which it did. paged.data still
-    // contributes no menu item itself (no `menu` contribution type
-    // exists); the host now curates a front door onto its binding verb,
-    // and the three Data-menu items that were `soon(…)` seams now open
-    // the same panels the Data-mode toolbar pills raise.
+    // THIRD STATE, each written to go red when the exposure improved,
+    // and each one did:
+    //   · `.toEqual([])` — paged.data reached no menu at all;
+    //   · 2026-08-22 (C1) — one entry, curated by the HOST;
+    //   · 2026-08-23 (F1) — the plugin files its own, via
+    //     `contribute.menu()` (plugin-api 0.2.33).
+    //
+    // The rows are named for what they DO rather than for their command
+    // titles, and in two cases those differ: `importData` is registered
+    // as "Import data (.csv)" while its handler opens a panel and
+    // imports nothing. Repeating that title in a menu would spread the
+    // claim to a second surface, so the entry reads "Sources…".
+    const dataMenuCmds = dataIo.menus.filter((m) =>
+      m.startsWith("media.paged.data"),
+    );
     expect(
-      dataIo.menus.filter((m) => m.startsWith("media.paged.data")),
-      "the host curates a front door onto paged.data's binding verb",
-    ).toEqual(["media.paged.data.command.defineBinding"]);
+      dataMenuCmds.length,
+      "paged.data contributes its own menu entries now",
+    ).toBeGreaterThanOrEqual(6);
+    expect(
+      dataMenuCmds.filter((m) => m.endsWith(".defineBinding")).length,
+      "the binding verb appears once — the host's courtesy stood down",
+    ).toBe(1);
   });
 
   test("all three panels open and render their real body @feat:data.plugin.bundle @feat:editor-shell.panel-rail @level:happy", async ({
@@ -1067,23 +1080,39 @@ test.describe("plugin surface · host-hardcoded chrome", () => {
         .filter((m) => m.path.startsWith("Data/"))
         .map((m) => ({ path: m.path, command: m.command, disabled: m.disabled === true })),
     );
-    expect(dataMenu.map((m) => m.path)).toEqual([
+    // The host's three rows are still here and still first. paged.data
+    // now MERGES its own verbs into the same menu (F1), so this asserts
+    // the host's three survive rather than that they are alone —
+    // "alone" stopped being the interesting fact the moment the plugin
+    // could speak for itself.
+    const hostRows = [
       "Data/Connect source…",
       "Data/Field mapping…",
       "Data/Generate pages…",
-    ]);
+    ];
+    for (const row of hostRows) {
+      expect(dataMenu.map((m) => m.path), `${row} survives`).toContain(row);
+    }
+    expect(
+      dataMenu.length,
+      "and the plugin's own verbs joined them",
+    ).toBeGreaterThan(hostRows.length);
     for (const m of dataMenu) {
       expect(m.command, `${m.path} is still a soon-seam`).not.toMatch(
         /^paged\.soon\./,
       );
       expect(m.disabled, `${m.path} is still disabled`).not.toBe(true);
     }
-    // They open the same paged.data panels the toolbar pills raise.
-    expect(dataMenu.map((m) => m.command)).toEqual([
+    // The host's three open the same paged.data panels the toolbar pills
+    // raise. (Checked by membership, not by equality: the plugin's own
+    // rows now share this menu.)
+    for (const cmd of [
       "paged.panel.show.media.paged.data.panel.sources",
       "paged.panel.show.media.paged.data.panel.bindings",
       "paged.panel.show.media.paged.data.panel.dataset",
-    ]);
+    ]) {
+      expect(dataMenu.map((m) => m.command)).toContain(cmd);
+    }
 
     // Through the real MenuBar: three items, all greyed, all badged.
     await page
@@ -1091,7 +1120,7 @@ test.describe("plugin surface · host-hardcoded chrome", () => {
       .getByRole("button", { name: "Data" })
       .click();
     const items = page.getByRole("menuitem");
-    await expect(items).toHaveCount(3);
+    await expect(items).toHaveCount(dataMenu.length);
     // No longer greyed, and no longer badged `soon`.
     await expect(
       page.getByRole("menuitem").filter({ hasText: "soon" }),

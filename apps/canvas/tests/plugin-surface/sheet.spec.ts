@@ -819,10 +819,25 @@ test.describe("plugin surface · paged.sheet", () => {
     // creation steps. The second, `lowerToFrame`, is what actually puts
     // the sheet on the page and is still reachable only from Cmd+K under
     // a name ("Lower selection to frame") no designer would search for.
+    // UPDATED 2026-08-23 (F1). This read `.toEqual(["Object/Insert
+    // spreadsheet…"])` — one entry, owned by the HOST — and the comment
+    // above still describes why `lowerToFrame` was the gap. That half is
+    // now closed too: `contribute.menu()` let paged.sheet file its own
+    // verbs, and the step that puts the sheet on the page reads "Place
+    // selection on page" in the menu rather than the compiler vocabulary
+    // no designer would search for.
     expect(
-      reach.menuItems,
-      "the host curates one front door onto paged.sheet's first creation step",
+      reach.menuItems.length,
+      "paged.sheet contributes its own menu entries now",
+    ).toBeGreaterThanOrEqual(10);
+    expect(
+      reach.menuItems.filter((p) => p === "Object/Insert spreadsheet…"),
+      "the insert verb appears exactly once — the host's courtesy stood down",
     ).toEqual(["Object/Insert spreadsheet…"]);
+    expect(
+      reach.menuItems.some((p) => p === "Sheet/Place selection on page"),
+      "and `lowerToFrame` is findable under words a designer would use",
+    ).toBe(true);
     expect(reach.keybindings, "paged.sheet contributes no keybinding").toEqual([]);
     expect(reach.railPanels, "no panel opted into the K-8 rail launcher").toEqual([]);
 

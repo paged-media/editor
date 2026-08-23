@@ -819,26 +819,53 @@ function pluginInsert(command: string) {
   };
 }
 
-const PLUGIN_INSERT_ENTRIES: { path: string; command: string; order: number }[] =
+/** F1 — the host's COURTESY entries for plugin commands.
+ *
+ *  C1 curated these because the contract had no menu door: a plugin's
+ *  creation verb was reachable only through Cmd+K, so the host named
+ *  four bundles by hand and gave them a front door. `contribute.menu()`
+ *  (plugin-api 0.2.33) ended that necessity, and each entry now carries
+ *  `fallbackFor` — it stands down the moment its plugin contributes its
+ *  own entry for the same command, wherever the plugin chooses to put
+ *  it.
+ *
+ *  They are NOT deleted. A bundle that declares no menu still needs a
+ *  front door, and the host naming a few plugins is a smaller cost than
+ *  a user who cannot find how to insert a spreadsheet. A fallback is
+ *  removed when someone walks through the door, not when the door opens.
+ *
+ *  The three `Data/…` rows are a different case and deliberately keep no
+ *  `fallbackFor`: they raise PANELS through the registry-derived
+ *  panel-show commands, which no plugin command supersedes. */
+const PLUGIN_INSERT_ENTRIES: {
+  path: string;
+  command: string;
+  order: number;
+  fallbackFor?: string;
+}[] =
   [
     {
       path: "Object/Insert web frame…",
       command: "media.paged.web.command.insertWebFrame",
+      fallbackFor: "media.paged.web.command.insertWebFrame",
       order: 30,
     },
     {
       path: "Object/Insert spreadsheet…",
       command: "media.paged.sheet.command.importXlsx",
+      fallbackFor: "media.paged.sheet.command.importXlsx",
       order: 31,
     },
     {
       path: "Object/Insert Word document…",
       command: "media.paged.doc.command.placeDoc",
+      fallbackFor: "media.paged.doc.command.placeDoc",
       order: 32,
     },
     {
       path: "Object/Insert data binding…",
       command: "media.paged.data.command.defineBinding",
+      fallbackFor: "media.paged.data.command.defineBinding",
       order: 33,
     },
     // The three Data-menu verbs, replacing `soon(...)` seams whose
@@ -927,6 +954,11 @@ export const INSERT_MENU_ITEMS: MenuItemContribution[] = [
     order: e.order,
     group: "insert-plugin",
     when: pluginInsert(e.command),
+    // Carried through explicitly. This map names every field, so a new
+    // one on the source type is dropped in silence — `fallbackFor` was,
+    // and the courtesy entries stayed permanent while every other part
+    // of the mechanism worked.
+    fallbackFor: e.fallbackFor,
   })),
 ];
 

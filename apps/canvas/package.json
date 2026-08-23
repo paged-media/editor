@@ -37,10 +37,10 @@
     "react-dom": "^18.3.1",
     "apache-arrow": "^17.0.0",
     "@paged-media/draw": "0.1.0-canary.10",
-    "@paged-media/web": "0.1.0-canary.6",
-    "@paged-media/data": "0.1.0-canary.6",
-    "@paged-media/sheet": "0.1.0-canary.6",
-    "@paged-media/image": "0.1.0-canary.14"
+    "@paged-media/web": "0.1.0-canary.7",
+    "@paged-media/data": "0.1.0-canary.8",
+    "@paged-media/sheet": "0.1.0-canary.7",
+    "@paged-media/image": "0.1.0-canary.15"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

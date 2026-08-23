@@ -22,9 +22,16 @@
 // A door with a proof on one side only is indistinguishable from a door
 // that does not open.
 //
-// paged.draw is the consumer. It registers 92 commands and, before this,
-// not one of them could reach a menu — every verb was Cmd+K only, shown
-// as a raw command id.
+// FIVE bundles are consumers now: draw (72 entries), image (20), sheet
+// (12), web (7) and data (7). paged.doc contributes exactly one and is
+// NOT asserted here, because it is the single bundle the editor still
+// consumes through a `link:` — it has never been published (its publish
+// workflow fails ENEEDAUTH), so its version in a fresh checkout is
+// whatever the sibling directory happens to hold.
+//
+// The per-plugin counts are floors, not equalities. A floor fails when a
+// bundle's menu silently disappears — the regression that matters —
+// without failing every time someone adds a verb.
 //
 // WHY THIS IS NOT A UNIT TEST. Every interesting way this breaks is a
 // SEAM: the bundle's peer range excluding the host's contract version,
@@ -44,7 +51,7 @@ interface MenuItemLite {
 }
 
 test.describe("journey · plugin menu contributions", () => {
-  test("paged.draw's verbs reach the menu bar @feat:plugin-platform.bundle-lifecycle @feat:editor-shell.plugin-bundles @level:happy", async ({
+  test("five bundles' verbs reach the menu bar @feat:plugin-platform.bundle-lifecycle @feat:editor-shell.plugin-bundles @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -63,23 +70,33 @@ test.describe("journey · plugin menu contributions", () => {
         return reg.list().map((m) => ({ path: m.path, command: m.command }));
       });
 
-    // The bundle loads asynchronously, so poll rather than sample once.
-    await expect
-      .poll(
-        async () =>
-          (await menus()).filter((m) =>
-            m.command.startsWith("media.paged.draw."),
-          ).length,
-        { timeout: 20_000 },
-      )
-      .toBeGreaterThan(50);
+    // Bundles load asynchronously, so poll rather than sample once.
+    const FLOORS: [prefix: string, floor: number][] = [
+      ["media.paged.draw.", 50],
+      ["media.paged.image.", 15],
+      ["media.paged.sheet.", 10],
+      ["media.paged.web.", 6],
+      ["media.paged.data.", 6],
+    ];
+    for (const [prefix, floor] of FLOORS) {
+      await expect
+        .poll(
+          async () =>
+            (await menus()).filter((m) => m.command.startsWith(prefix)).length,
+          { timeout: 25_000 },
+        )
+        .toBeGreaterThanOrEqual(floor);
+    }
 
     const all = await menus();
     const draw = all.filter((m) => m.command.startsWith("media.paged.draw."));
+    const plugin = all.filter((m) => m.command.startsWith("media.paged."));
 
     // A NEW top-level menu, beside the host's own — not instead of them.
     const tops = new Set(all.map((m) => m.path.split("/")[0]));
-    expect(tops).toContain("Draw");
+    for (const t of ["Draw", "Image", "Sheet", "Web"]) {
+      expect(tops, `${t} is a top-level menu`).toContain(t);
+    }
     for (const hostMenu of ["File", "Edit", "View", "Object", "Window"]) {
       expect(tops, `the host's ${hostMenu} menu survives`).toContain(hostMenu);
     }
@@ -105,11 +122,25 @@ test.describe("journey · plugin menu contributions", () => {
         }
       ).__canvas.registries.commands;
       return ids.filter((id) => !reg.get(id));
-    }, draw.map((m) => m.command));
+    }, plugin.map((m) => m.command));
     expect(dead, `menu entries with no command: ${dead.join(", ")}`).toEqual([]);
 
-    // No two entries claim the same slot in the bar.
-    const paths = draw.map((m) => m.path);
+    // No two entries claim the same slot in the bar — across ALL
+    // plugins, which is where a collision would actually happen.
+    const paths = plugin.map((m) => m.path);
     expect(paths.length).toBe(new Set(paths).size);
+
+    // F1's fallback: the host curates `Object ▸ Insert …` courtesies for
+    // bundles that cannot reach the bar. web, sheet and data now DO, so
+    // their courtesy must have stood down — exactly one entry per
+    // command, not two.
+    for (const cmd of [
+      "media.paged.web.command.insertWebFrame",
+      "media.paged.sheet.command.importXlsx",
+      "media.paged.data.command.defineBinding",
+    ]) {
+      const rows = all.filter((m) => m.command === cmd);
+      expect(rows.length, `${cmd} appears once, not twice`).toBe(1);
+    }
   });
 });
