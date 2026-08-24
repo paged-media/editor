@@ -9,6 +9,7 @@
     "build:demo": "tsc -b && vite build --mode demo --outDir dist-demo",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck:tests": "tsc --noEmit -p tsconfig.tests.json",
     "lint": "eslint src vite.config.ts",
     "test:fidelity": "playwright test --config=playwright.config.ts",
     "test:journeys": "playwright test --project=journeys",

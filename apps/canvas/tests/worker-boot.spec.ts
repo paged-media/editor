@@ -110,7 +110,6 @@ test.describe("W0.17 — worker boot + cross-origin isolation", () => {
 
   test("the worker chunk + wasm asset resolve with correct content-types @feat:plugin-platform.worker-pool @feat:the-renderer.offscreen-worker @level:happy", async ({
     page,
-    request,
   }) => {
     // Drive the app so the worker fetches its wasm, then read the actual
     // network responses. This is the browser-side mirror of the curl checks

@@ -28,19 +28,6 @@ import { test, expect } from "@playwright/test";
 
 import { openCanvas } from "../fidelity/canvas-driver";
 
-declare global {
-  interface Window {
-    __canvas: {
-      registries: {
-        panels: {
-          register(c: unknown): { dispose(): void };
-        };
-      };
-    };
-    __railDoorDispose?: () => void;
-  }
-}
-
 const PANEL_ID = "test.railDoor.panel";
 
 test.describe("K-8 — panel rail + icon door", () => {

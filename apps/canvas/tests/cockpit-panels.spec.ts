@@ -33,16 +33,6 @@ const __dirname = dirname(__filename);
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
 const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/geometry-groups.idml`;
 
-declare global {
-  interface Window {
-    __canvas: {
-      ready: boolean;
-      mode: string;
-      setMode: (m: string) => void;
-    };
-  }
-}
-
 async function loadFixture(page: Page) {
   await page.setInputFiles('input[type="file"]', FIXTURE);
   await expect

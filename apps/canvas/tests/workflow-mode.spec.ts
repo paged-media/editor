@@ -25,15 +25,6 @@ import { test, expect, type Page } from "@playwright/test";
 
 import { openCanvas } from "./fidelity/canvas-driver";
 
-declare global {
-  interface Window {
-    __canvas: {
-      mode: string;
-      setMode: (m: string) => void;
-    };
-  }
-}
-
 const MODES = ["design", "content", "prepress", "data", "review", "export"];
 
 test.describe("Cockpit — workflow modes", () => {

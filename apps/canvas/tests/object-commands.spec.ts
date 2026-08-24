@@ -356,7 +356,7 @@ function depsWith(
         } as never;
       },
       sceneTree: async () => [group("g1", [leaf("a"), leaf("b")])],
-      setElementSelection: async (ids) => ids,
+      setElementSelection: async (ids: unknown[]) => ids,
       elementGeometry: async () => [],
       layers: async () => [],
     } as unknown as ObjectCommandDeps["client"],

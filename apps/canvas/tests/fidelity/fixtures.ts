@@ -30,7 +30,10 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = resolve(__dirname, "..", "..", "..", "..");
 export const ENVATO_DIR = resolve(REPO_ROOT, "corpus", "idml");
-export const PACKS_DIR = resolve(ENVATO_DIR, "packs");
+// PACKS_DIR is deliberately GONE. It was `corpus/idml/packs`, and any
+// caller resolving a pack against it addresses by bare name — the exact
+// bug that silenced this suite. Packs are addressed by (group, name);
+// see `listPacks`.
 export const OVERRIDES_DIR = resolve(REPO_ROOT, "corpus", "config", "overrides");
 export const MANIFEST_PATH = resolve(REPO_ROOT, "corpus", "config", "manifest.json");
 
@@ -55,6 +58,12 @@ export interface PackFixture {
 
 interface ManifestEntry {
   name: string;
+  /** The corpus GROUP this pack belongs to (`idml`, `docx`, `psd`,
+   *  `vector`, `pptx`, `html`). Load-bearing: pack names are NOT unique
+   *  across groups — `resume-template`, `business-proposal-template` and
+   *  `magazine-editorial-layout` each exist in both `idml` and `docx` —
+   *  so a pack is addressed by (group, name), never by name alone. */
+  group?: string;
   stage?: PackStage;
   skip_reason?: string;
   declared_fonts?: string[];
@@ -71,7 +80,20 @@ export function listPacks(): PackFixture[] {
   const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8")) as Manifest;
   const fixtures: PackFixture[] = [];
   for (const entry of manifest.packs) {
-    const dir = resolve(PACKS_DIR, entry.name);
+    // ADDRESS BY (GROUP, NAME). This used to be
+    // `resolve(PACKS_DIR, entry.name)` — PACKS_DIR being `corpus/idml/
+    // packs` — so every entry, whatever its group, was looked up inside
+    // the IDML tree. Three docx packs share a name with an idml pack, so
+    // those three resolved onto the IDML pack's directory, found its
+    // `template.idml`, and were admitted as fixtures.
+    //
+    // THE CONSEQUENCE WAS NOT A WRONG NUMBER, IT WAS NO TESTS AT ALL:
+    // the three collisions produced duplicate `render + diff <name>`
+    // titles, Playwright refuses a file with duplicate titles, and the
+    // whole spec was dropped — `--list` reported "Total: 0 tests in 0
+    // files" AND EXITED 0. A fidelity gate that measures nothing and
+    // passes is worse than one that fails.
+    const dir = resolve(REPO_ROOT, "corpus", entry.group ?? "idml", "packs", entry.name);
     const idmlPath = resolve(dir, "template.idml");
     const referencePdfPath = resolve(dir, "reference.pdf");
     let hasIdml = false;

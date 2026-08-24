@@ -123,7 +123,7 @@ async function runExporter(
  *  error, no dab, a 0-pixel diff. */
 async function place(
   designer: Designer,
-  page: Page,
+  _page: Page,
   id: string | null = null,
 ): Promise<string> {
   await designer.open();

@@ -450,6 +450,18 @@ jobs:
         working-directory: editor
         run: pnpm --filter ./apps/canvas run typecheck
 
+      # The TEST TREE, which was outside every static gate until
+      # 2026-08-24. `apps/canvas/tsconfig.json` includes only `src` and
+      # `vite.config.ts`, so several hundred Playwright specs compiled
+      # nowhere and the first thing able to notice a broken one was the
+      # runner. That cost a red main: a CLEAN auto-merge (no conflict on
+      # either side) deleted a `const after = …` in one commit while
+      # another added a line that read it, and typecheck + build both
+      # passed on code that could not run.
+      - name: typecheck canvas tests
+        working-directory: editor
+        run: pnpm --filter ./apps/canvas run typecheck:tests
+
       # NO `--with-deps`. That flag shells out to `apt-get update` as root,
       # and on the ubuntu-24.04 runner that hangs: azure.archive.ubuntu.com
       # answers every index request with `Ign:`, apt falls back to

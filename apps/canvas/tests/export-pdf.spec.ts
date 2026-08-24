@@ -51,28 +51,6 @@ async function loadFixture(page: Page, path = FIXTURE) {
 }
 
 // Minimal client view used by the wire-layer evaluates.
-interface WireClient {
-  beginPdfExport: (
-    o: Record<string, unknown>,
-  ) => Promise<{ session: number; pageCount: number }>;
-  exportPdfPage: (s: number) => Promise<{ done: number; total: number }>;
-  finishPdfExport: (
-    s: number,
-  ) => Promise<{ bytes: Uint8Array; diagnostics: string[] }>;
-  cancelPdfExport: (s: number) => Promise<void>;
-  exportPdf: (
-    o: Record<string, unknown>,
-    hooks?: {
-      onProgress?: (done: number, total: number) => void;
-      signal?: AbortSignal;
-    },
-  ) => Promise<{ bytes: Uint8Array; diagnostics: string[] }>;
-}
-
-const client = () =>
-  (globalThis as unknown as { __canvas: { client: WireClient } }).__canvas
-    .client;
-
 test.describe("Concept 3 — PDF export wire (protocol 26)", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);

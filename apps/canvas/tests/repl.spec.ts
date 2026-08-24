@@ -24,6 +24,7 @@
 // fired.
 
 import { dirname, resolve as pathResolve } from "node:path";
+import type { ElementId } from "@paged-media/client";
 import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
 
@@ -51,10 +52,12 @@ interface CanvasGlobal {
     mutate: (m: unknown) => Promise<unknown>;
     undo: () => Promise<unknown>;
     redo: () => Promise<unknown>;
-    elementProperties: (id: {
-      kind: string;
-      id: string;
-    }) => Promise<ElementProperties | null>;
+    // `ElementId`, not a hand-narrowed `{kind: string; id: string}`.
+    // The real union's table / tableCell / storyRange variants carry
+    // OBJECT ids, so the narrowed mirror rejected exactly the ids the
+    // wire actually uses — a second, smaller copy of a real type, which
+    // is the trap this codebase already records for the plugin contract.
+    elementProperties: (id: ElementId) => Promise<ElementProperties | null>;
   };
 }
 

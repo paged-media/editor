@@ -35,7 +35,6 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { openCanvas, snapshotPagePng } from "../fidelity/canvas-driver";
 import {
-  elementPageRectPt,
   loadFixture,
   type ElementRef,
   type LoadedFixture,

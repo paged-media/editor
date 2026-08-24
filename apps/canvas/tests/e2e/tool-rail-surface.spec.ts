@@ -97,17 +97,6 @@ async function activeSlot(page: Page): Promise<string | null> {
   });
 }
 
-async function cameraScale(page: Page): Promise<number> {
-  return page.evaluate(
-    () =>
-      (
-        globalThis as unknown as {
-          __canvas: { client: { camera: { read: () => { scale: number } } } };
-        }
-      ).__canvas.client.camera.read().scale,
-  );
-}
-
 /** Fit page 0, retrying because `Home` is swallowed silently while the
  *  canvas is unmeasured (see the header note). */
 

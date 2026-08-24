@@ -30,7 +30,7 @@
 // Output lives under FIDELITY_OUT (default /tmp/paged-canvas-fidelity).
 
 import { test, expect } from "@playwright/test";
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 import {

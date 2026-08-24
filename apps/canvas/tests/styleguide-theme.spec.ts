@@ -35,15 +35,6 @@ import { test, expect, type Page } from "@playwright/test";
 
 import { openCanvas } from "./fidelity/canvas-driver";
 
-declare global {
-  interface Window {
-    __canvas: {
-      theme: "dark" | "light";
-      setTheme: (t: "dark" | "light") => void;
-    };
-  }
-}
-
 function isDark(page: Page): Promise<boolean> {
   return page.evaluate(() =>
     document.documentElement.classList.contains("dark"),

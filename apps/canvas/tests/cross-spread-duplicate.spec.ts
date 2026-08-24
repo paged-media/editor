@@ -207,7 +207,6 @@ async function findDuplicateForSource(
 
 test.describe("Track K — cross-spread Alt-duplicate", () => {
   let pageAId = "";
-  let pageBId = "";
   let pageAW = 0;
   let pageAH = 0;
 
@@ -216,7 +215,6 @@ test.describe("Track K — cross-spread Alt-duplicate", () => {
     const loaded = await loadIdml(page, FIXTURE);
     expect(loaded.pages.length).toBeGreaterThanOrEqual(2);
     pageAId = loaded.pages[0].pageId;
-    pageBId = loaded.pages[1].pageId;
     pageAW = loaded.pages[0].widthPt;
     pageAH = loaded.pages[0].heightPt;
   });

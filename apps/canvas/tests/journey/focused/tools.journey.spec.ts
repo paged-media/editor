@@ -40,8 +40,7 @@ test.describe("journey · tools", () => {
     const designer = new Designer(page);
     await designer.open();
     await designer.newDocument();
-    const { pageIds } = await designer.handle();
-    const pageId = pageIds[0];
+    await designer.handle();
 
     const fail: string[] = [];
     const step = async (name: string, fn: () => Promise<boolean>) => {

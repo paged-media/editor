@@ -75,18 +75,6 @@ interface CanvasGlobal {
   setElementSelection: (ids: ElementId[]) => void;
 }
 
-async function selectFrame(page: import("@playwright/test").Page, id: string) {
-  await page.evaluate(
-    async ({ id }) => {
-      const c = (globalThis as unknown as { __canvas: CanvasGlobal }).__canvas;
-      const target = { kind: "textFrame", id };
-      const ids = await c.client.setElementSelection([target], "replace");
-      c.setElementSelection(ids);
-    },
-    { id },
-  );
-}
-
 async function fetchProps(
   page: import("@playwright/test").Page,
   id: string,

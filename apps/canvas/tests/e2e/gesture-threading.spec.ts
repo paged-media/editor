@@ -111,17 +111,6 @@ async function mutate(
   }, m);
 }
 
-async function undo(page: Page): Promise<void> {
-  await page.evaluate(async () => {
-    const c = (
-      globalThis as unknown as {
-        __canvas: { client: { undo: () => Promise<unknown> } };
-      }
-    ).__canvas;
-    await c.client.undo();
-  });
-}
-
 /** Insert a fresh EMPTY text frame on page 0; resolve its id. The
  *  link `to` MUST be an empty text frame (v28 linkFrames precondition);
  *  the generated fixtures' frames all carry content, so the link
