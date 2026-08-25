@@ -166,6 +166,14 @@ jobs:
       # no review caught them — there was nothing for them to disagree with.
       - name: applicability vocabulary
         run: pnpm test:applicability
+      # Solo profiles are ALLOW-lists, which is the right direction (a
+      # deny-list leaks every new host panel into every profile) and buys
+      # the opposite failure: a panel renamed host-side silently DROPS
+      # OUT and the app just boots one panel poorer. This resolves every
+      # id against the code that registers it. Written after a first
+      # draft named a draw "layers" panel that has never existed.
+      - name: solo profiles resolve
+        run: pnpm test:solo-profiles
 
   playwright:
     name: playwright (shard ${{ matrix.shard }}/3)

@@ -18,7 +18,8 @@
     "check:pins": "node scripts/check-plugin-pins.mjs",
     "test:surface-coverage": "node scripts/surface-coverage.mjs",
     "test:seam-guard": "node scripts/seam-guard.mjs",
-    "test:applicability": "node scripts/applicability-guard.mjs"
+    "test:applicability": "node scripts/applicability-guard.mjs",
+    "test:solo-profiles": "node scripts/solo-profiles-guard.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.4",

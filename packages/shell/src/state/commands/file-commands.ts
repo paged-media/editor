@@ -88,29 +88,56 @@ export function buildNewDocumentCommand(options: {
     handler: async (paged) => {
       const editor = paged as PagedEditor;
       if (!(await confirmDiscard(editor, "Creating a new document"))) return;
-      const [widthPt, heightPt] = options.defaultSizePt ?? LETTER_PT;
-      await createBlankDocument(
-        editor.client,
-        { widthPt, heightPt },
-        {
-          setHandle: editor.document.setHandle,
-          setSourceName: editor.document.setSourceName,
-          setLoading: editor.document.setLoading,
-          setStatus: options.setStatus,
-          setSnapshotsReady: editor.document.setSnapshotsReady,
-          addSnapshot: (pageId, url) => {
-            editor.document.setSnapshots((prev) => {
-              const next = new Map(prev);
-              next.set(pageId, url);
-              return next;
-            });
-          },
-          resetForNewDocument: editor.document.resetForNewDocument,
-          pushWarning: options.pushWarning,
-        },
-      );
+      await mintBlankDocument(editor, options.defaultSizePt ?? LETTER_PT, options);
     },
   };
+}
+
+/**
+ * Mint a blank document of a given size, WITHOUT asking to discard.
+ *
+ * Factored out of the `File ▸ New` handler so a caller that knows there
+ * is nothing to discard can reuse the same callback wiring instead of
+ * copying it. Exactly one such caller exists: solo mode's boot artboard.
+ *
+ * WHY THE CONFIRM MUST NOT BE ON THIS PATH. `confirmDiscard` calls
+ * `globalThis.confirm`, which on a freshly-opened application is a modal
+ * asking whether to discard a document that does not exist — and under
+ * Playwright is auto-DISMISSED when nothing listens, so the boot
+ * document would silently never be created and every plugin menu entry
+ * would stay greyed (the SDK gates them on `pageCount > 0`). The two
+ * failure modes are a nonsense dialog and an invisible no-op; neither
+ * belongs at boot.
+ */
+export async function mintBlankDocument(
+  editor: PagedEditor,
+  sizePt: readonly [number, number],
+  sinks: {
+    setStatus: (s: string) => void;
+    pushWarning: (w: string) => void;
+  },
+): Promise<void> {
+  const [widthPt, heightPt] = sizePt;
+  await createBlankDocument(
+    editor.client,
+    { widthPt, heightPt },
+    {
+      setHandle: editor.document.setHandle,
+      setSourceName: editor.document.setSourceName,
+      setLoading: editor.document.setLoading,
+      setStatus: sinks.setStatus,
+      setSnapshotsReady: editor.document.setSnapshotsReady,
+      addSnapshot: (pageId, url) => {
+        editor.document.setSnapshots((prev) => {
+          const next = new Map(prev);
+          next.set(pageId, url);
+          return next;
+        });
+      },
+      resetForNewDocument: editor.document.resetForNewDocument,
+      pushWarning: sinks.pushWarning,
+    },
+  );
 }
 
 /**

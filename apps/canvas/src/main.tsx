@@ -55,6 +55,8 @@ import {
   type PanelContribution,
   type ShellSchemaPanelRendererProps,
   writeToOpenFile,
+  setChromeStorageScope,
+  ALWAYS_IN_PALETTE,
 } from "@paged-media/shell";
 import "@paged-media/shell/styles/globals.css";
 
@@ -84,6 +86,8 @@ import {
   notePluginLoaded,
 } from "./journal-sink";
 import { createGuardedLoader } from "./plugin-load-guard";
+import { resolveSoloProfile } from "./solo/profiles";
+import { soloMode } from "./solo/mode";
 import { drawBundle } from "@paged-media/draw";
 import { webBundle } from "@paged-media/web";
 import { dataBundle } from "@paged-media/data";
@@ -1295,33 +1299,45 @@ function PluginBundles() {
       (globalThis as unknown as { __shellDoors?: unknown }).__shellDoors =
         shell;
     }
+    // Solo loads ONE bundle. Filtering here (rather than after
+    // registration) means the other seven never activate at all, so
+    // their panels, tools, menus, importers and edit contexts are never
+    // registered and nothing has to un-register them.
+    //
+    // NOT a download win: the eight imports at the top of this file are
+    // static, so every module body still evaluates. What solo skips is
+    // seven plugins' `activate()` — their engines, workers and wasm.
+    const soloOnly = <T extends { manifest: { id: string } }>(b: T) =>
+      !SOLO || b.manifest.id === SOLO.bundleId ? b : null;
+    const loadIf = (b: { manifest: { id: string } }) =>
+      soloOnly(b) ? loadGuarded(b as Parameters<typeof loadGuarded>[0]) : null;
     const loaded = [
-      loadGuarded(drawBundle),
-      loadGuarded(webBundle),
+      loadIf(drawBundle),
+      loadIf(webBundle),
       // paged.data (the §7.1 PROVIDER — publishes a governed query) + paged.sheet
       // (the future consumer, S-15). Both rendezvous through `dataProviders`
       // above. Engines boot lazily, so loading them is cheap; a missing engine /
       // DuckDB degrades honestly in-panel (never crashes the app).
-      loadGuarded(dataBundle),
-      loadGuarded(sheetBundle),
+      loadIf(dataBundle),
+      loadIf(sheetBundle),
       // paged.image (M4 ingest slice): C-5 placed bytes → engine-wasm
       // decode → GPU adjustments → C-1 Stage-A in-frame composite. The
       // engine wasm boots lazily on first ingest (the GPU device lives
       // in the bundle realm — I-07); a missing artifact / no WebGPU
       // degrades honestly in-panel.
-      loadGuarded(imageBundle),
+      loadIf(imageBundle),
       // ADR-022 Phase 4/5 — paged.publish: the IDML importer (routes .idml to
       // host.nativeDocument.open) + exporter (reuses the engine serializer).
       // Replaces the Export Center's built-in static IDML target.
-      loadGuarded(publishBundle),
+      loadIf(publishBundle),
       // paged.pdf — Phase 0: opens a .pdf as full-page image frames (pdf.js
       // raster -> inline-image IDML -> host.nativeDocument.open).
-      loadGuarded(pdfBundle),
+      loadIf(pdfBundle),
       // paged.doc — Word/DOCX: .docx/.dotx importer + "Place Word document…"
       // places lowered native stories into the OPEN document (no destructive
       // open; the docx→native standalone producer is deferred). Save-back
       // export needs the v54/v55 doors — degrades to verbatim on older hosts.
-      loadGuarded(docBundle),
+      loadIf(docBundle),
     ].filter((l): l is NonNullable<typeof l> => l !== null);
     return () => {
       for (const l of loaded) l.dispose();
@@ -1735,7 +1751,14 @@ function CanvasAppIntegration() {
       ...OBJECT_MENU_ITEMS,
       ...INSERT_MENU_ITEMS,
       ...COCKPIT_MENU_SEAMS,
-    ].map((m) => registries.menus.register(m));
+    ]
+      // Solo keeps only the host menus its profile names. Whole-menu
+      // removal falls out of this for free: MenuBar builds a top-level
+      // menu only if at least one item carries that first path segment,
+      // so dropping every `Layout/…` item removes the Layout menu — no
+      // per-menu predicate needed, and none exists.
+      .filter((m) => SOLO_SURFACES?.keepMenu(m) ?? true)
+      .map((m) => registries.menus.register(m));
     const keyDisposables = [
       ...APP_KEYBINDINGS,
       ...OBJECT_KEYBINDINGS,
@@ -1813,13 +1836,17 @@ function CanvasAppRoot() {
   return (
     <PagedShell
       client={client}
-      panels={BUILT_IN_PANELS}
+      panels={SOLO_SURFACES?.panels ?? BUILT_IN_PANELS}
       overlays={BUILT_IN_OVERLAYS}
-      tools={BUILT_IN_TOOLS}
-      modes={COCKPIT_MODES}
-      panelRail={PANEL_RAIL}
+      tools={SOLO_SURFACES?.tools ?? BUILT_IN_TOOLS}
+      modes={SOLO_SURFACES?.modes ?? COCKPIT_MODES}
+      panelRail={SOLO_SURFACES?.panelRail ?? PANEL_RAIL}
       canvasComponent={CanvasPanel}
-      headerExtras={<CorpusPicker />}
+      // The corpus picker is an Envato IDML-pack browser — DTP
+      // furniture with no meaning in a drawing app.
+      headerExtras={SOLO ? null : <CorpusPicker />}
+      initialMode={SOLO ? "design" : undefined}
+      initialDocumentSizePt={SOLO?.documentSizePt}
       bindingProviders={bindingProviders}
     >
       <CanvasAppIntegration />
@@ -1853,6 +1880,71 @@ if (!import.meta.env.PROD) {
   // Test affordance, same shape as `__overlaySignals` / `__pagedCrash`.
   exposeJournalForTests();
 }
+
+// ── SOLO MODE ────────────────────────────────────────────────────────
+//
+// Resolved ONCE, at module scope, before anything renders.
+//
+// NOT in JSX, and not memoized: `PagedShell` registers panels in an
+// effect whose deps include the `panels` array and whose ref guard
+// resets on cleanup, so a NEW ARRAY IDENTITY disposes ~55 panels and
+// re-registers them — cascading through the Window menu and every
+// derived show/hide command. `?solo` cannot change without a reload, so
+// there is nothing to memoize and no reason to involve React at all.
+//
+// Resolution is TOTAL: an unknown profile returns null and the ordinary
+// editor boots. This runs before `installGlobalErrorCapture()` at the
+// bottom of this file, so a throw here would white-screen with nothing
+// in the journal.
+const SOLO = resolveSoloProfile(
+  typeof location === "undefined" ? "" : location.search,
+);
+// Namespace the chrome's localStorage before the first read. Solo runs
+// the cockpit under the mode id "design" (the union is closed), and
+// `paged.cockpit.v1` is keyed BY MODE ID — unscoped, solo and the
+// ordinary editor would overwrite each other's right-dock tabs, and the
+// unresolvable ids would then be dropped in silence.
+setChromeStorageScope(SOLO ? `.solo.${SOLO.bundleId}` : "");
+
+/** Surfaces the app hands the shell, filtered to the profile.
+ *
+ *  ALLOW-LIST: the profile names what it SHOWS, so a host panel added
+ *  later is absent from solo until someone puts it there deliberately.
+ *  A deny-list would leak every new DTP panel into every profile — the
+ *  fail-open shape this codebase keeps finding. The cost is the
+ *  opposite failure (a renamed panel silently drops out), which is what
+ *  `scripts/solo-profiles-guard.mjs` exists to catch. */
+const SOLO_SURFACES = SOLO
+  ? (() => {
+      const panelAllow = new Set([
+        ...SOLO.panelIds,
+        // Whatever the layout itself names must survive the filter, or
+        // the cockpit renders "This panel is unavailable" in its own
+        // left column.
+        ...(SOLO.slots.left ? [SOLO.slots.left] : []),
+        ...(SOLO.slots.tabs ?? []),
+        ...(SOLO.slots.inspector ? [SOLO.slots.inspector] : []),
+        ...SOLO.panelRailIds,
+      ]);
+      const toolAllow = new Set([
+        ...SOLO.toolIds,
+        // Navigation and inspection are never taken away — the same set
+        // the tool rail exempts from context narrowing, for the same
+        // reason: selection is how you get out of anything.
+        ...ALWAYS_IN_PALETTE,
+      ]);
+      const menuAllow = new Set(SOLO.menuTopLevels);
+      const keepMenu = (m: { path: string }) =>
+        menuAllow.has(m.path.split("/")[0]);
+      return {
+        panels: BUILT_IN_PANELS.filter((p) => panelAllow.has(p.id)),
+        tools: BUILT_IN_TOOLS.filter((t) => toolAllow.has(t.id)),
+        panelRail: PANEL_RAIL.filter((r) => SOLO.panelRailIds.includes(r.panelId)),
+        modes: [soloMode(SOLO)],
+        keepMenu,
+      };
+    })()
+  : null;
 
 const root = document.getElementById("root");
 if (!root) {

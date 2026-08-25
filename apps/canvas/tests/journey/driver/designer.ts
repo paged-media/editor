@@ -121,8 +121,8 @@ export class Designer {
   constructor(private readonly page: Page) {}
 
   /** Boot the app and wait for the worker client. */
-  async open(): Promise<void> {
-    await openCanvas(this.page);
+  async open(options: { search?: string } = {}): Promise<void> {
+    await openCanvas(this.page, options);
   }
 
   /** File ▸ New — mint a blank document via the real command path, wait

@@ -93,7 +93,16 @@ export function snapshotWidthPx(widthPt: number, dpi = FIDELITY_DPI): number {
  * Navigate the page to the canvas app root, wait until the worker is
  * up and `window.__canvas` is populated.
  */
-export async function openCanvas(page: Page): Promise<void> {
+export interface OpenCanvasOptions {
+  /** Query string to boot with, e.g. `"?solo=paged.draw"`. Defaults to
+   *  none, so every existing caller is unaffected. */
+  search?: string;
+}
+
+export async function openCanvas(
+  page: Page,
+  options: OpenCanvasOptions = {},
+): Promise<void> {
   // A3 — `File ▸ New` and `File ▸ Open` now ask before discarding an
   // EDITED document, and Playwright auto-DISMISSES dialogs when nothing
   // is listening. Without a handler the confirm is declined, the command
@@ -113,7 +122,7 @@ export async function openCanvas(page: Page): Promise<void> {
       void d.dismiss();
     }
   });
-  await page.goto("/");
+  await page.goto(`/${options.search ?? ""}`);
   // Pull console output into the Playwright test log so render
   // panics surface in the test report instead of vanishing.
   page.on("console", (msg) => {

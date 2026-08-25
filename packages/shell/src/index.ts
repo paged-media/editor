@@ -605,6 +605,12 @@ export {
 } from "./state/view-toggles";
 
 export {
+  chromeStorageScope,
+  scopedChromeKey,
+  setChromeStorageScope,
+} from "./state/chrome-storage-scope";
+
+export {
   awaitPlacementPoint,
   cancelPendingPlacement,
   placementArmed,

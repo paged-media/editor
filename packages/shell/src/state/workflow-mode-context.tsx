@@ -26,6 +26,8 @@ import {
   type PropsWithChildren,
 } from "react";
 
+import { scopedChromeKey } from "./chrome-storage-scope";
+
 // Design system (publishing cockpit) — the workflow mode. One
 // product, six purpose-built experiences: each mode re-skins the
 // context toolbar, the visible panel sets and the canvas overlays
@@ -41,7 +43,12 @@ export type WorkflowMode =
   | "review"
   | "export";
 
-const STORAGE_KEY = "paged.workflowMode";
+const STORAGE_KEY_BASE = "paged.workflowMode";
+/** Scoped per workspace — see `chrome-storage-scope.ts`. Solo must not
+ *  INHERIT the mode an ordinary session left behind: booting into
+ *  `prepress` when solo registers only one mode leaves the cockpit with
+ *  no registered slots and therefore no left panel at all. */
+const storageKey = () => scopedChromeKey(STORAGE_KEY_BASE);
 
 const ALL_MODES: ReadonlySet<string> = new Set([
   "design",
@@ -54,7 +61,7 @@ const ALL_MODES: ReadonlySet<string> = new Set([
 
 function loadInitialMode(): WorkflowMode {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (raw && ALL_MODES.has(raw)) return raw as WorkflowMode;
   } catch {
     /* storage unavailable — fall through */
@@ -69,12 +76,30 @@ interface WorkflowModeValue {
 
 const Context = createContext<WorkflowModeValue | null>(null);
 
-export function WorkflowModeProvider({ children }: PropsWithChildren) {
-  const [mode, setModeState] = useState<WorkflowMode>(loadInitialMode);
+export interface WorkflowModeProviderProps extends PropsWithChildren {
+  /** Force the starting mode and DO NOT read persistence.
+   *
+   *  Solo mode needs this. It registers exactly one mode, and if the
+   *  provider seeded from `localStorage` a user whose last ordinary
+   *  session ended in `prepress` would boot solo into a mode that is not
+   *  registered — `registries.modes.get(mode)` returns undefined, so
+   *  `slots` is undefined, so the cockpit renders NO left panel and an
+   *  empty right dock. The app would look broken for a reason entirely
+   *  outside the current page. */
+  initialMode?: WorkflowMode;
+}
+
+export function WorkflowModeProvider({
+  children,
+  initialMode,
+}: WorkflowModeProviderProps) {
+  const [mode, setModeState] = useState<WorkflowMode>(
+    () => initialMode ?? loadInitialMode(),
+  );
   const setMode = useCallback((m: WorkflowMode) => {
     setModeState(m);
     try {
-      localStorage.setItem(STORAGE_KEY, m);
+      localStorage.setItem(storageKey(), m);
     } catch {
       /* persistence is a convenience only */
     }

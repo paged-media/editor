@@ -88,6 +88,7 @@ import { PanelRail, type PanelRailItem } from "./chrome/PanelRail";
 import {
   WorkflowModeProvider,
   useWorkflowMode,
+  type WorkflowMode,
 } from "./state/workflow-mode-context";
 import type { ModeContribution } from "./registries/mode";
 import { ToolSettingsProvider } from "./state/tool-settings-context";
@@ -122,6 +123,7 @@ import { loadDocumentFile } from "./state/document-loader";
 import {
   PAGED_FILE_OPEN_IDML,
   buildNewDocumentCommand,
+  mintBlankDocument,
   buildOpenIdmlCommand,
 } from "./state/commands/file-commands";
 import {
@@ -180,6 +182,28 @@ export interface PagedShellProps {
    * CanvasPanel). Required for the fixed cockpit layout: the canvas
    * is a SLOT, not a dockview panel. */
   canvasComponent?: ComponentType<PanelProps>;
+  /** Solo mode — force the starting workflow mode and skip persistence.
+   *
+   *  An app registering exactly one mode must not inherit the mode a
+   *  previous ordinary session left in localStorage: the cockpit reads
+   *  `slots` off the ACTIVE mode, so an unregistered id renders no left
+   *  panel and an empty right dock. */
+  initialMode?: WorkflowMode;
+
+  /** Solo mode — mint a blank document of this size ONCE at boot.
+   *
+   *  Without it a solo app opens on an empty canvas and EVERY plugin
+   *  menu entry is greyed: the SDK synthesises
+   *  `when: state => handle && pageCount > 0` for every
+   *  `contribute.menu` entry, so paged.draw's 72 items are dead until a
+   *  document exists. Nothing else auto-creates one — `File ▸ New` is
+   *  the only caller.
+   *
+   *  Deliberately NOT routed through `File ▸ New`: that asks to discard
+   *  first, which is a nonsense modal on a fresh app and, under
+   *  Playwright (dialogs auto-dismiss when unhandled), a silent no-op
+   *  that would leave the menus dead with no visible cause. */
+  initialDocumentSizePt?: readonly [number, number];
   /** ADR 023 phase C — the app's ONE shared binding-provider registry
    *  (built with plugin-sdk's `createBindingProviderRegistry` and
    *  injected into every bundle host). Published to the panel tree so a
@@ -206,6 +230,8 @@ export function PagedShell({
   panelRail,
   canvasComponent,
   bindingProviders,
+  initialMode,
+  initialDocumentSizePt,
   children,
 }: PropsWithChildren<PagedShellProps>) {
   return (
@@ -217,7 +243,7 @@ export function PagedShell({
               {/* ToolProvider above SelectionProvider: the selection
                *  context's `activeTool` facade reads the tool stack. */}
               <ToolProvider>
-                <WorkflowModeProvider>
+                <WorkflowModeProvider initialMode={initialMode}>
                   <ScreenModeProvider>
                     <ToolSettingsProvider>
                       <FormattingAffectsProvider>
@@ -272,6 +298,7 @@ export function PagedShell({
                                         modes={modes}
                                         panelRail={panelRail}
                                         canvasComponent={canvasComponent}
+                                        initialDocumentSizePt={initialDocumentSizePt}
                                       >
                                         {children}
                                       </ShellChrome>
@@ -359,6 +386,7 @@ function ShellChrome({
   modes,
   panelRail,
   canvasComponent,
+  initialDocumentSizePt,
   children,
 }: PropsWithChildren<{
   panels: PanelContribution[];
@@ -368,6 +396,7 @@ function ShellChrome({
   modes?: ModeContribution[];
   panelRail?: PanelRailItem[];
   canvasComponent?: ComponentType<PanelProps>;
+  initialDocumentSizePt?: readonly [number, number];
 }>) {
   const client = useCanvasClient();
   const {
@@ -424,6 +453,30 @@ function ShellChrome({
 
   const [status, setStatus] = useState<string>("initialising worker…");
   const [warnings, setWarnings] = useState<string[]>([]);
+
+  // Solo mode — the boot artboard.
+  //
+  // Fires ONCE, and only when there is genuinely no document. Guarded by
+  // a ref rather than by `handle` alone because `handle` transitions
+  // null → set asynchronously and a second pass would mint a second
+  // document over the first.
+  const bootDocRef = useRef(false);
+  useEffect(() => {
+    if (!initialDocumentSizePt) return;
+    if (bootDocRef.current) return;
+    if (!paged || handle) return;
+    bootDocRef.current = true;
+    void mintBlankDocument(paged, initialDocumentSizePt, {
+      setStatus,
+      pushWarning: (w) => setWarnings((prev) => [...prev, w]),
+    }).catch((err) => {
+      // A boot document that fails must SAY so. Silently continuing
+      // leaves an app whose every plugin menu entry is greyed for a
+      // reason the user cannot see.
+      bootDocRef.current = false;
+      setWarnings((prev) => [...prev, `Could not create the initial document: ${String(err)}`]);
+    });
+  }, [initialDocumentSizePt, paged, handle, setStatus]);
   const sabSupported = useMemo(() => supportsSharedArrayBuffer(), []);
 
   // Editor-ops — the worker-message subscriber below needs the live
@@ -1178,7 +1231,12 @@ function ShellChrome({
       </div>
 
       {/* Cockpit — the bottom mode switcher. */}
-      {modes && modes.length > 0 && !railHidden && <ModeSwitcher />}
+      {/* `> 1`, not `> 0`: a switcher offering ONE choice is a control
+          that cannot do anything, and this project's own standard says a
+          dead affordance is worse than an absent one — the user reads it
+          as a fault in their own input. Solo mode registers exactly one
+          mode; the six-mode editor is unaffected. */}
+      {modes && modes.length > 1 && !railHidden && <ModeSwitcher />}
 
       <CommandPalette />
       <DemoSpotlight />

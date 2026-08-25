@@ -24,8 +24,14 @@
 // legacy `paged.layout.*` keys.
 
 import type { WorkflowMode } from "../state/workflow-mode-context";
+import { scopedChromeKey } from "../state/chrome-storage-scope";
 
-const KEY = "paged.cockpit.v1";
+const KEY_BASE = "paged.cockpit.v1";
+/** Scoped per workspace — solo runs the cockpit under the mode id
+ *  `"design"`, and this blob is keyed BY MODE ID, so an unscoped key
+ *  would have solo and the ordinary editor overwriting each other's
+ *  right-dock tabs. See `state/chrome-storage-scope.ts`. */
+const KEY = () => scopedChromeKey(KEY_BASE);
 const LEGACY_PREFIXES = ["paged.layout."];
 
 export interface ModeUiState {
@@ -61,7 +67,7 @@ export function loadCockpitStore(): CockpitStore {
   for (const k of stale) ls.removeItem(k);
 
   try {
-    const raw = ls.getItem(KEY);
+    const raw = ls.getItem(KEY());
     if (!raw) return {};
     const parsed = JSON.parse(raw) as CockpitStore;
     return typeof parsed === "object" && parsed !== null ? parsed : {};
@@ -87,7 +93,7 @@ export function saveModeUiState(
   pending = window.setTimeout(() => {
     pending = null;
     try {
-      ls.setItem(KEY, JSON.stringify(latest));
+      ls.setItem(KEY(), JSON.stringify(latest));
     } catch {
       /* quota / privacy mode — state stays in-memory */
     }
