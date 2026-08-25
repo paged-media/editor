@@ -285,10 +285,46 @@ export async function opSandwich(
     // red in CI for weeks reading like an engine defect: the whole-page
     // number, which distinguishes them in one line, was measured
     // (`probe`) and then thrown away.
+    // WHAT THE ENGINE SAID IT DID, attached to the failure.
+    //
+    // `cacheStats` rides every `mutationApplied` and has been recorded
+    // by this harness all along without ever being surfaced. On a
+    // zero-pixel failure it is the cheapest evidence of WHERE the
+    // pipeline stopped.
+    //
+    // READ `rebuilds`, NOT `misses`. A passing local run of
+    // AC-E2E-FX-directional-feather reports
+    // `{hits: 20, misses: 0, rebuilds: 2, rebuildMs: 77}` — zero misses
+    // WHILE painting 4,898 px. So "misses = 0" does not mean "served
+    // from cache and never redrawn", and an earlier draft of this
+    // comment claimed exactly that. `rebuilds` is the field that
+    // separates the two remaining explanations:
+    //
+    //   rebuilds > 0 → the scene WAS rebuilt and the rasterizer still
+    //                  produced identical bytes. An engine defect.
+    //   rebuilds = 0 → nothing was redrawn, so the op never reached the
+    //                  raster and the drawing code is innocent.
+    //
+    // Why this exists: the test is red on Linux CI and green on macOS
+    // with byte-identical wasm (same npm 0.62.0, same lockfile
+    // integrity, same 21,521,112-byte module — the browser's own
+    // request was measured), the same regenerated fixture (paged-gen
+    // output compared byte-for-byte), the same CPU backend (both log
+    // "no compatible wgpu adapter"), the same shard invocation, and an
+    // exact pixel comparison with no tolerance. Every input matches and
+    // the outputs do not, so the next move is to make CI say which half
+    // of the pipeline stopped rather than guess a sixth time.
+    const engineSaid = replies
+      .filter((r) => r.kind === "mutationApplied")
+      .map((r) => ({ pages: r.pageIds?.length ?? 0, cache: r.cacheStats }));
+
     expect(
       finalDiff.changedInside,
       probe.changed === 0
-        ? "operation produced NO render change ANYWHERE on the page — not applied to the canvas document"
+        ? "operation produced NO render change ANYWHERE on the page — not applied to the canvas document" +
+          `\n  engine replies: ${JSON.stringify(engineSaid)}` +
+          `\n  (read \`rebuilds\`: > 0 ⇒ rebuilt and still identical = engine defect;` +
+          ` 0 ⇒ never redrawn = the op did not reach the raster)`
         : `operation changed ${probe.changed}px on the page but 0 inside the affected region ` +
           `(region px ${JSON.stringify(region)}, whole-page bbox ${JSON.stringify(probe.bbox)}) ` +
           `— the op painted, the region is looking in the wrong place`,
