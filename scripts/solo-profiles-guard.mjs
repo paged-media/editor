@@ -60,6 +60,22 @@ function hostTools() {
   );
 }
 
+/** A bundle's declared panels, or `null` when its manifest cannot be
+ *  read in this environment.
+ *
+ *  NULL IS NOT A FAILURE, and that distinction is load-bearing.
+ *  `@paged-media/doc` has never been published (its workflow fails
+ *  ENEEDAUTH), so the editor consumes it through a pnpm `link:` into a
+ *  sibling checkout. That link resolves on a developer machine and in
+ *  the `playwright` CI job (which checks plugin-doc out), and DANGLES
+ *  everywhere else — the `checks` job, and any fresh clone.
+ *
+ *  Hard-failing there would make this gate red for an environmental
+ *  absence that says nothing about whether the profile is correct. But
+ *  passing silently would be worse: the ids would go unverified and the
+ *  run would claim otherwise. So it returns null, the caller validates
+ *  the HOST half regardless, and the summary names exactly what went
+ *  unchecked. */
 function pluginPanels(bundleNpmName) {
   const manifestPath = join(
     CANVAS,
@@ -67,17 +83,13 @@ function pluginPanels(bundleNpmName) {
     bundleNpmName,
     "manifest.json",
   );
-  let manifest;
   try {
-    manifest = JSON.parse(read(manifestPath));
+    const manifest = JSON.parse(read(manifestPath));
+    const panels = manifest.contributes?.panels ?? [];
+    return new Set(panels.map((p) => (typeof p === "string" ? p : p.id)));
   } catch {
-    die(
-      `cannot read ${bundleNpmName}'s manifest at ${manifestPath} — ` +
-        `is the bundle installed?`,
-    );
+    return null;
   }
-  const panels = manifest.contributes?.panels ?? [];
-  return new Set(panels.map((p) => (typeof p === "string" ? p : p.id)));
 }
 
 /** The top-level menus MenuBar knows how to order. Anything else sorts
@@ -163,13 +175,16 @@ for (const [what, got, floor] of [
 }
 
 let failed = false;
+const unchecked = [];
 console.log("── solo profiles ──\n");
 
 for (const p of PROFILES) {
   const pkg = BUNDLE_PACKAGE[p.bundleId];
   if (!pkg) die(`${p.name}: unknown bundleId "${p.bundleId}"`);
   const PLUGIN_PANELS = pluginPanels(pkg);
-  const known = new Set([...HOST_PANELS, ...PLUGIN_PANELS]);
+  const unverifiable = PLUGIN_PANELS === null;
+  if (unverifiable) unchecked.push(`${p.name} (${pkg} not installed here)`);
+  const known = new Set([...HOST_PANELS, ...(PLUGIN_PANELS ?? [])]);
 
   const problems = [];
   for (const id of p.panelIds) {
@@ -179,6 +194,9 @@ for (const p of PROFILES) {
     if (!HOST_TOOLS.has(id)) problems.push(`toolIds: "${id}" is not a built-in tool`);
   }
   for (const id of [...p.slotIds, ...p.panelRailIds]) {
+    // A plugin-owned id cannot be judged without that plugin's
+    // manifest; host ids still can, and still are.
+    if (unverifiable && id.startsWith("media.paged.")) continue;
     if (!known.has(id)) {
       problems.push(
         `"${id}" is neither a host panel nor a ${pkg} panel ` +
@@ -197,7 +215,8 @@ for (const p of PROFILES) {
     `${p.panelIds.length} panels · ${p.toolIds.length} tools · ` +
     `${p.menuTopLevels.length} menus · ${p.slotIds.length} slot ids`;
   if (problems.length === 0) {
-    console.log(`  ✓ ${p.name}  (${p.bundleId})  ${counts}`);
+    const mark = unverifiable ? "◑" : "✓";
+    console.log(`  ${mark} ${p.name}  (${p.bundleId})  ${counts}`);
   } else {
     failed = true;
     console.error(`  ✘ ${p.name}  (${p.bundleId})`);
@@ -206,6 +225,17 @@ for (const p of PROFILES) {
 }
 
 console.log("");
+if (unchecked.length) {
+  console.log(
+    `  NOTE — ${unchecked.length} profile(s) had their PLUGIN ids unchecked ` +
+      `because the bundle is not installed in this environment:\n` +
+      unchecked.map((u) => `    ◑ ${u}`).join("\n") +
+      `\n  Their HOST ids were still verified. This is expected wherever ` +
+      `@paged-media/doc's\n  sibling checkout is absent — it is the one ` +
+      `bundle consumed by \`link:\`, pending its first publish.\n`,
+  );
+}
+
 if (failed) process.exit(1);
 console.log(
   `solo profiles OK — ${PROFILES.length} profile(s), every id resolves against ` +
