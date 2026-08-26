@@ -45,7 +45,7 @@
 // chapter without rebuilding the world. CI never sets it.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
@@ -54,6 +54,7 @@ import { openCanvas } from "../fidelity/canvas-driver";
 import type { CoverageClaim } from "./coverage";
 import { ShowcaseDoc } from "./driver";
 import { Ledger, writeFragment, type ChapterFragment } from "./ledger";
+import { ANNUAL_PAGES } from "./names-annual";
 import type { SpreadSpec } from "./types";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -69,12 +70,13 @@ export const OUT = pathResolve(APP_ROOT, "showcase");
 export const CHECKPOINTS = join(OUT, "checkpoints");
 export const LEDGER_DIR = join(OUT, "ledger");
 
-/** The base fixture the FIRST chapter loads. */
+/** The base fixture the FIRST chapter loads — the annual's 134-page
+ *  masters/styles/conditions/navigation battery from paged-gen. */
 export const BASE_IDML = pathResolve(
   CORE,
   "corpus",
   "generated",
-  "showcase-base.idml",
+  "annual-base.idml",
 );
 
 /**
@@ -111,6 +113,46 @@ export interface ChapterSpec {
   readonly after: string | null;
   /** Expected page count on entry (the reload assertion). */
   readonly expectPages: number;
+}
+
+/**
+ * The chapter set is DISCOVERED from the spec filenames, not declared
+ * in a central manifest — so parallel chapter authors never contend on
+ * one file, and the build order is exactly what `ls chapters/` shows.
+ * `900-assemble` is the terminal spec, never a chapter.
+ */
+export function discoverChapterIds(): string[] {
+  const dir = pathResolve(__dirname, "chapters");
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".spec.ts") && !f.startsWith("900-"))
+    .map((f) => f.replace(/\.spec\.ts$/, ""))
+    .sort();
+}
+
+/**
+ * Declare a chapter spec file: `id` must equal the filename stem; the
+ * predecessor (whose checkpoint this chapter loads) is computed from
+ * the discovered order.
+ */
+export function annualChapter(decl: {
+  id: string;
+  title: string;
+  modules: SpreadSpec[];
+}): void {
+  const ids = discoverChapterIds();
+  const at = ids.indexOf(decl.id);
+  if (at < 0) {
+    throw new Error(
+      `chapter id ${decl.id} does not match any chapters/*.spec.ts filename`,
+    );
+  }
+  chapterTest({
+    id: decl.id,
+    title: decl.title,
+    modules: decl.modules,
+    after: at === 0 ? null : ids[at - 1],
+    expectPages: ANNUAL_PAGES,
+  });
 }
 
 export function checkpointPath(chapterId: string): string {

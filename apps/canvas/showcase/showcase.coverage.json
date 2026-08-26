@@ -2,336 +2,135 @@
   "generatedFrom": "/Users/drietsch/paged/state/registry/features",
   "registryFound": true,
   "registryRows": 575,
-  "claimedRows": 74,
+  "claimedRows": 18,
   "claims": [
     {
-      "module": "01-cover",
+      "module": "fm-sections",
+      "title": "Sections — the folios become real",
+      "pages": [
+        3
+      ],
+      "covers": [
+        "sections-numbering-variables.sections",
+        "sections-numbering-variables.section-ops",
+        "sections-numbering-variables.page-number-resolution"
+      ]
+    },
+    {
+      "module": "fm-cover",
       "title": "Cover",
       "pages": [
         1
       ],
       "covers": [
-        "frames-paths.frame.insert",
-        "frames-paths.page-item-kinds",
+        "color-swatches.gradients",
         "color-swatches.fill-stroke-apply",
-        "geometry-coordinates.item-transform",
-        "effects-transparency.opacity",
-        "effects-transparency.drop-shadow",
+        "layers.item-assignment"
+      ]
+    },
+    {
+      "module": "fm-title",
+      "title": "Frontispiece and title",
+      "pages": [
+        2,
+        3
+      ],
+      "covers": [
+        "frames-paths.line.insert",
+        "frames-paths.frame.insert",
         "stories-text.text.insert",
         "stories-text.style-apply-range"
       ]
     },
     {
-      "module": "02-contents",
-      "title": "Contents",
+      "module": "fm-imprint",
+      "title": "Imprint — conditional text",
       "pages": [
-        2
-      ],
-      "covers": [
-        "stories-text.story-model",
-        "stories-text.text.insert",
-        "stories-text.style-apply-range",
-        "stories-text.fields.insert",
-        "stories-text.page-number-markers",
-        "sections-numbering-variables.page-number-resolution",
-        "cross-references-hyperlinks.hyperlinks",
-        "frames-paths.page-item-kinds"
-      ]
-    },
-    {
-      "module": "03-editorial",
-      "title": "How a page is made",
-      "pages": [
-        3,
         4
-      ],
-      "covers": [
-        "layout-model.text-frame-chain",
-        "layout-model.spreads-pages",
-        "stories-text.story-model",
-        "stories-text.text.insert",
-        "stories-text.style-apply-range",
-        "styles.cascade",
-        "typography.knuth-plass",
-        "the-renderer.pipeline"
-      ]
-    },
-    {
-      "module": "05-raster",
-      "title": "Raster — a photograph, placed and corrected",
-      "pages": [
-        5
-      ],
-      "covers": [
-        "images-graphics.placed-images",
-        "images-graphics.frame-fitting",
-        "plugin-platform.importer-exporter",
-        "editor-shell.plugin-bundles",
-        "plugin-platform.bundle-lifecycle",
-        "image.editor.auto-enhance",
-        "image.editor.adjust-breadth",
-        "plugin-platform.image-resource"
-      ],
-      "notes": [
-        "adjustSelected → Select a placed image frame, then ingest.",
-        "Apply → Composited 320×240 into the frame (document unchanged — preview layer only).",
-        "paged.image's tile provider does not honour the frame's `frameFittingCrops`: both frames on this page carry the SAME placeImage fit and the same crops, and the host-served left frame fills its 228 × 240 box while the plugin-served right frame letterboxes the 4:3 photograph inside it.",
-        "both doors moved this page's pixels: Apply's C-1 Stage-A scene layer AND the claimTiles tile provider on top of it"
-      ]
-    },
-    {
-      "module": "06-vector",
-      "title": "Vector — an SVG, lowered to native paths",
-      "pages": [
-        6
-      ],
-      "covers": [
-        "plugin-draw.live-corners",
-        "plugin-draw.svg-io",
-        "plugin-platform.importer-exporter",
-        "plugin-platform.bundle-lifecycle",
-        "editor-shell.plugin-bundles",
-        "plugin-draw.pro-path-toolset",
-        "plugin-draw.stroke-dash-commands",
-        "plugin-draw.repeats"
-      ],
-      "notes": []
-    },
-    {
-      "module": "07-spreadsheet",
-      "title": "Spreadsheet — a workbook, lowered twice",
-      "pages": [
-        7
-      ],
-      "covers": [
-        "sheet.plugin.bundle",
-        "plugin-platform.file-picker",
-        "plugin-platform.bundle-lifecycle",
-        "editor-shell.plugin-bundles",
-        "sheet.lower.page",
-        "sheet.chart.engine"
-      ],
-      "notes": [
-        "the paged.sheet engine wasm booted and parsed the workbook (its range control rendered, and accepted A1:B4)",
-        "the chart lowered as 6 native path(s) and 10 label frame(s)"
-      ]
-    },
-    {
-      "module": "08-web",
-      "title": "paged.web — HTML and CSS as placed content",
-      "pages": [
-        8
-      ],
-      "covers": [
-        "editor-shell.plugin-bundles",
-        "plugin-platform.document-metadata",
-        "plugin-web.source-model",
-        "plugin-web.source-panel",
-        "plugin-web.metadata-persistence",
-        "frames-paths.frame.insert",
-        "stories-text.text.insert",
-        "stories-text.style-apply-range",
-        "plugin-web.insert-command",
-        "plugin-web.engine-rendering",
-        "plugin-web.render-readout"
-      ],
-      "notes": [
-        "bake readout: Bake to document #2 — 41 native item(s) deferred: fillPath.multiSubpath ×21 baked 41 native item(s); 21 unsupported item(s) not baked (fillPath.multiSubpath:21)"
-      ]
-    },
-    {
-      "module": "09-database",
-      "title": "paged.data — publishing from a database",
-      "pages": [
-        9
-      ],
-      "covers": [
-        "editor-shell.plugin-bundles",
-        "frames-paths.frame.insert",
-        "stories-text.text.insert",
-        "stories-text.style-apply-range",
-        "plugin-platform.file-picker",
-        "data.bind.field-mapping",
-        "data.bind.authoring",
-        "data.bind.engine",
-        "tables.model",
-        "data.expr.engine",
-        "plugin-platform.text-caret-door",
-        "stories-text.fields.insert",
-        "data.barcode.symbology",
-        "frames-paths.path.insert"
-      ],
-      "notes": [
-        "paged.data session status after lowering: status: ready — Resolved + lowered \"v_demo\"."
-      ]
-    },
-    {
-      "module": "10-word",
-      "title": "paged.doc — a Word document poured into the layout",
-      "pages": [
-        10
-      ],
-      "covers": [
-        "editor-shell.plugin-bundles",
-        "frames-paths.frame.insert",
-        "stories-text.text.insert",
-        "stories-text.style-apply-range",
-        "plugin-platform.file-picker",
-        "plugin-doc.outline-panel",
-        "plugin-doc.read-path",
-        "plugin-doc.embedded-placement",
-        "package-anatomy.paged-parts-door"
-      ],
-      "notes": [
-        "paged.doc save-back readiness on this lane: verbatim."
-      ]
-    },
-    {
-      "module": "11-tables",
-      "title": "Tables",
-      "pages": [
-        11
-      ],
-      "covers": [
-        "tables.model",
-        "tables.cell-composition",
-        "tables.spans",
-        "tables.row-col-sizing",
-        "tables.borders-strokes",
-        "tables.cell-vertical-justification",
-        "stories-text.text.insert",
-        "stories-text.style-apply-range"
-      ],
-      "notes": [
-        "header-row REPEAT across a chain break is not exercised here: the table declares a header band but fits inside a single frame, so there is no break for the band to repeat over. That behaviour needs a table taller than its frame, which this page deliberately avoids (it would render as overset rather than as a table)."
-      ]
-    },
-    {
-      "module": "12-layers",
-      "title": "Layers",
-      "pages": [
-        12
-      ],
-      "covers": [
-        "layers.model",
-        "layers.ops",
-        "layers.z-ordering"
-      ],
-      "notes": []
-    },
-    {
-      "module": "13-conditions",
-      "title": "Conditional text",
-      "pages": [
-        13
       ],
       "covers": [
         "conditional-text.applied-conditions",
         "conditional-text.condition-ops",
         "conditional-text.visibility-filtering"
-      ],
-      "notes": []
-    },
-    {
-      "module": "14-masters",
-      "title": "Masters and sections",
-      "pages": [
-        14
-      ],
-      "covers": [
-        "master-spreads-overrides.master-stamping",
-        "master-spreads-overrides.apply-master-op",
-        "sections-numbering-variables.sections",
-        "sections-numbering-variables.section-ops",
-        "sections-numbering-variables.page-number-resolution"
-      ],
-      "notes": []
-    },
-    {
-      "module": "15-color",
-      "title": "Colour and transparency",
-      "pages": [
-        15
-      ],
-      "covers": [
-        "color-swatches.swatch.crud",
-        "color-swatches.process-spot-tint",
-        "color-swatches.gradients",
-        "color-swatches.fill-stroke-apply",
-        "effects-transparency.opacity",
-        "effects-transparency.blend-modes",
-        "frames-paths.frame.insert"
-      ],
-      "notes": [
-        "the spot ink is authored as a named separation (Model=Spot) and round-trips as one, but this page renders it through its CMYK alternate — a composite proof, not a separations proof. Whether the plate stays separate is the Separations panel's evidence, not a composite page render's."
       ]
     },
     {
-      "module": "16-colophon",
-      "title": "Colophon",
+      "module": "fm-contents",
+      "title": "Contents — tab stops with leaders",
       "pages": [
-        16
+        5,
+        6
       ],
       "covers": [
-        "stories-text.text.insert",
-        "styles.paragraph.crud"
+        "typography.tab-stops"
+      ]
+    },
+    {
+      "module": "fm-legend",
+      "title": "How to read this book",
+      "pages": [
+        7
+      ],
+      "covers": [
+        "layers.model"
+      ]
+    },
+    {
+      "module": "fm-foreword",
+      "title": "Foreword",
+      "pages": [
+        8
+      ],
+      "covers": [
+        "styles.cascade",
+        "styles.based-on-chain"
+      ]
+    },
+    {
+      "module": "fm-poster",
+      "title": "The capability map",
+      "pages": [
+        9,
+        10
+      ],
+      "covers": [
+        "color-swatches.process-spot-tint"
       ]
     }
   ],
   "unknown": [],
   "notShipped": [],
   "families": {
-    "frames-paths": 8,
-    "color-swatches": 5,
-    "geometry-coordinates": 1,
-    "effects-transparency": 4,
-    "stories-text": 20,
-    "sections-numbering-variables": 4,
-    "cross-references-hyperlinks": 1,
-    "layout-model": 2,
-    "styles": 2,
-    "typography": 1,
-    "the-renderer": 1,
-    "images-graphics": 2,
-    "plugin-platform": 11,
-    "editor-shell": 6,
-    "image": 2,
-    "plugin-draw": 5,
-    "sheet": 3,
-    "plugin-web": 6,
-    "data": 5,
-    "tables": 7,
-    "plugin-doc": 3,
-    "package-anatomy": 1,
-    "layers": 3,
+    "sections-numbering-variables": 3,
+    "color-swatches": 3,
+    "layers": 2,
+    "frames-paths": 2,
+    "stories-text": 2,
     "conditional-text": 3,
-    "master-spreads-overrides": 2
+    "typography": 1,
+    "styles": 2
   },
   "notes": [
-    "05-raster: adjustSelected → Select a placed image frame, then ingest.",
-    "05-raster: Apply → Composited 320×240 into the frame (document unchanged — preview layer only).",
-    "05-raster: paged.image's tile provider does not honour the frame's `frameFittingCrops`: both frames on this page carry the SAME placeImage fit and the same crops, and the host-served left frame fills its 228 × 240 box while the plugin-served right frame letterboxes the 4:3 photograph inside it.",
-    "05-raster: both doors moved this page's pixels: Apply's C-1 Stage-A scene layer AND the claimTiles tile provider on top of it",
-    "07-spreadsheet: the paged.sheet engine wasm booted and parsed the workbook (its range control rendered, and accepted A1:B4)",
-    "07-spreadsheet: the chart lowered as 6 native path(s) and 10 label frame(s)",
-    "08-web: bake readout: Bake to document #2 — 41 native item(s) deferred: fillPath.multiSubpath ×21 baked 41 native item(s); 21 unsupported item(s) not baked (fillPath.multiSubpath:21)",
-    "09-database: paged.data session status after lowering: status: ready — Resolved + lowered \"v_demo\".",
-    "10-word: paged.doc save-back readiness on this lane: verbatim.",
-    "11-tables: header-row REPEAT across a chain break is not exercised here: the table declares a header band but fits inside a single frame, so there is no break for the band to repeat over. That behaviour needs a table taller than its frame, which this page deliberately avoids (it would render as overset rather than as a table).",
-    "15-color: the spot ink is authored as a named separation (Model=Spot) and round-trips as one, but this page renders it through its CMYK alternate — a composite proof, not a separations proof. Whether the plate stays separate is the Separations panel's evidence, not a composite page render's.",
-    "pdf export: font \"Open Sans\" is not available; a substitute face was used",
-    "pdf export: font \"Open Sans Italic\" is not available; a substitute face was used",
+    "pdf export: font \"EB Garamond Italic\" is not available; a substitute face was used",
+    "pdf export: font \"Fraunces\" is not available; a substitute face was used",
+    "pdf export: font \"JetBrains Mono\" is not available; a substitute face was used",
+    "pdf export: font \"Source Serif 4\" is not available; a substitute face was used",
+    "pdf export: font \"Source Serif 4 Bold\" is not available; a substitute face was used",
+    "pdf export: font \"Space Grotesk\" is not available; a substitute face was used",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
     "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
     "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)"
   ],
   "registryClosure": {
     "armed": false,
-    "excluded": 107,
+    "excluded": 108,
     "unaccounted": [
       "anchored-inline-objects.anchored-frames",
       "anchored-inline-objects.anchor-alignment",
       "anchored-inline-objects.anchored-ops",
       "color-swatches.lab-mixed-ink",
+      "color-swatches.swatch.crud",
       "color-swatches.color-groups",
       "color-swatches.character-fill",
       "color-swatches.icc-cmm",
@@ -339,13 +138,17 @@
       "color-swatches.ink-manager",
       "color-swatches.color-overrides",
       "color-swatches.document-defaults",
+      "cross-references-hyperlinks.hyperlinks",
       "cross-references-hyperlinks.bookmarks",
       "cross-references-hyperlinks.cross-references",
       "cross-references-hyperlinks.index",
       "cross-references-hyperlinks.toc",
       "edge-cases.diagnostics-channel",
+      "effects-transparency.opacity",
+      "effects-transparency.blend-modes",
       "effects-transparency.transparency-groups",
       "effects-transparency.opacity-mask",
+      "effects-transparency.drop-shadow",
       "effects-transparency.inner-shadow",
       "effects-transparency.glows",
       "effects-transparency.bevel-emboss",
@@ -355,9 +158,10 @@
       "foundations.container.open",
       "foundations.designmap.structure",
       "foundations.domversion-capture",
+      "frames-paths.page-item-kinds",
       "frames-paths.frame.delete",
       "frames-paths.frame.move-op",
-      "frames-paths.line.insert",
+      "frames-paths.path.insert",
       "frames-paths.shape-tools",
       "frames-paths.pathfinder-boolean",
       "frames-paths.corner-options",
@@ -379,45 +183,62 @@
       "frames-paths.planar-arrangement",
       "frames-paths.pathfinder-verbs",
       "frames-paths.appearance-bake",
+      "geometry-coordinates.item-transform",
       "geometry-coordinates.geometric-bounds",
       "geometry-coordinates.bezier-path-geometry",
       "geometry-coordinates.compound-subpaths",
       "geometry-coordinates.path-topology-ops",
       "geometry-coordinates.image-content-transform",
+      "images-graphics.placed-images",
       "images-graphics.missing-image-placeholder",
+      "images-graphics.frame-fitting",
       "images-graphics.image-clipping",
       "images-graphics.cmyk-jpeg-icc",
       "images-graphics.eps-decode",
       "images-graphics.clipping-paths",
       "layers.nested-groups",
-      "layers.item-assignment",
+      "layers.ops",
+      "layers.z-ordering",
+      "layout-model.spreads-pages",
       "layout-model.spread-item-transform",
+      "layout-model.text-frame-chain",
       "layout-model.frame-autosizing",
       "layout-model.first-baseline-offset",
       "layout-model.vertical-justification",
       "layout-model.guides",
+      "master-spreads-overrides.master-stamping",
       "master-spreads-overrides.show-master-items",
       "master-spreads-overrides.override-resolution",
+      "master-spreads-overrides.apply-master-op",
       "package-anatomy.core-import",
       "package-anatomy.story-parts",
       "package-anatomy.graphic-part",
       "package-anatomy.inline-image-contents",
       "package-anatomy.paged-container",
+      "package-anatomy.paged-parts-door",
       "package-anatomy.native-model-part",
       "package-anatomy.composition-part",
       "parser-internals.streaming-xml",
       "parser-internals.zip-entry-streaming",
+      "data.expr.engine",
+      "data.bind.engine",
       "data.automation.batch",
       "data.governed.extract",
       "data.provider.contract",
       "data.i18n.display",
       "data.perf.gates",
+      "data.barcode.symbology",
       "data.bind.preview-step",
+      "data.bind.field-mapping",
       "data.bind.change-report",
+      "data.bind.authoring",
       "data.dataset.palette",
       "data.dataset.library-xml",
       "plugin-doc.opc-foundation",
+      "plugin-doc.read-path",
+      "plugin-doc.embedded-placement",
       "plugin-doc.save-back",
+      "plugin-doc.outline-panel",
       "plugin-doc.save-back-feedback",
       "plugin-doc.atomic-pour",
       "plugin-doc.save-back-table-structure",
@@ -433,13 +254,17 @@
       "plugin-draw.anchor-add",
       "plugin-draw.anchor-delete",
       "plugin-draw.anchor-convert",
+      "plugin-draw.stroke-dash-commands",
       "plugin-draw.bundle-manifest",
       "plugin-draw.edit-context-live",
       "plugin-draw.stroke-schema-panel",
       "plugin-draw.headless-conformance",
+      "plugin-draw.pro-path-toolset",
       "plugin-draw.shape-builder",
+      "plugin-draw.live-corners",
       "plugin-draw.appearance",
       "plugin-draw.select-same",
+      "plugin-draw.svg-io",
       "plugin-draw.layers-panel",
       "plugin-draw.layers-binding-provider",
       "plugin-draw.pencil-pressure",
@@ -453,6 +278,7 @@
       "plugin-draw.compound-paths",
       "plugin-draw.graphic-styles",
       "plugin-draw.opacity-mask-commands",
+      "plugin-draw.repeats",
       "plugin-draw.blends",
       "plugin-draw.objects-on-path",
       "plugin-draw.fill-schema-panel",
@@ -463,6 +289,7 @@
       "image.residency.tier01",
       "image.pipeline.async-sink",
       "image.editor.crop",
+      "image.editor.auto-enhance",
       "image.codec.exif",
       "image.editor.filters",
       "image.psd.editor-doors",
@@ -470,6 +297,7 @@
       "image.kernel.breadth-2026-08",
       "image.selection.mask-tools",
       "image.selection.masked-pipeline",
+      "image.editor.adjust-breadth",
       "image.io.save-back",
       "image.editor.crop-straighten",
       "image.editor.paint",
@@ -487,13 +315,17 @@
       "plugin-pdf.native-ocf-writer",
       "plugin-pdf.image-filters",
       "plugin-platform.manifest-schema",
+      "plugin-platform.bundle-lifecycle",
       "plugin-platform.tool-registration",
       "plugin-platform.command-registration",
       "plugin-platform.overlay-registration",
       "plugin-platform.edit-context",
       "plugin-platform.wire-compat-assertions",
+      "plugin-platform.document-metadata",
       "plugin-platform.headless-host-conformance",
+      "plugin-platform.importer-exporter",
       "plugin-platform.native-document",
+      "plugin-platform.file-picker",
       "plugin-platform.blob-store",
       "plugin-platform.network-consent",
       "plugin-platform.data-providers",
@@ -503,9 +335,11 @@
       "plugin-platform.host-widgets",
       "plugin-platform.worker-pool",
       "plugin-platform.credential-store",
+      "plugin-platform.image-resource",
       "plugin-platform.host-eyedropper",
       "plugin-platform.panel-rail-door",
       "plugin-platform.overlay-channel",
+      "plugin-platform.text-caret-door",
       "plugin-platform.save-file",
       "plugin-platform.parent-of",
       "plugin-platform.binding-providers",
@@ -523,12 +357,15 @@
       "plugin-publish.idml-exporter",
       "plugin-publish.byte-identity-sweep",
       "plugin-publish.save-back-defects",
+      "sheet.plugin.bundle",
       "sheet.calc.engine",
       "sheet.fn.library",
       "sheet.calc.spill",
       "sheet.table.structured",
+      "sheet.chart.engine",
       "sheet.xlsx.roundtrip",
       "sheet.format.engine",
+      "sheet.lower.page",
       "sheet.binding-providers",
       "sheet.lower.paginate",
       "sheet.data.consumer",
@@ -544,8 +381,14 @@
       "sheet.parser.dialect",
       "sheet.edit.ops",
       "sheet.chart.graphs",
+      "plugin-web.source-model",
+      "plugin-web.insert-command",
+      "plugin-web.source-panel",
+      "plugin-web.metadata-persistence",
+      "plugin-web.engine-rendering",
       "plugin-web.flow-threading",
       "plugin-web.flow-fragmentation",
+      "plugin-web.render-readout",
       "plugin-web.html-importer",
       "round-tripping.undo-redo",
       "round-tripping.batch-atomicity",
@@ -570,13 +413,16 @@
       "scripting.full-mutation-surface",
       "scripting.docs-playground-seeds",
       "sections-numbering-variables.text-variables",
+      "stories-text.story-model",
       "stories-text.text.delete",
       "stories-text.caret-selection",
+      "stories-text.fields.insert",
       "stories-text.nested-styles",
+      "stories-text.page-number-markers",
       "stories-text.footnotes",
       "stories-text.overset",
       "stories-text.text-wrap",
-      "styles.based-on-chain",
+      "styles.paragraph.crud",
       "styles.character.crud",
       "styles.object.crud",
       "styles.cell.crud",
@@ -587,12 +433,19 @@
       "styles.paragraph-border",
       "styles.bullets-numbering",
       "styles.next-style-overrides",
+      "tables.model",
+      "tables.cell-composition",
+      "tables.row-col-sizing",
+      "tables.spans",
       "tables.header-footer-repeat",
+      "tables.borders-strokes",
+      "tables.cell-vertical-justification",
       "tables.cell-rotation",
       "tables.nested-tables",
       "tables.cell-diagonals",
       "tables.alternating-fills",
       "tables.style-cascade",
+      "the-renderer.pipeline",
       "the-renderer.display-list",
       "the-renderer.cpu-backend",
       "the-renderer.gpu-backend",
@@ -613,6 +466,7 @@
       "the-renderer.pdf-font-embedding",
       "the-renderer.export-diagnostics",
       "the-renderer.font-registry",
+      "typography.knuth-plass",
       "typography.hyphenation",
       "typography.justification-spacing",
       "typography.font-selection",
@@ -626,7 +480,6 @@
       "typography.underline-strikethru",
       "typography.ligatures-opentype",
       "typography.drop-caps",
-      "typography.tab-stops",
       "typography.bidi",
       "typography.kinsoku",
       "typography.mojikumi",
@@ -638,10 +491,12 @@
   },
   "ops": {
     "universe": 117,
-    "used": 21,
+    "used": 11,
     "missing": [
+      "applyMasterToPage",
       "applyOpacityMask",
       "attachTextToPath",
+      "batch",
       "bindCreated",
       "closePath",
       "createCellStyle",
@@ -652,10 +507,12 @@
       "createNumberingList",
       "createObjectStyle",
       "createParagraphStyle",
+      "createSwatch",
       "createTableStyle",
       "deleteCellStyle",
       "deleteCharacterStyle",
       "deleteColorGroup",
+      "deleteFrame",
       "deleteGradient",
       "deleteGuide",
       "deleteNumberingList",
@@ -663,7 +520,6 @@
       "deletePage",
       "deleteParagraphStyle",
       "deleteRange",
-      "deleteSection",
       "deleteSwatch",
       "deleteTableColumn",
       "deleteTableRow",
@@ -674,25 +530,29 @@
       "editColorGroup",
       "editGradient",
       "editNumberingList",
-      "editSection",
       "editSwatch",
       "importSwatchLibrary",
       "insertAnchoredFrame",
+      "insertField",
       "insertFooterRow",
       "insertGuide",
       "insertHeaderRow",
-      "insertLine",
+      "insertHyperlink",
       "insertOval",
       "insertPage",
       "insertPath",
+      "insertTable",
       "insertTableColumn",
       "insertTableRow",
       "joinPaths",
       "layerInsert",
       "layerMove",
       "layerRemove",
+      "layerSetLocked",
       "layerSetName",
+      "layerSetPrintable",
       "layerSetVisible",
+      "linkFrames",
       "moveFrame",
       "moveGuide",
       "offsetPath",
@@ -711,6 +571,7 @@
       "pathfinderMinusBack",
       "pathfinderOutline",
       "pathfinderTrim",
+      "placeImage",
       "releaseFrom",
       "releaseOpacityMask",
       "removeFooterRow",
@@ -722,7 +583,9 @@
       "renameTableStyle",
       "reorderElement",
       "replaceImageBytes",
+      "resizeFrame",
       "resizePage",
+      "setCellSpan",
       "setColorSettings",
       "setColumnWidth",
       "setDocumentDefaults",
@@ -741,7 +604,7 @@
   },
   "propertyPaths": {
     "universe": 176,
-    "used": 18,
+    "used": 4,
     "missing": [
       "anchorPoint",
       "anchoredHorizontalAlignment",
@@ -758,8 +621,13 @@
       "appliedObjectStyle",
       "appliedParagraphStyle",
       "appliedTableStyle",
+      "cellBottomEdgeStrokeColor",
       "cellBottomEdgeStrokeTint",
+      "cellBottomEdgeStrokeWeight",
+      "cellFillColor",
+      "cellFillTint",
       "cellInsetBottom",
+      "cellInsetLeft",
       "cellInsetRight",
       "cellInsetTop",
       "cellLeftEdgeStrokeColor",
@@ -768,7 +636,10 @@
       "cellRightEdgeStrokeColor",
       "cellRightEdgeStrokeTint",
       "cellRightEdgeStrokeWeight",
+      "cellTopEdgeStrokeColor",
       "cellTopEdgeStrokeTint",
+      "cellTopEdgeStrokeWeight",
+      "cellVerticalJustification",
       "characterFillColor",
       "characterFontSize",
       "characterLeading",
@@ -789,6 +660,7 @@
       "frameBevelSoften",
       "frameBevelStyle",
       "frameBevelTechnique",
+      "frameBlendMode",
       "frameBounds",
       "frameCornerOptionBottomLeft",
       "frameCornerOptionBottomRight",
@@ -818,9 +690,13 @@
       "frameFeatherCornerType",
       "frameFeatherNoise",
       "frameFeatherWidth",
+      "frameFillTint",
+      "frameFittingCrops",
       "frameFittingReferencePoint",
+      "frameFittingType",
       "frameFlipH",
       "frameFlipV",
+      "frameGradientFillAngle",
       "frameGradientFillLength",
       "frameGradientStrokeAngle",
       "frameGradientStrokeLength",
@@ -843,6 +719,7 @@
       "frameInnerShadowSize",
       "frameInsetSpacing",
       "frameNonprinting",
+      "frameOpacity",
       "frameOuterGlow",
       "frameOuterGlowBlendMode",
       "frameOuterGlowColor",
@@ -866,7 +743,6 @@
       "frameScaleX",
       "frameScaleY",
       "frameStrokeAlignment",
-      "frameStrokeColor",
       "frameStrokeDashArray",
       "frameStrokeEndArrowhead",
       "frameStrokeEndCap",
@@ -882,6 +758,7 @@
       "frameTextWrapInvert",
       "frameTextWrapMode",
       "frameTextWrapOffsets",
+      "frameTransform",
       "imageContentTransform",
       "paragraphAppliedNumberingList",
       "paragraphFirstLineIndent",

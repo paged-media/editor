@@ -306,6 +306,10 @@ export class ShowcaseDoc {
     return this.collectionByName("conditionSets", name);
   }
 
+  gradient(name: string): Promise<string> {
+    return this.collectionByName("gradients", name);
+  }
+
   async layerId(name: string): Promise<string> {
     const layers = await this.designer.layers();
     const hit = layers.find((l) => (l as { name?: string }).name === name);

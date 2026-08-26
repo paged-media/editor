@@ -25,3 +25,6 @@ public/pdfs/
 # reproducible run intermediates; the committed artifacts live in showcase/ root
 showcase/checkpoints/
 showcase/ledger/
+# full-res per-page renders at annual scale are CI artifacts, not commits;
+# the committed page evidence is the contact sheet (WP5)
+showcase/pages/
