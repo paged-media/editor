@@ -1,0 +1,137 @@
+<!doctype html>
+<!--
+  long-read.html — the Paged Annual's web chapter article (CSS Regions flow).
+
+  TWO named flows, so the flow PICKER (flowThreadOptions) has a real case:
+    - `article-flow` (PRIMARY, first-declared): the article root, threaded by
+      threadWebFlow / picked as the untagged primary option;
+    - `sidebar-flow` (SECONDARY): the route-notes aside, reachable only
+      through threadWebFlowNamed / the picker.
+  The `.page-region { flow-from: … }` rules are the Regions consumer syntax —
+  in paged.web the real recipients are publication FRAMES, so these are
+  informational (surfaced via namedFlowDiagnostics), kept here so the file is
+  honest CSS Regions, not half of it.
+
+  Every visual feature sits inside web-render's DOCUMENTED render+bake set
+  (web-render/src/lib.rs): solid-fill rects, border-radius paths, solid
+  strokes, multi-run text, ONE conic (sweep) gradient, ONE outset box-shadow.
+  Nothing from the deferred set (no image brushes, no inset shadows, no
+  linear/radial gradients, no gradient-inside-blend) — the annual counts
+  deferred kinds on the REAL article only, and this article's count is zero.
+
+  Self-authored for the Paged Annual; fully inline (the wasm engine is
+  CSP'd — no external fetches). © And The Next GmbH, AGPL-3.0-only OR PMEL.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The Year the Presses Ran Long</title>
+<style>
+  article#annual-longread { flow-into: article-flow; }
+  aside#route-notes { flow-into: sidebar-flow; }
+  .page-region { flow-from: article-flow; }
+  .notes-region { flow-from: sidebar-flow; }
+
+  body { font-family: Georgia, serif; font-size: 11px; line-height: 1.5; color: #16181c; margin: 0; }
+  h1 { font-size: 26px; line-height: 1.15; margin: 0 0 10px 0; }
+  h2 { font-size: 15px; margin: 18px 0 6px 0; border-bottom: 2px solid #1c3f94; padding-bottom: 3px; }
+  p { margin: 0 0 8px 0; }
+  em { font-style: italic; }
+  strong { font-weight: bold; }
+  .house { color: #1c3f94; font-weight: bold; }
+  .accent { color: #d94f2b; }
+  .standfirst { font-size: 13px; color: #45484f; }
+  .pull-quote {
+    background: #1c3f94;
+    color: #f4f1ea;
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin: 12px 0;
+    font-size: 14px;
+    font-style: italic;
+    box-shadow: 4px 4px 0 #c9c4b8;
+  }
+  .badge {
+    width: 34px; height: 34px;
+    border-radius: 17px;
+    background: conic-gradient(#1c3f94 0deg 200deg, #d94f2b 200deg 360deg);
+    border: 2px solid #16181c;
+    margin: 4px 0;
+  }
+  aside#route-notes { font-size: 10px; color: #45484f; }
+  aside#route-notes h2 { border-bottom: 1px solid #d94f2b; }
+</style>
+</head>
+<body>
+
+<article id="annual-longread">
+  <h1>The Year the Presses Ran Long</h1>
+  <p class="standfirst">Twelve months, one flood, three second printings, and
+  the first year since the rebuild in which <strong>spoilage held under four
+  percent</strong>. The long account of how the counts were made.</p>
+
+  <div class="badge"></div>
+
+  <h2>January to March</h2>
+  <p>The year opened the way press years usually do: cold plates, a cautious
+  first run, and a circulation ledger that had been ruled but not yet written
+  in. By the end of March the house had set <strong>1,840 print copies</strong>
+  and logged <em>620 first opens</em> of the digital edition — a ratio the
+  board called healthy and the pressroom called <span class="accent">a warning
+  shot</span>, and both were right.</p>
+  <p>What changed in the first quarter was not the volume but the discipline.
+  The dock tally and the run counter were reconciled every week instead of
+  every month, and the difference between them — the honest name for spoilage
+  — stopped being a quarterly surprise and became a Tuesday routine.</p>
+
+  <div class="pull-quote">A copy is counted when it leaves the dock. Everything
+  else this house believes follows from that sentence.</div>
+
+  <h2>April to June</h2>
+  <p>The second quarter was the growth quarter: <strong>2,110 copies</strong>
+  set and shipped, and the digital edition finding <em>880 new first
+  opens</em>. The <span class="house">house colour</span> went on a new plate
+  series in May, and the registration held to half a point through the whole
+  run — the kind of figure that reads as luck until it repeats.</p>
+  <p>It repeated. The June run matched it, and the crew stopped mentioning it,
+  which in a pressroom is the highest compliment a number can be paid.</p>
+
+  <h2>July to September</h2>
+  <p>Then the coastal routes flooded. Two deliveries ran a week late, one
+  bundle came back water-damaged and went to waste — <em>uncounted, whatever
+  the driver said</em> — and the quarter closed at <strong>1,975 copies</strong>,
+  the year's only step backward. The digital edition, which does not mind
+  weather, grew to <em>1,210 first opens</em> and quietly made the case it had
+  been making all year.</p>
+
+  <h2>October to December</h2>
+  <p>The fourth quarter answered every question the third had raised. A
+  <strong>2,390-copy run</strong> — the largest since the two-press years —
+  went to bed on schedule, on the first attempt, with the plates still warm
+  from the proofing pass. Digital closed at <em>1,585</em>. The full-year
+  ledger reads 8,315 printed and counted, 4,295 opened and counted, and a
+  spoilage line of <span class="house">3.7 percent</span> that the whole
+  building regards as the real headline.</p>
+  <p>Next year gets one more route, one fewer excuse, and the same three
+  counting rules it inherited. The presses are ready. So is the dock.</p>
+</article>
+
+<aside id="route-notes">
+  <h2>Route notes</h2>
+  <p>The Alpine routes carried 3,410 print copies, the year's heaviest load,
+  and lost none to weather. Harbour carried 2,905 and lost one bundle to the
+  September flood.</p>
+  <p>The Plateau — six years on the print rolls — now opens more digital
+  editions than it takes paper copies, the first region to cross that line.</p>
+  <p>No route was retired this year. One was added: the upland loop, first
+  delivery in October, 85 copies and climbing.</p>
+</aside>
+
+<!-- Regions consumers: informational in paged.web (frames are the real
+     recipients), present so the flow-from side of the syntax is exercised. -->
+<div class="page-region"></div>
+<div class="page-region"></div>
+<div class="notes-region"></div>
+
+</body>
+</html>

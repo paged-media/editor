@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  annual-diagram.svg — the Paged Annual's frontispiece pipeline diagram,
+  authored for the annual's 540 x 720 pt page.
+
+  COORDINATES ARE PAGE POINTS (the paged.draw SVG importer takes user
+  units as page points and lowers unscaled through insertPath). The
+  diagram is a full-width band inside the 54 pt margins: x 54-486,
+  y 300-420 — four stations joined by arrowed rails, reading left to
+  right. The page module sets any labels natively; the SVG itself is
+  deliberately textless, because <text> is outside the importer's scope.
+
+  SUPPORTED-FEATURE ENVELOPE (verified against draw-geometry
+  svg-doc.ts): rect (incl. rx rounded corners), circle, polygon,
+  polyline, line, <path>, and <g> GROUPS with translate transforms —
+  the group transform is flattened into each child's geometry at import.
+  Presentation: solid fill / stroke / stroke-width only. Deliberately
+  absent: gradients, patterns, <text>, <image>, <defs>/<use>,
+  clip-paths, CSS stylesheets.
+
+  Each station is one <g translate(...)> holding a rounded plate + its
+  glyph, so the import also exercises group-transform flattening:
+    g0  manuscript   plate + three rule lines
+    g1  press        plate + cylinder circle + bed line
+    g2  signatures   plate + three offset sheets
+    g3  dispatch     plate + bundle diamond
+  between them: three arrowed rails (line + polygon head).
+
+  © And The Next GmbH - authored for this repository, same dual licence
+  as the rest of it (AGPL-3.0-only OR PMEL). Not a third-party asset.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="540" height="720" viewBox="0 0 540 720">
+  <!-- station 0: the manuscript -->
+  <g transform="translate(54 318)">
+    <rect x="0" y="0" width="84" height="84" rx="10" fill="#f4f1ea" stroke="#1c3f94" stroke-width="3"/>
+    <line x1="18" y1="26" x2="66" y2="26" stroke="#1c3f94" stroke-width="4"/>
+    <line x1="18" y1="42" x2="66" y2="42" stroke="#1c3f94" stroke-width="4"/>
+    <line x1="18" y1="58" x2="50" y2="58" stroke="#1c3f94" stroke-width="4"/>
+  </g>
+  <!-- rail 0 -> 1 -->
+  <line x1="138" y1="360" x2="164" y2="360" stroke="#16181c" stroke-width="4"/>
+  <polygon points="164,353 176,360 164,367" fill="#16181c"/>
+  <!-- station 1: the press -->
+  <g transform="translate(176 318)">
+    <rect x="0" y="0" width="84" height="84" rx="10" fill="#1c3f94"/>
+    <circle cx="42" cy="36" r="17" fill="none" stroke="#f4f1ea" stroke-width="4"/>
+    <line x1="14" y1="62" x2="70" y2="62" stroke="#f4f1ea" stroke-width="4"/>
+  </g>
+  <!-- rail 1 -> 2 -->
+  <line x1="260" y1="360" x2="286" y2="360" stroke="#16181c" stroke-width="4"/>
+  <polygon points="286,353 298,360 286,367" fill="#16181c"/>
+  <!-- station 2: the signatures -->
+  <g transform="translate(298 318)">
+    <rect x="0" y="0" width="84" height="84" rx="10" fill="#f4f1ea" stroke="#d94f2b" stroke-width="3"/>
+    <rect x="16" y="20" width="40" height="28" fill="#d94f2b"/>
+    <rect x="24" y="28" width="40" height="28" fill="#1c3f94"/>
+    <rect x="32" y="36" width="40" height="28" fill="none" stroke="#16181c" stroke-width="3"/>
+  </g>
+  <!-- rail 2 -> 3 -->
+  <line x1="382" y1="360" x2="408" y2="360" stroke="#16181c" stroke-width="4"/>
+  <polygon points="408,353 420,360 408,367" fill="#16181c"/>
+  <!-- station 3: dispatch -->
+  <g transform="translate(420 318)">
+    <rect x="0" y="0" width="66" height="84" rx="10" fill="#d94f2b"/>
+    <polygon points="33,22 52,42 33,62 14,42" fill="#f4f1ea"/>
+    <line x1="14" y1="70" x2="52" y2="70" stroke="#f4f1ea" stroke-width="4"/>
+  </g>
+</svg>

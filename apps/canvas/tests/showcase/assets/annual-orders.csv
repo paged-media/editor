@@ -1,0 +1,49 @@
+id,customer,region,product,qty,unit_price,order_date,sku,ean,upc,url,notes
+1001,Bergfeld Booksellers,Alpine,Letterpress poster,120,4.80,2025-01-03,PA-2025-1001-ALP,9007830010019,072034010010,https://paged.media/annual/orders/1001,run of 120 for alpine delivery
+1002,The Pass Hotel,Alpine,Seed catalogue,1000,5.60,2025-01-10,PA-2025-1002-ALP,9007830010026,072034010027,https://paged.media/annual/orders/1002,run of 1000 for alpine delivery
+1003,Kettner Chocolatier,Alpine,Menu card,80,2.10,2025-01-17,PA-2025-1003-ALP,9007830010033,072034010034,https://paged.media/annual/orders/1003,rush job on a two-day turnaround
+1004,Quayside Fish Market,Harbour,Label sheet,220,0.85,2025-01-24,PA-2025-1004-HBR,9007830010040,072034010041,https://paged.media/annual/orders/1004,run of 220 for harbour delivery
+1005,Harbour Light Theatre,Harbour,Shop ledger,60,12.50,2025-02-03,PA-2025-1005-HBR,9007830010057,072034010058,https://paged.media/annual/orders/1005,
+1006,Mole & Anchor Tavern,Harbour,Concert programme,90,1.35,2025-02-10,PA-2025-1006-HBR,9007830010064,072034010065,https://paged.media/annual/orders/1006,
+1007,Plateau Agricultural Fair,Plateau,Exhibition folio,150,9.75,2025-02-17,PA-2025-1007-PLT,9007830010071,072034010072,https://paged.media/annual/orders/1007,run of 150 for plateau delivery
+1008,Windrow Seed Company,Plateau,Wedding invitation,250,3.25,2025-02-24,PA-2025-1008-PLT,9007830010088,072034010089,https://paged.media/annual/orders/1008,reprint of last year's run
+1009,The Long Field Gallery,Plateau,Letterpress poster,45,4.80,2025-03-03,PA-2025-1009-PLT,9007830010095,072034010096,https://paged.media/annual/orders/1009,run of 45 for plateau delivery
+1010,Old Town Apothecary,Old Town,Seed catalogue,500,5.60,2025-03-10,PA-2025-1010-OLD,9007830010101,072034010102,https://paged.media/annual/orders/1010,run of 500 for old town delivery
+1011,Corvus Stationers,Old Town,Menu card,400,2.10,2025-03-17,PA-2025-1011-OLD,9007830010118,072034010119,https://paged.media/annual/orders/1011,run of 400 for old town delivery
+1012,The Bellfounders' Guild,Old Town,Label sheet,340,0.85,2025-03-24,PA-2025-1012-OLD,9007830010125,072034010126,https://paged.media/annual/orders/1012,customer supplied paper
+1013,Bergfeld Booksellers,Alpine,Shop ledger,120,12.50,2025-04-03,PA-2025-1013-ALP,9007830010132,072034010133,https://paged.media/annual/orders/1013,run of 120 for alpine delivery
+1014,The Pass Hotel,Alpine,Concert programme,1000,1.35,2025-04-10,PA-2025-1014-ALP,9007830010149,072034010140,https://paged.media/annual/orders/1014,
+1015,Kettner Chocolatier,Alpine,Exhibition folio,80,9.75,2025-04-17,PA-2025-1015-ALP,9007830010156,072034010157,https://paged.media/annual/orders/1015,second colour added on press
+1016,Quayside Fish Market,Harbour,Wedding invitation,220,3.25,2025-04-24,PA-2025-1016-HBR,9007830010163,072034010164,https://paged.media/annual/orders/1016,run of 220 for harbour delivery
+1017,Harbour Light Theatre,Harbour,Letterpress poster,60,4.80,2025-05-03,PA-2025-1017-HBR,9007830010170,072034010171,https://paged.media/annual/orders/1017,run of 60 for harbour delivery
+1018,Mole & Anchor Tavern,Harbour,Seed catalogue,90,5.60,2025-05-10,PA-2025-1018-HBR,9007830010187,072034010188,https://paged.media/annual/orders/1018,run of 90 for harbour delivery
+1019,Plateau Agricultural Fair,Plateau,Menu card,150,2.10,2025-05-17,PA-2025-1019-PLT,9007830010194,072034010195,https://paged.media/annual/orders/1019,run of 150 for plateau delivery
+1020,Windrow Seed Company,Plateau,Label sheet,250,0.85,2025-05-24,PA-2025-1020-PLT,9007830010200,072034010201,https://paged.media/annual/orders/1020,
+1021,The Long Field Gallery,Plateau,Shop ledger,45,12.50,2025-06-03,PA-2025-1021-PLT,9007830010217,072034010218,https://paged.media/annual/orders/1021,run of 45 for plateau delivery
+1022,Old Town Apothecary,Old Town,Concert programme,500,1.35,2025-06-10,PA-2025-1022-OLD,9007830010224,072034010225,https://paged.media/annual/orders/1022,run of 500 for old town delivery
+1023,Corvus Stationers,Old Town,Exhibition folio,400,9.75,2025-06-17,PA-2025-1023-OLD,9007830010231,072034010232,https://paged.media/annual/orders/1023,bundled with the fair programme
+1024,The Bellfounders' Guild,Old Town,Wedding invitation,340,3.25,2025-06-24,PA-2025-1024-OLD,9007830010248,072034010249,https://paged.media/annual/orders/1024,run of 340 for old town delivery
+1025,Bergfeld Booksellers,Alpine,Letterpress poster,120,4.80,2025-07-03,PA-2025-1025-ALP,9007830010255,072034010256,https://paged.media/annual/orders/1025,run of 120 for alpine delivery
+1026,The Pass Hotel,Alpine,Seed catalogue,1000,5.60,2025-07-10,PA-2025-1026-ALP,9007830010262,072034010263,https://paged.media/annual/orders/1026,run of 1000 for alpine delivery
+1027,Kettner Chocolatier,Alpine,Menu card,80,2.10,2025-07-17,PA-2025-1027-ALP,9007830010279,072034010270,https://paged.media/annual/orders/1027,run of 80 for alpine delivery
+1028,Quayside Fish Market,Harbour,Label sheet,220,0.85,2025-07-24,PA-2025-1028-HBR,9007830010286,072034010287,https://paged.media/annual/orders/1028,foil seal on the cover
+1029,Harbour Light Theatre,Harbour,Shop ledger,60,12.50,2025-08-03,PA-2025-1029-HBR,9007830010293,072034010294,https://paged.media/annual/orders/1029,run of 60 for harbour delivery
+1030,Mole & Anchor Tavern,Harbour,Concert programme,90,1.35,2025-08-10,PA-2025-1030-HBR,9007830010309,072034010300,https://paged.media/annual/orders/1030,run of 90 for harbour delivery
+1031,Plateau Agricultural Fair,Plateau,Exhibition folio,150,9.75,2025-08-17,PA-2025-1031-PLT,9007830010316,072034010317,https://paged.media/annual/orders/1031,run of 150 for plateau delivery
+1032,Windrow Seed Company,Plateau,Wedding invitation,250,3.25,2025-08-24,PA-2025-1032-PLT,9007830010323,072034010324,https://paged.media/annual/orders/1032,
+1033,The Long Field Gallery,Plateau,Letterpress poster,45,4.80,2025-09-03,PA-2025-1033-PLT,9007830010330,072034010331,https://paged.media/annual/orders/1033,run of 45 for plateau delivery
+1034,Old Town Apothecary,Old Town,Seed catalogue,500,5.60,2025-09-10,PA-2025-1034-OLD,9007830010347,072034010348,https://paged.media/annual/orders/1034,run of 500 for old town delivery
+1035,Corvus Stationers,Old Town,Menu card,400,2.10,2025-09-17,PA-2025-1035-OLD,9007830010354,072034010355,https://paged.media/annual/orders/1035,run of 400 for old town delivery
+1036,The Bellfounders' Guild,Old Town,Label sheet,340,0.85,2025-09-24,PA-2025-1036-OLD,9007830010361,072034010362,https://paged.media/annual/orders/1036,run of 340 for old town delivery
+1037,Bergfeld Booksellers,Alpine,Shop ledger,120,12.50,2025-10-03,PA-2025-1037-ALP,9007830010378,072034010379,https://paged.media/annual/orders/1037,delivered in two lots
+1038,The Pass Hotel,Alpine,Concert programme,1000,1.35,2025-10-10,PA-2025-1038-ALP,9007830010385,072034010386,https://paged.media/annual/orders/1038,run of 1000 for alpine delivery
+1039,Kettner Chocolatier,Alpine,Exhibition folio,80,9.75,2025-10-17,PA-2025-1039-ALP,9007830010392,072034010393,https://paged.media/annual/orders/1039,run of 80 for alpine delivery
+1040,Quayside Fish Market,Harbour,Wedding invitation,220,3.25,2025-10-24,PA-2025-1040-HBR,9007830010408,072034010409,https://paged.media/annual/orders/1040,run of 220 for harbour delivery
+1041,Harbour Light Theatre,Harbour,Letterpress poster,60,4.80,2025-11-03,PA-2025-1041-HBR,9007830010415,072034010416,https://paged.media/annual/orders/1041,
+1042,Mole & Anchor Tavern,Harbour,Seed catalogue,90,5.60,2025-11-10,PA-2025-1042-HBR,9007830010422,072034010423,https://paged.media/annual/orders/1042,gold ink with a test run first
+1043,Plateau Agricultural Fair,Plateau,Menu card,150,2.10,2025-11-17,PA-2025-1043-PLT,9007830010439,072034010430,https://paged.media/annual/orders/1043,run of 150 for plateau delivery
+1044,Windrow Seed Company,Plateau,Label sheet,250,0.85,2025-11-24,PA-2025-1044-PLT,9007830010446,072034010447,https://paged.media/annual/orders/1044,run of 250 for plateau delivery
+1045,The Long Field Gallery,Plateau,Shop ledger,45,12.50,2025-12-03,PA-2025-1045-PLT,9007830010453,072034010454,https://paged.media/annual/orders/1045,run of 45 for plateau delivery
+1046,Old Town Apothecary,Old Town,Concert programme,500,1.35,2025-12-10,PA-2025-1046-OLD,9007830010460,072034010461,https://paged.media/annual/orders/1046,run of 500 for old town delivery
+1047,Corvus Stationers,Old Town,Exhibition folio,400,9.75,2025-12-17,PA-2025-1047-OLD,9007830010477,072034010478,https://paged.media/annual/orders/1047,
+1048,The Bellfounders' Guild,Old Town,Wedding invitation,340,3.25,2025-12-24,PA-2025-1048-OLD,9007830010484,072034010485,https://paged.media/annual/orders/1048,run of 340 for old town delivery

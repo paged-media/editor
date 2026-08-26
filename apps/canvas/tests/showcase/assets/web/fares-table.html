@@ -1,0 +1,96 @@
+<!doctype html>
+<!--
+  fares-table.html — the Paged Annual's fragmenting-table exhibit: the
+  carriage-fare card for every delivery route the circulation network runs.
+
+  Shape is the point: a <table> with a TWO-ROW <thead> and forty body rows,
+  tall enough that it MUST fragment across linked frames. web-render's
+  fragmentation (web-render/src/flow.rs) cuts a table BETWEEN its body rows
+  and never consumes anything inside a <thead> — every thead row is excluded
+  from the body-row set, so the whole two-row header re-renders at the top of
+  each continuation frame (header repeat, both rows). Body rows are atomic; a
+  non-fixed layout may re-resolve column widths per frame (the documented v0
+  caveat — content is loss-free).
+
+  Styling stays inside the documented render set: solid fills, solid strokes,
+  multi-run text. No images, no gradients, nothing bake-deferred.
+
+  Fares are the annual's own (fictional) tariff, self-authored.
+  © And The Next GmbH, AGPL-3.0-only OR PMEL. Fully inline; no external fetches.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Carriage Fares</title>
+<style>
+  body { font-family: Georgia, serif; font-size: 10px; color: #16181c; margin: 0; }
+  h1 { font-size: 18px; margin: 0 0 8px 0; }
+  table { border-collapse: collapse; width: 100%; }
+  thead th {
+    background: #1c3f94; color: #f4f1ea;
+    padding: 4px 6px; text-align: left;
+    border: 1px solid #16181c;
+  }
+  thead tr.units th {
+    background: #d94f2b; font-style: italic; font-weight: normal;
+  }
+  td { padding: 3px 6px; border: 1px solid #9aa0ab; }
+  td.num { text-align: right; }
+</style>
+</head>
+<body>
+<h1>Carriage fares, by route and zone</h1>
+<table>
+  <thead>
+    <tr>
+      <th>Route</th><th>Zone</th><th>Bundle (25)</th><th>Single copy</th><th>Carrier</th>
+    </tr>
+    <tr class="units">
+      <th>name</th><th>ring</th><th>per bundle</th><th>per copy</th><th>contracted</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Alpine North</td><td>1</td><td class="num">4.10</td><td class="num">0.22</td><td>Bergpost</td></tr>
+    <tr><td>Alpine North</td><td>2</td><td class="num">4.60</td><td class="num">0.24</td><td>Bergpost</td></tr>
+    <tr><td>Alpine North</td><td>3</td><td class="num">5.30</td><td class="num">0.27</td><td>Bergpost</td></tr>
+    <tr><td>Alpine North</td><td>4</td><td class="num">6.10</td><td class="num">0.31</td><td>Bergpost</td></tr>
+    <tr><td>Alpine South</td><td>1</td><td class="num">4.10</td><td class="num">0.22</td><td>Bergpost</td></tr>
+    <tr><td>Alpine South</td><td>2</td><td class="num">4.70</td><td class="num">0.25</td><td>Bergpost</td></tr>
+    <tr><td>Alpine South</td><td>3</td><td class="num">5.45</td><td class="num">0.28</td><td>Bergpost</td></tr>
+    <tr><td>Alpine South</td><td>4</td><td class="num">6.30</td><td class="num">0.32</td><td>Bergpost</td></tr>
+    <tr><td>Harbour East</td><td>1</td><td class="num">3.80</td><td class="num">0.20</td><td>Quayline</td></tr>
+    <tr><td>Harbour East</td><td>2</td><td class="num">4.20</td><td class="num">0.22</td><td>Quayline</td></tr>
+    <tr><td>Harbour East</td><td>3</td><td class="num">4.85</td><td class="num">0.25</td><td>Quayline</td></tr>
+    <tr><td>Harbour East</td><td>4</td><td class="num">5.60</td><td class="num">0.29</td><td>Quayline</td></tr>
+    <tr><td>Harbour West</td><td>1</td><td class="num">3.80</td><td class="num">0.20</td><td>Quayline</td></tr>
+    <tr><td>Harbour West</td><td>2</td><td class="num">4.25</td><td class="num">0.22</td><td>Quayline</td></tr>
+    <tr><td>Harbour West</td><td>3</td><td class="num">4.95</td><td class="num">0.26</td><td>Quayline</td></tr>
+    <tr><td>Harbour West</td><td>4</td><td class="num">5.75</td><td class="num">0.30</td><td>Quayline</td></tr>
+    <tr><td>Plateau Ring</td><td>1</td><td class="num">4.40</td><td class="num">0.23</td><td>Overland</td></tr>
+    <tr><td>Plateau Ring</td><td>2</td><td class="num">4.90</td><td class="num">0.26</td><td>Overland</td></tr>
+    <tr><td>Plateau Ring</td><td>3</td><td class="num">5.60</td><td class="num">0.29</td><td>Overland</td></tr>
+    <tr><td>Plateau Ring</td><td>4</td><td class="num">6.45</td><td class="num">0.33</td><td>Overland</td></tr>
+    <tr><td>Plateau Spur</td><td>1</td><td class="num">4.55</td><td class="num">0.24</td><td>Overland</td></tr>
+    <tr><td>Plateau Spur</td><td>2</td><td class="num">5.05</td><td class="num">0.27</td><td>Overland</td></tr>
+    <tr><td>Plateau Spur</td><td>3</td><td class="num">5.80</td><td class="num">0.30</td><td>Overland</td></tr>
+    <tr><td>Plateau Spur</td><td>4</td><td class="num">6.70</td><td class="num">0.35</td><td>Overland</td></tr>
+    <tr><td>River Valley</td><td>1</td><td class="num">3.95</td><td class="num">0.21</td><td>Quayline</td></tr>
+    <tr><td>River Valley</td><td>2</td><td class="num">4.35</td><td class="num">0.23</td><td>Quayline</td></tr>
+    <tr><td>River Valley</td><td>3</td><td class="num">5.00</td><td class="num">0.26</td><td>Quayline</td></tr>
+    <tr><td>River Valley</td><td>4</td><td class="num">5.85</td><td class="num">0.30</td><td>Quayline</td></tr>
+    <tr><td>Old Town Loop</td><td>1</td><td class="num">3.60</td><td class="num">0.19</td><td>House van</td></tr>
+    <tr><td>Old Town Loop</td><td>2</td><td class="num">3.95</td><td class="num">0.21</td><td>House van</td></tr>
+    <tr><td>Old Town Loop</td><td>3</td><td class="num">4.50</td><td class="num">0.24</td><td>House van</td></tr>
+    <tr><td>Old Town Loop</td><td>4</td><td class="num">5.20</td><td class="num">0.27</td><td>House van</td></tr>
+    <tr><td>Upland Loop</td><td>1</td><td class="num">4.75</td><td class="num">0.25</td><td>Bergpost</td></tr>
+    <tr><td>Upland Loop</td><td>2</td><td class="num">5.30</td><td class="num">0.28</td><td>Bergpost</td></tr>
+    <tr><td>Upland Loop</td><td>3</td><td class="num">6.05</td><td class="num">0.31</td><td>Bergpost</td></tr>
+    <tr><td>Upland Loop</td><td>4</td><td class="num">6.95</td><td class="num">0.36</td><td>Bergpost</td></tr>
+    <tr><td>Night Print Express</td><td>1</td><td class="num">5.90</td><td class="num">0.31</td><td>House van</td></tr>
+    <tr><td>Night Print Express</td><td>2</td><td class="num">6.40</td><td class="num">0.33</td><td>House van</td></tr>
+    <tr><td>Night Print Express</td><td>3</td><td class="num">7.15</td><td class="num">0.37</td><td>House van</td></tr>
+    <tr><td>Night Print Express</td><td>4</td><td class="num">8.05</td><td class="num">0.41</td><td>House van</td></tr>
+  </tbody>
+</table>
+</body>
+</html>

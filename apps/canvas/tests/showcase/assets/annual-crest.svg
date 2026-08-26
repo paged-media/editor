@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  annual-crest.svg — the Paged Annual's cover crest, authored for the
+  annual's 540 x 720 pt page.
+
+  COORDINATES ARE PAGE POINTS. The paged.draw SVG importer lowers each
+  shape straight through `insertPath` with SVG user units taken as the
+  page's own points, origin top-left — nothing is scaled to fit. The
+  crest is drawn where it lands: centred on x 270, inside the annual's
+  54 pt margins (live area x 54-486, y 54-666), occupying the cover's
+  upper plate zone (y ~120-400).
+
+  SUPPORTED-FEATURE ENVELOPE (verified against draw-geometry
+  svg-doc.ts + svg-path.ts): <path> data with M/L/C/A/Z incl. MULTIPLE
+  SUBPATHS (compound paths — holes render via fill-rule="evenodd", and
+  the importer lowers each contour through its own insertPath),
+  rect/circle/ellipse/line/polyline/polygon, <g> with
+  translate/scale/rotate/matrix transforms, and the presentation attrs
+  fill / stroke / stroke-width / fill-rule with SOLID colours only.
+  Deliberately absent (the importer's documented out-of-scope set):
+  gradients, patterns, <text>, <image>, <defs>/<use>, clip-paths, CSS.
+
+  Shape order (load-bearing if a page module addresses contours):
+    0  annulus   compound ring (outer + inner hole), house blue
+    1  shield    compound plate with a keyway counter, house orange
+    2  banner    open curved underline stroke
+    3  motif     small diamond at the crest's foot
+
+  © And The Next GmbH - authored for this repository, same dual licence
+  as the rest of it (AGPL-3.0-only OR PMEL). Not a third-party asset.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="540" height="720" viewBox="0 0 540 720">
+  <!-- 0: the annulus — one compound path, two circular subpaths (A arcs),
+       the inner contour a HOLE under evenodd. -->
+  <path fill-rule="evenodd" fill="#1c3f94" d="
+    M 270 140
+    A 120 120 0 1 1 269.9 140
+    Z
+    M 270 172
+    A 88 88 0 1 0 270.1 172
+    Z"/>
+  <!-- 1: the shield plate — a curved compound path whose counter (an
+       upright keyway) is the second subpath, again an evenodd hole. -->
+  <path fill-rule="evenodd" fill="#d94f2b" d="
+    M 270 182
+    C 314 182 344 206 344 246
+    C 344 296 316 322 270 340
+    C 224 322 196 296 196 246
+    C 196 206 226 182 270 182
+    Z
+    M 270 218
+    C 282 218 290 226 290 238
+    C 290 247 285 253 278 257
+    L 284 298
+    L 256 298
+    L 262 257
+    C 255 253 250 247 250 238
+    C 250 226 258 218 270 218
+    Z"/>
+  <!-- 2: the banner — an open curved stroke beneath the crest. -->
+  <path fill="none" stroke="#16181c" stroke-width="7" d="
+    M 168 402
+    C 210 426 330 426 372 402"/>
+  <!-- 3: the foot motif — a small diamond on the crest's axis. -->
+  <polygon points="270,436 288,454 270,472 252,454" fill="#1c3f94"/>
+</svg>
