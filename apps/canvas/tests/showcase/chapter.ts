@@ -159,8 +159,26 @@ export function checkpointPath(chapterId: string): string {
   return join(CHECKPOINTS, `after-${chapterId}.paged`);
 }
 
+function soloCheckpointPath(chapterId: string): string {
+  return join(CHECKPOINTS, `after-${chapterId}.solo.paged`);
+}
+
 function chapterInput(spec: ChapterSpec): string {
+  if (isSolo(spec)) return BASE_IDML;
   return spec.after === null ? BASE_IDML : checkpointPath(spec.after);
+}
+
+/**
+ * SOLO mode — `SHOWCASE_SOLO=<id>` builds ONE chapter directly on the
+ * base fixture instead of its predecessor's checkpoint. Sound because
+ * no two chapters share pages: a chapter's own pages are identical in
+ * the base and in any checkpoint. What differs: live sections (folios
+ * stay descriptive — modules must never assert folio TEXT) and other
+ * chapters' content (absent). Solo outputs carry a `.solo` marker so
+ * the real chain and the assembly never read them.
+ */
+function isSolo(spec: ChapterSpec): boolean {
+  return process.env.SHOWCASE_SOLO === spec.id;
 }
 
 /** `SHOWCASE_FROM=060` ⇒ chapters with a numeric prefix below 060 skip
@@ -187,7 +205,7 @@ export async function runChapter(page: Page, spec: ChapterSpec): Promise<void> {
     return;
   }
   const input = chapterInput(spec);
-  if (spec.after === null) {
+  if (spec.after === null || isSolo(spec)) {
     ensureBaseFixture(input);
   } else if (!existsSync(input)) {
     throw new Error(
@@ -261,7 +279,10 @@ export async function runChapter(page: Page, spec: ChapterSpec): Promise<void> {
 
   // ── checkpoint ────────────────────────────────────────────────────
   const bytes = await doc.exportPaged();
-  writeFileSync(checkpointPath(spec.id), bytes);
+  writeFileSync(
+    isSolo(spec) ? soloCheckpointPath(spec.id) : checkpointPath(spec.id),
+    bytes,
+  );
 
   // ── incremental round-trip regression ─────────────────────────────
   // The input checkpoint already proved THIS chapter's predecessors
@@ -273,7 +294,9 @@ export async function runChapter(page: Page, spec: ChapterSpec): Promise<void> {
     .refreshPages()
     .then((pages) => pages.length);
   const owned = new Set(spec.modules.flatMap((m) => m.pages));
-  const earlier = [...Array(finalCount).keys()].filter((i) => !owned.has(i));
+  const earlier = isSolo(spec)
+    ? []
+    : [...Array(finalCount).keys()].filter((i) => !owned.has(i));
   const samples = earlier.filter((_, k) => k % Math.ceil(earlier.length / 4 || 1) === 0).slice(0, 4);
   for (const i of samples) {
     const png = await doc.renderPage(i, 612);
@@ -287,7 +310,7 @@ export async function runChapter(page: Page, spec: ChapterSpec): Promise<void> {
   }
 
   const fragment: ChapterFragment = {
-    chapter: spec.id,
+    chapter: isSolo(spec) ? `${spec.id}.solo` : spec.id,
     pageCount: finalCount,
     gpu,
     gpuReason,

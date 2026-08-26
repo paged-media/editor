@@ -184,7 +184,7 @@ export function writeFragment(
 export function readFragments(ledgerDir: string): ChapterFragment[] {
   if (!existsSync(ledgerDir)) return [];
   return readdirSync(ledgerDir)
-    .filter((f) => f.endsWith(".json"))
+    .filter((f) => f.endsWith(".json") && !f.endsWith(".solo.json"))
     .sort()
     .map(
       (f) =>
