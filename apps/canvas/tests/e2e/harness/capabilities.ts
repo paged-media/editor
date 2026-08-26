@@ -75,16 +75,25 @@
 // write that landed beside createGroup/dissolveGroup — and probed it
 // against the 0.40.0 engine (transforms a scratch group built from two
 // frames, modeled on the dissolveGroup probe). NOTE: the audit also named
-// `insertTable`, but the 0.40.0 wire union has NO standalone insertTable
-// Mutation — table creation rides a NodeSpec (`kind: "table"`, rows/cols)
-// through an insert op, not a top-level op; the engine rejects a bare
-// `insertTable` (probe-verified). Capturing table-create as a capability
-// needs the right insert-op pairing — left as a follow-up, not faked here.
+// `insertTable`; the 0.40.0 wire union had NO standalone insertTable
+// Mutation (table creation rode a NodeSpec through an insert op, and the
+// engine rejected a bare `insertTable`, probe-verified) — HISTORY as of
+// the v62 re-capture below: the CURRENT wire ships `insertTable` as a
+// standalone story-addressed op (the showcase's 11-tables page builds on
+// it), and it is classified in the table.
 // The path-segment discriminants moveTo/lineTo/cubicTo/close are
 // `ScenePathSeg` kinds (the C-1 scene-layer payload), NOT Mutation ops,
 // so they are correctly absent. The table's op universe == the published
 // Mutation union, which `state/scripts/completeness-check.mjs` derives
 // its wire-op set from (CAPS_FILE).
+//
+// 2026-08-26: the 94→117 drift CLOSED at protocol v62. All 23 ops the
+// AC-E2E-CAPS-COVER ratchet named in KNOWN_UNCLASSIFIED got real-args
+// probes (shapes sourced from the generated .d.ts, core's wire tests —
+// opacity_mask_and_text_path / planar_regions / reorder / place_image /
+// placeholder / batch_composition — and the shipping consumers in
+// plugin-draw / plugin-doc / the showcase) and are classified below;
+// KNOWN_UNCLASSIFIED is empty.
 
 export type CapabilityStatus = "supported" | "unsupported";
 
@@ -207,6 +216,37 @@ export const CAPABILITIES: Capability[] = [
   { op: "renameTableStyle", status: "supported" },
   { op: "deleteTableStyle", status: "supported" },
   { op: "setStyleProperty", status: "supported" },
+  // ── the v62 re-capture (2026-08-26): the 23 formerly-unclassified ──
+  // story-addressed doors
+  { op: "insertTable", status: "supported", note: "standalone story-addressed door (v37+); mints a STRUCTURED ElementId::Table ({story_id, table_id})" },
+  { op: "insertAnchoredFrame", status: "supported", note: "proto 52, the plugin-doc inline-image door; imageUri optional" },
+  { op: "insertHyperlink", status: "supported", note: "proto 53, plugin-doc; contiguous char offsets" },
+  { op: "setFieldValue", status: "supported", note: "v43 D-01; re-resolves a placeholder field at its enumerated offset (the probe inserts one first)" },
+  // path topology (v57 join/close)
+  { op: "closePath", status: "supported", note: "requires an OPEN subpath" },
+  { op: "joinPaths", status: "supported", note: "welds otherId INTO elementId; both must be open paths" },
+  // planar region verbs (v57, B-22)
+  { op: "pathfinderDivide", status: "supported" },
+  { op: "pathfinderTrim", status: "supported" },
+  { op: "pathfinderMerge", status: "supported" },
+  { op: "pathfinderCrop", status: "supported" },
+  { op: "pathfinderOutline", status: "supported" },
+  { op: "pathfinderMinusBack", status: "supported" },
+  { op: "pathfinderFaces", status: "supported", note: "faces are engine-minted ids — read them via requestPlanarRegions, never guess the format" },
+  // nesting + z-order
+  { op: "pasteInto", status: "supported" },
+  { op: "releaseFrom", status: "supported" },
+  { op: "reorderElement", status: "supported", note: "ZOrderTarget verb or {index}" },
+  // opacity mask + text-on-a-path (v58: C-28 / C-29)
+  { op: "applyOpacityMask", status: "supported", note: "lossless only via .paged — .idml export reports the mask as a named loss" },
+  { op: "releaseOpacityMask", status: "supported" },
+  { op: "attachTextToPath", status: "supported", note: "requires a story flowing into NO frame (a story belongs to exactly one flow)" },
+  { op: "detachTextFromPath", status: "supported" },
+  // image content (v43 D-14 / v50 C-1)
+  { op: "placeImage", status: "supported", note: "elementId is the BARE self id; an unreachable uri still applies (link only)" },
+  { op: "replaceImageBytes", status: "supported", note: "bare self id + decoded-on-apply image bytes" },
+  // batch handle binding (v34)
+  { op: "bindCreated", status: "supported", note: "only meaningful inside a batch — binds the batch's most recent createdId for $h:<handle> refs; probed as insert→bind→write" },
 ];
 
 export function expectedStatus(op: string): Capability | undefined {

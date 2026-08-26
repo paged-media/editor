@@ -337,14 +337,108 @@ const ANCHOR = (x: number, y: number) => ({
   right: [x, y] as [number, number],
 });
 
-/** Insert a scratch 4-anchor closed path on a page; return its
- *  created ElementId. Path-point ops need a real path node — the
- *  generated geometry fixture exposes only rectangles, which the
- *  point resolver rejects ("node not found"). */
+/** Insert a scratch 4-anchor path on a page; return its created
+ *  ElementId. Path-point ops need a real path node — the generated
+ *  geometry fixture exposes only rectangles, which the point resolver
+ *  rejects ("node not found"). `dx`/`dy` shift the quad (two calls
+ *  give the OVERLAPPING pair the planar pathfinder verbs need);
+ *  `open: true` leaves the subpath open (closePath / joinPaths). */
 async function newPath(
   page: Page,
   pageId: string,
+  dx = 0,
+  dy = 0,
+  open = false,
 ): Promise<{ kind: string; id: string } | null> {
+  return page.evaluate(
+    async ({ pid, dx, dy, open }) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              mutate: (m: unknown) => Promise<{
+                kind: string;
+                payload?: { createdId?: { kind: string; id: string } | null };
+              }>;
+            };
+          };
+        }
+      ).__canvas;
+      const a = (x: number, y: number) => ({
+        anchor: [x, y],
+        left: [x, y],
+        right: [x, y],
+      });
+      const reply = await c.client.mutate({
+        op: "insertPath",
+        args: {
+          pageId: pid,
+          anchors: [
+            a(20 + dx, 20 + dy),
+            a(120 + dx, 20 + dy),
+            a(120 + dx, 120 + dy),
+            a(20 + dx, 120 + dy),
+          ],
+          open,
+        },
+      });
+      return reply.kind === "mutationApplied"
+        ? (reply.payload?.createdId ?? null)
+        : null;
+    },
+    { pid: pageId, dx, dy, open },
+  );
+}
+
+/** Insert one scratch frame per bounds; return the created ElementIds
+ *  (null if any insert failed). ONE setup undo per frame. */
+async function newFrames(
+  page: Page,
+  pageId: string,
+  boundsList: Array<[number, number, number, number]>,
+): Promise<Array<{ kind: string; id: string }> | null> {
+  return page.evaluate(
+    async ({ pid, boundsList }) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              mutate: (m: unknown) => Promise<{
+                kind: string;
+                payload?: { createdId?: { kind: string; id: string } | null };
+              }>;
+            };
+          };
+        }
+      ).__canvas;
+      const out: Array<{ kind: string; id: string }> = [];
+      for (const bounds of boundsList) {
+        const reply = await c.client.mutate({
+          op: "insertFrame",
+          args: { pageId: pid, bounds },
+        });
+        const created =
+          reply.kind === "mutationApplied"
+            ? (reply.payload?.createdId ?? null)
+            : null;
+        if (!created) return null;
+        out.push(created);
+      }
+      return out;
+    },
+    { pid: pageId, boundsList },
+  );
+}
+
+/** Mint a FRAMELESS story: insertTextFrame mints a story alongside the
+ *  frame (v-K1 fix), and deleting the frame leaves the story behind.
+ *  attachTextToPath REQUIRES this shape — the engine rejects a story
+ *  that already flows into a text frame ("a story belongs to exactly
+ *  one flow"). TWO setup undos (the insert + the delete). */
+async function newFramelessStory(
+  page: Page,
+  pageId: string,
+): Promise<string | null> {
   return page.evaluate(async (pid) => {
     const c = (
       globalThis as unknown as {
@@ -354,28 +448,42 @@ async function newPath(
               kind: string;
               payload?: { createdId?: { kind: string; id: string } | null };
             }>;
+            collection: (n: string) => Promise<Array<{ selfId: string }>>;
           };
         };
       }
     ).__canvas;
-    const a = (x: number, y: number) => ({
-      anchor: [x, y],
-      left: [x, y],
-      right: [x, y],
-    });
+    const before = new Set(
+      (await c.client.collection("stories")).map((s) => s.selfId),
+    );
     const reply = await c.client.mutate({
-      op: "insertPath",
-      args: {
-        pageId: pid,
-        anchors: [a(20, 20), a(120, 20), a(120, 120), a(20, 120)],
-        open: false,
-      },
+      op: "insertTextFrame",
+      args: { pageId: pid, bounds: [200, 200, 320, 260] },
     });
-    return reply.kind === "mutationApplied"
-      ? (reply.payload?.createdId ?? null)
-      : null;
+    if (reply.kind !== "mutationApplied") return null;
+    const frameId = reply.payload?.createdId?.id ?? null;
+    if (!frameId) return null;
+    const minted = (await c.client.collection("stories")).find(
+      (s) => !before.has(s.selfId),
+    );
+    if (!minted) return null;
+    const del = await c.client.mutate({
+      op: "deleteFrame",
+      args: { frameId },
+    });
+    return del.kind === "mutationApplied" ? minted.selfId : null;
   }, pageId);
 }
+
+/** A real 70-byte 1×1 RGBA PNG (signature + IHDR + IDAT + IEND, CRCs
+ *  valid) — replaceImageBytes DECODES the payload, so a stub signature
+ *  would classify the decoder, not the op. */
+const PNG_1X1: number[] = [
+  137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0,
+  0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120,
+  156, 99, 144, 155, 240, 255, 63, 0, 5, 42, 2, 173, 139, 172, 239, 108, 0, 0,
+  0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+];
 
 /** Sweep the loaded fixture's first page for a table cell, returning
  *  `{ storyId, tableId, row, col }` from `HitResult.tableContext` — the
@@ -1002,6 +1110,115 @@ const TEXT_PROBES: Probe[] = [
     },
     setupUndo: 1,
   },
+  // ── the v62 re-capture: story-addressed doors the table had never
+  //    heard of (the 94→117 drift; args from the generated .d.ts +
+  //    the real consumers — showcase 11-tables, plugin-doc, D-01) ────
+  {
+    op: "insertTable",
+    // v37+ standalone door (the v40-era note in capabilities.ts about
+    // table-create riding a NodeSpec is history): a table lands INSIDE
+    // a story — the showcase inserts into a poured frame's story via
+    // this exact shape. Mints a STRUCTURED ElementId::Table.
+    build: async ({ fx }) =>
+      fx.firstStory
+        ? {
+            op: "insertTable",
+            args: { storyId: fx.firstStory.selfId, rows: 2, cols: 2 },
+          }
+        : null,
+  },
+  {
+    op: "insertAnchoredFrame",
+    // proto 52 (plugin-doc's inline-image door) — anchors a w×h frame
+    // at a story offset; `imageUri` optional (null = plain frame).
+    build: async ({ fx }) =>
+      fx.firstStory
+        ? {
+            op: "insertAnchoredFrame",
+            args: {
+              storyId: fx.firstStory.selfId,
+              offset: 0,
+              width: 72,
+              height: 54,
+              imageUri: null,
+            },
+          }
+        : null,
+  },
+  {
+    op: "insertHyperlink",
+    // proto 53 (plugin-doc) — contiguous char offsets, like applyStyle.
+    build: async ({ fx }) =>
+      fx.firstStory && fx.firstStory.characterCount > 1
+        ? {
+            op: "insertHyperlink",
+            args: {
+              storyId: fx.firstStory.selfId,
+              start: 0,
+              end: 1,
+              url: "https://paged.media/probe",
+            },
+          }
+        : null,
+  },
+  {
+    op: "setFieldValue",
+    // v43 (D-01) — re-resolves a placeholder FIELD's cached display,
+    // and the fixture carries none: insert one, then address it at the
+    // ENUMERATED offset (insert → enumerate → re-resolve, the
+    // placeholder_wire.rs sequence).
+    build: async ({ page, fx }) => {
+      if (!fx.firstStory) return null;
+      const made = await tryMutate(page, {
+        op: "insertField",
+        args: {
+          storyId: fx.firstStory.selfId,
+          offset: 0,
+          field: { placeholder: { plugin: "media.paged.probe", key: "k" } },
+        },
+      });
+      if (!made.ok) return null;
+      const item = await page.evaluate(async () => {
+        const c = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                send: (m: unknown) => Promise<{
+                  kind: string;
+                  payload?: {
+                    items?: Array<{
+                      storyId: string;
+                      offset: number;
+                      plugin: string;
+                    }>;
+                  };
+                }>;
+              };
+            };
+          }
+        ).__canvas;
+        const reply = await c.client.send({
+          kind: "requestDocumentPlaceholders",
+        });
+        return (
+          reply.payload?.items?.find(
+            (i) => i.plugin === "media.paged.probe",
+          ) ?? null
+        );
+      });
+      return item
+        ? {
+            op: "setFieldValue",
+            args: {
+              storyId: item.storyId,
+              offset: item.offset,
+              value: "€ 9,99",
+            },
+          }
+        : null;
+    },
+    setupUndo: 1, // the scratch placeholder field
+  },
 ];
 
 // ── probes on the `geometry` fixture (paths + boolean) ──────────
@@ -1414,6 +1631,317 @@ const GEOMETRY_PROBES: Probe[] = [
     },
     setupUndo: 1,
   },
+  // ── the v62 re-capture: the 19 element-addressed doors the table
+  //    had never heard of (the 94→117 drift). Args come from the
+  //    generated .d.ts + the real consumers: core's wire tests
+  //    (opacity_mask_and_text_path / planar_regions / reorder /
+  //    place_image / render_effect_sweep / batch_composition) and the
+  //    plugin-draw builders (join-average / pathfinder-region). ──────
+  {
+    op: "closePath",
+    // Closes an OPEN subpath — a closed scratch quad has nothing to
+    // close, so the scratch path is inserted `open: true`.
+    build: async ({ page, fx }) => {
+      const t = await newPath(page, fx.pages[0].pageId, 0, 0, true);
+      return t
+        ? { op: "closePath", args: { elementId: t, subpath: null } }
+        : null;
+    },
+    setupUndo: 1,
+  },
+  {
+    op: "joinPaths",
+    // Welds `otherId` INTO `elementId` — both must be OPEN paths.
+    build: async ({ page, fx }) => {
+      const a = await newPath(page, fx.pages[0].pageId, 0, 0, true);
+      const b = await newPath(page, fx.pages[0].pageId, 150, 0, true);
+      return a && b
+        ? { op: "joinPaths", args: { elementId: a, otherId: b } }
+        : null;
+    },
+    setupUndo: 2,
+  },
+  // The six planar region verbs (v57, B-22) all take `elementIds`
+  // top-to-bottom over the SAME overlapping scratch pair; each is one
+  // wire op and one undo step (planar_regions_wire.rs pins this).
+  ...(
+    [
+      "pathfinderDivide",
+      "pathfinderTrim",
+      "pathfinderMerge",
+      "pathfinderCrop",
+      "pathfinderOutline",
+      "pathfinderMinusBack",
+    ] as const
+  ).map(
+    (op): Probe => ({
+      op,
+      build: async ({ page, fx }) => {
+        const a = await newPath(page, fx.pages[0].pageId);
+        const b = await newPath(page, fx.pages[0].pageId, 50, 50);
+        return a && b ? { op, args: { elementIds: [b, a] } } : null;
+      },
+      setupUndo: 2,
+    }),
+  ),
+  {
+    op: "pathfinderFaces",
+    // The shape-builder verb: unite/delete NAMED faces of the planar
+    // arrangement. Face ids are engine-minted (`0-1#0` = the overlap
+    // of inputs 0 and 1) — read them back through the
+    // requestPlanarRegions door rather than guessing the format.
+    build: async ({ page, fx }) => {
+      const a = await newPath(page, fx.pages[0].pageId);
+      const b = await newPath(page, fx.pages[0].pageId, 50, 50);
+      if (!a || !b) return null;
+      const faceId = await page.evaluate(
+        async ({ a, b }) => {
+          const c = (
+            globalThis as unknown as {
+              __canvas: {
+                client: {
+                  send: (m: unknown) => Promise<{
+                    kind: string;
+                    payload?: {
+                      result?: {
+                        found: boolean;
+                        faces: Array<{ id: string }>;
+                      };
+                    };
+                  }>;
+                };
+              };
+            }
+          ).__canvas;
+          const reply = await c.client.send({
+            kind: "requestPlanarRegions",
+            payload: { elementIds: [a, b], point: null },
+          });
+          const res = reply.payload?.result;
+          return res?.found && res.faces.length > 0 ? res.faces[0].id : null;
+        },
+        { a, b },
+      );
+      return faceId
+        ? {
+            op: "pathfinderFaces",
+            args: { elementIds: [a, b], faces: [faceId], mode: "keep" },
+          }
+        : null;
+    },
+    setupUndo: 2,
+  },
+  {
+    op: "pasteInto",
+    // Nests `childId` inside `containerId` (the container clips) —
+    // the child deliberately sticks out, as in render_effect_sweep.
+    build: async ({ page, fx }) => {
+      const ids = await newFrames(page, fx.pages[0].pageId, [
+        [100, 100, 300, 300],
+        [150, 150, 400, 400],
+      ]);
+      return ids
+        ? { op: "pasteInto", args: { containerId: ids[0], childId: ids[1] } }
+        : null;
+    },
+    setupUndo: 2,
+  },
+  {
+    op: "releaseFrom",
+    build: async ({ page, fx }) => {
+      const ids = await newFrames(page, fx.pages[0].pageId, [
+        [100, 100, 300, 300],
+        [150, 150, 400, 400],
+      ]);
+      if (!ids) return null;
+      const nested = await tryMutate(page, {
+        op: "pasteInto",
+        args: { containerId: ids[0], childId: ids[1] },
+      });
+      return nested.ok
+        ? { op: "releaseFrom", args: { childId: ids[1] } }
+        : null;
+    },
+    setupUndo: 3, // two inserts + the pasteInto
+  },
+  {
+    op: "applyOpacityMask",
+    // C-28 (v58): `maskId` leaves the z-table and masks `targetId`.
+    build: async ({ page, fx }) => {
+      const ids = await newFrames(page, fx.pages[0].pageId, [
+        [10, 10, 90, 90],
+        [50, 50, 140, 140],
+      ]);
+      return ids
+        ? {
+            op: "applyOpacityMask",
+            args: {
+              targetId: ids[0],
+              maskId: ids[1],
+              maskType: "alpha",
+              invert: false,
+            },
+          }
+        : null;
+    },
+    setupUndo: 2,
+  },
+  {
+    op: "releaseOpacityMask",
+    build: async ({ page, fx }) => {
+      const ids = await newFrames(page, fx.pages[0].pageId, [
+        [10, 10, 90, 90],
+        [50, 50, 140, 140],
+      ]);
+      if (!ids) return null;
+      const masked = await tryMutate(page, {
+        op: "applyOpacityMask",
+        args: {
+          targetId: ids[0],
+          maskId: ids[1],
+          maskType: "alpha",
+          invert: false,
+        },
+      });
+      return masked.ok
+        ? { op: "releaseOpacityMask", args: { targetId: ids[0] } }
+        : null;
+    },
+    setupUndo: 3, // two inserts + the applyOpacityMask
+  },
+  {
+    op: "attachTextToPath",
+    // C-29 (v58): links a story to a path host. The engine REQUIRES a
+    // story flowing into NO frame ("a story belongs to exactly one
+    // flow"), so the fixture's framed stories are unattachable —
+    // newFramelessStory mints one (insertTextFrame + deleteFrame).
+    build: async ({ page, fx }) => {
+      const storyId = await newFramelessStory(page, fx.pages[0].pageId);
+      if (!storyId) return null;
+      const t = await newPath(page, fx.pages[0].pageId);
+      return t
+        ? {
+            op: "attachTextToPath",
+            args: {
+              elementId: t,
+              storyId,
+              pathTypeAlignment: "CenterPathType",
+              flipPathEffect: null,
+              startBracket: null,
+              endBracket: null,
+            },
+          }
+        : null;
+    },
+    setupUndo: 3, // insertTextFrame + deleteFrame + the scratch path
+  },
+  {
+    op: "detachTextFromPath",
+    build: async ({ page, fx }) => {
+      const storyId = await newFramelessStory(page, fx.pages[0].pageId);
+      if (!storyId) return null;
+      const t = await newPath(page, fx.pages[0].pageId);
+      if (!t) return null;
+      const attached = await tryMutate(page, {
+        op: "attachTextToPath",
+        args: {
+          elementId: t,
+          storyId,
+          pathTypeAlignment: null,
+          flipPathEffect: null,
+          startBracket: null,
+          endBracket: null,
+        },
+      });
+      return attached.ok
+        ? { op: "detachTextFromPath", args: { elementId: t } }
+        : null;
+    },
+    setupUndo: 4, // frameless-story pair + the path + the attach
+  },
+  {
+    op: "reorderElement",
+    // Reorder the BACKMOST of two scratch frames to the front — a real
+    // move (the second insert is already frontmost, so reordering IT
+    // would probe the no-op lane instead).
+    build: async ({ page, fx }) => {
+      const ids = await newFrames(page, fx.pages[0].pageId, [
+        [10, 10, 60, 60],
+        [70, 70, 120, 120],
+      ]);
+      return ids
+        ? { op: "reorderElement", args: { elementId: ids[0], to: "front" } }
+        : null;
+    },
+    setupUndo: 2,
+  },
+  {
+    op: "placeImage",
+    // v43 (D-14): `elementId` is the BARE self id (not an ElementId
+    // object). An unreachable uri still APPLIES — the op records the
+    // link; resolving it is the asset provider's job.
+    build: async ({ page, fx }) => {
+      const ids = await newFrames(page, fx.pages[0].pageId, [
+        [10, 10, 120, 120],
+      ]);
+      return ids
+        ? {
+            op: "placeImage",
+            args: {
+              elementId: ids[0].id,
+              uri: "file:///unreachable/probe.png",
+              fit: "FillProportionally",
+            },
+          }
+        : null;
+    },
+    setupUndo: 1,
+  },
+  {
+    op: "replaceImageBytes",
+    // v50 (C-1 Stage B): bare self id + decoded-on-apply PNG bytes.
+    build: async ({ page, fx }) => {
+      const ids = await newFrames(page, fx.pages[0].pageId, [
+        [10, 10, 120, 120],
+      ]);
+      return ids
+        ? {
+            op: "replaceImageBytes",
+            args: { elementId: ids[0].id, bytes: PNG_1X1 },
+          }
+        : null;
+    },
+    setupUndo: 1,
+  },
+  {
+    op: "bindCreated",
+    // Only meaningful INSIDE a batch: it names the batch's most recent
+    // createdId so later children can address it as `$h:<handle>` (the
+    // resolver replaces the WHOLE address — the declared kind on the
+    // handle ref never has to predict the minted kind). Probed as the
+    // full sentence: insert → bind → write through the handle. The
+    // batch is ONE undo step (C-14 atomicity).
+    build: async ({ fx }) => ({
+      op: "batch",
+      args: {
+        ops: [
+          {
+            op: "insertFrame",
+            args: { pageId: fx.pages[0].pageId, bounds: [10, 10, 80, 80] },
+          },
+          { op: "bindCreated", args: { handle: "probe" } },
+          {
+            op: "setElementProperty",
+            args: {
+              elementId: { kind: "rectangle", id: "$h:probe" },
+              path: "frameOpacity",
+              value: { type: "length", value: 60 },
+            },
+          },
+        ],
+      },
+    }),
+  },
 ];
 
 // ── probes on the `tables` fixture (v30 table ops) ──────────────
@@ -1794,25 +2322,22 @@ test("AC-E2E-CAPS-COVER — every engine Mutation op appears in the table", () =
     .filter((op) => op !== "batch" && !listed.has(op))
     .sort();
 
-  // The gap as it stood when this gate was written. A RATCHET, not an
-  // excuse: it must only ever shrink.
+  // The gap as it stood when this gate was written (2026-08-09: 23 ops
+  // — the pathfinder region verbs, both opacity-mask ops, text-on-a-
+  // path, the plugin-doc doors, and friends). A RATCHET, not an
+  // excuse: it must only ever shrink — and on 2026-08-26 it shrank to
+  // EMPTY: every one of the 23 got a real-args probe (shapes sourced
+  // from the generated .d.ts + core's wire tests, per the rule below)
+  // and a row in harness/capabilities.ts.
   //
-  // These are not classified here because classifying an op means
-  // probing it with real args, and a probe built on GUESSED args
-  // reports "unsupported" when the guess is wrong rather than when the
-  // engine lacks the op. That would put false evidence into the one
-  // table `state`'s completeness gate trusts — worse than the gap it
-  // would paper over. Each needs its args from the engine's .d.ts and a
-  // real domain test alongside.
-  const KNOWN_UNCLASSIFIED = [
-    "applyOpacityMask", "attachTextToPath", "bindCreated", "closePath",
-    "detachTextFromPath", "insertAnchoredFrame", "insertHyperlink",
-    "insertTable", "joinPaths", "pasteInto", "pathfinderCrop",
-    "pathfinderDivide", "pathfinderFaces", "pathfinderMerge",
-    "pathfinderMinusBack", "pathfinderOutline", "pathfinderTrim",
-    "placeImage", "releaseFrom", "releaseOpacityMask", "reorderElement",
-    "replaceImageBytes", "setFieldValue",
-  ];
+  // An op may only ever sit here UNCLASSIFIED, never mis-classified,
+  // because classifying an op means probing it with real args, and a
+  // probe built on GUESSED args reports "unsupported" when the guess is
+  // wrong rather than when the engine lacks the op. That would put
+  // false evidence into the one table `state`'s completeness gate
+  // trusts — worse than the gap it would paper over. A new entry needs
+  // its args from the engine's .d.ts and a real domain test alongside.
+  const KNOWN_UNCLASSIFIED: string[] = [];
 
   // STALENESS, checked in the other direction too: an entry that has
   // since been classified must leave this list, or the ratchet quietly
