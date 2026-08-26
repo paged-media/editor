@@ -71,7 +71,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
 
     // The dot-leader tab: one stop at the right edge of the measure,
     // right-aligned, leader ".". Applied to the whole poured range.
-    const total = paras.reduce((n, para) => n + para.text.length + 1, 0) - 1;
+    const total = paras.reduce((n, para) => n + para.text.length, 0);
     await doc.setProperty(
       "storyRange",
       doc.storyRangeId(list.storyId, 0, total),

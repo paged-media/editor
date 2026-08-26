@@ -91,11 +91,11 @@ test.describe("annual assembly", () => {
     mkdirSync(join(OUT, "pages"), { recursive: true });
     await openCanvas(page);
     const doc = new ShowcaseDoc(page);
+    await doc.registerFonts(CORPUS_FONTS);
     const pageCount = await doc.load(finalCheckpoint);
     expect(pageCount, "the finished document reopens complete").toBe(
       ANNUAL_PAGES,
     );
-    await doc.registerFonts(CORPUS_FONTS);
 
     const notes = [...merged.notes];
 

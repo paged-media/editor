@@ -33,6 +33,16 @@ chapter.
 - Copy is REAL self-describing English in the annual's voice (see the
   foreword and 03-editorial for register). Never lorem. Never emoji.
 
+## Geometry order — read this twice
+
+Driver geometry helpers (`textFrame`/`rectangle`/`oval`/`storyOf`) and
+every annual-support helper take page-space **(x0, y0, x1, y1)** and
+convert to the wire's IDML order internally. Raw `Bounds` VALUES you
+pass yourself — a `frameBounds` write, a `moveFrame`/`resizeFrame`
+args object — are **wire-ordered `[top, left, bottom, right]`**. The
+front matter shipped transposed because this line did not exist; do
+not re-convert on top of the helpers.
+
 ## Hard rules
 
 1. **No ids across chapter boundaries.** A reload re-mints ids. Resolve

@@ -325,16 +325,40 @@ export class ShowcaseDoc {
   // ── authoring ───────────────────────────────────────────────────
 
   /** A text frame on `pageId`; returns its element id. */
+  /**
+   * Geometry helpers take page-space `(x0, y0, x1, y1)` — the order a
+   * layout sketch reads in — and convert to the WIRE's IDML order
+   * `[top, left, bottom, right]` here, once. This seam exists because
+   * the annual shipped its whole front matter transposed and the
+   * change-only pixel gate stayed green: a heading exported as a 52 pt
+   * vertical sliver at x 54..106 and nothing said so. Raw `Bounds`
+   * VALUES (e.g. a `frameBounds` write) remain wire-ordered — the
+   * conversion belongs to these helpers only.
+   */
+  private static toWire(bounds: Bounds): Bounds {
+    const [x0, y0, x1, y1] = bounds;
+    return [y0, x0, y1, x1];
+  }
+
   async textFrame(pageId: string, bounds: Bounds): Promise<string> {
-    return this.mutateId("insertTextFrame", { pageId, bounds });
+    return this.mutateId("insertTextFrame", {
+      pageId,
+      bounds: ShowcaseDoc.toWire(bounds),
+    });
   }
 
   async rectangle(pageId: string, bounds: Bounds): Promise<string> {
-    return this.mutateId("insertFrame", { pageId, bounds });
+    return this.mutateId("insertFrame", {
+      pageId,
+      bounds: ShowcaseDoc.toWire(bounds),
+    });
   }
 
   async oval(pageId: string, bounds: Bounds): Promise<string> {
-    return this.mutateId("insertOval", { pageId, bounds });
+    return this.mutateId("insertOval", {
+      pageId,
+      bounds: ShowcaseDoc.toWire(bounds),
+    });
   }
 
   /**
@@ -346,7 +370,8 @@ export class ShowcaseDoc {
    * private door.
    */
   async storyOf(pageId: string, bounds: Bounds): Promise<string> {
-    const [top, left, bottom, right] = bounds;
+    // Same (x0, y0, x1, y1) contract as the insert helpers above.
+    const [left, top, right, bottom] = bounds;
     const cx = (left + right) / 2;
     const cy = (top + bottom) / 2;
     const storyId = await this.page.evaluate(

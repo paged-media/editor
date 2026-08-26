@@ -43,16 +43,16 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   const bar = await plate(
     ctx,
     p(1),
-    [54, 468, 306, 476],
+    [54, 496, 306, 504],
     SWATCH.vermilion,
     LAYER.content,
   );
 
-  const lockup = await proseFrame(ctx, p(1), [54, 356, 486, 460], [
+  const lockup = await proseFrame(ctx, p(1), [54, 330, 486, 486], [
     { text: "THE PAGED", style: STYLE.chapterNumber },
     { text: "ANNUAL", style: STYLE.chapterNumber },
   ]);
-  const deck = await proseFrame(ctx, p(1), [54, 490, 486, 560], [
+  const deck = await proseFrame(ctx, p(1), [54, 518, 486, 590], [
     {
       text: "Volume One — a specimen of the composing engine, set entirely by the engine it describes.",
       style: STYLE.deck,

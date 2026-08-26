@@ -49,9 +49,11 @@ export async function build(ctx: PageContext): Promise<PageReport> {
 
   // Tag line 3 Print-only and line 4 Screen-only. Offsets are computed
   // from the poured text (each paragraph ends with one \n).
+  // storyRange offsets ride the applyStyle convention: CONTIGUOUS
+  // characters, paragraph separators not counted.
   const offsetOf = (idx: number): [number, number] => {
     let start = 0;
-    for (let i = 0; i < idx; i += 1) start += lines[i].length + 1;
+    for (let i = 0; i < idx; i += 1) start += lines[i].length;
     return [start, start + lines[idx].length];
   };
   const printOnly = await doc.condition(CONDITION.printOnly);

@@ -220,12 +220,17 @@ export async function runChapter(page: Page, spec: ChapterSpec): Promise<void> {
   const ledger = new Ledger();
   doc.ledger = ledger;
 
+  // Fonts BEFORE the document: RegisterFont seeds shaping at LOAD —
+  // register after and every styled run keeps its substitute (pink
+  // marker included). The fidelity tier's preloadPackFonts learned
+  // this first; the annual re-learned it from a cover set in the
+  // fallback face.
+  await doc.registerFonts(CORPUS_FONTS);
   const pageCount = await doc.load(input);
   expect(
     pageCount,
     `chapter ${spec.id} expected to open a ${spec.expectPages}-page document`,
   ).toBe(spec.expectPages);
-  await doc.registerFonts(CORPUS_FONTS);
 
   const gpu = await doc.gpuActive();
   const gpuReason = gpu ? "" : await doc.gpuReason();

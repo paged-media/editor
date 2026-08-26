@@ -63,7 +63,8 @@ test.describe("ShowcaseDoc", () => {
     // Author a frame, recover its story through the hit test, pour
     // text, and read the length back. This is the exact sequence every
     // page module opens with.
-    const bounds: [number, number, number, number] = [500, 60, 600, 400];
+    // (x0, y0, x1, y1) — the helpers convert to wire order themselves.
+    const bounds: [number, number, number, number] = [60, 500, 400, 600];
     const frame = await doc.textFrame(pageId, bounds);
     expect(frame).toBeTruthy();
 
@@ -138,7 +139,7 @@ test.describe("ShowcaseDoc", () => {
     const before = await doc.renderPage(0, 612);
     expect(before.length).toBeGreaterThan(0);
     const pageId = await doc.pageId(0);
-    const rect = await doc.rectangle(pageId, [40, 40, 200, 300]);
+    const rect = await doc.rectangle(pageId, [40, 40, 300, 200]);
     expect(rect).toBeTruthy();
     await doc.expectRenderChanged(0, before);
   });

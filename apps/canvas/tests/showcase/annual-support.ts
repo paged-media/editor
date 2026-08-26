@@ -32,9 +32,8 @@ import {
   LAYER,
   STYLE,
   contentBox,
-  isRecto,
-  MARGIN_OUTSIDE_PT,
-  TRIM_W_PT,
+  MARGIN_BOTTOM_PT,
+  TRIM_H_PT,
 } from "./names-annual";
 import type { PageContext } from "./types";
 
@@ -60,12 +59,21 @@ export async function proseFrame(
   const pageId = ctx.pageIds[ctx.pageIndexes.indexOf(pageIndex)];
   const frameId = await doc.textFrame(pageId, box);
   const storyId = await doc.storyOf(pageId, box);
-  let offset = 0;
+  // THREE offset spaces, deliberately — the engine's recorded offset
+  // conventions (plugin-doc documented the split; the annual re-found
+  // both halves visually): insertText addresses UTF-8 BYTES including
+  // separators; applyStyle addresses CONTIGUOUS characters — i.e. the
+  // text with paragraph separators NOT counted (an italic that started
+  // one glyph late per preceding paragraph proved it). Track all,
+  // never mix.
+  const bytes = (t: string): number => new TextEncoder().encode(t).length;
+  let byteOffset = 0;
+  let contiguousOffset = 0;
   for (const [i, para] of paras.entries()) {
     const text = i === paras.length - 1 ? para.text : `${para.text}\n`;
-    await doc.insertText(storyId, text, offset);
-    const start = offset;
-    const end = offset + para.text.length;
+    await doc.insertText(storyId, text, byteOffset);
+    const start = contiguousOffset;
+    const end = contiguousOffset + para.text.length;
     if (para.style) {
       await doc.applyStyle(
         storyId,
@@ -84,7 +92,8 @@ export async function proseFrame(
         "character",
       );
     }
-    offset += text.length;
+    byteOffset += bytes(text);
+    contiguousOffset += para.text.length;
   }
   await assignLayer(ctx, "textFrame", frameId, LAYER.content);
   return { frameId, storyId };
@@ -102,17 +111,16 @@ export async function specLabel(
 ): Promise<string> {
   const { doc } = ctx;
   const pageId = ctx.pageIds[ctx.pageIndexes.indexOf(pageIndex)];
-  const recto = isRecto(pageIndex);
-  const x0 = recto ? TRIM_W_PT - MARGIN_OUTSIDE_PT + 4 : 8;
-  const box: [number, number, number, number] = [
-    x0,
-    contentBox(pageIndex)[1],
-    x0 + MARGIN_OUTSIDE_PT - 12,
-    contentBox(pageIndex)[1] + 16 * lines.length + 8,
-  ];
+  // The apparatus BAND: spec citations live in the deep bottom margin
+  // (81 pt — the annual's designed home for them), full content width,
+  // one joined line. The outside-margin sliver wrapped 6.5 pt mono
+  // character-by-character; a pro moves the apparatus, not the margin.
+  const cb = contentBox(pageIndex);
+  const y0 = TRIM_H_PT - 46;
+  const box: [number, number, number, number] = [cb[0], y0, cb[2], y0 + 15];
   const frameId = await doc.textFrame(pageId, box);
   const storyId = await doc.storyOf(pageId, box);
-  const text = lines.join("\n");
+  const text = lines.join("  \u00b7  ");
   await doc.insertText(storyId, text, 0);
   await doc.applyStyle(
     storyId,
@@ -143,15 +151,10 @@ export async function marginNote(
 ): Promise<string> {
   const { doc } = ctx;
   const pageId = ctx.pageIds[ctx.pageIndexes.indexOf(pageIndex)];
-  const recto = isRecto(pageIndex);
-  const x0 = recto ? TRIM_W_PT - MARGIN_OUTSIDE_PT + 4 : 8;
-  const y0 = contentBox(pageIndex)[3] - 120;
-  const box: [number, number, number, number] = [
-    x0,
-    y0,
-    x0 + MARGIN_OUTSIDE_PT - 12,
-    y0 + 110,
-  ];
+  // Second line of the apparatus band (below the spec citation).
+  const cb = contentBox(pageIndex);
+  const y0 = TRIM_H_PT - 30;
+  const box: [number, number, number, number] = [cb[0], y0, cb[2], y0 + 28];
   const frameId = await doc.textFrame(pageId, box);
   const storyId = await doc.storyOf(pageId, box);
   const full = `◪ ${text}`;
