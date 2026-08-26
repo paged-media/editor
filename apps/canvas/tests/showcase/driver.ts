@@ -48,6 +48,7 @@ import { expect, type Page } from "@playwright/test";
 
 import { mutate as rawMutate, script } from "../e2e/harness/ui";
 import { Designer } from "../journey/driver/designer";
+import type { Ledger } from "./ledger";
 
 /** One page, as `paged.pages()` reports it (`PageSummary` on the wire:
  *  `selfId`, 1-based `index`, `sizePt` and the four margins). The
@@ -76,6 +77,11 @@ export class ShowcaseDoc {
   readonly designer: Designer;
 
   private pagesCache: PageInfo[] = [];
+
+  /** When set, every wire op that passes through {@link mutate} is
+   *  tallied (ops + property paths) for the three-axis ledger. The
+   *  chapter runner sets it; standalone driver tests leave it unset. */
+  ledger?: Ledger;
 
   constructor(readonly page: Page) {
     this.designer = new Designer(page);
@@ -173,6 +179,19 @@ export class ShowcaseDoc {
    * {@link mutateId}; callers of a structured op narrow it themselves.
    */
   async mutate(op: string, args: unknown): Promise<unknown> {
+    if (this.ledger) {
+      this.ledger.record(op, args);
+      // A batch counts its inner ops too — "exercised inside a batch"
+      // is exercised; only counting the wrapper would leave every
+      // batched op looking unused.
+      if (op === "batch" && typeof args === "object" && args !== null) {
+        const inner = (args as { ops?: Array<{ op?: string; args?: unknown }> })
+          .ops;
+        for (const o of inner ?? []) {
+          if (typeof o?.op === "string") this.ledger.record(o.op, o.args);
+        }
+      }
+    }
     const reply = (await rawMutate(this.page, { op, args })) as {
       kind?: string;
       payload?: {
@@ -273,6 +292,18 @@ export class ShowcaseDoc {
 
   swatch(name: string): Promise<string> {
     return this.collectionByName("swatches", name);
+  }
+
+  /** Condition SELF-ID by user-visible name. The wire's condition ops
+   *  and the `appliedConditions` value both key the styles map by
+   *  self-id (`Condition/Draft`), not by display name — passing the
+   *  name is refused as "entry not found". */
+  condition(name: string): Promise<string> {
+    return this.collectionByName("conditions", name);
+  }
+
+  conditionSet(name: string): Promise<string> {
+    return this.collectionByName("conditionSets", name);
   }
 
   async layerId(name: string): Promise<string> {
@@ -396,6 +427,130 @@ export class ShowcaseDoc {
   // ── output ──────────────────────────────────────────────────────
 
   /** The `.paged` container bytes for the document as it stands. */
+  /**
+   * `exportIdml`, but reading BOTH halves of the wire reply. The typed
+   * `client.exportIdml()` returns only the bytes and discards
+   * `payload.lost` — the v58/C-28 honest-loss ledger (opacity masks and
+   * every other `.paged`-native construct IDML cannot carry). The
+   * assembly spec asserts that list EQUALS the expected loss set, so a
+   * new silent loss fails the build instead of vanishing.
+   */
+  async exportIdmlWithLost(): Promise<{ bytes: Buffer; lost: string[] }> {
+    const out = await this.page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              send: (m: unknown) => Promise<{
+                kind: string;
+                payload?: { idmlBytes?: number[]; lost?: string[]; error?: string };
+              }>;
+            };
+          };
+        }
+      ).__canvas;
+      const reply = await c.client.send({ kind: "exportIdml", payload: {} });
+      if (reply.kind !== "idmlExported") {
+        throw new Error(
+          `exportIdml failed: ${reply.payload?.error ?? reply.kind}`,
+        );
+      }
+      const bytes = new Uint8Array(reply.payload?.idmlBytes ?? []);
+      let s = "";
+      for (const b of bytes) s += String.fromCharCode(b);
+      return { b64: btoa(s), lost: reply.payload?.lost ?? [] };
+    });
+    return { bytes: Buffer.from(out.b64, "base64"), lost: out.lost };
+  }
+
+  /**
+   * Register the annual's font palette with the engine, from the core
+   * checkout's `corpus/fonts/`. Fonts reach the page via a routed
+   * fetch (`/__annual-fonts/*`) rather than an `evaluate` argument —
+   * serialising a 9.6 MB CJK face through CDP as a JSON number array
+   * is the kind of cost you pay once per chapter, sixteen times.
+   *
+   * Every load starts from the engine's default font, so this must run
+   * after EVERY `load()` — registration does not survive a reload.
+   */
+  async registerFonts(fontsDir: string): Promise<void> {
+    const faces: Array<{ family: string; style: string | null; file: string }> =
+      [
+        { family: "Inter", style: null, file: "Inter.ttf" },
+        { family: "Open Sans", style: null, file: "OpenSans.ttf" },
+        { family: "Open Sans", style: "Italic", file: "OpenSans-Italic.ttf" },
+        { family: "Source Serif 4", style: null, file: "SourceSerif4.ttf" },
+        { family: "EB Garamond", style: null, file: "EBGaramond-VF.ttf" },
+        {
+          family: "EB Garamond",
+          style: "Italic",
+          file: "EBGaramond-Italic-VF.ttf",
+        },
+        { family: "Fraunces", style: null, file: "Fraunces-VF.ttf" },
+        {
+          family: "Fraunces",
+          style: "Italic",
+          file: "Fraunces-Italic-VF.ttf",
+        },
+        { family: "JetBrains Mono", style: null, file: "JetBrainsMono-VF.ttf" },
+        {
+          family: "JetBrains Mono",
+          style: "Italic",
+          file: "JetBrainsMono-Italic-VF.ttf",
+        },
+        { family: "Space Grotesk", style: null, file: "SpaceGrotesk-VF.ttf" },
+        {
+          family: "Noto Sans Arabic",
+          style: null,
+          file: "NotoSansArabic-VF.ttf",
+        },
+        { family: "Noto Sans JP", style: null, file: "NotoSansJP-VF.ttf" },
+      ];
+    const { readFileSync, existsSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const present = faces.filter((f) => existsSync(join(fontsDir, f.file)));
+    await this.page.route("**/__annual-fonts/*", (route) => {
+      const name = route.request().url().split("/__annual-fonts/")[1];
+      const face = present.find((f) => f.file === decodeURIComponent(name));
+      if (!face) return route.fulfill({ status: 404 });
+      return route.fulfill({
+        status: 200,
+        contentType: "font/ttf",
+        body: readFileSync(join(fontsDir, face.file)),
+      });
+    });
+    try {
+      await this.page.evaluate(
+        async (list) => {
+          const c = (
+            globalThis as unknown as {
+              __canvas: {
+                client: {
+                  registerFont: (
+                    family: string,
+                    bytes: Uint8Array,
+                    style: string | null,
+                  ) => Promise<void>;
+                };
+              };
+            }
+          ).__canvas;
+          for (const f of list) {
+            const res = await fetch(
+              `/__annual-fonts/${encodeURIComponent(f.file)}`,
+            );
+            if (!res.ok) throw new Error(`font fetch failed: ${f.file}`);
+            const bytes = new Uint8Array(await res.arrayBuffer());
+            await c.client.registerFont(f.family, bytes, f.style);
+          }
+        },
+        present.map(({ family, style, file }) => ({ family, style, file })),
+      );
+    } finally {
+      await this.page.unroute("**/__annual-fonts/*");
+    }
+  }
+
   async exportPaged(): Promise<Buffer> {
     const b64 = await this.page.evaluate(async () => {
       const c = (

@@ -20,3 +20,8 @@ dist-demo/
 # personal/third-party — never commit). The committed fixtures are
 # public/sample.pdf + public/report.pdf.
 public/pdfs/
+
+# annual/showcase build state: per-chapter checkpoints + ledger fragments are
+# reproducible run intermediates; the committed artifacts live in showcase/ root
+showcase/checkpoints/
+showcase/ledger/

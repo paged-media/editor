@@ -296,3 +296,62 @@ export async function labelFrame(
   );
   return id;
 }
+
+/**
+ * Invoke a registered command WITH a payload — the door `ShowcaseDoc.
+ * runCommand` does not open (it passes none). Most of paged.draw's 92
+ * commands take payloads (`invoke(id, payload)` in the bundle), and the
+ * annual's studio chapters drive them headlessly through the same
+ * registry the menu bar uses.
+ */
+export async function invokeWith(
+  page: Page,
+  id: string,
+  payload?: unknown,
+): Promise<void> {
+  await page.evaluate(
+    async ({ id, payload }) => {
+      const reg = (
+        globalThis as unknown as {
+          __canvas: {
+            registries: {
+              commands: { invoke: (id: string, payload?: unknown) => Promise<void> };
+            };
+          };
+        }
+      ).__canvas.registries;
+      await reg.commands.invoke(id, payload);
+    },
+    { id, payload },
+  );
+}
+
+/**
+ * Run `action` and capture the file it downloads, as bytes in Node.
+ *
+ * The app's single blob→file door (`shell-file-saver.ts`) saves via an
+ * anchor download, which Playwright surfaces as a `download` event —
+ * this is how exporter output (paged.image's PNG/JPEG/PSD, the ASE
+ * library) gets back into the build to be re-placed or re-imported.
+ * First use on a lane must confirm downloads fire under `--headless=new`
+ * (they do on the bundled and real Chrome we run); a timeout here means
+ * the action never reached the saver, not a missing feature — check the
+ * command actually ran.
+ */
+export async function captureDownload(
+  page: Page,
+  action: () => Promise<void>,
+  timeoutMs = 30_000,
+): Promise<{ name: string; bytes: Buffer }> {
+  const waiter = page.waitForEvent("download", { timeout: timeoutMs });
+  await action();
+  const download = await waiter;
+  const path = await download.path();
+  if (!path) {
+    throw new Error(
+      `download "${download.suggestedFilename()}" produced no file path`,
+    );
+  }
+  const { readFileSync } = await import("node:fs");
+  return { name: download.suggestedFilename(), bytes: readFileSync(path) };
+}

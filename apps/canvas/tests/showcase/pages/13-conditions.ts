@@ -91,8 +91,14 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       selfId: string;
       name?: string;
     }>;
-    conditionName = conditions[0]?.name ?? conditions[0]?.selfId ?? null;
-    if (!conditionName) throw new Error("document declares no conditions");
+    // The wire keys conditions by SELF-ID (`Condition/Draft`); the
+    // display name is prose. Passing the name here was refused as
+    // "entry not found" on every prior run — the note that used to
+    // sit in the colophon and made both condition ops look unproven.
+    const conditionId = conditions[0]?.selfId ?? null;
+    conditionName = conditions[0]?.name ?? conditionId;
+    if (!conditionId || !conditionName)
+      throw new Error("document declares no conditions");
     // `appliedConditions` takes a Value::Text whose payload is a
     // whitespace-separated list of condition ids — and every Value on
     // the wire is adjacently tagged, so a bare string is refused as a
@@ -101,19 +107,28 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       "storyRange",
       doc.storyRangeId(bodyStory, start, end),
       "appliedConditions",
-      { type: "text", value: conditionName },
+      { type: "text", value: conditionId },
     );
     // Toggle it off and back on: off proves the drop path composes, on
     // leaves the finished document readable. A page that shipped with
     // its own body text hidden would be a poor advertisement.
     await doc.mutate("setConditionVisible", {
-      condition: conditionName,
+      condition: conditionId,
       visible: false,
     });
     await doc.mutate("setConditionVisible", {
-      condition: conditionName,
+      condition: conditionId,
       visible: true,
     });
+    // The set door, same key discipline: activate the fixture's set so
+    // BOTH condition ops are exercised for real (they were the last two
+    // "unsupported" rows in the capability table).
+    const sets = (await doc.designer.collection("conditionSets")) as Array<{
+      selfId: string;
+    }>;
+    if (sets[0]?.selfId) {
+      await doc.mutate("activateConditionSet", { set: sets[0].selfId });
+    }
   } catch (err) {
     notes.push(
       `condition tagging skipped: ${err instanceof Error ? err.message : String(err)}. ` +
