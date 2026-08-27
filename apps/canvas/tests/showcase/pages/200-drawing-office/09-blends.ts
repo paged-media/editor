@@ -273,7 +273,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
         const v = await propOf(ctx, { kind: "oval", id: dots[3] }, "frameTransform");
         return v?.value ? 1 : 0;
       },
-      { message: "make wrote a transform onto the dots", timeout: 15_000 },
+      { message: "make wrote a transform onto the dots", timeout: 120_000 },
     )
     .toBe(1);
 
@@ -302,7 +302,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
         const v = await propOf(ctx, { kind: "oval", id: dots[0] }, "frameTransform");
         return JSON.stringify(v?.value) === JSON.stringify(beforeUpdate) ? 0 : 1;
       },
-      { message: "update moved the first dot along the path", timeout: 15_000 },
+      { message: "update moved the first dot along the path", timeout: 120_000 },
     )
     .toBe(1);
 

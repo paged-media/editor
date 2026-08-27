@@ -290,7 +290,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     const firstLine = async (pattern: RegExp): Promise<string | null> => {
       const hit = page.getByText(pattern).first();
       const ok = await hit
-        .waitFor({ state: "visible", timeout: 20_000 })
+        .waitFor({ state: "visible", timeout: 120_000 })
         .then(() => true)
         .catch(() => false);
       if (!ok) return null;

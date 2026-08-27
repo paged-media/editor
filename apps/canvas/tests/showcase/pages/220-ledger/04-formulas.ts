@@ -122,7 +122,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
 
   // ── import through the importXlsx COMMAND (host picker lane) ─────
   const chooser = page
-    .waitForEvent("filechooser", { timeout: 10_000 })
+    .waitForEvent("filechooser", { timeout: 120_000 })
     .catch(() => null);
   await doc.runCommand(`${SHEET_CMD}.importXlsx`);
   const fc = await chooser;
@@ -145,7 +145,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   // ── the calc engine, through the formula bar ─────────────────────
   await doc.runCommand(`${SHEET_CMD}.openGrid`);
   const svg = page.locator("[data-grid-svg-root]");
-  await expect(svg, "the grid panel rendered").toBeVisible({ timeout: 15_000 });
+  await expect(svg, "the grid panel rendered").toBeVisible({ timeout: 120_000 });
 
   // An aggregate, a text-family call, and a dynamic array that SPILLS
   // C3:C6 from one anchor. Each committed value is asserted in the

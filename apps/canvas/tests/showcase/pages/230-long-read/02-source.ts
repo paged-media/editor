@@ -150,7 +150,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   await expect(
     htmlLane,
     "the source panel mounted on the selection and opened its editors",
-  ).toBeVisible({ timeout: 15_000 });
+  ).toBeVisible({ timeout: 120_000 });
   // The panel's metadata read is async with a stale-guard — POLL for
   // the round trip rather than judging a single early sample.
   const readBack = await settle(

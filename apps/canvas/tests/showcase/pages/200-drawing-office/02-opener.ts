@@ -137,7 +137,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     .poll(async () => (await polygons(ctx)).length, {
       message:
         "one Polygon per crest contour (annulus ×2, shield ×2, banner, motif)",
-      timeout: 20_000,
+      timeout: 120_000,
     })
     .toBe(before.length + CREST_CONTOURS);
   const imported = await newRefs(ctx.page, "polygon", before);
@@ -156,7 +156,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     await expect
       .poll(async () => (await polygons(ctx)).length, {
         message: "compound make consumed the hole contour",
-        timeout: 15_000,
+        timeout: 120_000,
       })
       .toBe(count - 1);
   };

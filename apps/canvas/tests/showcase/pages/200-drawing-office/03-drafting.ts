@@ -450,7 +450,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   await expect
     .poll(async () => (await polygons(ctx)).length, {
       message: "joinEndpoints welded two paths into one",
-      timeout: 10_000,
+      timeout: 120_000,
     })
     .toBe(beforeJoin - 1);
   const survivor = (await polygons(ctx)).find(

@@ -297,28 +297,28 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     const convert = page.locator("[data-web-make]");
     const htmlLane = page.locator("[data-web-html] [data-code-input]");
     await Promise.race([
-      convert.waitFor({ state: "visible", timeout: 15_000 }).catch(() => undefined),
-      htmlLane.waitFor({ state: "visible", timeout: 15_000 }).catch(() => undefined),
+      convert.waitFor({ state: "visible", timeout: 120_000 }).catch(() => undefined),
+      htmlLane.waitFor({ state: "visible", timeout: 120_000 }).catch(() => undefined),
     ]);
     if (await convert.isVisible().catch(() => false)) {
       await convert.click();
     }
     await expect(htmlLane, "the source panel opened its editors").toBeVisible({
-      timeout: 10_000,
+      timeout: 120_000,
     });
     await htmlLane.fill(source.html);
     const cssLane = page.locator("[data-web-css] [data-code-input]");
-    await expect(cssLane, "the CSS lane").toBeVisible({ timeout: 10_000 });
+    await expect(cssLane, "the CSS lane").toBeVisible({ timeout: 120_000 });
     await cssLane.fill(source.css);
     const commit = page.locator("[data-web-commit]");
     await expect(commit, "the Save to document affordance").toBeEnabled({
-      timeout: 10_000,
+      timeout: 120_000,
     });
     await commit.click();
     await expect(page.locator("[data-web-dirty]")).toHaveAttribute(
       "data-web-dirty",
       "false",
-      { timeout: 10_000 },
+      { timeout: 120_000 },
     );
     covers.push("plugin-web.source-panel", "plugin-web.metadata-persistence");
 

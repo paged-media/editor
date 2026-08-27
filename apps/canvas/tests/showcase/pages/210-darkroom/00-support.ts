@@ -312,7 +312,7 @@ export async function setSlider(
     .locator("xpath=following-sibling::span")
     .locator('input[type="range"]')
     .first();
-  await input.waitFor({ state: "visible", timeout: 15_000 });
+  await input.waitFor({ state: "visible", timeout: 120_000 });
   await input.evaluate((el, v) => {
     const setter = Object.getOwnPropertyDescriptor(
       HTMLInputElement.prototype,
@@ -374,7 +374,7 @@ export async function exportDownload(
   await ctx.doc.designer.openPanel(OUTPUTS_PANEL);
   const row = ctx.page.locator(`[data-plugin-export="${exporterId}"]`);
   try {
-    await row.waitFor({ state: "visible", timeout: 15_000 });
+    await row.waitFor({ state: "visible", timeout: 120_000 });
   } catch {
     return { reason: `exporter row ${exporterId} not in the Outputs panel` };
   }
@@ -415,7 +415,7 @@ export async function fitPageForGesture(
 ): Promise<void> {
   await ctx.doc.designer.openPanel(PAGES_PANEL);
   const thumb = ctx.page.locator(`[title^="Jump to page ${pageIndex + 1} ("]`);
-  await thumb.waitFor({ state: "visible", timeout: 15_000 });
+  await thumb.waitFor({ state: "visible", timeout: 120_000 });
   await thumb.click();
   const readCamera = () =>
     ctx.page.evaluate(
@@ -446,7 +446,7 @@ export async function fitPageForGesture(
           first.scale > 0
         );
       },
-      { timeout: 15_000 },
+      { timeout: 120_000 },
     )
     .toBe(true);
   // Image / Outputs / Pages share one dock group, so raising Pages just

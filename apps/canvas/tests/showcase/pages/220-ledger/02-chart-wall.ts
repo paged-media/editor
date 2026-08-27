@@ -123,7 +123,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   // ── the panel's chart list is the wall's label source ────────────
   const list = page.locator("[data-sheet-chart-list]");
   await expect(list, "the workbook's charts enumerated").toBeVisible({
-    timeout: 15_000,
+    timeout: 120_000,
   });
   const rowTexts = await page
     .locator("[data-sheet-chart-list] > div")

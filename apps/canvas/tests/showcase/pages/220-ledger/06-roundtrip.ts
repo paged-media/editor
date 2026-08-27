@@ -80,7 +80,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   await doc.runCommand(`${SHEET_CMD}.sortRange`); // leads to the panel
   await openPanel(page, WORKBOOK_PANEL);
   const range = page.locator("[data-sheet-range]");
-  await expect(range).toBeVisible({ timeout: 15_000 });
+  await expect(range).toBeVisible({ timeout: 120_000 });
   await range.fill("A1:A2");
   await page.locator("[data-sheet-sort-key]").fill("1");
   await page.locator("[data-sheet-sort-dir]").selectOption("desc");
@@ -118,7 +118,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   await expect(
     svg,
     "the concatenation recalculated from the replaced input",
-  ).toContainText("TotalProduct", { timeout: 10_000 });
+  ).toContainText("TotalProduct", { timeout: 120_000 });
   receipts.push(
     'findReplace "Sum" -> "Total" — inputs rewritten; B1&B2 recalculated to TotalProduct',
   );

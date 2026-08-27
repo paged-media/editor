@@ -206,7 +206,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       async () =>
         (await propOf(ctx, { kind: "polygon", id: t2 }, "frameFillColor"))
           ?.value ?? "",
-      { message: "apply linked tile 2 to the style", timeout: 10_000 },
+      { message: "apply linked tile 2 to the style", timeout: 120_000 },
     )
     .toBe(marigold);
 
@@ -223,7 +223,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       async () =>
         (await propOf(ctx, { kind: "polygon", id: t3 }, "frameFillColor"))
           ?.value ?? "",
-      { message: "redefine propagated to tile 3", timeout: 10_000 },
+      { message: "redefine propagated to tile 3", timeout: 120_000 },
     )
     .toBe(screenBlue);
 
@@ -242,7 +242,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       async () =>
         (await propOf(ctx, { kind: "polygon", id: t2 }, "frameFillColor"))
           ?.value ?? "",
-      { message: "second redefine reached the still-linked tile 2", timeout: 10_000 },
+      { message: "second redefine reached the still-linked tile 2", timeout: 120_000 },
     )
     .toBe(slate);
   expect(

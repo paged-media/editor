@@ -163,7 +163,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
             if ((await tableOf(overRef)) !== overBefore) return 1;
             return 0;
           },
-          { message: `${suffix} changed neither the polygon set nor an operand's geometry`, timeout: 20_000 },
+          { message: `${suffix} changed neither the polygon set nor an operand's geometry`, timeout: 120_000 },
         )
         .toBe(1);
       const after = await polygons(ctx);

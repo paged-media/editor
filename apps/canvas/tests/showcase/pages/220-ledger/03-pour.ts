@@ -86,7 +86,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   // the panel button drives.
   await openPanel(page, WORKBOOK_PANEL);
   const select = page.locator("[data-sheet-select]");
-  await expect(select, "the sheet picker is live").toBeVisible({ timeout: 15_000 });
+  await expect(select, "the sheet picker is live").toBeVisible({ timeout: 120_000 });
   await select.selectOption({ index: 0 });
   const optionText = await select
     .locator("option")

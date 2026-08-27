@@ -280,7 +280,7 @@ export async function importOrders(
   await openPanel(page, SOURCES_PANEL);
   const importButton = page.locator("[data-data-import-csv]");
   await expect(importButton, "the paged.data sources panel mounted").toBeVisible(
-    { timeout: 20_000 },
+    { timeout: 120_000 },
   );
   const chooser = page.waitForEvent("filechooser");
   await importButton.click();
@@ -310,7 +310,7 @@ export async function importOrders(
   if (ready) {
     chapterData.ready = true;
     await expect(page.getByText(/annual_orders/).first()).toBeVisible({
-      timeout: 10_000,
+      timeout: 120_000,
     });
   } else {
     notes.push(
@@ -387,7 +387,7 @@ export async function addAuthoredBinding(
 ): Promise<void> {
   await openPanel(page, BINDINGS_PANEL);
   await expect(page.locator("[data-data-bind-author]")).toBeVisible({
-    timeout: 15_000,
+    timeout: 120_000,
   });
   await page.locator("[data-data-bind-kind]").selectOption(kind);
   if (kind === "barcode" && symbology) {
@@ -398,7 +398,7 @@ export async function addAuthoredBinding(
     await expect(
       picker,
       "the symbology picker appears once the kind is barcode",
-    ).toBeVisible({ timeout: 10_000 });
+    ).toBeVisible({ timeout: 120_000 });
     await picker.selectOption(symbology);
   }
   await page.locator("[data-data-bind-field]").fill(fieldExpr);

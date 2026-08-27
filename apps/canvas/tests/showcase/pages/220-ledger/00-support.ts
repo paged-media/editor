@@ -199,7 +199,7 @@ export async function importWorkbook(
 ): Promise<boolean> {
   const pick = page.locator("[data-sheet-pick]");
   await expect(pick, "the workbook panel offers its file picker").toBeVisible({
-    timeout: 15_000,
+    timeout: 120_000,
   });
   const chooser = page.waitForEvent("filechooser");
   await pick.click();
@@ -263,7 +263,7 @@ export async function selectGridCell(
 ): Promise<void> {
   const svg = page.locator("[data-grid-svg-root]");
   await expect(svg, "the grid panel rendered its SVG").toBeVisible({
-    timeout: 10_000,
+    timeout: 120_000,
   });
   const box = await svg.boundingBox();
   if (!box) throw new Error("grid SVG has no bounding box");

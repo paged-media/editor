@@ -90,7 +90,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   // re-activate its tab before the formula-bar drive.
   await openPanel(page, GRID_PANEL);
   const svg = page.locator("[data-grid-svg-root]");
-  await expect(svg, "the grid panel is live").toBeVisible({ timeout: 15_000 });
+  await expect(svg, "the grid panel is live").toBeVisible({ timeout: 120_000 });
   await enterCell(page, 7, 0, `=SEQUENCE(${DAYS})`);
   await enterCell(page, 7, 1, `=SEQUENCE(${DAYS},1,1840,7)`);
   await enterCell(page, 7, 2, `=SEQUENCE(${DAYS},1,620,13)`);

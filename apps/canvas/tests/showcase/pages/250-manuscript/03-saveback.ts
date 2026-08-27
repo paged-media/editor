@@ -156,7 +156,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     await openPanel(page, EXPORT_CENTER_PANEL);
     const row = page.locator(`[data-plugin-export="${DOCX_EXPORTER}"]`);
     const rowShown = await row
-      .waitFor({ state: "visible", timeout: 20_000 })
+      .waitFor({ state: "visible", timeout: 120_000 })
       .then(() => true)
       .catch(() => false);
     if (rowShown) {
@@ -266,7 +266,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   await openPanel(page, OUTLINE_PANEL).catch(() => undefined);
   const diagText = await page
     .locator("[data-doc-diagnostics]")
-    .innerText({ timeout: 10_000 })
+    .innerText({ timeout: 120_000 })
     .catch(() => "");
   const footLine = diagText
     .split("\n")

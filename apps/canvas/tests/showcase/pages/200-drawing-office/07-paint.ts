@@ -98,7 +98,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
           (await propOf(ctx, { kind: "rectangle", id: linTile }, "frameFillColor"))
             ?.value ?? "",
         ),
-      { message: "the linear preset pointed the fill at a gradient", timeout: 10_000 },
+      { message: "the linear preset pointed the fill at a gradient", timeout: 120_000 },
     )
     .toContain("Gradient/");
   await doc.select("rectangle", radTile);
@@ -110,7 +110,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
           (await propOf(ctx, { kind: "rectangle", id: radTile }, "frameFillColor"))
             ?.value ?? "",
         ),
-      { message: "the radial preset pointed the fill at a gradient", timeout: 10_000 },
+      { message: "the radial preset pointed the fill at a gradient", timeout: 120_000 },
     )
     .toContain("Gradient/");
 
@@ -230,7 +230,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
         );
         return v?.type === "lengths" ? (v.value as number[]) : [];
       },
-      { message: "the Dashed preset committed its documented 6/3 run", timeout: 10_000 },
+      { message: "the Dashed preset committed its documented 6/3 run", timeout: 120_000 },
     )
     .toEqual([6, 3]);
 

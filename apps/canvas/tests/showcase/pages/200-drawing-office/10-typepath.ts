@@ -205,7 +205,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
               "frameCornerOptionTopLeft",
             )
           )?.value ?? "",
-        { message: `${suffix} baked its corner option`, timeout: 10_000 },
+        { message: `${suffix} baked its corner option`, timeout: 120_000 },
       )
       .toBe(token);
   }

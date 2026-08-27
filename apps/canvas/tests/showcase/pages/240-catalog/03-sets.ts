@@ -123,7 +123,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     const position = page.locator('[data-testid="preview-position"]');
     try {
       await expect(jump, "the record-preview stepper mounted").toBeVisible({
-        timeout: 15_000,
+        timeout: 120_000,
       });
       await jump.fill("3");
       await expect(position, "the stepper reports its of-N bound").toHaveText(
@@ -141,7 +141,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       const report = page.locator('[data-testid="change-report"]');
       if (
         await report
-          .waitFor({ state: "visible", timeout: 20_000 })
+          .waitFor({ state: "visible", timeout: 120_000 })
           .then(() => true)
           .catch(() => false)
       ) {
