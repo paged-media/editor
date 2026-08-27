@@ -36,11 +36,16 @@ import { build as formulas } from "../pages/220-ledger/04-formulas";
 import { build as chain } from "../pages/220-ledger/05-chain";
 import { build as roundtrip } from "../pages/220-ledger/06-roundtrip";
 
+
+// Continuation of 220-ledger - split for the in-chain per-op cost;
+// the checkpoint chain absorbs splits with zero logic change.
 annualChapter({
-  id: "220-ledger",
-  title: "Ch.16 The Ledger - the chart wall",
+  id: "222-ledger-b",
+  title: "Ch.16 The Ledger - pours, formulas, the chain",
   modules: [
-    { id: "lg-opener", pages: [p(95)], build: opener },
-    { id: "lg-chart-wall", pages: [p(96), p(97)], build: chartWall },
+    { id: "lg-pour", pages: [p(98)], build: pour },
+    { id: "lg-formulas", pages: [p(99)], build: formulas },
+    { id: "lg-chain", pages: [p(100), p(101)], build: chain },
+    { id: "lg-roundtrip", pages: [p(102)], build: roundtrip },
   ],
 });

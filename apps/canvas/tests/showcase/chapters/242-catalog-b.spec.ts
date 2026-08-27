@@ -47,12 +47,15 @@ import { build as dsl } from "../pages/240-catalog/04-dsl";
 import { build as barcodes } from "../pages/240-catalog/05-barcodes";
 import { build as table } from "../pages/240-catalog/06-table";
 
+
+// Continuation of 240-catalog - split for the in-chain per-op cost;
+// the checkpoint chain absorbs splits with zero logic change.
 annualChapter({
-  id: "240-catalog",
-  title: "Ch.18 The Catalog - source, cards, sets",
+  id: "242-catalog-b",
+  title: "Ch.18 The Catalog - the DSL, barcodes, the table",
   modules: [
-    { id: "ct-opener", pages: [p(109)], build: opener },
-    { id: "ct-cards", pages: [p(110)], build: cards },
-    { id: "ct-sets", pages: [p(113)], build: sets },
+    { id: "ct-dsl", pages: [p(114)], build: dsl },
+    { id: "ct-barcodes", pages: [p(112)], build: barcodes },
+    { id: "ct-table", pages: [p(111)], build: table },
   ],
 });

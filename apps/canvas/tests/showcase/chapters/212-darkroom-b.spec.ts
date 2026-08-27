@@ -38,16 +38,17 @@ import { build as paintType } from "../pages/210-darkroom/05-paint-type";
 import { build as psd } from "../pages/210-darkroom/06-psd";
 import { build as loop } from "../pages/210-darkroom/07-loop";
 
+
+// Continuation of 210-darkroom - split for the in-chain per-op cost;
+// the checkpoint chain absorbs splits with zero logic change.
 annualChapter({
-  id: "210-darkroom",
-  title: "Ch.15 The Darkroom - the loop and the contact sheet",
+  id: "212-darkroom-b",
+  title: "Ch.15 The Darkroom - selections, retouch, paint, PSD",
   modules: [
-    { id: "dk-opener", pages: [p(87)], build: opener },
-    {
-      id: "dk-contact-sheet",
-      pages: [p(88), p(89)],
-      build: contactSheet,
-      needsGpu: true,
-    },
+    { id: "dk-selections", pages: [p(90)], build: selections, needsGpu: true },
+    { id: "dk-retouch", pages: [p(91)], build: retouch, needsGpu: true },
+    { id: "dk-paint-type", pages: [p(92)], build: paintType, needsGpu: true },
+    { id: "dk-psd", pages: [p(93)], build: psd, needsGpu: true },
+    { id: "dk-loop", pages: [p(94)], build: loop, needsGpu: true },
   ],
 });

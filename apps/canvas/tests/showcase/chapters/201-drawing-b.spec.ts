@@ -39,12 +39,16 @@ import { build as blends } from "../pages/200-drawing-office/09-blends";
 import { build as typepath } from "../pages/200-drawing-office/10-typepath";
 import { build as tracePlate } from "../pages/200-drawing-office/11-plate";
 
+
+// Continuation of 200-drawing-office - split for the in-chain per-op cost;
+// the checkpoint chain absorbs splits with zero logic change.
 annualChapter({
-  id: "200-drawing-office",
-  title: "Part II . Ch.14 The Drawing Office - crest and instruments",
+  id: "201-drawing-b",
+  title: "Ch.14 The Drawing Office - pathfinder, faces, appearance, paint",
   modules: [
-    { id: "do-divider", pages: [p(75), p(76)], build: divider },
-    { id: "do-opener", pages: [p(77)], build: opener },
-    { id: "do-drafting", pages: [p(78)], build: drafting },
+    { id: "do-pathfinder", pages: [p(79)], build: pathfinder },
+    { id: "do-livepaint", pages: [p(80)], build: livepaint },
+    { id: "do-appearance", pages: [p(81)], build: appearance },
+    { id: "do-paint", pages: [p(82)], build: paint },
   ],
 });
