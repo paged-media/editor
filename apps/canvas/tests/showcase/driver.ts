@@ -179,6 +179,10 @@ export class ShowcaseDoc {
    * {@link mutateId}; callers of a structured op narrow it themselves.
    */
   async mutate(op: string, args: unknown): Promise<unknown> {
+    if (process.env.ANNUAL_TRACE) {
+      // eslint-disable-next-line no-console
+      console.log(`[trace] ${op} ${JSON.stringify(args)?.slice(0, 120)}`);
+    }
     if (this.ledger) {
       this.ledger.record(op, args);
       // A batch counts its inner ops too — "exercised inside a batch"
@@ -192,7 +196,42 @@ export class ShowcaseDoc {
         }
       }
     }
-    const reply = (await rawMutate(this.page, { op, args })) as {
+    // A mutate whose reply never arrives is indistinguishable from a
+    // slow one — until you ask the worker something else. The 90 s race
+    // + read-probe below classifies the stall the annual keeps hitting
+    // on the in-chain document (ops ~100+ of a heavy chapter): if the
+    // probe answers, the WORKER IS ALIVE and this op's reply was lost;
+    // if the probe hangs too, the worker is deadlocked. Either way the
+    // failure is diagnosed in 100 s instead of a silent 25-minute
+    // timeout. No retry — the op may have applied.
+    const raced = await Promise.race([
+      rawMutate(this.page, { op, args }).then((r) => ({ kind: "reply" as const, r })),
+      new Promise<{ kind: "stall" }>((resolve) =>
+        setTimeout(() => resolve({ kind: "stall" }), 90_000),
+      ),
+    ]);
+    if (raced.kind === "stall") {
+      const probe = await Promise.race([
+        this.page
+          .evaluate(async () => {
+            const c = (
+              globalThis as unknown as {
+                __canvas: { client: { documentMeta: () => Promise<unknown> } };
+              }
+            ).__canvas;
+            await c.client.documentMeta();
+            return "alive";
+          })
+          .catch(() => "evaluate-failed"),
+        new Promise<string>((resolve) =>
+          setTimeout(() => resolve("dead"), 10_000),
+        ),
+      ]);
+      throw new Error(
+        `mutation ${op} stalled 90s with worker ${probe === "alive" ? "ALIVE (reply lost)" : "DEADLOCKED (reads hang too)"} — args ${JSON.stringify(args)?.slice(0, 200)}`,
+      );
+    }
+    const reply = raced.r as {
       kind?: string;
       payload?: {
         createdId?: { kind: string; id: unknown } | null;

@@ -330,7 +330,14 @@ export async function runChapter(page: Page, spec: ChapterSpec): Promise<void> {
 /** Declare the standard one-test chapter spec file body. */
 export function chapterTest(spec: ChapterSpec): void {
   test.describe(`annual ${spec.id}`, () => {
-    test.setTimeout(15 * 60 * 1000);
+    // 40 min. Measured, not guessed: in-chain mutation cost is ~3.8 s
+    // per op against the 74-page authored document (vs ~1 s solo) —
+    // per-mutation recompose scales with document CONTENT, which is
+    // itself a finding the annual records. The object chapter's ~400
+    // ops therefore legitimately need ~25 min; 40 leaves headroom
+    // without hiding a real hang (the driver's 90 s stall classifier
+    // catches those).
+    test.setTimeout(40 * 60 * 1000);
     test(`${spec.title} @feat:package-anatomy.paged-container @level:happy`, async ({
       page,
     }) => {
