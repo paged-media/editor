@@ -28,6 +28,7 @@
 // touches it.
 
 import {
+  CHAR,
   CONDITION,
   LAYER,
   STYLE,
@@ -165,6 +166,16 @@ export async function marginNote(
     full.length,
     await doc.paragraphStyle(STYLE.marginNote),
     "paragraph",
+  );
+  // U+25EA exists only in JetBrains Mono of the annual's palette — in
+  // the note's own EB Garamond it painted tofu on every margin note in
+  // the book (the appendix agent caught it compiling the ledger).
+  await doc.applyStyle(
+    storyId,
+    0,
+    1,
+    await doc.characterStyle(CHAR.codeInline),
+    "character",
   );
   const conditionId = await ctx.doc.condition(CONDITION.specNotes);
   await doc.setProperty(

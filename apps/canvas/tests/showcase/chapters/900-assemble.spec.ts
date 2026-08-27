@@ -173,6 +173,43 @@ test.describe("annual assembly", () => {
     writeFileSync(join(OUT, "showcase.pdf"), pdfBytes);
     for (const d of pdf.diagnostics) notes.push(`pdf export: ${d}`);
 
+    // The PRESS pass — PDF/X-4 with marks and bleed, the export the
+    // press chapter promises "at assembly". The reading copy above
+    // stays pdf17; this one carries the prepress furniture.
+    const press = await page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              exportPdf: (
+                o: unknown,
+              ) => Promise<{ bytes: Uint8Array; diagnostics: string[] }>;
+            };
+          };
+        }
+      ).__canvas;
+      const out = await c.client.exportPdf({
+        standard: "pdfx4",
+        cropMarks: true,
+        registrationMarks: true,
+        colorBars: true,
+        pageInfo: true,
+        marksOffsetPt: 9,
+        bleedOverridePt: [9, 9, 9, 9],
+        title: "The Paged Annual, Volume One",
+      });
+      let s = "";
+      for (const b of out.bytes) s += String.fromCharCode(b);
+      return { b64: btoa(s), diagnostics: out.diagnostics };
+    });
+    const pressBytes = Buffer.from(press.b64, "base64");
+    expect(
+      pressBytes.subarray(0, 5).toString("latin1"),
+      "PDF/X-4 magic",
+    ).toBe("%PDF-");
+    writeFileSync(join(OUT, "showcase-pressready.pdf"), pressBytes);
+    for (const d of press.diagnostics) notes.push(`pdfx4 export: ${d}`);
+
     // ── one render per page ─────────────────────────────────────────
     for (let i = 0; i < ANNUAL_PAGES; i += 1) {
       const png = await doc.renderPage(i, 1224);

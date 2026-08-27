@@ -178,7 +178,36 @@ export class ShowcaseDoc {
    * once. Callers that know they created a simple element use
    * {@link mutateId}; callers of a structured op narrow it themselves.
    */
+  /** True once any reply loss was classified this session — enables
+   *  the cheap pre-reads that make insertText recovery decidable. */
+  static replyLossSeen = false;
+  private preInsertChars: number | null = null;
+
+  /** One unraced wire send — the recovery path's retry lane. */
+  private async mutateOnce(op: string, args: unknown): Promise<unknown> {
+    const reply = (await rawMutate(this.page, { op, args })) as {
+      kind?: string;
+      payload?: {
+        createdId?: { kind: string; id: unknown } | null;
+        error?: unknown;
+      };
+    };
+    if (reply?.kind !== "mutationApplied") {
+      throw new Error(
+        `mutation ${op} refused on reply-loss retry: ${JSON.stringify(reply?.payload?.error ?? reply?.kind)}`,
+      );
+    }
+    return reply.payload?.createdId?.id ?? null;
+  }
+
   async mutate(op: string, args: unknown): Promise<unknown> {
+    this.preInsertChars = null;
+    if (ShowcaseDoc.replyLossSeen && op === "insertText") {
+      const a = args as { storyId?: string };
+      if (typeof a?.storyId === "string") {
+        this.preInsertChars = await this.storyChars(a.storyId).catch(() => null);
+      }
+    }
     if (process.env.ANNUAL_TRACE) {
       // eslint-disable-next-line no-console
       console.log(`[trace] ${op} ${JSON.stringify(args)?.slice(0, 120)}`);
@@ -227,8 +256,42 @@ export class ShowcaseDoc {
           setTimeout(() => resolve("dead"), 10_000),
         ),
       ]);
+      if (probe !== "alive") {
+        throw new Error(
+          `mutation ${op} stalled 90s with worker DEADLOCKED (reads hang too) — args ${JSON.stringify(args)?.slice(0, 200)}`,
+        );
+      }
+      // WORKER ALIVE, REPLY LOST — the classified race this classifier
+      // was built for (first fired on an insertText mid-wrap-catalog).
+      // Recovery is op-shaped, never blind for non-idempotent ops:
+      //   · idempotent property/style writes retry once;
+      //   · insertText verifies application via the story's contiguous
+      //     length before deciding to retry or continue;
+      //   · minting ops fail diagnosed (a retry could double-mint).
+      ShowcaseDoc.replyLossSeen = true;
+      const idempotent = new Set([
+        "setElementProperty",
+        "setStyleProperty",
+        "applyStyle",
+      ]);
+      if (idempotent.has(op)) {
+        // eslint-disable-next-line no-console
+        console.log(`[reply-lost] ${op} — idempotent, retrying once`);
+        return this.mutateOnce(op, args);
+      }
+      if (op === "insertText" && this.preInsertChars !== null) {
+        const a = args as { storyId: string; text: string };
+        const now = await this.storyChars(a.storyId);
+        const expected = this.preInsertChars + a.text.replace(/\n/g, "").length;
+        // eslint-disable-next-line no-console
+        console.log(
+          `[reply-lost] insertText — story ${now === expected ? "ADVANCED (treating as applied)" : "unchanged, retrying once"}`,
+        );
+        if (now === expected) return null;
+        return this.mutateOnce(op, args);
+      }
       throw new Error(
-        `mutation ${op} stalled 90s with worker ${probe === "alive" ? "ALIVE (reply lost)" : "DEADLOCKED (reads hang too)"} — args ${JSON.stringify(args)?.slice(0, 200)}`,
+        `mutation ${op} stalled 90s with worker ALIVE (reply lost) — args ${JSON.stringify(args)?.slice(0, 200)}`,
       );
     }
     const reply = raced.r as {

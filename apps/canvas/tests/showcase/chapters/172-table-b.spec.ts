@@ -17,22 +17,22 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// Ch.12 splits across TWO chapter specs — the same measured reason as
-// Ch.8: the long table's cell pours at in-chain mutation cost exceed
-// one chapter budget once ninety pages are authored. This half: the
-// opener and the cross-page ledger table.
+// The second half of Ch.12 — see 170-table.spec.ts. Cell anatomy,
+// structure ops, table and cell styles.
 
 import { annualChapter } from "../chapter";
 import { p } from "../names-annual";
 
-import { build as opener } from "../pages/170-table/01-opener";
-import { build as ledger } from "../pages/170-table/02-ledger";
+import { build as anatomy } from "../pages/170-table/03-cell-anatomy";
+import { build as structure } from "../pages/170-table/04-structure";
+import { build as styles } from "../pages/170-table/05-styles";
 
 annualChapter({
-  id: "170-table",
-  title: "Ch.12 The Table — the ledger across the gutter",
+  id: "172-table-b",
+  title: "Ch.12 The Table — cells, structure, styles",
   modules: [
-    { id: "tb-opener", pages: [p(65)], build: opener },
-    { id: "tb-ledger", pages: [p(66), p(67)], build: ledger },
+    { id: "tb-anatomy", pages: [p(68)], build: anatomy },
+    { id: "tb-structure", pages: [p(69)], build: structure },
+    { id: "tb-styles", pages: [p(70)], build: styles },
   ],
 });

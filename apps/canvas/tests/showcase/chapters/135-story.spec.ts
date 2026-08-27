@@ -38,8 +38,12 @@ annualChapter({
   id: "135-story",
   title: "Ch.5 The Story — flow",
   modules: [
-    // TEMP-DIAG: other modules disabled while the thread overset is
-    // diagnosed; restored before handoff.
+    { id: "st-opener", pages: [p(33)], build: opener },
     { id: "st-thread", pages: [p(34), p(35)], build: thread },
+    { id: "st-overset", pages: [p(36)], build: overset },
+    { id: "st-frame-prefs", pages: [p(37)], build: framePrefs },
+    { id: "st-autosize", pages: [p(38)], build: autosize },
+    { id: "st-wrap", pages: [p(39)], build: wrap },
+    { id: "st-anchored", pages: [p(40)], build: anchored },
   ],
 });
