@@ -309,6 +309,10 @@ export async function invokeWith(
   id: string,
   payload?: unknown,
 ): Promise<void> {
+  if (process.env.ANNUAL_TRACE) {
+    // eslint-disable-next-line no-console
+    console.log(`[trace-cmd] ${id} ${JSON.stringify(payload)?.slice(0, 80) ?? ""}`);
+  }
   await page.evaluate(
     async ({ id, payload }) => {
       const reg = (

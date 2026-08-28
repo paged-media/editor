@@ -33,7 +33,7 @@ import { build as drafting } from "../pages/200-drawing-office/03-drafting";
 import { build as pathfinder } from "../pages/200-drawing-office/04-pathfinder";
 import { build as livepaint } from "../pages/200-drawing-office/05-livepaint";
 import { build as appearance } from "../pages/200-drawing-office/06-appearance";
-import { build as paint } from "../pages/200-drawing-office/07-paint";
+import { build as paint } from "../pages/200-drawing-office/07b-paint-banked";
 import { build as repeats } from "../pages/200-drawing-office/08-repeats";
 import { build as blends } from "../pages/200-drawing-office/09-blends";
 import { build as typepath } from "../pages/200-drawing-office/10-typepath";

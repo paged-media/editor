@@ -182,6 +182,45 @@ export class ShowcaseDoc {
    *  the cheap pre-reads that make insertText recovery decidable. */
   static replyLossSeen = false;
   private preInsertChars: number | null = null;
+  private preMintIds: Set<string> | null = null;
+
+  /** Wire op → the scene kind it mints, for reply-loss re-discovery. */
+  static readonly MINT_KINDS: Record<string, string> = {
+    insertTextFrame: "textFrame",
+    insertFrame: "rectangle",
+    insertOval: "oval",
+    insertLine: "graphicLine",
+    insertPath: "polygon",
+  };
+
+  /** Every scene id of one kind — the re-discovery diff's raw list. */
+  private async sceneIds(kind: string): Promise<string[]> {
+    return this.page.evaluate(async (k) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: { sceneTree: () => Promise<Array<{ kind: string; id: string; children?: unknown[] }>> };
+          };
+        }
+      ).__canvas;
+      const roots = (await c.client.sceneTree()) as Array<{
+        kind: string;
+        id: string;
+        children?: Array<{ kind: string; id: string }>;
+      }>;
+      const out: string[] = [];
+      const walk = (nodes: Array<{ kind: string; id: string; children?: unknown }>) => {
+        for (const n of nodes) {
+          if (n.kind === k) out.push(n.id);
+          if (Array.isArray((n as { children?: unknown[] }).children)) {
+            walk((n as { children: Array<{ kind: string; id: string }> }).children);
+          }
+        }
+      };
+      walk(roots);
+      return out;
+    }, kind);
+  }
 
   /** One unraced wire send — the recovery path's retry lane. */
   private async mutateOnce(op: string, args: unknown): Promise<unknown> {
@@ -202,6 +241,12 @@ export class ShowcaseDoc {
 
   async mutate(op: string, args: unknown): Promise<unknown> {
     this.preInsertChars = null;
+    this.preMintIds = null;
+    if (ShowcaseDoc.replyLossSeen && ShowcaseDoc.MINT_KINDS[op]) {
+      this.preMintIds = new Set(
+        await this.sceneIds(ShowcaseDoc.MINT_KINDS[op]).catch(() => []),
+      );
+    }
     if (ShowcaseDoc.replyLossSeen && op === "insertText") {
       const a = args as { storyId?: string };
       if (typeof a?.storyId === "string") {
@@ -233,12 +278,21 @@ export class ShowcaseDoc {
     // if the probe hangs too, the worker is deadlocked. Either way the
     // failure is diagnosed in 100 s instead of a silent 25-minute
     // timeout. No retry — the op may have applied.
+    const stallMs = Number(process.env.ANNUAL_STALL_MS ?? 90_000);
+    if (process.env.ANNUAL_TRACE) {
+      // eslint-disable-next-line no-console
+      console.log(`[trace-race] arming ${stallMs}ms for ${op}`);
+    }
     const raced = await Promise.race([
       rawMutate(this.page, { op, args }).then((r) => ({ kind: "reply" as const, r })),
       new Promise<{ kind: "stall" }>((resolve) =>
-        setTimeout(() => resolve({ kind: "stall" }), 90_000),
+        setTimeout(() => resolve({ kind: "stall" }), stallMs),
       ),
     ]);
+    if (process.env.ANNUAL_TRACE) {
+      // eslint-disable-next-line no-console
+      console.log(`[trace-race] settled ${raced.kind} for ${op}`);
+    }
     if (raced.kind === "stall") {
       const probe = await Promise.race([
         this.page
@@ -289,6 +343,23 @@ export class ShowcaseDoc {
         );
         if (now === expected) return null;
         return this.mutateOnce(op, args);
+      }
+      // Minting ops recover by RE-DISCOVERY: the op may have applied
+      // with its reply lost, so the scene is diffed for exactly one new
+      // element of the minted kind — one → that IS the created id;
+      // none → the op never landed, retry once; several → ambiguous,
+      // fail diagnosed. Pre-lists are captured lazily once a loss has
+      // been seen (the adaptive pre-read pattern insertText uses).
+      const mintKind = ShowcaseDoc.MINT_KINDS[op];
+      if (mintKind && this.preMintIds !== null) {
+        const after = await this.sceneIds(mintKind);
+        const fresh = after.filter((id) => !this.preMintIds?.has(id));
+        // eslint-disable-next-line no-console
+        console.log(
+          `[reply-lost] ${op} — ${fresh.length} new ${mintKind}(s) found ${fresh.length === 1 ? "(recovered id)" : fresh.length === 0 ? "(retrying once)" : "(ambiguous)"}`,
+        );
+        if (fresh.length === 1) return fresh[0];
+        if (fresh.length === 0) return this.mutateOnce(op, args);
       }
       throw new Error(
         `mutation ${op} stalled 90s with worker ALIVE (reply lost) — args ${JSON.stringify(args)?.slice(0, 200)}`,

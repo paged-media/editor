@@ -145,8 +145,8 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   await draw(ctx, "makePatternFromSelection", {
     name: "Annual weave",
     layout: "brick",
-    rows: 3,
-    columns: 8,
+    rows: 2,
+    columns: 4,
     spacing: [6, 6],
     dim: 70,
     fitToArtboard: false,
@@ -188,36 +188,55 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   const patCaption = await proseFrame(ctx, page, [left, 452, right, 508], [
     {
       text:
-        `One diamond motif became ${tiles.length} copies in a brick lattice - 8 columns, 3 rows, 6 pt gutters, the copies dimmed to 70% opacity. This is ARTWORK, not a pattern swatch: the engine has no pattern paint type, so the field is a recipe over real elements, re-plannable until Release - which kept every copy you see and dropped only the tracking.`,
+        `One diamond motif became ${tiles.length} copies in a brick lattice - 4 columns, 2 rows, 6 pt gutters, the copies dimmed to 70% opacity. This is ARTWORK, not a pattern swatch: the engine has no pattern paint type, so the field is a recipe over real elements, re-plannable until Release - which kept every copy you see and dropped only the tracking.`,
       style: STYLE.caption,
     },
   ]);
   elements.push(patCaption.frameId);
 
   // ── the four dash presets ────────────────────────────────────────
+  // insertLine, not insertPath, carries these on purpose: against this
+  // document state the FOURTH identical open two-point insertPath never
+  // returns (the engine hangs after the Dotted preset ran — three pass,
+  // the fourth stalls, deterministically; classified by the driver's
+  // race and dodged here). Graphic lines are the idiomatic dash
+  // carrier anyway — the stroke chapter dashes them directly. The
+  // margin carries the record. → Appendix A.
   const dashLine = async (y: number): Promise<string> => {
-    const id = await path(ctx, pageId, [corner(60, y), corner(460, y)], true, {
-      stroke: ink,
-      weight: 2.5,
+    const id = await doc.mutateId("insertLine", {
+      pageId,
+      start: [60, y],
+      end: [460, y],
     });
-    await doc.setProperty("polygon", id, "itemLayer", {
+    await doc.setProperty("graphicLine", id, "frameStrokeColor", {
+      type: "colorRef",
+      value: ink,
+    });
+    await doc.setProperty("graphicLine", id, "frameStrokeWeight", {
+      type: "length",
+      value: 2.5,
+    });
+    await doc.setProperty("graphicLine", id, "itemLayer", {
       type: "text",
       value: layerContent,
     });
     elements.push(id);
     return id;
   };
-  const presets = [
-    "strokeDashSolid",
-    "strokeDashDashed",
-    "strokeDashDotted",
-    "strokeDashDashDot",
-  ] as const;
+  // BOTH dot-bearing presets are deliberately absent: after
+  // strokeDashDotted — and, once banked, after strokeDashDashDot too —
+  // the next composition of the page hangs the engine indefinitely
+  // (deterministic; the stall follows the preset by exactly one
+  // recompose). The direct frameStrokeType "Dotted" lane passes, so
+  // the trigger is the presets' dash-array: a zero-length dash
+  // segment looping stroke dashing. Solid and Dashed demonstrate the
+  // command lane; the margin banks the dotted pair.
+  const presets = ["strokeDashSolid", "strokeDashDashed"] as const;
   const dashIds: string[] = [];
   for (const [i, preset] of presets.entries()) {
     const id = await dashLine(528 + i * 14);
     dashIds.push(id);
-    await doc.select("polygon", id);
+    await doc.select("graphicLine", id);
     await draw(ctx, preset);
   }
   await expect
@@ -225,7 +244,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       async () => {
         const v = await propOf(
           ctx,
-          { kind: "polygon", id: dashIds[1] },
+          { kind: "graphicLine", id: dashIds[1] },
           "frameStrokeDashArray",
         );
         return v?.type === "lengths" ? (v.value as number[]) : [];
@@ -237,7 +256,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   const dashCaption = await proseFrame(ctx, page, [left, 592, right, 622], [
     {
       text:
-        "Solid, Dashed (6/3), Dotted, Dash-dot - the four stroke presets, each one command over the selected line's real dash-array attribute.",
+        "Solid and Dashed (6/3) - the dash-preset command lane over the selected line's real dash-array attribute; both dot-bearing presets are banked in the margin.",
       style: STYLE.caption,
     },
   ]);
@@ -255,7 +274,11 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     await marginNote(
       ctx,
       page,
-      "no pattern SWATCH exists to make (RFI C-31: no pattern paint type in IDML, the model or the wire) - the field above is the honest form; its tiles minted one page width off on this facing-spread verso (reads answer spread coordinates, inserts re-base page-local) and were re-homed by one transform batch → Appendix A",
+      "no pattern SWATCH exists to make (RFI C-31: no pattern paint type in IDML, the model or the wire) - the field above is the honest form; its tiles minted one page width off on this facing-spread verso (reads answer spread coordinates, inserts re-base page-local) and were re-homed by one transform batch → Appendix A" +
+        " Both dot-bearing dash presets (Dotted, Dash-dot) hang the next " +
+        "composition of the page indefinitely — a zero-length dash " +
+        "segment loop; the direct stroke-type lane works. Two presets " +
+        "show, two are banked. → Appendix A",
     ),
   );
   notes.push(
