@@ -117,7 +117,11 @@ export class ShowcaseDoc {
         (globalThis as unknown as { __canvas?: { ready?: boolean } }).__canvas
           ?.ready === true,
       null,
-      { timeout: 120_000 },
+      // 12 min, not 2: opening a checkpoint is parse + FIRST COMPOSE,
+      // and composition cost scales with authored content — the
+      // ninety-page document with the full drawing office aboard blew
+      // the two-minute wait at the load door itself.
+      { timeout: 720_000 },
     );
     const count = await this.page.evaluate(
       () =>
