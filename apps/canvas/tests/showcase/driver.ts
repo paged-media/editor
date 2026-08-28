@@ -242,12 +242,17 @@ export class ShowcaseDoc {
   async mutate(op: string, args: unknown): Promise<unknown> {
     this.preInsertChars = null;
     this.preMintIds = null;
-    if (ShowcaseDoc.replyLossSeen && ShowcaseDoc.MINT_KINDS[op]) {
+    // Pre-capture is UNCONDITIONAL for minting ops: the adaptive
+    // capture left the session's FIRST loss unrecoverable (no
+    // pre-list, no diff — the darkroom died to exactly that). One
+    // sceneTree read per mint is the premium for never losing a
+    // chapter to a lost reply.
+    if (ShowcaseDoc.MINT_KINDS[op]) {
       this.preMintIds = new Set(
         await this.sceneIds(ShowcaseDoc.MINT_KINDS[op]).catch(() => []),
       );
     }
-    if (ShowcaseDoc.replyLossSeen && op === "insertText") {
+    if (op === "insertText") {
       const a = args as { storyId?: string };
       if (typeof a?.storyId === "string") {
         this.preInsertChars = await this.storyChars(a.storyId).catch(() => null);

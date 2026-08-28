@@ -45,7 +45,7 @@
 // chapter without rebuilding the world. CI never sets it.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
@@ -312,6 +312,20 @@ export async function runChapter(page: Page, spec: ChapterSpec): Promise<void> {
       png.length,
       `page ${i + 1} went blank after chapter ${spec.id}'s checkpoint cycle`,
     ).toBeGreaterThan(600);
+  }
+
+  // A chapter that RUNS invalidates every LATER checkpoint — they were
+  // built on a document that no longer exists, and a resumed run that
+  // picked one up would chain stale content (measured: cascaded specs
+  // spent 17 minutes building on a predecessor from an older run).
+  if (!isSolo(spec)) {
+    const ids = discoverChapterIds();
+    for (const later of ids.slice(ids.indexOf(spec.id) + 1)) {
+      const stale = checkpointPath(later);
+      if (existsSync(stale)) unlinkSync(stale);
+      const staleFragment = join(LEDGER_DIR, `${later}.json`);
+      if (existsSync(staleFragment)) unlinkSync(staleFragment);
+    }
   }
 
   const fragment: ChapterFragment = {
