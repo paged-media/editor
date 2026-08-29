@@ -98,6 +98,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   // builds on died at the split boundary (AUTHORING rule 3), so it
   // imports the same workbook itself before touching the grid.
   {
+    await openPanel(page, WORKBOOK_PANEL);
     const booted = await importWorkbook(page, FORMULAS_XLSX, notes);
     expect(booted, "the chain re-imports the formulas workbook").toBe(true);
     // …and re-opens the GRID session too: enterCell drives the K-1
