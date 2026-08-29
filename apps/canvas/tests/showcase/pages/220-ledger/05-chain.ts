@@ -50,6 +50,7 @@ import { LAYER, STYLE, TRIM_W_PT, isRecto, p } from "../../names-annual";
 import { partitionByPage, removeRefs } from "../../plugin-support";
 import type { PageContext, PageReport } from "../../types";
 import {
+  SHEET_CMD,
   GRID_PANEL,
   WORKBOOK_PANEL,
   enterCell,
@@ -93,13 +94,6 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   ]);
   elements.push(head.frameId);
 
-  // ── author the data: three spills from three anchors ─────────────
-  // The grid panel shares a dock group with the workbook panel —
-  // re-activate its tab before the formula-bar drive.
-  await openPanel(page, GRID_PANEL);
-  const svg = page.locator("[data-grid-svg-root]");
-  await expect(svg, "the grid panel is live").toBeVisible({ timeout: 120_000 });
-  await enterCell(page, 7, 0, `=SEQUENCE(${DAYS})`);
   // This module opens the 223 spec: the formulas workbook session it
   // builds on died at the split boundary (AUTHORING rule 3), so it
   // imports the same workbook itself before touching the grid.
@@ -115,6 +109,14 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       "the grid panel is live for the chain's formulas",
     ).toBeVisible({ timeout: 120_000 });
   }
+
+  // ── author the data: three spills from three anchors ─────────────
+  // The grid panel shares a dock group with the workbook panel —
+  // re-activate its tab before the formula-bar drive.
+  await openPanel(page, GRID_PANEL);
+  const svg = page.locator("[data-grid-svg-root]");
+  await expect(svg, "the grid panel is live").toBeVisible({ timeout: 120_000 });
+  await enterCell(page, 7, 0, `=SEQUENCE(${DAYS})`);
   await enterCell(page, 7, 1, `=SEQUENCE(${DAYS},1,1840,7)`);
   await enterCell(page, 7, 2, `=SEQUENCE(${DAYS},1,620,13)`);
 
