@@ -60,7 +60,15 @@ import {
   tableAt,
   treeElements,
   type El,
+  importWorkbook,
 } from "./00-support";
+import { resolve as chainResolve } from "node:path";
+import { fileURLToPath as chainFileUrl } from "node:url";
+
+const FORMULAS_XLSX = chainResolve(
+  chainFileUrl(import.meta.url),
+  "..", "..", "..", "..", "e2e", "harness", "sheet-02-formulas.xlsx",
+);
 
 /** Frame A (p100, verso): deliberately too short for 25 rows. */
 const BOX_A: [number, number, number, number] = [60, 152, 268, 420];
@@ -92,6 +100,13 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   const svg = page.locator("[data-grid-svg-root]");
   await expect(svg, "the grid panel is live").toBeVisible({ timeout: 120_000 });
   await enterCell(page, 7, 0, `=SEQUENCE(${DAYS})`);
+  // This module opens the 223 spec: the formulas workbook session it
+  // builds on died at the split boundary (AUTHORING rule 3), so it
+  // imports the same workbook itself before touching the grid.
+  {
+    const booted = await importWorkbook(page, FORMULAS_XLSX, notes);
+    expect(booted, "the chain re-imports the formulas workbook").toBe(true);
+  }
   await enterCell(page, 7, 1, `=SEQUENCE(${DAYS},1,1840,7)`);
   await enterCell(page, 7, 2, `=SEQUENCE(${DAYS},1,620,13)`);
 
