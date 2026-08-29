@@ -52,8 +52,14 @@ import {
   settleNewElements,
   treeElements,
   type El,
+  importWorkbook,
 } from "./00-support";
 
+import { resolve as pathResolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __pourDir = pathResolve(fileURLToPath(import.meta.url), "..");
+const WORKBOOK = pathResolve(__pourDir, "..", "..", "assets", "annual-charts.xlsx");
 const RANGE = "A1:E5";
 
 export async function build(ctx: PageContext): Promise<PageReport> {
@@ -85,6 +91,13 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   // lower through the COMMAND lane — the same `session.lowerSelection()`
   // the panel button drives.
   await openPanel(page, WORKBOOK_PANEL);
+  // The chapter SPLIT put the chart wall and this pour in different
+  // specs, and a workbook session is exactly the kind of state a
+  // checkpoint boundary kills (AUTHORING rule 3) — so this half
+  // imports the same workbook itself instead of assuming its sibling's
+  // session survived.
+  const booted = await importWorkbook(page, WORKBOOK, notes);
+  expect(booted, "this half re-imports the chart wall's workbook").toBe(true);
   const select = page.locator("[data-sheet-select]");
   await expect(select, "the sheet picker is live").toBeVisible({ timeout: 120_000 });
   await select.selectOption({ index: 0 });
