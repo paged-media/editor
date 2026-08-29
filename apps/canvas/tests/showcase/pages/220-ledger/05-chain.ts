@@ -106,6 +106,14 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   {
     const booted = await importWorkbook(page, FORMULAS_XLSX, notes);
     expect(booted, "the chain re-imports the formulas workbook").toBe(true);
+    // …and re-opens the GRID session too: enterCell drives the K-1
+    // grid, whose SceneLayer died at the same boundary the workbook
+    // session did.
+    await doc.runCommand(`${SHEET_CMD}.openGrid`);
+    await expect(
+      page.locator("[data-grid-svg-root]"),
+      "the grid panel is live for the chain's formulas",
+    ).toBeVisible({ timeout: 120_000 });
   }
   await enterCell(page, 7, 1, `=SEQUENCE(${DAYS},1,1840,7)`);
   await enterCell(page, 7, 2, `=SEQUENCE(${DAYS},1,620,13)`);
