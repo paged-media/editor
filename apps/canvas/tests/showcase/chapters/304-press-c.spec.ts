@@ -17,24 +17,24 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// Part III divider + Ch.20 opening (p119–p122): the divider and opener
-// state the exits-honestly thesis, and the marks plate draws trim/bleed/
-// marks anatomy as native geometry. Pure authoring — the chapter's three
-// whole-book door runs live in the two specs after this one.
+// Ch.20 closing (p125–p126): the loss ledger and the exits. The ledger
+// runs a full IDML projection of the finished book in-module and prints
+// what the format could not carry — a whole-book door, so this spec
+// buys the same enlarged budget its sibling does — and the prose close
+// walks every exit the book actually uses.
 
 import { annualChapter } from "../chapter";
 import { p } from "../names-annual";
 
-import { build as divider } from "../pages/300-press/01-divider";
-import { build as opener } from "../pages/300-press/02-opener";
-import { build as marks } from "../pages/300-press/03-marks";
+import { build as losses } from "../pages/300-press/06-losses";
+import { build as exits } from "../pages/300-press/07-exits";
 
 annualChapter({
-  id: "300-press",
-  title: "Part III divider - Ch.20 Imposition & Proof",
+  id: "304-press-c",
+  title: "Ch.20 Imposition & Proof - the losses and the exits",
+  budgetMinutes: 70,
   modules: [
-    { id: "pr-divider", pages: [p(119), p(120)], build: divider },
-    { id: "pr-opener", pages: [p(121)], build: opener },
-    { id: "pr-marks", pages: [p(122)], build: marks },
+    { id: "pr-losses", pages: [p(125)], build: losses },
+    { id: "pr-exits", pages: [p(126)], build: exits },
   ],
 });

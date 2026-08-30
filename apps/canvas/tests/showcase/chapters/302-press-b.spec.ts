@@ -17,24 +17,26 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// Part III divider + Ch.20 opening (p119–p122): the divider and opener
-// state the exits-honestly thesis, and the marks plate draws trim/bleed/
-// marks anatomy as native geometry. Pure authoring — the chapter's three
-// whole-book door runs live in the two specs after this one.
+// Ch.20 continued (p123–p124): the preflight and the container. Both
+// pages run a real door over the WHOLE book in-module — a pdf17 export
+// session that answers for all 134 pages, then the container part doors
+// as a list/write/read round trip — which is why they carry a 70-minute
+// budget instead of the authoring default. Ch.20 originally ran as one
+// spec and outran 40 minutes twice; the exports, not the authoring, are
+// what the clock was measuring.
 
 import { annualChapter } from "../chapter";
 import { p } from "../names-annual";
 
-import { build as divider } from "../pages/300-press/01-divider";
-import { build as opener } from "../pages/300-press/02-opener";
-import { build as marks } from "../pages/300-press/03-marks";
+import { build as preflightPage } from "../pages/300-press/04-preflight";
+import { build as container } from "../pages/300-press/05-container";
 
 annualChapter({
-  id: "300-press",
-  title: "Part III divider - Ch.20 Imposition & Proof",
+  id: "302-press-b",
+  title: "Ch.20 Imposition & Proof - the preflight and the container",
+  budgetMinutes: 70,
   modules: [
-    { id: "pr-divider", pages: [p(119), p(120)], build: divider },
-    { id: "pr-opener", pages: [p(121)], build: opener },
-    { id: "pr-marks", pages: [p(122)], build: marks },
+    { id: "pr-preflight", pages: [p(123)], build: preflightPage },
+    { id: "pr-container", pages: [p(124)], build: container },
   ],
 });

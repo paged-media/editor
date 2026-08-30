@@ -113,6 +113,13 @@ export interface ChapterSpec {
   readonly after: string | null;
   /** Expected page count on entry (the reload assertion). */
   readonly expectPages: number;
+  /**
+   * Minutes this chapter may run. Default 40 (see chapterTest). A chapter
+   * that exports the WHOLE book in-module — a full PDF or IDML pass over
+   * 134 authored pages — buys its own budget rather than borrowing from
+   * the authoring headroom.
+   */
+  readonly budgetMinutes?: number;
 }
 
 /**
@@ -138,6 +145,7 @@ export function annualChapter(decl: {
   id: string;
   title: string;
   modules: SpreadSpec[];
+  budgetMinutes?: number;
 }): void {
   const ids = discoverChapterIds();
   const at = ids.indexOf(decl.id);
@@ -152,6 +160,7 @@ export function annualChapter(decl: {
     modules: decl.modules,
     after: at === 0 ? null : ids[at - 1],
     expectPages: ANNUAL_PAGES,
+    budgetMinutes: decl.budgetMinutes,
   });
 }
 
@@ -351,7 +360,7 @@ export function chapterTest(spec: ChapterSpec): void {
     // ops therefore legitimately need ~25 min; 40 leaves headroom
     // without hiding a real hang (the driver's 90 s stall classifier
     // catches those).
-    test.setTimeout(40 * 60 * 1000);
+    test.setTimeout((spec.budgetMinutes ?? 40) * 60 * 1000);
     test(`${spec.title} @feat:package-anatomy.paged-container @level:happy`, async ({
       page,
     }) => {
