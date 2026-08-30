@@ -61,6 +61,13 @@ import {
 import { ANNUAL_PAGES } from "../names-annual";
 
 const CORE = pathResolve(OUT, "..", "..", "..", "..", "core");
+
+/**
+ * The working CMYK space this document names (set by Ch.11's colour-
+ * management page) and therefore the output intent the press pass must
+ * resolve. Same string on both sides — the document stores the NAME.
+ */
+const PRESS_PROFILE = "Paged Default CMYK";
 const BASELINE_PATH = pathResolve(OUT, "..", "tests", "showcase", "coverage-baseline.json");
 
 interface Baseline {
@@ -176,7 +183,46 @@ test.describe("annual assembly", () => {
     // The PRESS pass — PDF/X-4 with marks and bleed, the export the
     // press chapter promises "at assembly". The reading copy above
     // stays pdf17; this one carries the prepress furniture.
-    const press = await page.evaluate(async () => {
+    //
+    // First, the output intent. The colour chapter set this document's
+    // working CMYK space to a profile it registered LIVE — and that
+    // registry is session state, so a checkpoint boundary drops the
+    // bytes while the document keeps the name. X-4 refuses without a
+    // resolvable intent ("PDF/X-4 requires an output intent profile"),
+    // which is the honest engine behaviour and a finding of its own:
+    // the profile a document names must be re-registered by whoever
+    // opens it. So the assembly re-registers the same profile under
+    // the same name before asking for the press pass.
+    const iccB64 = readFileSync(
+      pathResolve(CORE, "corpus", "profiles", "default_cmyk.icc"),
+    ).toString("base64");
+    await page.evaluate(
+      async ({ name, b64 }) => {
+        const c = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                registerColorProfile: (
+                  n: string,
+                  bytes: Uint8Array,
+                ) => Promise<void>;
+              };
+            };
+          }
+        ).__canvas;
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+        await c.client.registerColorProfile(name, bytes);
+      },
+      { name: PRESS_PROFILE, b64: iccB64 },
+    );
+    notes.push(
+      `output intent — re-registered ${PRESS_PROFILE} for the press pass ` +
+        `(the live profile registry is session state; a reopened document ` +
+        `names a profile whose bytes it does not carry)`,
+    );
+    const press = await page.evaluate(async (profile: string) => {
       const c = (
         globalThis as unknown as {
           __canvas: {
@@ -190,6 +236,8 @@ test.describe("annual assembly", () => {
       ).__canvas;
       const out = await c.client.exportPdf({
         standard: "pdfx4",
+        outputIntentProfile: profile,
+        outputCondition: "Paged Default CMYK (coated, core corpus)",
         cropMarks: true,
         registrationMarks: true,
         colorBars: true,
@@ -201,7 +249,7 @@ test.describe("annual assembly", () => {
       let s = "";
       for (const b of out.bytes) s += String.fromCharCode(b);
       return { b64: btoa(s), diagnostics: out.diagnostics };
-    });
+    }, PRESS_PROFILE);
     const pressBytes = Buffer.from(press.b64, "base64");
     expect(
       pressBytes.subarray(0, 5).toString("latin1"),
