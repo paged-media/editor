@@ -2,7 +2,7 @@
   "generatedFrom": "/Users/drietsch/paged/state/registry/features",
   "registryFound": true,
   "registryRows": 575,
-  "claimedRows": 18,
+  "claimedRows": 186,
   "claims": [
     {
       "module": "fm-sections",
@@ -96,147 +96,1611 @@
       "covers": [
         "color-swatches.process-spot-tint"
       ]
+    },
+    {
+      "module": "an-divider",
+      "title": "Part I divider",
+      "pages": [
+        11,
+        12
+      ],
+      "covers": [
+        "color-swatches.fill-stroke-apply",
+        "stories-text.text.insert"
+      ]
+    },
+    {
+      "module": "an-opener",
+      "title": "Chapter 1 opener — Anatomy of This Book",
+      "pages": [
+        13
+      ],
+      "covers": [
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "an-grid",
+      "title": "The self-exposing grid + live guides",
+      "pages": [
+        14,
+        15
+      ],
+      "covers": [
+        "layout-model.guides",
+        "geometry-coordinates.geometric-bounds",
+        "effects-transparency.opacity",
+        "frames-paths.frame.insert",
+        "master-spreads-overrides.override-resolution"
+      ],
+      "notes": [
+        "guides are overlay-only by design — demonstrated live, invisible in the render (margin note on p14)",
+        "deleteGuide re-indexes the survivors' positional ids — a stale GuideSummary id addresses a different guide after a delete"
+      ]
+    },
+    {
+      "module": "an-masters",
+      "title": "Masters and the transient page",
+      "pages": [
+        16
+      ],
+      "covers": [
+        "layout-model.spreads-pages",
+        "master-spreads-overrides.apply-master-op",
+        "master-spreads-overrides.master-stamping"
+      ],
+      "notes": [
+        "page-op battery ran on a scratch page and restored the 134-page plan; master names recovered via IDML export (no name surface on the wire)"
+      ]
+    },
+    {
+      "module": "an-layers",
+      "title": "Layers — lifecycle, assignment, Arrange",
+      "pages": [
+        17
+      ],
+      "covers": [
+        "layers.ops",
+        "layers.item-assignment",
+        "layers.z-ordering"
+      ],
+      "notes": [
+        "layerRemove succeeds while the layer is occupied — the item keeps a dangling itemLayer ref; re-homed to Content here"
+      ]
+    },
+    {
+      "module": "an-apparatus",
+      "title": "Conditions and variables",
+      "pages": [
+        18
+      ],
+      "covers": [
+        "conditional-text.applied-conditions",
+        "conditional-text.condition-ops",
+        "conditional-text.visibility-filtering",
+        "sections-numbering-variables.text-variables"
+      ],
+      "notes": [
+        "text-variable inventory read from the document's designmap via the export door — no variables collection exists on the wire"
+      ]
+    },
+    {
+      "module": "lt-opener",
+      "title": "Chapter 2 opener — The Letter",
+      "pages": [
+        19
+      ],
+      "covers": [
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "lt-features",
+      "title": "The feature specimen",
+      "pages": [
+        20,
+        21
+      ],
+      "covers": [
+        "typography.ligatures-opentype",
+        "typography.capitalization",
+        "typography.position-super-subscript",
+        "typography.font-selection",
+        "typography.leading",
+        "stories-text.style-apply-range"
+      ],
+      "notes": [
+        "characterOtfFeatures is authoring metadata only — the shaper consumes discrete OTF toggles (run/character-style), and no wire door writes those discrete flags",
+        "characterCase SmallCaps passes text through unchanged (smcp not driven, P-12); AllCaps renders",
+        "paragraph-style OTFFigureStyle never reaches run resolution (paged-scene merge_below_paragraph has no otf arm) — figure-style rows rely on the style definitions only"
+      ]
+    },
+    {
+      "module": "lt-metrics",
+      "title": "Kerning, tracking, scale, skew",
+      "pages": [
+        22
+      ],
+      "covers": [
+        "typography.tracking-kerning",
+        "typography.baseline-shift",
+        "typography.scale-skew",
+        "typography.vertical-scale",
+        "typography.underline-strikethru"
+      ],
+      "notes": [
+        "optical kerning falls back to metrics (recorded limit, margin note)"
+      ]
+    },
+    {
+      "module": "pg-opener",
+      "title": "Ch.3 opener — The Paragraph",
+      "pages": [
+        23
+      ],
+      "covers": [
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "pg-knuth-plass",
+      "title": "The Knuth-Plass demonstration",
+      "pages": [
+        24,
+        25
+      ],
+      "covers": [
+        "typography.knuth-plass",
+        "typography.hyphenation",
+        "typography.justification-spacing",
+        "typography.tracking-kerning",
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "pg-keeps",
+      "title": "Keeps, breaks, drop caps and indents",
+      "pages": [
+        26
+      ],
+      "covers": [
+        "typography.drop-caps",
+        "stories-text.style-apply-range"
+      ],
+      "notes": [
+        "keep flags measured inert: paragraphKeepLinesTogether and paragraphKeepWithNext are accepted, stored, and round-trip on the wire, but setting them moved no pixels — the composer does not yet consult them when fragmenting across linked frames"
+      ]
+    },
+    {
+      "module": "st-opener",
+      "title": "Ch.4 opener — The Style",
+      "pages": [
+        27
+      ],
+      "covers": [
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "st-cascade",
+      "title": "The cascade, self-illustrated",
+      "pages": [
+        28
+      ],
+      "covers": [
+        "styles.cascade",
+        "styles.based-on-chain"
+      ]
+    },
+    {
+      "module": "st-crud",
+      "title": "Live style CRUD",
+      "pages": [
+        29
+      ],
+      "covers": [
+        "styles.paragraph.crud",
+        "styles.character.crud",
+        "styles.set-style-property"
+      ]
+    },
+    {
+      "module": "st-nested-next",
+      "title": "Nested styles and the next style",
+      "pages": [
+        30
+      ],
+      "covers": [
+        "stories-text.nested-styles",
+        "styles.next-style-overrides"
+      ]
+    },
+    {
+      "module": "st-numbering",
+      "title": "Bullets, numbering, and the list resource",
+      "pages": [
+        31
+      ],
+      "covers": [
+        "styles.bullets-numbering"
+      ],
+      "notes": []
+    },
+    {
+      "module": "st-rules-tabs",
+      "title": "Rules, tabs, and the honest margin",
+      "pages": [
+        32
+      ],
+      "covers": [
+        "styles.paragraph-rules",
+        "typography.tab-stops"
+      ]
+    },
+    {
+      "module": "st-opener",
+      "title": "Ch.5 opener — The Story",
+      "pages": [
+        33
+      ],
+      "covers": []
+    },
+    {
+      "module": "st-thread",
+      "title": "The thread — one story through four frames",
+      "pages": [
+        34,
+        35
+      ],
+      "covers": [
+        "layout-model.text-frame-chain",
+        "stories-text.text-wrap",
+        "stories-text.footnotes",
+        "stories-text.story-model"
+      ]
+    },
+    {
+      "module": "st-overset",
+      "title": "Overset + page-number fields",
+      "pages": [
+        36
+      ],
+      "covers": [
+        "stories-text.overset",
+        "stories-text.fields.insert",
+        "stories-text.page-number-markers"
+      ]
+    },
+    {
+      "module": "st-frame-prefs",
+      "title": "Text-frame preferences",
+      "pages": [
+        37
+      ],
+      "covers": [
+        "layout-model.vertical-justification",
+        "layout-model.first-baseline-offset"
+      ]
+    },
+    {
+      "module": "st-autosize",
+      "title": "Auto-sizing — five modes",
+      "pages": [
+        38
+      ],
+      "covers": [
+        "layout-model.frame-autosizing"
+      ]
+    },
+    {
+      "module": "st-wrap",
+      "title": "The wrap catalog",
+      "pages": [
+        39
+      ],
+      "covers": [
+        "stories-text.text-wrap",
+        "frames-paths.path.insert"
+      ]
+    },
+    {
+      "module": "st-anchored",
+      "title": "Anchored objects — one insert, two banked refusals",
+      "pages": [
+        40
+      ],
+      "covers": [
+        "stories-text.text.insert"
+      ]
+    },
+    {
+      "module": "sc-opener",
+      "title": "Ch.6 opener — Scripts of the World",
+      "pages": [
+        41
+      ],
+      "covers": []
+    },
+    {
+      "module": "sc-bidi",
+      "title": "Bidirectional text",
+      "pages": [
+        42
+      ],
+      "covers": [
+        "typography.bidi",
+        "typography.font-selection"
+      ]
+    },
+    {
+      "module": "sc-vertical",
+      "title": "CJK vertical writing",
+      "pages": [
+        43,
+        44
+      ],
+      "covers": [
+        "typography.cjk-vertical-writing"
+      ],
+      "notes": [
+        "ruby + kenten rows deliberately unclaimed (renderer stages partial); limits recorded as margin notes on p43/p44"
+      ]
+    },
+    {
+      "module": "ap-navigation",
+      "title": "Ch.7 opener — navigation, live where a door exists",
+      "pages": [
+        45
+      ],
+      "covers": [
+        "cross-references-hyperlinks.hyperlinks",
+        "cross-references-hyperlinks.bookmarks"
+      ],
+      "notes": [
+        "ENGINE FINDING: both live insertHyperlink calls minted the same id (Hyperlink/ueeeafc) — the wire's mint scans page items only and a hyperlink adds none, so successive inserts collide",
+        "hyperlinks 3 -> 5 (2 authored live, both URL destinations); bookmarks 3, all fixture-authored"
+      ]
+    },
+    {
+      "module": "ap-destination",
+      "title": "The destination side and the index-tab system",
+      "pages": [
+        46
+      ],
+      "covers": [
+        "cross-references-hyperlinks.cross-references",
+        "cross-references-hyperlinks.index"
+      ],
+      "notes": [
+        "indexTopics 10 (collection live); cross-reference verified via export (1 source marker) + carrier hyperlink xref-overleaf — the crossReferences collection reads a never-populated designmap vector and lists 0"
+      ]
+    },
+    {
+      "module": "ob-opener",
+      "title": "Ch.8 opener — the z-order ladder",
+      "pages": [
+        47
+      ],
+      "covers": [
+        "layers.z-ordering",
+        "frames-paths.frame.insert"
+      ],
+      "notes": [
+        "reorderElement A -> front: repainted",
+        "reorderElement B -> front (over A): repainted",
+        "reorderElement A -> forward (back over B): repainted",
+        "reorderElement A -> backward (under B again): repainted",
+        "reorderElement E -> back: repainted",
+        "reorderElement D -> index 0 (absolute back): repainted"
+      ]
+    },
+    {
+      "module": "ob-transforms",
+      "title": "Transforms and corners",
+      "pages": [
+        48,
+        49
+      ],
+      "covers": [
+        "geometry-coordinates.item-transform",
+        "frames-paths.corner-options",
+        "frames-paths.corner-options-polygon"
+      ],
+      "notes": [
+        "transform pivot: single-knob writes pivot about the item-space origin (translation preserved) — every tile pre-seeds t = c - Mc; frameTransform replace semantics proved by readback"
+      ]
+    },
+    {
+      "module": "ob-strokes",
+      "title": "Stroke anatomy",
+      "pages": [
+        50
+      ],
+      "covers": [
+        "frames-paths.stroke-weight-caps-joins",
+        "frames-paths.stroke-dashed",
+        "frames-paths.stroke-gap-color",
+        "frames-paths.stroke-alignment",
+        "frames-paths.arrowheads"
+      ],
+      "notes": [
+        "8 arrowhead kinds enumerated live; miter limit demonstrated biting (12 keeps a 24-degree spike, 1.5 shears it); caps and alignment are rectangle-addressed on the wire, arrowheads graphic-line-only"
+      ]
+    },
+    {
+      "module": "ob-paths",
+      "title": "Path topology and the pathfinder",
+      "pages": [
+        51
+      ],
+      "covers": [
+        "frames-paths.path.insert",
+        "frames-paths.path.close",
+        "frames-paths.path.join",
+        "frames-paths.pathfinder-boolean",
+        "frames-paths.pathfinder-verbs",
+        "frames-paths.planar-arrangement",
+        "geometry-coordinates.path-topology-ops",
+        "geometry-coordinates.bezier-path-geometry"
+      ],
+      "notes": [
+        "all 10 topology ops and all 11 planar ops (4 boolean modes, 6 region verbs, faces) applied on-page with before/after pairs; edit positions and face ids read back, never guessed"
+      ]
+    },
+    {
+      "module": "ob-grouping",
+      "title": "Grouping, nesting and the dressed frame",
+      "pages": [
+        52
+      ],
+      "covers": [
+        "frames-paths.groups",
+        "frames-paths.nested-content",
+        "styles.object.crud"
+      ],
+      "notes": [
+        "deleteFrame on the nested child refused as expected: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: invalid value for FrameTransform on Oval(\\\"ueeeba7\\\"): B-18: the item is pasted into a container — release it before removing\"}}",
+        "object style definition door closed as recorded: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: property FrameFillColor is not supported on Layer(\\\"ObjectStyle/Annual Exhibit Frame\\\")\"}}"
+      ]
+    },
+    {
+      "module": "il-opener",
+      "title": "Chapter 9 opener — Ink & Light",
+      "pages": [
+        53
+      ],
+      "covers": [
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "il-modes",
+      "title": "The sixteen blend modes",
+      "pages": [
+        54,
+        55
+      ],
+      "covers": [
+        "effects-transparency.blend-modes"
+      ]
+    },
+    {
+      "module": "il-light",
+      "title": "Gradients, opacity, masks",
+      "pages": [
+        56
+      ],
+      "covers": [
+        "color-swatches.gradients",
+        "color-swatches.fill-stroke-apply",
+        "effects-transparency.opacity",
+        "effects-transparency.opacity-mask"
+      ],
+      "notes": [
+        "sweep/conic gradient paint exists in the renderer with no authoring door — GradientSpec is Linear|Radial (margin-noted)",
+        "opacity masks certified on the CPU lane; IDML export names masked items as lost (margin-noted; the assembly asserts the loss list)"
+      ]
+    },
+    {
+      "module": "fx-opener",
+      "title": "Chapter 10 opener — The Effects",
+      "pages": [
+        57
+      ],
+      "covers": [
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "fx-families",
+      "title": "The contact sheet and the heroes",
+      "pages": [
+        58,
+        59
+      ],
+      "covers": [
+        "effects-transparency.drop-shadow",
+        "effects-transparency.inner-shadow",
+        "effects-transparency.glows",
+        "effects-transparency.bevel-emboss",
+        "effects-transparency.satin",
+        "effects-transparency.feather",
+        "effects-transparency.gradient-feather"
+      ]
+    },
+    {
+      "module": "fx-parameters",
+      "title": "The parameter table",
+      "pages": [
+        60
+      ],
+      "covers": [
+        "effects-transparency.drop-shadow",
+        "effects-transparency.inner-shadow",
+        "effects-transparency.glows",
+        "effects-transparency.bevel-emboss",
+        "effects-transparency.satin",
+        "effects-transparency.feather"
+      ],
+      "notes": [
+        "satin invert: registry records it as ignored, but the inverted tile renders visibly darker on this build — record drift, margin-noted",
+        "transparency-group raster bounds clip wide overhangs that PDF keeps (margin-noted, recorded defect)",
+        "feather compositing darkens the vermilion fill at some width/corner settings on this build — engine render behaviour, shown as rendered"
+      ]
+    },
+    {
+      "module": "co-opener",
+      "title": "Ch.11 opener — The Colour",
+      "pages": [
+        61
+      ],
+      "covers": [
+        "color-swatches.fill-stroke-apply",
+        "color-swatches.process-spot-tint",
+        "color-swatches.lab-mixed-ink"
+      ]
+    },
+    {
+      "module": "co-crud",
+      "title": "Minting ink — swatch and group CRUD",
+      "pages": [
+        62
+      ],
+      "covers": [
+        "color-swatches.swatch.crud",
+        "color-swatches.color-groups",
+        "color-swatches.character-fill",
+        "color-swatches.overprint",
+        "color-swatches.fill-stroke-apply"
+      ]
+    },
+    {
+      "module": "co-ase",
+      "title": "The .ase round trip",
+      "pages": [
+        63
+      ],
+      "covers": [
+        "color-swatches.swatch.crud",
+        "color-swatches.color-groups"
+      ]
+    },
+    {
+      "module": "co-management",
+      "title": "The prepress bench — colour management",
+      "pages": [
+        64
+      ],
+      "covers": [
+        "color-swatches.icc-cmm",
+        "color-swatches.ink-manager",
+        "color-swatches.document-defaults"
+      ]
+    },
+    {
+      "module": "tb-opener",
+      "title": "Ch.12 opener — The Table",
+      "pages": [
+        65
+      ],
+      "covers": []
+    },
+    {
+      "module": "tb-ledger",
+      "title": "One table, two pages — the repeating bands",
+      "pages": [
+        66,
+        67
+      ],
+      "covers": [
+        "tables.model",
+        "tables.cell-composition",
+        "tables.row-col-sizing",
+        "tables.spans",
+        "tables.header-footer-repeat",
+        "tables.borders-strokes",
+        "tables.style-cascade",
+        "tables.alternating-fills"
+      ]
+    },
+    {
+      "module": "tb-anatomy",
+      "title": "Cell anatomy — the property paths",
+      "pages": [
+        68
+      ],
+      "covers": [
+        "tables.model",
+        "tables.cell-composition",
+        "tables.cell-vertical-justification",
+        "tables.borders-strokes"
+      ],
+      "notes": [
+        "cellFillTint: recorded on the wire and in the model, but the cell fill composites at full strength on this build — measured on this page (the tinted cell matches the untinted one); edge-stroke tints render correctly"
+      ]
+    },
+    {
+      "module": "tb-structure",
+      "title": "Structure ops — the grid rebuilt live",
+      "pages": [
+        69
+      ],
+      "covers": [
+        "tables.model",
+        "tables.cell-composition"
+      ]
+    },
+    {
+      "module": "tb-styles",
+      "title": "Table and cell styles",
+      "pages": [
+        70
+      ],
+      "covers": [
+        "tables.model",
+        "tables.style-cascade",
+        "tables.cell-composition"
+      ]
+    },
+    {
+      "module": "pi-opener",
+      "title": "Ch.13 opener — The Picture",
+      "pages": [
+        71
+      ],
+      "covers": [
+        "images-graphics.placed-images"
+      ]
+    },
+    {
+      "module": "pi-formats",
+      "title": "The format gallery",
+      "pages": [
+        72,
+        73
+      ],
+      "covers": [
+        "images-graphics.placed-images",
+        "images-graphics.cmyk-jpeg-icc",
+        "images-graphics.eps-decode"
+      ],
+      "notes": [
+        "EPS bytes: the store accepted them (the wire is format-agnostic); the RENDER declines the decode and falls back to the frame's own fill — which is the exhibit"
+      ]
+    },
+    {
+      "module": "pi-fitting",
+      "title": "Fitting and the inline lane",
+      "pages": [
+        74
+      ],
+      "covers": [
+        "images-graphics.frame-fitting",
+        "images-graphics.placed-images",
+        "images-graphics.missing-image-placeholder"
+      ]
+    },
+    {
+      "module": "do-divider",
+      "title": "Part II divider",
+      "pages": [
+        75,
+        76
+      ],
+      "covers": [
+        "color-swatches.fill-stroke-apply",
+        "stories-text.text.insert"
+      ]
+    },
+    {
+      "module": "do-opener",
+      "title": "Ch.14 opener — the crest, lowered to native paths",
+      "pages": [
+        77
+      ],
+      "covers": [
+        "plugin-draw.svg-io",
+        "plugin-draw.compound-paths",
+        "plugin-draw.bundle-manifest",
+        "plugin-platform.importer-exporter",
+        "editor-shell.plugin-bundles"
+      ],
+      "notes": []
+    },
+    {
+      "module": "do-drafting",
+      "title": "The drafting instruments",
+      "pages": [
+        78
+      ],
+      "covers": [
+        "plugin-draw.tool-wave-2",
+        "plugin-draw.geometry-bezier",
+        "plugin-draw.geometry-rdp",
+        "plugin-draw.path-weld",
+        "plugin-draw.pro-path-toolset",
+        "plugin-draw.pen-machine",
+        "plugin-draw.anchor-add",
+        "plugin-draw.anchor-delete",
+        "plugin-draw.anchor-convert"
+      ],
+      "notes": []
+    },
+    {
+      "module": "do-pathfinder",
+      "title": "The pathfinder wall",
+      "pages": [
+        79
+      ],
+      "covers": [
+        "plugin-draw.pro-path-toolset"
+      ],
+      "notes": []
+    },
+    {
+      "module": "do-livepaint",
+      "title": "The builder and the bucket",
+      "pages": [
+        80
+      ],
+      "covers": [
+        "plugin-draw.shape-builder"
+      ],
+      "notes": [
+        "plugin-draw.live-paint is registry-partial — demonstrated on this page, deliberately not claimed"
+      ]
+    },
+    {
+      "module": "do-appearance",
+      "title": "The appearance stack",
+      "pages": [
+        81
+      ],
+      "covers": [
+        "plugin-draw.appearance",
+        "plugin-draw.graphic-styles"
+      ],
+      "notes": []
+    },
+    {
+      "module": "do-paint",
+      "title": "Paint — banked in-chain, proven in isolation",
+      "pages": [
+        82
+      ],
+      "covers": []
+    },
+    {
+      "module": "do-repeats",
+      "title": "Repeats and symbols",
+      "pages": [
+        83
+      ],
+      "covers": [
+        "plugin-draw.repeats"
+      ],
+      "notes": [
+        "updateRepeat refused on this engine — [media.paged.draw] media.paged.draw.command.updateRepeat: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 55: invalid value for FrameTransform on Group(\\\"ueeedb9\\\"): a member already belongs to another group\"}}}",
+        "redefineSymbol deliberately NOT run: its per-instance rebuild rides the one-batch dissolve-and-regroup this engine refuses (recorded for updateRepeat on this page), and a half-applied rebuild strands artwork",
+        "plugin-draw.symbols is registry-partial — demonstrated on this page, deliberately not claimed"
+      ]
+    },
+    {
+      "module": "do-blends",
+      "title": "Blends and objects on a path",
+      "pages": [
+        84
+      ],
+      "covers": [
+        "plugin-draw.blends",
+        "plugin-draw.objects-on-path"
+      ],
+      "notes": [
+        "reverseBlendSpine refused on this engine — [media.paged.draw] media.paged.draw.command.reverseBlendSpine: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 43: invalid value for FrameTransform on Group(\\\"ueeee2a\\\"): a member already belongs to another group\"}}}"
+      ]
+    },
+    {
+      "module": "do-typepath",
+      "title": "Type on a path, corners and kin",
+      "pages": [
+        85
+      ],
+      "covers": [
+        "frames-paths.text-on-path",
+        "plugin-draw.live-corners",
+        "plugin-draw.select-same"
+      ],
+      "notes": []
+    },
+    {
+      "module": "do-plate",
+      "title": "The image-trace plate",
+      "pages": [
+        86
+      ],
+      "covers": [
+        "images-graphics.placed-images",
+        "plugin-draw.opacity-mask-commands",
+        "effects-transparency.opacity-mask"
+      ],
+      "notes": [
+        "plugin-draw.image-trace is registry-partial — demonstrated as this plate, deliberately not claimed"
+      ]
+    },
+    {
+      "module": "dk-opener",
+      "title": "Ch.15 opener — The Darkroom",
+      "pages": [
+        87
+      ],
+      "covers": []
+    },
+    {
+      "module": "dk-contact-sheet",
+      "title": "The kernel contact sheet",
+      "pages": [
+        88,
+        89
+      ],
+      "covers": [
+        "image.editor.adjust-breadth",
+        "image.editor.filters",
+        "image.editor.resample",
+        "image.kernel.breadth-2026-08",
+        "plugin-platform.importer-exporter",
+        "editor-shell.plugin-bundles"
+      ],
+      "notes": [
+        "each tile's committed bytes are the exporter's own output, unretouched — whatever a kernel currently does to these pixels is what the page shows",
+        "finding, from proofing this spread: the engine's line breaker composes certain caption rects as a character-wrapped sliver regardless of content (frame and story verify correct in the container; the p47 probe shows the same seam) — tile 2's caption is position-nudged 2 pt to dodge it",
+        "finding, from proofing this spread: on the builds this chapter was authored against, the gaussian-blur tile's export showed a corrupted band over its right 256-px tile column (the windowed kernel's halo seam is the suspect); the tile is committed exactly as exported — check the tile, not this note",
+        "kernel roster: 128 ids across 14 families, read from plugin-image/registry/kernels.yaml"
+      ]
+    },
+    {
+      "module": "dk-selections",
+      "title": "Selections — the mask made visible",
+      "pages": [
+        90
+      ],
+      "covers": [
+        "image.selection.mask-tools",
+        "image.selection.mask",
+        "image.selection.masked-pipeline"
+      ],
+      "notes": [
+        "selection runs at native resolution — resizeTo swaps the engine handle with no selectionBind (code reading; the resample+selection seam is untested territory this page chose not to stand on)"
+      ]
+    },
+    {
+      "module": "dk-retouch",
+      "title": "Retouch — clone, heal, content-aware fill",
+      "pages": [
+        91
+      ],
+      "covers": [
+        "image.editor.content-aware-fill"
+      ],
+      "notes": [
+        "clone: no landing reported by the panel",
+        "heal: no landing reported by the panel",
+        "content-aware fill → Filled the selection with noise on layer “Background” — undoable. Document unchanged; Apply to recomposite."
+      ]
+    },
+    {
+      "module": "dk-paint-type",
+      "title": "Paint and the raster word",
+      "pages": [
+        92
+      ],
+      "covers": [],
+      "notes": [
+        "finding: every solid-paint stroke committed with zero dabs (brush and pencil, default and changed colour alike) while the sample-mode clone/heal on the previous page land through identical gestures — the solid-deposit lane, which brush, pencil and raster type share, is the measured suspect",
+        "type: no glyph run reported by the panel",
+        "the painted export is byte-identical to the identity baseline — no stroke or glyph landed; the captions state it"
+      ]
+    },
+    {
+      "module": "dk-psd",
+      "title": "PSD — list, edit, export, preserve",
+      "pages": [
+        93
+      ],
+      "covers": [
+        "image.psd.editor-doors"
+      ],
+      "notes": []
+    },
+    {
+      "module": "dk-loop",
+      "title": "The darkroom loop, closed",
+      "pages": [
+        94
+      ],
+      "covers": [],
+      "notes": []
+    },
+    {
+      "module": "lg-opener",
+      "title": "Ch.16 opener — The Ledger",
+      "pages": [
+        95
+      ],
+      "covers": []
+    },
+    {
+      "module": "lg-chart-wall",
+      "title": "The chart wall — ten kinds, all native",
+      "pages": [
+        96,
+        97
+      ],
+      "covers": [
+        "sheet.plugin.bundle",
+        "plugin-platform.file-picker",
+        "plugin-platform.bundle-lifecycle",
+        "editor-shell.plugin-bundles",
+        "sheet.chart.engine",
+        "sheet.chart.graphs"
+      ],
+      "notes": [
+        "ten charts lowered as 99 native path(s) and 102 label frame(s); stacked-column, stacked-bar and radar are the 2026-08 kind-set additions that make the set a superset of Illustrator's nine"
+      ]
+    },
+    {
+      "module": "lg-pour",
+      "title": "The native pour",
+      "pages": [
+        98
+      ],
+      "covers": [
+        "sheet.lower.page",
+        "plugin-platform.text-measurement"
+      ],
+      "notes": [
+        "showGridInFrame painted the live grid into the lowered frame (C-1 scene layer), and hideGridInFrame cleared it — demonstrated, not resident: session state never reaches the checkpoint"
+      ]
+    },
+    {
+      "module": "lg-formulas",
+      "title": "Formulas, spill, and the roster",
+      "pages": [
+        99
+      ],
+      "covers": [
+        "sheet.calc.engine",
+        "sheet.fn.library",
+        "sheet.calc.spill",
+        "sheet.format.engine",
+        "sheet.lower.page"
+      ],
+      "notes": []
+    },
+    {
+      "module": "lg-chain",
+      "title": "A day-book across the gutter",
+      "pages": [
+        100,
+        101
+      ],
+      "covers": [
+        "sheet.lower.page",
+        "sheet.calc.spill",
+        "layout-model.text-frame-chain"
+      ],
+      "notes": [
+        "wire-shape finding: insert bounds are PAGE-local; resizeFrame bounds are SPREAD-space (spine at x 0, verso negative) — a page-local resize walks a verso frame onto the recto while it stays parented to its own page",
+        "the hit test answered the frame's story but no table-cell context at its centre, so the header band could not be added — tables.header-footer-repeat is NOT claimed by this page"
+      ]
+    },
+    {
+      "module": "lg-roundtrip",
+      "title": "Round trips",
+      "pages": [
+        102
+      ],
+      "covers": [
+        "sheet.edit.ops",
+        "sheet.xlsx.roundtrip",
+        "plugin-platform.importer-exporter",
+        "package-anatomy.paged-parts-door",
+        "sheet.plugin.bundle"
+      ],
+      "notes": [
+        "sorting the spill range C3:C6 was NOT refused — the engine reported \"Sorted.\"; the refusal contract may have moved",
+        "clipboard lane degraded on this run: [media.paged.sheet] pasteAtSelection: the clipboard is empty",
+        "FINDING — the Export Center rendered no plugin-exports section in this session (built-in targets only), while the exporter registry reports [media.paged.draw.exporter.svg, media.paged.sheet.exporter.xlsx, media.paged.image.exporter.psd, media.paged.image.exporter.png, media.paged.image.exporter.jpeg, media.paged.publish.exporter.idml, media.paged.doc.exporter.docx]; the workbook bytes were pulled through that registry — the same door the panel reads"
+      ]
+    },
+    {
+      "module": "lr-opener",
+      "title": "Ch.17 opener — The Long Read",
+      "pages": [
+        103
+      ],
+      "covers": []
+    },
+    {
+      "module": "lr-source",
+      "title": "Source beside render",
+      "pages": [
+        104
+      ],
+      "covers": [
+        "plugin-web.source-model",
+        "plugin-web.metadata-persistence",
+        "plugin-platform.document-metadata",
+        "plugin-web.insert-command",
+        "plugin-web.engine-rendering",
+        "plugin-platform.scene-layer",
+        "plugin-web.render-readout"
+      ],
+      "notes": [
+        "insertWebFrame minted its frame + starter envelope on this page (one undoable batch, verified by geometry) — the demonstration frame was then removed and the exhibit frame authored at the design box, because reshaping the default frame in place would take SPREAD-space resizeFrame bounds (the chain spread records that wire shape)",
+        "the source panel kept its earlier draft after the direct metadata write — the envelope reached the document (the render below reads it) but the open panel lane still shows 67 chars; the panel re-reads on selection CHANGE, and re-selecting the same frame is not one"
+      ]
+    },
+    {
+      "module": "lr-flows",
+      "title": "One source, two flows, four frames",
+      "pages": [
+        105
+      ],
+      "covers": [
+        "plugin-web.flow-threading",
+        "plugin-web.metadata-persistence",
+        "plugin-web.engine-rendering",
+        "plugin-platform.scene-layer"
+      ],
+      "notes": [
+        "unthreadWebFlow round trip verified through the container part (chain 3 → 4 → 3); the scratch frame was deleted — demonstrated, not resident",
+        "renderWebFlow submitted 4 frame(s) across the two flows (overset reported past the last frame)",
+        "flow readout: Render flow #2 — 4 frame(s) · overset CSS Regions: 'article#annual-longread' flows into 'article-flow' across the frame chain multiple named"
+      ]
+    },
+    {
+      "module": "lr-bake",
+      "title": "The bake — live versus native",
+      "pages": [
+        107,
+        108
+      ],
+      "covers": [
+        "plugin-platform.document-metadata",
+        "plugin-web.render-readout",
+        "package-anatomy.paged-parts-door",
+        "plugin-web.source-panel",
+        "plugin-web.metadata-persistence"
+      ],
+      "notes": [
+        "the bake materialized 30 native item(s): 1 rectangle(s), 28 text frame(s), 1 path(s), plus 6 minted swatch(es)",
+        "listPagedParts paged/media.paged.web/ — 1 part(s): ueef010/source.json",
+        "renderWebFrame died in the plugin lane (a scene-layer submit was refused): Error: page.evaluate: Error: unexpected reply: mutationFailed",
+        "the live lane never submitted a scene layer on this run — p108 carries the panel-committed source without live paint; plugin-web.engine-rendering is NOT claimed by this module"
+      ]
+    },
+    {
+      "module": "lr-fragments",
+      "title": "The fragmentation ladder",
+      "pages": [
+        106
+      ],
+      "covers": [
+        "plugin-web.flow-threading",
+        "plugin-web.metadata-persistence",
+        "plugin-web.flow-fragmentation",
+        "plugin-web.engine-rendering",
+        "plugin-platform.scene-layer"
+      ],
+      "notes": [
+        "PRODUCT FINDING — the card chain's renderWebFlow died in the plugin lane: the scene-layer submit for the image-bearing fragment was refused (Error: page.evaluate: Error: unexpected reply: mutationFailed); engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"malformed message: invalid type: null, expected f32 at line 1 column 10331\"}}}",
+        "flow renders this run: fares table across 3 frame(s), card column across 0 frame(s) — the header-repeat exhibit carries the fragmentation claim; the card exhibit's chain persists unrendered"
+      ]
+    },
+    {
+      "module": "ct-opener",
+      "title": "Ch.18 opener — The Catalog",
+      "pages": [
+        109
+      ],
+      "covers": []
+    },
+    {
+      "module": "ct-cards",
+      "title": "The record card",
+      "pages": [
+        110
+      ],
+      "covers": [
+        "editor-shell.plugin-bundles",
+        "plugin-platform.file-picker",
+        "data.bind.field-mapping",
+        "data.bind.engine",
+        "data.expr.engine",
+        "plugin-platform.text-caret-door",
+        "stories-text.fields.insert"
+      ],
+      "notes": [
+        "PRODUCT FINDING — the Arrow→RecordSet seam decodes a DATE column to epoch-milliseconds while the engine's Value::Date expects i32 days, so serde refuses the whole ingest of any dated result (`invalid value: integer 1735862400000, expected i32`). annual-orders.csv is the first dated source the seam has met; this chapter drives it with order_date withheld and says so in the margin."
+      ]
+    },
+    {
+      "module": "ct-sets",
+      "title": "Data sets and the refresh",
+      "pages": [
+        113
+      ],
+      "covers": [
+        "data.bind.preview-step",
+        "data.bind.change-report",
+        "data.dataset.palette"
+      ],
+      "notes": [
+        "refreshFields overwrote an applied data set's values — the Overridden sync state did not hold through the field-refresh loop on this lane (the palette's own apply path documents the opposite intent)."
+      ]
+    },
+    {
+      "module": "ct-dsl",
+      "title": "The expression language",
+      "pages": [
+        114
+      ],
+      "covers": []
+    },
+    {
+      "module": "ct-barcodes",
+      "title": "Four symbologies, one order book",
+      "pages": [
+        112
+      ],
+      "covers": []
+    },
+    {
+      "module": "ct-table",
+      "title": "A native table, governed",
+      "pages": [
+        111
+      ],
+      "covers": []
+    },
+    {
+      "module": "mp-opener",
+      "title": "Ch.19 opener — The Manuscript",
+      "pages": [
+        115
+      ],
+      "covers": []
+    },
+    {
+      "module": "mp-manuscript",
+      "title": "The placed manuscript",
+      "pages": [
+        116,
+        117
+      ],
+      "covers": [
+        "plugin-doc.embedded-placement",
+        "editor-shell.plugin-bundles",
+        "plugin-platform.file-picker",
+        "layout-model.text-frame-chain",
+        "package-anatomy.paged-parts-door"
+      ],
+      "notes": [
+        "the paged.doc outline panel never reported ready — the DOCX read path did not complete. Plugin log: nothing",
+        "the engine rejected at least one pour op — an applyStyle over an EMPTY range (start == end), which the host-model emitted for a zero-length style span; the pour continued and the refusal was logged, never swallowed (ADR-007).",
+        "FINDING — the poured story renders visually UNSTYLED on this lane: the synthesized heading/caption styles and both list families are applied over the story (the outline panel counts them) but the paint shows one face and size, no bold, no bullet or number glyphs, and the docx docDefaults face does not reach the render.",
+        "FINDING — the embedded plate-mark PNG lowers to an anchored image frame that paints the missing-image placeholder (its bytes have no URI-addressable home through insertAnchoredFrame) and the anchored frame overlaps the table rows beneath it; the ledger lines' dot-leader tabs paint as substitute glyphs."
+      ]
+    },
+    {
+      "module": "mp-saveback",
+      "title": "Save-back readiness",
+      "pages": [
+        118
+      ],
+      "covers": [
+        "plugin-doc.verbatim-export"
+      ],
+      "notes": [
+        "FINDING — the exporter IS in the host exporter registry (registry lists: media.paged.draw.exporter.svg, media.paged.sheet.exporter.xlsx, media.paged.image.exporter.psd, media.paged.image.exporter.png, media.paged.image.exporter.jpeg, media.paged.publish.exporter.idml, media.paged.doc.exporter.docx) but the export center's plugin section never rendered its row, so the one-click download surface missed a registered exporter; the page pulled the bytes through the registry (the journey lane) and the blob-to-download door went unexercised."
+      ]
+    },
+    {
+      "module": "pr-divider",
+      "title": "Part III divider",
+      "pages": [
+        119,
+        120
+      ],
+      "covers": [
+        "color-swatches.fill-stroke-apply",
+        "stories-text.text.insert"
+      ]
+    },
+    {
+      "module": "pr-opener",
+      "title": "Ch.20 opener — the exits-honestly thesis",
+      "pages": [
+        121
+      ],
+      "covers": []
+    },
+    {
+      "module": "pr-marks",
+      "title": "The marks plate — trim, bleed and marks anatomy",
+      "pages": [
+        122
+      ],
+      "covers": [
+        "frames-paths.line.insert",
+        "frames-paths.shape-tools",
+        "color-swatches.fill-stroke-apply"
+      ]
+    },
+    {
+      "module": "pr-preflight",
+      "title": "The preflight — the export door's own findings",
+      "pages": [
+        123
+      ],
+      "covers": [
+        "the-renderer.pdf-export",
+        "the-renderer.export-diagnostics"
+      ],
+      "notes": [
+        "exportPdf standard=pdf17 — 29427260 bytes (discarded), 27 diagnostic(s), 27 finding(s), 19.4s"
+      ]
+    },
+    {
+      "module": "pr-container",
+      "title": "The container, opened — parts listed, written, read back",
+      "pages": [
+        124
+      ],
+      "covers": [
+        "package-anatomy.paged-container",
+        "package-anatomy.paged-parts-door"
+      ],
+      "notes": [
+        "listPagedParts paged/ — 14 part(s) before this page, 15 after; paged/annual/manifest-note.json written (caller unset) and read back 153 bytes"
+      ]
+    },
+    {
+      "module": "pr-losses",
+      "title": "The loss ledger — what IDML export names and leaves",
+      "pages": [
+        125
+      ],
+      "covers": [
+        "round-tripping.idml-reserialization",
+        "effects-transparency.opacity-mask"
+      ],
+      "notes": [
+        "exportIdml — 11941923 bytes (discarded), lost: 3 entr(ies)"
+      ]
+    },
+    {
+      "module": "pr-exits",
+      "title": "The exit paths — the chapter close",
+      "pages": [
+        126
+      ],
+      "covers": []
+    },
+    {
+      "module": "ax-limits",
+      "title": "Appendix A — the limits ledger, compiled from the sources",
+      "pages": [
+        127,
+        128,
+        129,
+        130
+      ],
+      "covers": [],
+      "notes": [
+        "limits compiled from sources: 76 (◪ 67 · □ 9)"
+      ]
+    },
+    {
+      "module": "ax-index",
+      "title": "Appendix A — the index, resolved from the document",
+      "pages": [
+        131,
+        132
+      ],
+      "covers": [
+        "cross-references-hyperlinks.index"
+      ],
+      "notes": [
+        "index resolved from the document's own export: 10 topics referenced, 12 marker page(s); topics collection lists 10"
+      ]
+    },
+    {
+      "module": "rm-bench",
+      "title": "The remainder bench — the doors that leave no mark",
+      "pages": [
+        134
+      ],
+      "covers": [],
+      "notes": [
+        "wire lane — 12 property path(s) exercised on the scratch page: frameBounds, frameFillTint, elementVisible, elementLocked, frameNonprinting, framePathPoint, pathPointInsert, pathPointCurveType, pathPointRemove, appliedParagraphStyle, appliedCharacterStyle, pluginMetadata",
+        "script lane — 8 catalog name(s) applied through paged.set: frameSatin, frameFeather, frameBevel, frameInnerGlow, frameInnerShadow, frameOuterGlow, frameDirectionalFeather, frameTextWrapInvert",
+        "read-only by engine contract — tableRowCount, tableColumnCount: the write door refuses them (core asserts the refusal in its own tests), so the bench reads them back instead of pretending to set them"
+      ]
+    },
+    {
+      "module": "rp-crest",
+      "title": "Ch.14 — the crest, carried to the page that describes it",
+      "pages": [
+        77
+      ],
+      "covers": [
+        "plugin-draw.svg-io",
+        "frames-paths.path.insert"
+      ],
+      "notes": [
+        "the cover carried 4 polygon(s) the cover module never wrote — the SVG import's output, minted onto page one because the host re-derives the active page from the camera on every render",
+        "carried 4 contour(s) to page 77 by copying framePath (anchors + subpathStarts, so compounds stay compound) and re-basing by the probed spread seam (0, 0)"
+      ]
+    },
+    {
+      "module": "ax-colophon",
+      "title": "Colophon — and the last line",
+      "pages": [
+        133,
+        134
+      ],
+      "covers": [
+        "package-anatomy.paged-parts-door"
+      ],
+      "notes": [
+        "colophon numbers — chapters 36 · rows 186 · ops 117/117 · paths 176/176 · parts 15 · canvas-wasm 0.62.0 (protocol 62)"
+      ]
     }
   ],
   "unknown": [],
   "notShipped": [],
   "families": {
-    "sections-numbering-variables": 3,
-    "color-swatches": 3,
-    "layers": 2,
-    "frames-paths": 2,
-    "stories-text": 2,
-    "conditional-text": 3,
-    "typography": 1,
-    "styles": 2
+    "sections-numbering-variables": 4,
+    "color-swatches": 22,
+    "layers": 6,
+    "frames-paths": 24,
+    "stories-text": 24,
+    "conditional-text": 6,
+    "typography": 20,
+    "styles": 11,
+    "layout-model": 8,
+    "geometry-coordinates": 4,
+    "effects-transparency": 19,
+    "master-spreads-overrides": 3,
+    "cross-references-hyperlinks": 5,
+    "tables": 17,
+    "images-graphics": 8,
+    "plugin-draw": 23,
+    "plugin-platform": 14,
+    "editor-shell": 5,
+    "image": 9,
+    "sheet": 14,
+    "package-anatomy": 6,
+    "plugin-web": 15,
+    "data": 6,
+    "plugin-doc": 2,
+    "the-renderer": 2,
+    "round-tripping": 1
   },
   "notes": [
-    "pdf export: font \"EB Garamond Italic\" is not available; a substitute face was used",
-    "pdf export: font \"Fraunces\" is not available; a substitute face was used",
-    "pdf export: font \"JetBrains Mono\" is not available; a substitute face was used",
-    "pdf export: font \"Source Serif 4\" is not available; a substitute face was used",
-    "pdf export: font \"Source Serif 4 Bold\" is not available; a substitute face was used",
-    "pdf export: font \"Space Grotesk\" is not available; a substitute face was used",
+    "an-grid: guides are overlay-only by design — demonstrated live, invisible in the render (margin note on p14)",
+    "an-grid: deleteGuide re-indexes the survivors' positional ids — a stale GuideSummary id addresses a different guide after a delete",
+    "an-masters: page-op battery ran on a scratch page and restored the 134-page plan; master names recovered via IDML export (no name surface on the wire)",
+    "an-layers: layerRemove succeeds while the layer is occupied — the item keeps a dangling itemLayer ref; re-homed to Content here",
+    "an-apparatus: text-variable inventory read from the document's designmap via the export door — no variables collection exists on the wire",
+    "lt-features: characterOtfFeatures is authoring metadata only — the shaper consumes discrete OTF toggles (run/character-style), and no wire door writes those discrete flags",
+    "lt-features: characterCase SmallCaps passes text through unchanged (smcp not driven, P-12); AllCaps renders",
+    "lt-features: paragraph-style OTFFigureStyle never reaches run resolution (paged-scene merge_below_paragraph has no otf arm) — figure-style rows rely on the style definitions only",
+    "lt-metrics: optical kerning falls back to metrics (recorded limit, margin note)",
+    "pg-keeps: keep flags measured inert: paragraphKeepLinesTogether and paragraphKeepWithNext are accepted, stored, and round-trip on the wire, but setting them moved no pixels — the composer does not yet consult them when fragmenting across linked frames",
+    "sc-vertical: ruby + kenten rows deliberately unclaimed (renderer stages partial); limits recorded as margin notes on p43/p44",
+    "ap-navigation: ENGINE FINDING: both live insertHyperlink calls minted the same id (Hyperlink/ueeeafc) — the wire's mint scans page items only and a hyperlink adds none, so successive inserts collide",
+    "ap-navigation: hyperlinks 3 -> 5 (2 authored live, both URL destinations); bookmarks 3, all fixture-authored",
+    "ap-destination: indexTopics 10 (collection live); cross-reference verified via export (1 source marker) + carrier hyperlink xref-overleaf — the crossReferences collection reads a never-populated designmap vector and lists 0",
+    "ob-opener: reorderElement A -> front: repainted",
+    "ob-opener: reorderElement B -> front (over A): repainted",
+    "ob-opener: reorderElement A -> forward (back over B): repainted",
+    "ob-opener: reorderElement A -> backward (under B again): repainted",
+    "ob-opener: reorderElement E -> back: repainted",
+    "ob-opener: reorderElement D -> index 0 (absolute back): repainted",
+    "ob-transforms: transform pivot: single-knob writes pivot about the item-space origin (translation preserved) — every tile pre-seeds t = c - Mc; frameTransform replace semantics proved by readback",
+    "ob-strokes: 8 arrowhead kinds enumerated live; miter limit demonstrated biting (12 keeps a 24-degree spike, 1.5 shears it); caps and alignment are rectangle-addressed on the wire, arrowheads graphic-line-only",
+    "ob-paths: all 10 topology ops and all 11 planar ops (4 boolean modes, 6 region verbs, faces) applied on-page with before/after pairs; edit positions and face ids read back, never guessed",
+    "ob-grouping: deleteFrame on the nested child refused as expected: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: invalid value for FrameTransform on Oval(\\\"ueeeba7\\\"): B-18: the item is pasted into a container — release it before removing\"}}",
+    "ob-grouping: object style definition door closed as recorded: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: property FrameFillColor is not supported on Layer(\\\"ObjectStyle/Annual Exhibit Frame\\\")\"}}",
+    "il-light: sweep/conic gradient paint exists in the renderer with no authoring door — GradientSpec is Linear|Radial (margin-noted)",
+    "il-light: opacity masks certified on the CPU lane; IDML export names masked items as lost (margin-noted; the assembly asserts the loss list)",
+    "fx-parameters: satin invert: registry records it as ignored, but the inverted tile renders visibly darker on this build — record drift, margin-noted",
+    "fx-parameters: transparency-group raster bounds clip wide overhangs that PDF keeps (margin-noted, recorded defect)",
+    "fx-parameters: feather compositing darkens the vermilion fill at some width/corner settings on this build — engine render behaviour, shown as rendered",
+    "tb-anatomy: cellFillTint: recorded on the wire and in the model, but the cell fill composites at full strength on this build — measured on this page (the tinted cell matches the untinted one); edge-stroke tints render correctly",
+    "pi-formats: EPS bytes: the store accepted them (the wire is format-agnostic); the RENDER declines the decode and falls back to the frame's own fill — which is the exhibit",
+    "do-livepaint: plugin-draw.live-paint is registry-partial — demonstrated on this page, deliberately not claimed",
+    "do-repeats: updateRepeat refused on this engine — [media.paged.draw] media.paged.draw.command.updateRepeat: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 55: invalid value for FrameTransform on Group(\\\"ueeedb9\\\"): a member already belongs to another group\"}}}",
+    "do-repeats: redefineSymbol deliberately NOT run: its per-instance rebuild rides the one-batch dissolve-and-regroup this engine refuses (recorded for updateRepeat on this page), and a half-applied rebuild strands artwork",
+    "do-repeats: plugin-draw.symbols is registry-partial — demonstrated on this page, deliberately not claimed",
+    "do-blends: reverseBlendSpine refused on this engine — [media.paged.draw] media.paged.draw.command.reverseBlendSpine: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 43: invalid value for FrameTransform on Group(\\\"ueeee2a\\\"): a member already belongs to another group\"}}}",
+    "do-plate: plugin-draw.image-trace is registry-partial — demonstrated as this plate, deliberately not claimed",
+    "dk-contact-sheet: each tile's committed bytes are the exporter's own output, unretouched — whatever a kernel currently does to these pixels is what the page shows",
+    "dk-contact-sheet: finding, from proofing this spread: the engine's line breaker composes certain caption rects as a character-wrapped sliver regardless of content (frame and story verify correct in the container; the p47 probe shows the same seam) — tile 2's caption is position-nudged 2 pt to dodge it",
+    "dk-contact-sheet: finding, from proofing this spread: on the builds this chapter was authored against, the gaussian-blur tile's export showed a corrupted band over its right 256-px tile column (the windowed kernel's halo seam is the suspect); the tile is committed exactly as exported — check the tile, not this note",
+    "dk-contact-sheet: kernel roster: 128 ids across 14 families, read from plugin-image/registry/kernels.yaml",
+    "dk-selections: selection runs at native resolution — resizeTo swaps the engine handle with no selectionBind (code reading; the resample+selection seam is untested territory this page chose not to stand on)",
+    "dk-retouch: clone: no landing reported by the panel",
+    "dk-retouch: heal: no landing reported by the panel",
+    "dk-retouch: content-aware fill → Filled the selection with noise on layer “Background” — undoable. Document unchanged; Apply to recomposite.",
+    "dk-paint-type: finding: every solid-paint stroke committed with zero dabs (brush and pencil, default and changed colour alike) while the sample-mode clone/heal on the previous page land through identical gestures — the solid-deposit lane, which brush, pencil and raster type share, is the measured suspect",
+    "dk-paint-type: type: no glyph run reported by the panel",
+    "dk-paint-type: the painted export is byte-identical to the identity baseline — no stroke or glyph landed; the captions state it",
+    "lg-chart-wall: ten charts lowered as 99 native path(s) and 102 label frame(s); stacked-column, stacked-bar and radar are the 2026-08 kind-set additions that make the set a superset of Illustrator's nine",
+    "lg-pour: showGridInFrame painted the live grid into the lowered frame (C-1 scene layer), and hideGridInFrame cleared it — demonstrated, not resident: session state never reaches the checkpoint",
+    "lg-chain: wire-shape finding: insert bounds are PAGE-local; resizeFrame bounds are SPREAD-space (spine at x 0, verso negative) — a page-local resize walks a verso frame onto the recto while it stays parented to its own page",
+    "lg-chain: the hit test answered the frame's story but no table-cell context at its centre, so the header band could not be added — tables.header-footer-repeat is NOT claimed by this page",
+    "lg-roundtrip: sorting the spill range C3:C6 was NOT refused — the engine reported \"Sorted.\"; the refusal contract may have moved",
+    "lg-roundtrip: clipboard lane degraded on this run: [media.paged.sheet] pasteAtSelection: the clipboard is empty",
+    "lg-roundtrip: FINDING — the Export Center rendered no plugin-exports section in this session (built-in targets only), while the exporter registry reports [media.paged.draw.exporter.svg, media.paged.sheet.exporter.xlsx, media.paged.image.exporter.psd, media.paged.image.exporter.png, media.paged.image.exporter.jpeg, media.paged.publish.exporter.idml, media.paged.doc.exporter.docx]; the workbook bytes were pulled through that registry — the same door the panel reads",
+    "lr-source: insertWebFrame minted its frame + starter envelope on this page (one undoable batch, verified by geometry) — the demonstration frame was then removed and the exhibit frame authored at the design box, because reshaping the default frame in place would take SPREAD-space resizeFrame bounds (the chain spread records that wire shape)",
+    "lr-source: the source panel kept its earlier draft after the direct metadata write — the envelope reached the document (the render below reads it) but the open panel lane still shows 67 chars; the panel re-reads on selection CHANGE, and re-selecting the same frame is not one",
+    "lr-flows: unthreadWebFlow round trip verified through the container part (chain 3 → 4 → 3); the scratch frame was deleted — demonstrated, not resident",
+    "lr-flows: renderWebFlow submitted 4 frame(s) across the two flows (overset reported past the last frame)",
+    "lr-flows: flow readout: Render flow #2 — 4 frame(s) · overset CSS Regions: 'article#annual-longread' flows into 'article-flow' across the frame chain multiple named",
+    "lr-bake: the bake materialized 30 native item(s): 1 rectangle(s), 28 text frame(s), 1 path(s), plus 6 minted swatch(es)",
+    "lr-bake: listPagedParts paged/media.paged.web/ — 1 part(s): ueef010/source.json",
+    "lr-bake: renderWebFrame died in the plugin lane (a scene-layer submit was refused): Error: page.evaluate: Error: unexpected reply: mutationFailed",
+    "lr-bake: the live lane never submitted a scene layer on this run — p108 carries the panel-committed source without live paint; plugin-web.engine-rendering is NOT claimed by this module",
+    "lr-fragments: PRODUCT FINDING — the card chain's renderWebFlow died in the plugin lane: the scene-layer submit for the image-bearing fragment was refused (Error: page.evaluate: Error: unexpected reply: mutationFailed); engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"malformed message: invalid type: null, expected f32 at line 1 column 10331\"}}}",
+    "lr-fragments: flow renders this run: fares table across 3 frame(s), card column across 0 frame(s) — the header-repeat exhibit carries the fragmentation claim; the card exhibit's chain persists unrendered",
+    "ct-cards: PRODUCT FINDING — the Arrow→RecordSet seam decodes a DATE column to epoch-milliseconds while the engine's Value::Date expects i32 days, so serde refuses the whole ingest of any dated result (`invalid value: integer 1735862400000, expected i32`). annual-orders.csv is the first dated source the seam has met; this chapter drives it with order_date withheld and says so in the margin.",
+    "ct-sets: refreshFields overwrote an applied data set's values — the Overridden sync state did not hold through the field-refresh loop on this lane (the palette's own apply path documents the opposite intent).",
+    "mp-manuscript: the paged.doc outline panel never reported ready — the DOCX read path did not complete. Plugin log: nothing",
+    "mp-manuscript: the engine rejected at least one pour op — an applyStyle over an EMPTY range (start == end), which the host-model emitted for a zero-length style span; the pour continued and the refusal was logged, never swallowed (ADR-007).",
+    "mp-manuscript: FINDING — the poured story renders visually UNSTYLED on this lane: the synthesized heading/caption styles and both list families are applied over the story (the outline panel counts them) but the paint shows one face and size, no bold, no bullet or number glyphs, and the docx docDefaults face does not reach the render.",
+    "mp-manuscript: FINDING — the embedded plate-mark PNG lowers to an anchored image frame that paints the missing-image placeholder (its bytes have no URI-addressable home through insertAnchoredFrame) and the anchored frame overlaps the table rows beneath it; the ledger lines' dot-leader tabs paint as substitute glyphs.",
+    "mp-saveback: FINDING — the exporter IS in the host exporter registry (registry lists: media.paged.draw.exporter.svg, media.paged.sheet.exporter.xlsx, media.paged.image.exporter.psd, media.paged.image.exporter.png, media.paged.image.exporter.jpeg, media.paged.publish.exporter.idml, media.paged.doc.exporter.docx) but the export center's plugin section never rendered its row, so the one-click download surface missed a registered exporter; the page pulled the bytes through the registry (the journey lane) and the blob-to-download door went unexercised.",
+    "pr-preflight: exportPdf standard=pdf17 — 29427260 bytes (discarded), 27 diagnostic(s), 27 finding(s), 19.4s",
+    "pr-container: listPagedParts paged/ — 14 part(s) before this page, 15 after; paged/annual/manifest-note.json written (caller unset) and read back 153 bytes",
+    "pr-losses: exportIdml — 11941923 bytes (discarded), lost: 3 entr(ies)",
+    "ax-limits: limits compiled from sources: 76 (◪ 67 · □ 9)",
+    "ax-index: index resolved from the document's own export: 10 topics referenced, 12 marker page(s); topics collection lists 10",
+    "rm-bench: wire lane — 12 property path(s) exercised on the scratch page: frameBounds, frameFillTint, elementVisible, elementLocked, frameNonprinting, framePathPoint, pathPointInsert, pathPointCurveType, pathPointRemove, appliedParagraphStyle, appliedCharacterStyle, pluginMetadata",
+    "rm-bench: script lane — 8 catalog name(s) applied through paged.set: frameSatin, frameFeather, frameBevel, frameInnerGlow, frameInnerShadow, frameOuterGlow, frameDirectionalFeather, frameTextWrapInvert",
+    "rm-bench: read-only by engine contract — tableRowCount, tableColumnCount: the write door refuses them (core asserts the refusal in its own tests), so the bench reads them back instead of pretending to set them",
+    "rm-bench: the module carries its own oracle — its doors leave no mark on a finished page by design",
+    "rp-crest: the cover carried 4 polygon(s) the cover module never wrote — the SVG import's output, minted onto page one because the host re-derives the active page from the camera on every render",
+    "rp-crest: carried 4 contour(s) to page 77 by copying framePath (anchors + subpathStarts, so compounds stay compound) and re-basing by the probed spread seam (0, 0)",
+    "ax-colophon: colophon numbers — chapters 36 · rows 186 · ops 117/117 · paths 176/176 · parts 15 · canvas-wasm 0.62.0 (protocol 62)",
+    "idml export lost: opacity mask on `ueeec0b` (artwork `ueeec0c`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
+    "idml export lost: opacity mask on `ueeec0d` (artwork `ueeec0e`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
+    "idml export lost: opacity mask on `ueef0de` (artwork `ueef0df`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
+    "pdf export: font \"Noto Sans Hebrew\" is not available; a substitute face was used",
     "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
     "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
     "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
-    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)"
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: placed image could not be decoded; frame fill used instead",
+    "pdf export: placed image link could not be resolved; placeholder drawn",
+    "pdf export: placed image link could not be resolved; placeholder drawn",
+    "output intent — re-registered Paged Default CMYK for the press pass (the live profile registry is session state; a reopened document names a profile whose bytes it does not carry)",
+    "pdfx4 export: font \"Noto Sans Hebrew\" is not available; a substitute face was used",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: placed image could not be decoded; frame fill used instead",
+    "pdfx4 export: placed image link could not be resolved; placeholder drawn",
+    "pdfx4 export: placed image link could not be resolved; placeholder drawn"
   ],
   "registryClosure": {
     "armed": false,
-    "excluded": 108,
+    "excluded": 107,
     "unaccounted": [
       "anchored-inline-objects.anchored-frames",
       "anchored-inline-objects.anchor-alignment",
       "anchored-inline-objects.anchored-ops",
-      "color-swatches.lab-mixed-ink",
-      "color-swatches.swatch.crud",
-      "color-swatches.color-groups",
-      "color-swatches.character-fill",
-      "color-swatches.icc-cmm",
-      "color-swatches.overprint",
-      "color-swatches.ink-manager",
       "color-swatches.color-overrides",
-      "color-swatches.document-defaults",
-      "cross-references-hyperlinks.hyperlinks",
-      "cross-references-hyperlinks.bookmarks",
-      "cross-references-hyperlinks.cross-references",
-      "cross-references-hyperlinks.index",
       "cross-references-hyperlinks.toc",
       "edge-cases.diagnostics-channel",
-      "effects-transparency.opacity",
-      "effects-transparency.blend-modes",
       "effects-transparency.transparency-groups",
-      "effects-transparency.opacity-mask",
-      "effects-transparency.drop-shadow",
-      "effects-transparency.inner-shadow",
-      "effects-transparency.glows",
-      "effects-transparency.bevel-emboss",
-      "effects-transparency.satin",
-      "effects-transparency.feather",
-      "effects-transparency.gradient-feather",
       "foundations.container.open",
       "foundations.designmap.structure",
       "foundations.domversion-capture",
       "frames-paths.page-item-kinds",
       "frames-paths.frame.delete",
       "frames-paths.frame.move-op",
-      "frames-paths.path.insert",
-      "frames-paths.shape-tools",
-      "frames-paths.pathfinder-boolean",
-      "frames-paths.corner-options",
-      "frames-paths.arrowheads",
-      "frames-paths.stroke-weight-caps-joins",
-      "frames-paths.stroke-dashed",
       "frames-paths.stroke-variable-width",
       "frames-paths.stroke-striped-wavy",
-      "frames-paths.stroke-alignment",
-      "frames-paths.stroke-gap-color",
       "frames-paths.stroke-overprint",
-      "frames-paths.groups",
       "frames-paths.path-clipping",
-      "frames-paths.text-on-path",
-      "frames-paths.path.close",
-      "frames-paths.path.join",
-      "frames-paths.nested-content",
-      "frames-paths.corner-options-polygon",
-      "frames-paths.planar-arrangement",
-      "frames-paths.pathfinder-verbs",
       "frames-paths.appearance-bake",
-      "geometry-coordinates.item-transform",
-      "geometry-coordinates.geometric-bounds",
-      "geometry-coordinates.bezier-path-geometry",
       "geometry-coordinates.compound-subpaths",
-      "geometry-coordinates.path-topology-ops",
       "geometry-coordinates.image-content-transform",
-      "images-graphics.placed-images",
-      "images-graphics.missing-image-placeholder",
-      "images-graphics.frame-fitting",
       "images-graphics.image-clipping",
-      "images-graphics.cmyk-jpeg-icc",
-      "images-graphics.eps-decode",
       "images-graphics.clipping-paths",
       "layers.nested-groups",
-      "layers.ops",
-      "layers.z-ordering",
-      "layout-model.spreads-pages",
       "layout-model.spread-item-transform",
-      "layout-model.text-frame-chain",
-      "layout-model.frame-autosizing",
-      "layout-model.first-baseline-offset",
-      "layout-model.vertical-justification",
-      "layout-model.guides",
-      "master-spreads-overrides.master-stamping",
       "master-spreads-overrides.show-master-items",
-      "master-spreads-overrides.override-resolution",
-      "master-spreads-overrides.apply-master-op",
       "package-anatomy.core-import",
       "package-anatomy.story-parts",
       "package-anatomy.graphic-part",
       "package-anatomy.inline-image-contents",
-      "package-anatomy.paged-container",
-      "package-anatomy.paged-parts-door",
       "package-anatomy.native-model-part",
       "package-anatomy.composition-part",
       "parser-internals.streaming-xml",
       "parser-internals.zip-entry-streaming",
-      "data.expr.engine",
-      "data.bind.engine",
       "data.automation.batch",
       "data.governed.extract",
       "data.provider.contract",
       "data.i18n.display",
       "data.perf.gates",
       "data.barcode.symbology",
-      "data.bind.preview-step",
-      "data.bind.field-mapping",
-      "data.bind.change-report",
       "data.bind.authoring",
-      "data.dataset.palette",
       "data.dataset.library-xml",
       "plugin-doc.opc-foundation",
       "plugin-doc.read-path",
-      "plugin-doc.embedded-placement",
       "plugin-doc.save-back",
       "plugin-doc.outline-panel",
       "plugin-doc.save-back-feedback",
@@ -246,58 +1710,28 @@
       "plugin-doc.identity-alignment",
       "plugin-doc.nested-table-locator",
       "plugin-doc.edit-context",
-      "plugin-doc.verbatim-export",
-      "plugin-draw.geometry-rdp",
-      "plugin-draw.geometry-bezier",
       "plugin-draw.geometry-handles",
-      "plugin-draw.pen-machine",
-      "plugin-draw.anchor-add",
-      "plugin-draw.anchor-delete",
-      "plugin-draw.anchor-convert",
       "plugin-draw.stroke-dash-commands",
-      "plugin-draw.bundle-manifest",
       "plugin-draw.edit-context-live",
       "plugin-draw.stroke-schema-panel",
       "plugin-draw.headless-conformance",
-      "plugin-draw.pro-path-toolset",
-      "plugin-draw.shape-builder",
-      "plugin-draw.live-corners",
-      "plugin-draw.appearance",
-      "plugin-draw.select-same",
-      "plugin-draw.svg-io",
       "plugin-draw.layers-panel",
       "plugin-draw.layers-binding-provider",
       "plugin-draw.pencil-pressure",
       "plugin-draw.corner-radius-tool",
       "plugin-draw.brush-tools",
       "plugin-draw.eyedropper",
-      "plugin-draw.path-weld",
-      "plugin-draw.tool-wave-2",
       "plugin-draw.appearance-panel",
       "plugin-draw.measure-overlay-text",
-      "plugin-draw.compound-paths",
-      "plugin-draw.graphic-styles",
-      "plugin-draw.opacity-mask-commands",
-      "plugin-draw.repeats",
-      "plugin-draw.blends",
-      "plugin-draw.objects-on-path",
       "plugin-draw.fill-schema-panel",
       "image.kernel.wgsl-abi",
       "image.pipeline.engine-a-skeleton",
       "image.codec.traits",
-      "image.selection.mask",
       "image.residency.tier01",
       "image.pipeline.async-sink",
       "image.editor.crop",
       "image.editor.auto-enhance",
       "image.codec.exif",
-      "image.editor.filters",
-      "image.psd.editor-doors",
-      "image.editor.resample",
-      "image.kernel.breadth-2026-08",
-      "image.selection.mask-tools",
-      "image.selection.masked-pipeline",
-      "image.editor.adjust-breadth",
       "image.io.save-back",
       "image.editor.crop-straighten",
       "image.editor.paint",
@@ -306,7 +1740,6 @@
       "image.paths.path-to-selection",
       "image.editor.clone-stamp",
       "image.editor.healing-brush",
-      "image.editor.content-aware-fill",
       "image.layers.clipping",
       "image.layers.groups",
       "image.layers.f16-fold",
@@ -315,23 +1748,17 @@
       "plugin-pdf.native-ocf-writer",
       "plugin-pdf.image-filters",
       "plugin-platform.manifest-schema",
-      "plugin-platform.bundle-lifecycle",
       "plugin-platform.tool-registration",
       "plugin-platform.command-registration",
       "plugin-platform.overlay-registration",
       "plugin-platform.edit-context",
       "plugin-platform.wire-compat-assertions",
-      "plugin-platform.document-metadata",
       "plugin-platform.headless-host-conformance",
-      "plugin-platform.importer-exporter",
       "plugin-platform.native-document",
-      "plugin-platform.file-picker",
       "plugin-platform.blob-store",
       "plugin-platform.network-consent",
       "plugin-platform.data-providers",
-      "plugin-platform.scene-layer",
       "plugin-platform.frame-chain-read",
-      "plugin-platform.text-measurement",
       "plugin-platform.host-widgets",
       "plugin-platform.worker-pool",
       "plugin-platform.credential-store",
@@ -339,7 +1766,6 @@
       "plugin-platform.host-eyedropper",
       "plugin-platform.panel-rail-door",
       "plugin-platform.overlay-channel",
-      "plugin-platform.text-caret-door",
       "plugin-platform.save-file",
       "plugin-platform.parent-of",
       "plugin-platform.binding-providers",
@@ -357,15 +1783,7 @@
       "plugin-publish.idml-exporter",
       "plugin-publish.byte-identity-sweep",
       "plugin-publish.save-back-defects",
-      "sheet.plugin.bundle",
-      "sheet.calc.engine",
-      "sheet.fn.library",
-      "sheet.calc.spill",
       "sheet.table.structured",
-      "sheet.chart.engine",
-      "sheet.xlsx.roundtrip",
-      "sheet.format.engine",
-      "sheet.lower.page",
       "sheet.binding-providers",
       "sheet.lower.paginate",
       "sheet.data.consumer",
@@ -379,21 +1797,10 @@
       "sheet.plugin.function-browser",
       "sheet.chart.authoring",
       "sheet.parser.dialect",
-      "sheet.edit.ops",
-      "sheet.chart.graphs",
-      "plugin-web.source-model",
-      "plugin-web.insert-command",
-      "plugin-web.source-panel",
-      "plugin-web.metadata-persistence",
-      "plugin-web.engine-rendering",
-      "plugin-web.flow-threading",
-      "plugin-web.flow-fragmentation",
-      "plugin-web.render-readout",
       "plugin-web.html-importer",
       "round-tripping.undo-redo",
       "round-tripping.batch-atomicity",
       "round-tripping.gesture-transactions",
-      "round-tripping.idml-reserialization",
       "round-tripping.native-reserialization",
       "scripting.property-readwrite",
       "scripting.undo-redo",
@@ -412,39 +1819,15 @@
       "scripting.visible-results",
       "scripting.full-mutation-surface",
       "scripting.docs-playground-seeds",
-      "sections-numbering-variables.text-variables",
-      "stories-text.story-model",
       "stories-text.text.delete",
       "stories-text.caret-selection",
-      "stories-text.fields.insert",
-      "stories-text.nested-styles",
-      "stories-text.page-number-markers",
-      "stories-text.footnotes",
-      "stories-text.overset",
-      "stories-text.text-wrap",
-      "styles.paragraph.crud",
-      "styles.character.crud",
-      "styles.object.crud",
       "styles.cell.crud",
       "styles.table.crud",
-      "styles.set-style-property",
       "styles.paragraph-shading",
-      "styles.paragraph-rules",
       "styles.paragraph-border",
-      "styles.bullets-numbering",
-      "styles.next-style-overrides",
-      "tables.model",
-      "tables.cell-composition",
-      "tables.row-col-sizing",
-      "tables.spans",
-      "tables.header-footer-repeat",
-      "tables.borders-strokes",
-      "tables.cell-vertical-justification",
       "tables.cell-rotation",
       "tables.nested-tables",
       "tables.cell-diagonals",
-      "tables.alternating-fills",
-      "tables.style-cascade",
       "the-renderer.pipeline",
       "the-renderer.display-list",
       "the-renderer.cpu-backend",
@@ -460,325 +1843,57 @@
       "the-renderer.properties-read",
       "the-renderer.scene-cache",
       "the-renderer.devtools-introspection",
-      "the-renderer.pdf-export",
       "the-renderer.pdf-export-marks",
       "the-renderer.pdf-image-downsampling",
       "the-renderer.pdf-font-embedding",
-      "the-renderer.export-diagnostics",
       "the-renderer.font-registry",
-      "typography.knuth-plass",
-      "typography.hyphenation",
-      "typography.justification-spacing",
-      "typography.font-selection",
-      "typography.leading",
-      "typography.tracking-kerning",
-      "typography.baseline-shift",
-      "typography.scale-skew",
-      "typography.vertical-scale",
-      "typography.capitalization",
-      "typography.position-super-subscript",
-      "typography.underline-strikethru",
-      "typography.ligatures-opentype",
-      "typography.drop-caps",
-      "typography.bidi",
       "typography.kinsoku",
       "typography.mojikumi",
       "typography.ruby",
       "typography.kenten",
-      "typography.cjk-vertical-writing",
       "typography.hyphenation-zone"
     ]
   },
   "ops": {
     "universe": 117,
-    "used": 11,
-    "missing": [
+    "used": 117,
+    "missing": [],
+    "transient": [
       "applyMasterToPage",
-      "applyOpacityMask",
       "attachTextToPath",
-      "batch",
       "bindCreated",
-      "closePath",
-      "createCellStyle",
-      "createCharacterStyle",
-      "createColorGroup",
-      "createGradient",
-      "createGroup",
-      "createNumberingList",
-      "createObjectStyle",
-      "createParagraphStyle",
-      "createSwatch",
-      "createTableStyle",
       "deleteCellStyle",
       "deleteCharacterStyle",
-      "deleteColorGroup",
-      "deleteFrame",
       "deleteGradient",
-      "deleteGuide",
       "deleteNumberingList",
       "deleteObjectStyle",
       "deletePage",
       "deleteParagraphStyle",
       "deleteRange",
-      "deleteSwatch",
       "deleteTableColumn",
       "deleteTableRow",
       "deleteTableStyle",
       "detachTextFromPath",
-      "dissolveGroup",
       "duplicatePage",
-      "editColorGroup",
-      "editGradient",
-      "editNumberingList",
-      "editSwatch",
-      "importSwatchLibrary",
-      "insertAnchoredFrame",
-      "insertField",
-      "insertFooterRow",
-      "insertGuide",
-      "insertHeaderRow",
-      "insertHyperlink",
-      "insertOval",
       "insertPage",
-      "insertPath",
-      "insertTable",
-      "insertTableColumn",
-      "insertTableRow",
-      "joinPaths",
-      "layerInsert",
-      "layerMove",
-      "layerRemove",
-      "layerSetLocked",
-      "layerSetName",
-      "layerSetPrintable",
-      "layerSetVisible",
-      "linkFrames",
       "moveFrame",
-      "moveGuide",
-      "offsetPath",
-      "outlineStroke",
-      "pasteInto",
-      "pathOpenAt",
-      "pathPointCurveType",
-      "pathPointInsert",
-      "pathPointRemove",
-      "pathPointSet",
-      "pathfinderBoolean",
-      "pathfinderCrop",
-      "pathfinderDivide",
-      "pathfinderFaces",
-      "pathfinderMerge",
-      "pathfinderMinusBack",
-      "pathfinderOutline",
-      "pathfinderTrim",
-      "placeImage",
-      "releaseFrom",
       "releaseOpacityMask",
       "removeFooterRow",
       "removeHeaderRow",
-      "renameCellStyle",
       "renameCharacterStyle",
-      "renameObjectStyle",
-      "renameParagraphStyle",
-      "renameTableStyle",
-      "reorderElement",
-      "replaceImageBytes",
-      "resizeFrame",
       "resizePage",
-      "setCellSpan",
-      "setColorSettings",
-      "setColumnWidth",
-      "setDocumentDefaults",
       "setFieldValue",
-      "setGroupTransform",
-      "setInkSetting",
-      "setPluginMetadata",
-      "setProofSetup",
-      "setRowHeight",
-      "setStyleProperty",
-      "setUseStandardLabForSpots",
-      "simplifyPath",
       "unlinkFrames"
-    ],
-    "transient": []
+    ]
   },
   "propertyPaths": {
     "universe": 176,
-    "used": 4,
-    "missing": [
-      "anchorPoint",
-      "anchoredHorizontalAlignment",
-      "anchoredHorizontalReference",
-      "anchoredLockPosition",
-      "anchoredPosition",
-      "anchoredSpineRelative",
-      "anchoredVerticalAlignment",
-      "anchoredVerticalReference",
-      "anchoredXOffset",
-      "anchoredYOffset",
-      "appliedCellStyle",
-      "appliedCharacterStyle",
-      "appliedObjectStyle",
-      "appliedParagraphStyle",
-      "appliedTableStyle",
-      "cellBottomEdgeStrokeColor",
-      "cellBottomEdgeStrokeTint",
-      "cellBottomEdgeStrokeWeight",
-      "cellFillColor",
-      "cellFillTint",
-      "cellInsetBottom",
-      "cellInsetLeft",
-      "cellInsetRight",
-      "cellInsetTop",
-      "cellLeftEdgeStrokeColor",
-      "cellLeftEdgeStrokeTint",
-      "cellLeftEdgeStrokeWeight",
-      "cellRightEdgeStrokeColor",
-      "cellRightEdgeStrokeTint",
-      "cellRightEdgeStrokeWeight",
-      "cellTopEdgeStrokeColor",
-      "cellTopEdgeStrokeTint",
-      "cellTopEdgeStrokeWeight",
-      "cellVerticalJustification",
-      "characterFillColor",
-      "characterFontSize",
-      "characterLeading",
-      "characterTracking",
-      "elementLocked",
-      "elementVisible",
-      "frameAutoFit",
-      "frameBevel",
-      "frameBevelAltitude",
-      "frameBevelAngle",
-      "frameBevelDepth",
-      "frameBevelDirection",
-      "frameBevelHighlightColor",
-      "frameBevelHighlightOpacity",
-      "frameBevelShadowColor",
-      "frameBevelShadowOpacity",
-      "frameBevelSize",
-      "frameBevelSoften",
-      "frameBevelStyle",
-      "frameBevelTechnique",
-      "frameBlendMode",
-      "frameBounds",
-      "frameCornerOptionBottomLeft",
-      "frameCornerOptionBottomRight",
-      "frameCornerOptionTopLeft",
-      "frameCornerOptionTopRight",
-      "frameCornerRadiusBottomLeft",
-      "frameCornerRadiusBottomRight",
-      "frameCornerRadiusTopLeft",
-      "frameCornerRadiusTopRight",
-      "frameDirectionalFeather",
-      "frameDirectionalFeatherAngle",
-      "frameDirectionalFeatherBottomWidth",
-      "frameDirectionalFeatherChoke",
-      "frameDirectionalFeatherLeftWidth",
-      "frameDirectionalFeatherNoise",
-      "frameDirectionalFeatherRightWidth",
-      "frameDirectionalFeatherTopWidth",
-      "frameDropShadow",
-      "frameDropShadowColor",
-      "frameDropShadowMode",
-      "frameDropShadowOpacity",
-      "frameDropShadowSize",
-      "frameDropShadowXOffset",
-      "frameDropShadowYOffset",
-      "frameFeather",
-      "frameFeatherChoke",
-      "frameFeatherCornerType",
-      "frameFeatherNoise",
-      "frameFeatherWidth",
-      "frameFillTint",
-      "frameFittingCrops",
-      "frameFittingReferencePoint",
-      "frameFittingType",
-      "frameFlipH",
-      "frameFlipV",
-      "frameGradientFillAngle",
-      "frameGradientFillLength",
-      "frameGradientStrokeAngle",
-      "frameGradientStrokeLength",
-      "frameInnerGlow",
-      "frameInnerGlowBlendMode",
-      "frameInnerGlowChoke",
-      "frameInnerGlowColor",
-      "frameInnerGlowNoise",
-      "frameInnerGlowOpacity",
-      "frameInnerGlowSize",
-      "frameInnerGlowSource",
-      "frameInnerShadow",
-      "frameInnerShadowAngle",
-      "frameInnerShadowBlendMode",
-      "frameInnerShadowChoke",
-      "frameInnerShadowColor",
-      "frameInnerShadowDistance",
-      "frameInnerShadowNoise",
-      "frameInnerShadowOpacity",
-      "frameInnerShadowSize",
-      "frameInsetSpacing",
-      "frameNonprinting",
-      "frameOpacity",
-      "frameOuterGlow",
-      "frameOuterGlowBlendMode",
-      "frameOuterGlowColor",
-      "frameOuterGlowNoise",
-      "frameOuterGlowOpacity",
-      "frameOuterGlowSize",
-      "frameOuterGlowSpread",
-      "frameOverprintFill",
-      "frameOverprintStroke",
-      "framePath",
-      "framePathPoint",
-      "frameRotationAngle",
-      "frameSatin",
-      "frameSatinAngle",
-      "frameSatinBlendMode",
-      "frameSatinColor",
-      "frameSatinDistance",
-      "frameSatinInvert",
-      "frameSatinOpacity",
-      "frameSatinSize",
-      "frameScaleX",
-      "frameScaleY",
-      "frameStrokeAlignment",
-      "frameStrokeDashArray",
-      "frameStrokeEndArrowhead",
-      "frameStrokeEndCap",
-      "frameStrokeGapColor",
-      "frameStrokeGapTint",
-      "frameStrokeJoin",
-      "frameStrokeMiterLimit",
-      "frameStrokeStartArrowhead",
-      "frameStrokeType",
-      "frameStrokeWeight",
-      "frameTextWrapContourIncludeInside",
-      "frameTextWrapContourType",
-      "frameTextWrapInvert",
-      "frameTextWrapMode",
-      "frameTextWrapOffsets",
-      "frameTransform",
-      "imageContentTransform",
-      "paragraphAppliedNumberingList",
-      "paragraphFirstLineIndent",
-      "paragraphJustification",
-      "paragraphSpaceAfter",
-      "paragraphSpaceBefore",
-      "paragraphStyleNextStyle",
-      "pathPointCurveType",
-      "pathPointInsert",
-      "pathPointRemove",
-      "pluginMetadata",
-      "tableColumnCount",
-      "tableRowCount",
-      "textFrameAutoSizing",
-      "textFrameColumnBalance",
-      "textFrameColumnCount",
-      "textFrameColumnGutter",
-      "textFrameFirstBaseline",
-      "textFrameVerticalJustification"
-    ]
+    "used": 176,
+    "missing": []
   },
-  "idmlLost": []
+  "idmlLost": [
+    "opacity mask on `ueeec0b` (artwork `ueeec0c`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
+    "opacity mask on `ueeec0d` (artwork `ueeec0e`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
+    "opacity mask on `ueef0de` (artwork `ueef0df`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it."
+  ]
 }
