@@ -17,22 +17,23 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// Ch.17 The Long Read — p107–108, the bake spread. The live-versus-
-// baked asymmetry closes the chapter: the bake's receipt is printed as
-// reported and its registry row deliberately unclaimed.
+// Ch.17 The Long Read — p106, the fragmentation ladder. The fares table
+// splits between body rows with its two-row header repeating; the card
+// column splits between blocks around one atomic image. Its own spec
+// because the ladder alone is a chapter's worth of composition, and
+// because the refusal it records belongs to a session nothing else
+// shares.
 
 import { annualChapter } from "../chapter";
 import { p } from "../names-annual";
 
-import { build as bake } from "../pages/230-long-read/05-bake";
+import { build as fragments } from "../pages/230-long-read/04-fragments";
 
-// Continuation of 230-long-read — split for the in-chain per-op cost.
-// The bake keeps its own spec because it must meet a HEALTHY web engine:
-// the fragments page's card chain leaves a scene-layer refusal behind it,
-// and a fresh browser per chapter is the cleanest way to guarantee the
-// order that matters.
+// Continuation of 232-long-read-b — split for the in-chain per-op cost;
+// the checkpoint chain absorbs splits with zero logic change. Page order
+// is a property of the book, not of the run: p106 is authored last.
 annualChapter({
-  id: "232-long-read-b",
-  title: "Ch.17 The Long Read - the bake",
-  modules: [{ id: "lr-bake", pages: [p(107), p(108)], build: bake }],
+  id: "234-long-read-c",
+  title: "Ch.17 The Long Read - the fragmentation ladder",
+  modules: [{ id: "lr-fragments", pages: [p(106)], build: fragments }],
 });
