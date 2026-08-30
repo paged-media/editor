@@ -53,6 +53,7 @@ import { expect } from "@playwright/test";
 import { assignLayer } from "../../annual-support";
 import { LAYER, p } from "../../names-annual";
 import { geometryOf, newRefs, sceneRefs, type Ref } from "../../plugin-support";
+import { pathAnchors } from "../150-object/wire";
 import { spreadOffset } from "../250-manuscript/00-support";
 import type { PageContext, PageReport } from "../../types";
 
@@ -69,8 +70,17 @@ interface Contour {
   weight: number | null;
 }
 
-async function readContour(ctx: PageContext, id: string): Promise<Contour | null> {
-  return ctx.page.evaluate(async (elId) => {
+async function readContour(
+  ctx: PageContext,
+  id: string,
+): Promise<Contour | null> {
+  // Anchors come from the DEDICATED door, not from elementProperties:
+  // the property read curates a per-kind entry list and framePath is
+  // not in a polygon's, which is what the first run of this module
+  // discovered — four contours found, four unreadable.
+  const geom = await pathAnchors(ctx, { kind: "polygon", id });
+  if (!geom.anchors.length) return null;
+  const paint = await ctx.page.evaluate(async (elId) => {
     const c = (
       globalThis as unknown as {
         __canvas: {
@@ -85,23 +95,29 @@ async function readContour(ctx: PageContext, id: string): Promise<Contour | null
         };
       }
     ).__canvas;
-    const props = await c.client.elementProperties({ kind: "polygon", id: elId });
-    if (!props) return null;
+    const props = await c.client.elementProperties({
+      kind: "polygon",
+      id: elId,
+    });
     const read = (path: string) =>
-      props.entries.find((e) => e.path === path)?.value?.value ?? null;
-    const fp = read("framePath") as {
-      anchors?: Contour["anchors"];
-      subpathStarts?: number[];
-    } | null;
-    if (!fp?.anchors?.length) return null;
+      props?.entries.find((e) => e.path === path)?.value?.value ?? null;
     return {
-      anchors: fp.anchors,
-      subpathStarts: fp.subpathStarts ?? [0],
       fill: read("frameFillColor") as string | null,
       stroke: read("frameStrokeColor") as string | null,
       weight: read("frameStrokeWeight") as number | null,
     };
   }, id);
+  return {
+    anchors: geom.anchors.map((a) => ({
+      anchor: a.anchor,
+      left: a.left,
+      right: a.right,
+    })),
+    subpathStarts: geom.subpathStarts ?? [],
+    fill: paint.fill,
+    stroke: paint.stroke,
+    weight: paint.weight,
+  };
 }
 
 export async function build(ctx: PageContext): Promise<PageReport> {
@@ -219,7 +235,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
 
   return {
     title: "Ch.14 — the crest, carried to the page that describes it",
-    covers: ["plugin-draw.svg-io", "frames-paths.path-topology"],
+    covers: ["plugin-draw.svg-io", "frames-paths.path.insert"],
     elements,
     notes,
   };
