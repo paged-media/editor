@@ -17,25 +17,21 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// The appendix, first half — p127–p132. A·1–A·4 compile the LIMITS
-// LEDGER from the page sources themselves (every ◪ margin note in the
-// book, deduped, classified, folio-resolved) and close with the
-// campaign's engine findings. A·5–A·6 resolve the index apparatus from
-// the document's own IDML export — a whole-book door, and the reason
-// this spec carries the enlarged budget.
+// The appendix, close — p133–p134. The colophon reads its numbers from
+// the ledger fragments, the coverage universes and the live container,
+// and ends the book on its one-line thesis, alone on the final verso.
+// Its own spec: the appendix ran as one and outran 40 minutes twice
+// with the limits and the index already banked, which puts the cost
+// here — on the last two pages of the fullest the document ever gets.
 
 import { annualChapter } from "../chapter";
 import { p } from "../names-annual";
 
-import { build as limits } from "../pages/310-appendix/01-limits";
-import { build as index } from "../pages/310-appendix/02-index";
+import { build as colophon } from "../pages/310-appendix/03-colophon";
 
 annualChapter({
-  id: "310-appendix",
-  title: "Appendix - Limits and Index",
+  id: "312-appendix-b",
+  title: "Appendix - the Colophon",
   budgetMinutes: 70,
-  modules: [
-    { id: "ax-limits", pages: [p(127), p(128), p(129), p(130)], build: limits },
-    { id: "ax-index", pages: [p(131), p(132)], build: index },
-  ],
+  modules: [{ id: "ax-colophon", pages: [p(133), p(134)], build: colophon }],
 });
