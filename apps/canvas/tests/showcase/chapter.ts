@@ -277,7 +277,12 @@ export async function runChapter(page: Page, spec: ChapterSpec): Promise<void> {
       console.log(`[${spec.id}] ${spread.id} note — ${n}`);
     }
 
-    if (spread.needsGpu && !gpu) {
+    if (spread.selfGated) {
+      notes.push(
+        `${spread.id}: the module carries its own oracle — its doors leave ` +
+          `no mark on a finished page by design`,
+      );
+    } else if (spread.needsGpu && !gpu) {
       notes.push(
         `${spread.id}: pixel assertion skipped — no GPU render path: ${gpuReason}`,
       );

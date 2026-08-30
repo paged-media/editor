@@ -127,6 +127,21 @@ export class Ledger {
     }
   }
 
+  /**
+   * Record a property path exercised through a lane that is NOT
+   * `setElementProperty` — the `paged.*` scripting bridge, whose
+   * vocabulary IS the introspect catalog and therefore carries names
+   * the wire's own `PropertyPath` enum does not spell (`frameSatin`
+   * for `frameSatinEnabled`, `frameTextWrapInvert` for
+   * `textWrapInvert`). Call it only AFTER the lane reports the write
+   * applied: an unverified record is a lie in the ledger.
+   */
+  recordPath(path: string): void {
+    const p = this.paths.get(path);
+    if (p) p.count += 1;
+    else this.paths.set(path, { count: 1, firstModule: this.module });
+  }
+
   /** Record one wire op (and any property path its args carry). */
   record(op: string, args: unknown): void {
     const existing = this.ops.get(op);

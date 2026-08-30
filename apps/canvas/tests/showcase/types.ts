@@ -81,4 +81,15 @@ export interface SpreadSpec {
    * module but downgrades its pixel assertion to a note.
    */
   readonly needsGpu?: boolean;
+  /**
+   * True when the module's doors leave no mark on a finished page BY
+   * DESIGN — a bench that works on a scratch page and removes it, or
+   * writes properties whose whole meaning is invisibility (nonprinting,
+   * hidden, locked). The runner's cross-module pixel gate cannot judge
+   * such a module, so the module carries its own oracle instead: it
+   * renders its scratch page under each door and asserts the document
+   * returns to its page count with nothing stray left behind. Weaker
+   * gates are a smell; this one is applied where the work happens.
+   */
+  readonly selfGated?: boolean;
 }
