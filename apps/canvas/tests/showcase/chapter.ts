@@ -207,7 +207,11 @@ function shouldSkip(spec: ChapterSpec): string | null {
  * checkpoint + ledger fragment, and sample earlier pages for the
  * incremental round-trip regression.
  */
-export async function runChapter(page: Page, spec: ChapterSpec): Promise<void> {
+export async function runChapter(
+  page: Page,
+  spec: ChapterSpec,
+  allowBatching = true,
+): Promise<void> {
   const skip = shouldSkip(spec);
   if (skip) {
     test.skip(true, skip);
@@ -257,12 +261,21 @@ export async function runChapter(page: Page, spec: ChapterSpec): Promise<void> {
     // Snapshot BEFORE — a module cannot mark its own homework.
     const before = await doc.renderPage(spread.pages[0]);
 
-    const report = await spread.build({
-      page,
-      doc,
-      pageIndexes: spread.pages,
-      pageIds,
-    });
+    // ONE REBUILD PER MODULE. The engine rebuilds the whole document
+    // per mutation, so on a book this size the wire lane's cost is the
+    // rebuild, not the round trip (~14 s per op in wasm on the finished
+    // 134 pages — the fifteen hours the first build took). Deferred
+    // mode collects the module's ops into one `batch`, which the engine
+    // rebuilds once; reads inside the module flush it first, so a
+    // module still sees its own writes. `ANNUAL_BATCH=0` restores the
+    // one-mutation-per-op lane.
+    const batched =
+      allowBatching && process.env.ANNUAL_BATCH !== "0" && !spread.unbatched;
+    const build = () =>
+      spread.build({ page, doc, pageIndexes: spread.pages, pageIds });
+    const t0 = Date.now();
+    const report = batched ? await doc.defer(build) : await build();
+    const authorMs = Date.now() - t0;
 
     claims.push({
       module: spread.id,
@@ -292,7 +305,8 @@ export async function runChapter(page: Page, spec: ChapterSpec): Promise<void> {
     // eslint-disable-next-line no-console
     console.log(
       `[${spec.id}] ${spread.id} — ${report.title} ` +
-        `(${report.elements.length} elements, ${report.covers.length} rows)`,
+        `(${report.elements.length} elements, ${report.covers.length} rows, ` +
+        `${(authorMs / 1000).toFixed(1)}s${batched ? " batched" : ""})`,
     );
   }
 
@@ -368,8 +382,16 @@ export function chapterTest(spec: ChapterSpec): void {
     test.setTimeout((spec.budgetMinutes ?? 40) * 60 * 1000);
     test(`${spec.title} @feat:package-anatomy.paged-container @level:happy`, async ({
       page,
-    }) => {
-      await runChapter(page, spec);
+    }, testInfo) => {
+      // FAST BY DEFAULT, CORRECT ALWAYS. The first attempt authors each
+      // module as one batch; a retry falls back to one mutation per op.
+      // A module that drives the editor's UI or carries an absolute
+      // index measured before the batch (`reorderElement { index }`)
+      // can only be right on the slow lane, and this way the chain
+      // finishes unattended and the log says which chapters took it —
+      // instead of a run stopping on the first module that cannot be
+      // deferred.
+      await runChapter(page, spec, testInfo.retry === 0);
     });
   });
 }

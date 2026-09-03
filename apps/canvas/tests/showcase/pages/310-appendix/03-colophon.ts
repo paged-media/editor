@@ -33,6 +33,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { PROTOCOL_VERSION } from "@paged-media/client";
+
 import { proseFrame, specLabel } from "../../annual-support";
 import { APP_ROOT, CORE, LEDGER_DIR } from "../../chapter";
 import { mergeFragments, opUniverse, propertyPathUniverse, readFragments } from "../../ledger";
@@ -75,7 +77,14 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       "utf8",
     ),
   ) as { version: string };
-  const protocol = Number(wasm.version.split(".")[1]);
+  // The wire protocol is a property of the ENGINE, not of a version
+  // string. Deriving it from `0.<protocol>.<patch>` printed "protocol 0"
+  // the first time the book was built against a locally-built wasm —
+  // a colophon that lied about the very thing it exists to record.
+  // `PROTOCOL_VERSION` is the number the editor speaks, and CI
+  // (`scripts/check-protocol-version.sh`) checks it against the
+  // installed wasm, so it cannot drift from the engine in the package.
+  const protocol = PROTOCOL_VERSION;
   notes.push(
     `colophon numbers — chapters ${fragments.length} · rows ${rowsClaimed.size} · ` +
       `ops ${opsUsed.length}/${ops.length} · paths ${pathsUsed.length}/${paths.length} · ` +

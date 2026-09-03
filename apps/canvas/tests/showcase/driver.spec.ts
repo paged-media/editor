@@ -45,6 +45,41 @@ const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/text.idml`;
 test.describe("ShowcaseDoc", () => {
   test.setTimeout(120_000);
 
+  test("authors a whole gesture in ONE batch @feat:stories-text.text.insert @level:happy", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    const doc = new ShowcaseDoc(page);
+    await doc.load(FIXTURE);
+    const pageId = await doc.pageId(0);
+    const bounds: [number, number, number, number] = [60, 340, 400, 440];
+    const text = "Deferred probe.";
+
+    // Deferred mode: the same authoring code, queued. Inside the body
+    // a mint answers with a C-15 handle — an id everywhere the driver
+    // takes one — and the engine resolves it inside the batch.
+    const { frame, storyId } = await doc.defer(async () => {
+      const frame = await doc.textFrame(pageId, bounds);
+      expect(frame.startsWith("$h:")).toBe(true);
+      const storyId = await doc.storyOf(pageId, bounds);
+      expect(storyId).toBe(frame);
+      await doc.insertText(storyId, text);
+      return { frame, storyId };
+    });
+
+    // Flushed: the handles now name real elements, and the document
+    // holds exactly what the un-batched lane would have written.
+    const realFrame = doc.resolve(frame);
+    expect(realFrame.startsWith("$h:")).toBe(false);
+    // A frame handle in a STORY position resolves to the story the
+    // insert minted — the engine's own rule, mirrored here.
+    const realStory = doc.resolveStory(storyId);
+    expect(realStory).not.toBe(realFrame);
+    expect(await doc.storyChars(storyId)).toBeGreaterThanOrEqual(text.length);
+    // Addressable afterwards — the id survives the batch it was born in.
+    await doc.select("textFrame", realFrame);
+  });
+
   test("loads, enumerates pages, and authors a styled frame @feat:stories-text.text.insert @level:happy", async ({
     page,
   }) => {
