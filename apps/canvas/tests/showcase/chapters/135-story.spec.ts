@@ -39,7 +39,13 @@ annualChapter({
   title: "Ch.5 The Story — flow",
   modules: [
     { id: "st-opener", pages: [p(33)], build: opener },
-    { id: "st-thread", pages: [p(34), p(35)], build: thread },
+    // UNBATCHED: threading. The links go out with real ids and the
+    // engine composes them (core's batch_composition pins four
+    // shapes), but through the editor a batched chain leaves the
+    // target carrying the story it was born with — 135-story's
+    // oracle caught it, the manuscript logged it. Diagnose before
+    // lifting this.
+    { id: "st-thread", pages: [p(34), p(35)], build: thread , unbatched: true },
     { id: "st-overset", pages: [p(36)], build: overset },
     { id: "st-frame-prefs", pages: [p(37)], build: framePrefs },
     { id: "st-autosize", pages: [p(38)], build: autosize },

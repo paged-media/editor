@@ -45,6 +45,9 @@ annualChapter({
   modules: [
     { id: "do-divider", pages: [p(75), p(76)], build: divider },
     { id: "do-opener", pages: [p(77)], build: opener },
-    { id: "do-drafting", pages: [p(78)], build: drafting },
+    // UNBATCHED: real pointer input through the live camera (the app
+    // acts on what has been APPLIED) and an absolute z-index measured
+    // before the batch would be — the retry lane proved both.
+    { id: "do-drafting", pages: [p(78)], build: drafting, unbatched: true },
   ],
 });

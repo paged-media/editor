@@ -130,10 +130,40 @@ export interface ChapterSpec {
  */
 export function discoverChapterIds(): string[] {
   const dir = pathResolve(__dirname, "chapters");
-  return readdirSync(dir)
-    .filter((f) => f.endsWith(".spec.ts") && !f.startsWith("900-"))
-    .map((f) => f.replace(/\.spec\.ts$/, ""))
-    .sort();
+  return (
+    readdirSync(dir)
+      .filter((f) => f.endsWith(".spec.ts") && !f.startsWith("900-"))
+      // Sort the FILENAMES, not the ids stripped out of them: the test
+      // runner orders spec FILES, and `-` sorts before `.`, so
+      // `311-repair-b.spec.ts` runs before `311-repair.spec.ts` while
+      // the stripped ids say the opposite. The chain then computed a
+      // predecessor that had not run yet — invisible for as long as
+      // every checkpoint was already on disk from an earlier build, and
+      // fatal on the first rebuild from scratch (three chapters and the
+      // assembly died in 123 ms each). Sorting here the way the runner
+      // does makes the two orders the same by construction; the `-a`
+      // suffix on `311-repair-a` is what makes that order the INTENDED
+      // one as well.
+      .sort()
+      .map((f) => f.replace(/\.spec\.ts$/, ""))
+      // …and the two readings of the order must AGREE. A file whose id
+      // sorts differently from its filename (`311-repair` vs
+      // `311-repair-b`) reads as one order here and runs in another;
+      // suffix it so both agree rather than leaving the chain to guess.
+      .reduce<string[]>((ids, id) => {
+        const prev = ids[ids.length - 1];
+        if (prev !== undefined && prev > id) {
+          throw new Error(
+            `chapter ${id} sorts before ${prev} by ID but after it by ` +
+              `FILENAME — the chain would build on a predecessor that has ` +
+              `not run. Rename it so both orders agree (a "-a" suffix on ` +
+              `the earlier one does it).`,
+          );
+        }
+        ids.push(id);
+        return ids;
+      }, [])
+  );
 }
 
 /**

@@ -26,7 +26,7 @@ import { p } from "../names-annual";
 import { build as crest } from "../pages/320-repair/01-crest";
 
 annualChapter({
-  id: "311-repair",
+  id: "311-repair-a",
   title: "The crest repair",
   modules: [{ id: "rp-crest", pages: [p(77)], build: crest }],
 });

@@ -762,6 +762,21 @@ export class ShowcaseDoc {
     }
   }
 
+  /**
+   * Real ids for handles, flushing first — for the one thing the
+   * deferred lane cannot rewrite: an id a caller builds into TEXT.
+   *
+   * `paged.set("rectangle:u4b8", …)` names its element inside a script
+   * SOURCE, so no address-position rule can reach it; the eight catalog
+   * aliases in the remainder chapter addressed `rectangle:$h:m12`, were
+   * refused, and took eight property paths out of the ledger with them.
+   * A module that writes an id into a string asks for it here.
+   */
+  async ids(...refs: string[]): Promise<string[]> {
+    await this.flush();
+    return refs.map((r) => this.resolve(r));
+  }
+
   /** The real ELEMENT id behind a handle reference (or the id itself).
    *  Throws while the handle is still queued — a caller that needs the
    *  real id should read, which flushes. */
