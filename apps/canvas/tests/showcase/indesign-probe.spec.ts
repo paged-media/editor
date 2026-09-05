@@ -30,13 +30,17 @@
 //     dropped one);
 //   · sections, guides, hyperlinks, conditions: EXACT (all four were 0
 //     in InDesign's hands until the spellings were fixed);
-//   · tables: every table in a PLACED story (a table in an orphaned
-//     story is discarded by InDesign and is nobody's loss);
+//   · tables: EXACTLY the tables in placed stories, and no orphaned
+//     story reaches the export (InDesign discards its table);
+//   · images: every `<Link>` found AND resolved (the `Links/` folder
+//     beside the `.idml`; a missing link is an empty frame);
 //   · the tint: present, same base, same value (the `<Color TintValue>`
 //     spelling was discarded);
-//   · font faces, overset stories, paragraph totals: recorded, not
-//     asserted (the corpus faces are not installed on any machine but
-//     the corpus's own, so InDesign substitutes).
+//   · faces: every face the book uses installed and resolved — a
+//     substituted face reflows what it touches;
+//   · overset: no more stories than the model's own count, which the
+//     assembly records beside the export;
+//   · paragraph totals and container entries: recorded, not asserted.
 //
 // Not a CI lane: it needs macOS and InDesign. Without them it SKIPS and
 // says so; `REQUIRE_REAL_INDESIGN=1` turns that skip into a failure
@@ -90,10 +94,41 @@ test.describe("InDesign", () => {
     expect(seen.hyperlinks, "hyperlinks").toBe(expected.hyperlinks);
     expect(seen.conditions, "conditions").toBe(expected.conditions);
 
-    // ── tables: every one a reader can reach ─────────────────────────
-    expect(seen.tables, "tables in placed stories").toBeGreaterThanOrEqual(
+    // ── tables: every one a reader can reach, and no ghost ───────────
+    // An orphaned story (no frame references it) must not be exported
+    // at all, so InDesign's count IS the placed count.
+    expect(seen.tables, "tables").toBe(expected.tables_in_placed_stories);
+    expect(expected.tables, "no table in an orphaned story reaches the export").toBe(
       expected.tables_in_placed_stories,
     );
+
+    // ── images: placed, linked, and RESOLVED ─────────────────────────
+    // IDML cannot embed pixels; the export writes `<Link>`s with absolute
+    // URIs into the `Links/` folder beside the `.idml`, and InDesign must
+    // find every one — a missing link is an empty frame in Adobe's hands.
+    expect(seen.links?.total, "links InDesign found").toBe(expected.links);
+    expect(seen.links?.missing, "links InDesign could not resolve").toBe(0);
+
+    // ── faces: the book's own, installed and resolved ────────────────
+    // A substituted face reflows every line it touches; fidelity in
+    // InDesign's hands starts with the faces it can actually use.
+    const unresolvedFonts = seen.fonts.filter((f) => f.status !== "INSTALLED");
+    expect(
+      unresolvedFonts.map((f) => `${f.name} (${f.status})`),
+      "every face the book uses is installed here and resolved by InDesign",
+    ).toEqual([]);
+
+    // ── overset: no more than the model's own ────────────────────────
+    // The assembly records the model's overset count beside the export;
+    // the book carries deliberate overset exhibits, so InDesign may
+    // report those — and nothing beyond them.
+    const modelPath = join(workDir, "model.json");
+    if (existsSync(modelPath)) {
+      const model = JSON.parse(readFileSync(modelPath, "utf8")) as { oversetStories: number };
+      expect(seen.overset_stories, "overset stories, against the model's own count").toBeLessThanOrEqual(
+        model.oversetStories,
+      );
+    }
 
     // ── the tint ─────────────────────────────────────────────────────
     for (const t of expected.tint_swatches) {
@@ -107,8 +142,8 @@ test.describe("InDesign", () => {
     expect(expected.applied_font_attribute_form, "AppliedFont as an attribute").toBe(0);
     expect(expected.root_paragraph_style_groups, "one root paragraph style group").toBe(1);
 
-    // ── recorded, not asserted ───────────────────────────────────────
-    const missing = seen.fonts.filter((f) => f.status !== "INSTALLED").length;
+    // ── recorded ─────────────────────────────────────────────────────
+    const missing = unresolvedFonts.length;
     const orphanTables = expected.tables - expected.tables_in_placed_stories;
     // eslint-disable-next-line no-console
     console.log(

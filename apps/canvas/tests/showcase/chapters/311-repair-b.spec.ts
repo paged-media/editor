@@ -30,6 +30,9 @@ annualChapter({
   id: "311-repair-b",
   title: "Layout repairs - the contaminated prose",
   modules: [
-    { id: "lr-prose", pages: [p(96)], build: prose },
+    // A VERIFICATION, not a repair: it reads the chart wall's stories and
+    // demonstrates the delete on a scratch frame it removes again, so a
+    // finished page carries no mark of it by design.
+    { id: "lr-prose", pages: [p(96)], build: prose, selfGated: true },
   ],
 });

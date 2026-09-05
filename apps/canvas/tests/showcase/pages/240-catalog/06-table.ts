@@ -60,6 +60,7 @@ import {
   BINDINGS_PANEL,
   DATASET_PANEL,
   chapterData,
+  ensureOrdersReady,
   settleStableNew,
   spreadOffset,
 } from "./00-support";
@@ -114,7 +115,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
 
   let ledger: string[] = [];
 
-  if (chapterData.ready) {
+  if (await ensureOrdersReady(ctx, notes)) {
     // A frame that exists only to hold the caret: the demo wiring also
     // defines an empty-expression variable whose field would land at
     // the caret — parked here, then thrown away with the frame.

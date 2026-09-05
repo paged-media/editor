@@ -87,9 +87,36 @@ export const units = (k: number): number => 37 * k - 12;
 export const chapterData: {
   /** DuckDB reached "ready" and the CSV registered. */
   ready: boolean;
+  /** The PAGE that reached ready. This module lives in the test worker,
+   *  which Playwright reuses across tests: the catalog is split into two
+   *  chapters, and the second one used to inherit `ready: true` from the
+   *  first with a brand-new page whose data engine had never booted — it
+   *  authored its bindings against nothing, lowered zero barcodes, and
+   *  failed; on the retry's FRESH worker it inherited `false`, took the
+   *  "never reached ready" branch, and passed with empty frames. Readiness
+   *  is a property of a page, so it is remembered with the page. */
+  readyPage: Page | null;
   /** The record card's wizard-mapped bindings, in card order. */
   cardFields: Array<{ binding: string; column: string; storyId: string }>;
-} = { ready: false, cardFields: [] };
+} = { ready: false, readyPage: null, cardFields: [] };
+
+/**
+ * Is the order book registered and the query engine ready ON THIS
+ * PAGE? A split chapter opens on a page that has none of the previous
+ * chapter's plugin session (AUTHORING rule 3), so it re-imports the
+ * same order book itself — the way the ledger chain re-imports its
+ * workbook — rather than trusting a flag another page set.
+ */
+export async function ensureOrdersReady(
+  ctx: PageContext,
+  notes: string[],
+): Promise<boolean> {
+  if (chapterData.ready && chapterData.readyPage === ctx.page) return true;
+  chapterData.ready = false;
+  chapterData.readyPage = null;
+  const got = await importOrders(ctx, notes);
+  return got === "ready";
+}
 
 // ── the date-column seam finding ─────────────────────────────────────
 
@@ -309,6 +336,7 @@ export async function importOrders(
       "unknown");
   if (ready) {
     chapterData.ready = true;
+    chapterData.readyPage = page;
     await expect(page.getByText(/annual_orders/).first()).toBeVisible({
       timeout: 120_000,
     });

@@ -48,6 +48,9 @@ export interface IdmlExpectation {
   /** The `AppliedFont="…"` ATTRIBUTE spelling, which InDesign ignores. */
   applied_font_attribute_form: number;
   root_paragraph_style_groups: number;
+  /** `<Link>` elements on the spreads — the placed images InDesign
+   *  should resolve, given the `Links/` folder beside the `.idml`. */
+  links: number;
   /** Entries that are not part of an IDML package (container parts). */
   foreign_entries: string[];
 }
@@ -95,12 +98,14 @@ export function idmlExpectation(bytes: Buffer): IdmlExpectation {
   let items = EMPTY;
   let pages = 0;
   let guides = 0;
+  let links = 0;
   const placedStories = new Set<string>();
   for (const s of spreads) {
     const xml = text(s);
     items = add(items, itemCounts(xml));
     pages += count(/<Page(?=[ />])/g, xml);
     guides += count(/<Guide(?=[ />])/g, xml);
+    links += count(/<Link(?=[ />])/g, xml);
     for (const m of xml.matchAll(/<TextFrame\b[^>]*\bParentStory="([^"]+)"/g)) {
       placedStories.add(m[1]);
     }
@@ -164,6 +169,7 @@ export function idmlExpectation(bytes: Buffer): IdmlExpectation {
     tint_swatches: tints,
     applied_font_attribute_form: attrFonts,
     root_paragraph_style_groups: count(/<RootParagraphStyleGroup>/g, styles),
+    links,
     foreign_entries: names.filter(
       (n) => !(n === "mimetype" || n === "designmap.xml" || IDML_PREFIXES.some((p) => n.startsWith(p))),
     ),

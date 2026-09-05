@@ -51,6 +51,7 @@ import {
   addAuthoredBinding,
   assignLayerBatch,
   chapterData,
+  ensureOrdersReady,
   clickLower,
   settleStableNew,
   spreadOffset,
@@ -155,7 +156,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
    *  AFTER the drive) print what actually happened under each frame. */
   const drewKind = new Map<string, number>();
 
-  if (chapterData.ready) {
+  if (await ensureOrdersReady(ctx, notes)) {
     // ── author the four bindings, then ONE lowering pass ────────────
     for (const s of SYMBOLS) {
       await doc.select("rectangle", rects.get(s.kind)!);

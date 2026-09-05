@@ -145,6 +145,40 @@ test.describe("annual assembly", () => {
     writeFileSync(join(OUT, "showcase.idml"), idml);
     for (const l of lost) notes.push(`idml export lost: ${l}`);
 
+    // ── the model's own account, for the InDesign probe ──────────────
+    // InDesign's overset count is only a finding against the model's:
+    // the book carries deliberate overset exhibits, and a face that is
+    // substituted oversets for a reason that has nothing to do with
+    // IDML. The probe reads this beside the export.
+    const modelStories = await page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              executeScript: (
+                s: string,
+              ) => Promise<{ output: string[]; error: string | null }>;
+            };
+          };
+        }
+      ).__canvas;
+      const reply = await c.client.executeScript("paged.stories()");
+      const rows = JSON.parse(reply.output[0] ?? "[]") as Array<{
+        overset?: boolean;
+      }>;
+      return { stories: rows.length, overset: rows.filter((r) => r.overset).length };
+    });
+    mkdirSync(join(OUT, "indesign"), { recursive: true });
+    writeFileSync(
+      join(OUT, "indesign", "model.json"),
+      JSON.stringify(
+        { stories: modelStories.stories, oversetStories: modelStories.overset, lost },
+        null,
+        2,
+      ),
+    );
+    notes.push(`model: ${modelStories.stories} stories, ${modelStories.overset} overset`);
+
     // ── the born-shared oracle ──────────────────────────────────────
     // Two unthreaded frames on one story were born that way (the story
     // minter, on a document with sparse ids, named sibling mints in one
