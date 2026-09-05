@@ -29,3 +29,5 @@ showcase/ledger/
 # the committed page evidence is the contact sheet (WP5)
 showcase/pages/
 showcase/preview/
+# InDesign probe work dir (staged copies + reports) — tests/showcase/indesign-probe.spec.ts
+showcase/indesign/
