@@ -100,7 +100,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   await runOnSelection(ctx, [ref(f0), ref(f1), ref(f2)], `${WEB_CMD}.threadWebFlow`);
   const faresThreaded = await settle(
     page,
-    async () => ((await partRecipients(page, f0)) ?? []).length === 2,
+    async () => ((await partRecipients(doc, f0)) ?? []).length === 2,
     10_000,
   );
   expect(faresThreaded, "the fares chain persisted (source + 2 frames)").toBe(true);
@@ -117,7 +117,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   await runOnSelection(ctx, [ref(n0), ref(n1)], `${WEB_CMD}.threadWebFlow`);
   const cardsThreaded = await settle(
     page,
-    async () => ((await partRecipients(page, n0)) ?? []).length === 1,
+    async () => ((await partRecipients(doc, n0)) ?? []).length === 1,
     10_000,
   );
   expect(cardsThreaded, "the card chain persisted (source + 1 frame)").toBe(true);

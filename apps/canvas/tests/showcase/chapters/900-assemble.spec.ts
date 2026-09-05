@@ -51,6 +51,7 @@ import {
 } from "../chapter";
 import { buildCoverage, loadRegistry } from "../coverage";
 import { ShowcaseDoc } from "../driver";
+import { storiesSharedByFrames } from "../shared-stories";
 import { classifyRow, EXCLUSIONS_COMPLETE } from "../exclusions";
 import {
   mergeFragments,
@@ -143,6 +144,21 @@ test.describe("annual assembly", () => {
     expect(zipEntryNames(idml)).toContain("designmap.xml");
     writeFileSync(join(OUT, "showcase.idml"), idml);
     for (const l of lost) notes.push(`idml export lost: ${l}`);
+
+    // ── the born-shared oracle ──────────────────────────────────────
+    // Two unthreaded frames on one story were born that way (the story
+    // minter, on a document with sparse ids, named sibling mints in one
+    // batch after the same number). The chart wall printed its labels
+    // into its prose for a whole build and nothing here could see it;
+    // InDesign could. A thread has one head; anything else fails.
+    const shared = storiesSharedByFrames(idml);
+    notes.push(`stories threaded across frames: ${shared.threads.length}`);
+    expect(
+      shared.bornShared.map(
+        (s) => `${s.story} ← ${s.frames.join(", ")} (${s.heads.length} heads) on ${s.spreads.join(", ")}`,
+      ),
+      "no two unthreaded frames share a story — frames born on one story",
+    ).toEqual([]);
     // Loss is legitimate ONLY for `.paged`-native constructs (opacity
     // masks and kin). Anything else in the list is a silent-loss
     // regression. The allow-list grows only with a written reason.

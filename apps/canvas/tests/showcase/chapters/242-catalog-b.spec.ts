@@ -54,8 +54,11 @@ annualChapter({
   id: "242-catalog-b",
   title: "Ch.18 The Catalog - the DSL, barcodes, the table",
   modules: [
-    { id: "ct-dsl", pages: [p(114)], build: dsl },
-    { id: "ct-barcodes", pages: [p(112)], build: barcodes },
+    // Both drive the bindings PANEL (authoring row, refresh, lower) —
+    // the app shows what has been APPLIED, so these author one op at a
+    // time rather than take the chapter-wide fallback every build.
+    { id: "ct-dsl", pages: [p(114)], build: dsl, unbatched: true },
+    { id: "ct-barcodes", pages: [p(112)], build: barcodes, unbatched: true },
     { id: "ct-table", pages: [p(111)], build: table },
   ],
 });

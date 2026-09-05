@@ -39,7 +39,7 @@
 // loss ledger. Those pages are allowed a budget; every other page must
 // match within the anti-aliasing floor.
 
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 
@@ -48,6 +48,8 @@ import { diffPngPixels } from "../e2e/harness/pixel-diff";
 import { CORPUS_FONTS, OUT } from "./chapter";
 import { ShowcaseDoc } from "./driver";
 import { ANNUAL_PAGES } from "./names-annual";
+import { zipEntryNames } from "../e2e/harness/read-zip";
+import { isIdmlEntry, stripZip } from "./zip-strip";
 
 /** Render width for the comparison. Wide enough that a half-point
  *  shift moves pixels, cheap enough to do 268 times. */
@@ -110,8 +112,34 @@ test.describe("idml parity", () => {
       fromPaged.push(await doc.renderPage(i, WIDTH));
     }
 
+    // The twin the engine loads must be the twin InDesign reads: the
+    // IDML entries and nothing else. The exporter carries the container's
+    // native model part through into the `.idml`, and the load sniff
+    // prefers that part over the IDML parts — so an unstripped twin
+    // renders the MODEL, and this gate compared the model with itself
+    // for a whole campaign while the IDML parts carried no table, no
+    // picture, no section and no guide. Strip first; the stripped file
+    // is written beside the twin so it can be opened elsewhere too.
+    const exported = readFileSync(idmlPath);
+    const foreign = zipEntryNames(exported).filter((n) => !isIdmlEntry(n));
+    const projectionPath = join(OUT, "showcase-projection.idml");
+    writeFileSync(projectionPath, stripZip(exported));
+    expect(
+      zipEntryNames(readFileSync(projectionPath)).every(isIdmlEntry),
+      "the projection holds IDML entries only",
+    ).toBe(true);
+    // Recorded, not yet asserted: an `.idml` export that carries container
+    // parts is an exporter defect (the export should be a pure package),
+    // and the parity below is honest either way once the twin is stripped.
+    if (foreign.length > 0) {
+      console.log(
+        `[parity] the exported .idml carried ${foreign.length} non-IDML ` +
+          `entries (stripped for the comparison): ${foreign.slice(0, 4).join(", ")}…`,
+      );
+    }
+
     await doc.registerFonts(CORPUS_FONTS);
-    const twin = await doc.load(idmlPath);
+    const twin = await doc.load(projectionPath);
     expect(twin, "the twin opens with every page").toBe(ANNUAL_PAGES);
 
     const diffs: PageDiff[] = [];

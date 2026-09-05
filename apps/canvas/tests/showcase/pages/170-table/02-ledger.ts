@@ -212,7 +212,12 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   const summaries = JSON.parse(
     (await script(ctx.page, "paged.stories()"))[0] ?? "[]",
   ) as Array<{ selfId: string; overset?: boolean }>;
-  const summary = summaries.find((s) => s.selfId === storyId);
+  // The list carries ENGINE ids; `storyId` may still be frame A's
+  // handle. Resolve it, and insist the story is FOUND — a missing entry
+  // must not read as "not overset".
+  const [chainStory] = await doc.storyIds(storyId);
+  const summary = summaries.find((s) => s.selfId === chainStory);
+  expect(summary, "the table's story is missing from paged.stories()").toBeTruthy();
   expect(
     summary?.overset ?? false,
     "the chain holds the whole table — a truncated flagship must fail, not pass",

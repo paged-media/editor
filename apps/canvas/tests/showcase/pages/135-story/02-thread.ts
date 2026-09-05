@@ -243,14 +243,16 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       { kind: "textFrame", id: s1 },
       "nextTextFrame",
     );
-    expect(linked?.value).toBe(s2);
+    // The read door answers ENGINE ids; `s2` may still be a handle.
+    const [s2Id] = await doc.ids(s2);
+    expect(linked?.value).toBe(s2Id);
     await doc.mutate("unlinkFrames", { frame: s1 });
     const unlinked = await readEntry(
       ctx.page,
       { kind: "textFrame", id: s1 },
       "nextTextFrame",
     );
-    expect(unlinked?.value ?? "").not.toBe(s2);
+    expect(unlinked?.value ?? "").not.toBe(s2Id);
     await doc.linkFrames(s1, s2); // the way back after an unlink
     const scratchStory = await doc.storyOf(pg35, [400, 110, 470, 140]);
     await doc.insertText(

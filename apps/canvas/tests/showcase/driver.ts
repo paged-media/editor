@@ -432,7 +432,7 @@ export class ShowcaseDoc {
     }
     if (process.env.ANNUAL_TRACE) {
       // eslint-disable-next-line no-console
-      console.log(`[trace] ${op} ${JSON.stringify(args)?.slice(0, 120)}`);
+      console.log(`[trace] ${op} ${JSON.stringify(args)?.slice(0, 1600)}`);
     }
     if (this.ledger) {
       this.ledger.record(op, args);
@@ -558,6 +558,10 @@ export class ShowcaseDoc {
     // `createdId`, which can only ever name the LAST). {@link flush}
     // reads it to give each queued handle its real id.
     this.lastMinted = (reply.payload as { minted?: MintedElement[] })?.minted ?? [];
+    if (process.env.ANNUAL_TRACE) {
+      // eslint-disable-next-line no-console
+      console.log(`[trace-reply] ${op} ${JSON.stringify(reply.payload)?.slice(0, 1200)}`);
+    }
     return reply.payload?.createdId?.id ?? null;
   }
 
@@ -697,12 +701,44 @@ export class ShowcaseDoc {
     }
   }
 
+  /**
+   * Run `body` with the queue OFF: whatever is queued lands first, and
+   * every mutation the body sends goes alone, answering — or refusing —
+   * on its own. For a PROBE: an op whose refusal the caller means to
+   * catch. Queued, that refusal surfaces at the next flush, outside the
+   * caller's `try`, and sinks the whole batch with it (the table's
+   * style-definition probe took the styles page down that way). Nested
+   * inside `defer`, deferral resumes when the body returns.
+   */
+  async alone<T>(body: () => Promise<T>): Promise<T> {
+    await this.flush();
+    const outer = this.deferring;
+    this.deferring = false;
+    try {
+      return await body();
+    } finally {
+      this.deferring = outer;
+    }
+  }
+
   private async enqueue(op: string, args: unknown): Promise<void> {
     if (ShowcaseDoc.touchesCollections(op)) this.collectionCache.clear();
     // NOT recorded here: the ledger tallies a batch's inner ops when the
     // batch is SENT, which keeps `recordPath`'s rule — record only once
     // the lane reports the write applied — true of the op axis too.
-    this.queue.push({ op, args: await this.resolveRefs(op, args) });
+    //
+    // Resolve FIRST, then push. `resolveRefs` may FLUSH (a handle in a
+    // position the engine will not rewrite — `linkFrames`' `from`/`to`),
+    // and a flush replaces `this.queue`. Written as
+    // `this.queue.push({ …await … })`, the array reference was read
+    // BEFORE the await, so the op landed on the batch that had already
+    // been sent and was never seen by the engine. The first link of
+    // every chain queued after its frames vanished that way: B→C and
+    // C→D reached the wire, A→B did not, and the story chapter's chain
+    // came back carrying B's story — the "threading" failure three
+    // chapters took the slow lane for.
+    const resolved = await this.resolveRefs(op, args);
+    this.queue.push({ op, args: resolved });
   }
 
   /** Queue a minting op and name its result, so the very next child can
@@ -775,6 +811,19 @@ export class ShowcaseDoc {
   async ids(...refs: string[]): Promise<string[]> {
     await this.flush();
     return refs.map((r) => this.resolve(r));
+  }
+
+  /**
+   * Real STORY ids for handles, flushing first — for a module that
+   * compares the story it poured against an ENGINE-reported list
+   * (`paged.stories()`), where a handle can never match. `storyOf`
+   * hands back the frame's handle while the frame is queued; this is
+   * the read that turns it into the story the insert minted. A real id
+   * passes through unchanged, so an unbatched module pays nothing.
+   */
+  async storyIds(...refs: string[]): Promise<string[]> {
+    await this.flush();
+    return refs.map((r) => this.resolveStory(r));
   }
 
   /** The real ELEMENT id behind a handle reference (or the id itself).
@@ -1082,6 +1131,13 @@ export class ShowcaseDoc {
   /** Thread `from` into `to` so one story flows across both frames. */
   async linkFrames(from: string, to: string): Promise<void> {
     await this.mutate("linkFrames", { from, to });
+    // The target now carries the SOURCE's story; the one its own insert
+    // minted is gone. `storyOf` on that box must hit-test from here on
+    // rather than answer from the mint record — answering from the
+    // record reported "linkFrames threaded nothing" for a link that had.
+    for (const [key, handle] of this.framesByBox) {
+      if (handle === to) this.framesByBox.delete(key);
+    }
   }
 
   /**

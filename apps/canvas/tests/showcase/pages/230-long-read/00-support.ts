@@ -137,10 +137,18 @@ export async function readPartText(
 /** The persisted flow recipients of a source frame, read from its
  *  container part — `null` when the part (or its flow) is absent. */
 export async function partRecipients(
-  page: Page,
+  doc: ShowcaseDoc,
   frameId: string,
 ): Promise<Array<{ id: string; flow?: string }> | null> {
-  const text = await readPartText(page, `${WEB_PARTS_PREFIX}${frameId}/source.json`);
+  // The part PATH is text: a handle spelled into it reaches no rewrite
+  // rule (the flows page read `paged/media.paged.web/$h:m3/source.json`
+  // for ten seconds and called the thread unpersisted), so the frame's
+  // real id is resolved before the path is built.
+  const [realId] = await doc.ids(frameId);
+  const text = await readPartText(
+    doc.page,
+    `${WEB_PARTS_PREFIX}${realId}/source.json`,
+  );
   if (!text) return null;
   try {
     const envelope = JSON.parse(text) as {

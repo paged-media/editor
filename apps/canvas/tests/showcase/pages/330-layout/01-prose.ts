@@ -17,7 +17,8 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// The prose repair — chart labels evicted from the pages' own stories.
+// The prose oracle — the chart wall's stories hold their own text.
+// (Formerly the prose REPAIR; see `build` for why the repair is gone.)
 //
 // The chart wall's heading printed as "Q2Q2The chart wall" and its
 // standfirst as "Q3Q3One workbook" — in the heading's own face, size
@@ -74,46 +75,61 @@ const AUTHORED: Authored[] = [
 export async function build(ctx: PageContext): Promise<PageReport> {
   const { doc } = ctx;
   const notes: string[] = [];
-  let repaired = 0;
 
+  // The oracle: every authored story holds exactly what it was authored
+  // with. This module used to REPAIR — the chart lowering's label pours
+  // landed in these stories at offset 0 ("Q2Q2The chart wall") and the
+  // prefix was cut off. The cause was the engine's story minter:
+  // sibling frames minted in one batch on a document with sparse story
+  // ids were all named after the same number and BORN on one story, so
+  // a label frame and the prose shared a story before any text existed.
+  // That is fixed at the minter (core `story_id_floor`), the assembly
+  // refuses any two unthreaded frames on one story, and this page now
+  // stands where the symptom stood: contamination here is a failure,
+  // not something to trim on a guess.
   for (const frame of AUTHORED) {
     const pageId = await doc.pageId(frame.page);
     const storyId = await doc.storyOf(pageId, frame.bounds);
     const want = frame.text.length;
     const have = await doc.storyChars(storyId);
-    if (have === want) {
-      notes.push(`${frame.what}: clean (${want} characters)`);
-      continue;
-    }
     expect(
       have,
-      `${frame.what} is SHORTER than authored (${have} < ${want}) — that is ` +
-        `not label contamination and must not be trimmed on a guess`,
-    ).toBeGreaterThan(want);
-    const strays = have - want;
-    await doc.mutate("deleteRange", { storyId, start: 0, end: strays });
-    const now = await doc.storyChars(storyId);
-    expect(
-      now,
-      `${frame.what} still does not match after deleting ${strays} ` +
-        `character(s) from the front — the excess was not a prefix`,
+      `${frame.what} holds ${have} characters, authored ${want}` +
+        (have > want
+          ? ` — ${have - want} stray character(s): the chart-label contamination ` +
+            `this page was written for is BACK`
+          : " — shorter than authored"),
     ).toBe(want);
-    notes.push(
-      `${frame.what}: deleted ${strays} character(s) the chart lowering ` +
-        `poured into this story at offset 0 (the label pour targets a story ` +
-        `the page already owns — a product defect, recorded)`,
-    );
-    repaired += 1;
+    notes.push(`${frame.what}: clean (${want} characters)`);
   }
 
-  expect(
-    repaired,
-    "the prose repair found contamination to fix — if this is zero the " +
-      "defect it exists for is gone and the module should go with it",
-  ).toBeGreaterThan(0);
+  // The delete the repair used to make, demonstrated on a scratch frame
+  // in the page's foot margin and removed — so the claim below stays
+  // honest without a defect to fix. Transient: tallied as demonstrated,
+  // never resident.
+  const pageId = await doc.pageId(p(96));
+  const box: [number, number, number, number] = [60, 664, 300, 700];
+  const demo = async (): Promise<void> => {
+    const scratch = await doc.textFrame(pageId, box);
+    const story = await doc.storyOf(pageId, box);
+    await doc.insertText(story, "Q2Q2The chart wall", 0);
+    await doc.mutate("deleteRange", { storyId: story, start: 0, end: 4 });
+    expect(
+      await doc.storyChars(story),
+      "deleteRange took exactly the four stray characters off the front",
+    ).toBe("The chart wall".length);
+    await doc.mutate("deleteFrame", { frameId: scratch });
+  };
+  if (doc.ledger) await doc.ledger.transient(demo);
+  else await demo();
+  notes.push(
+    "deleteRange demonstrated on a scratch frame (four characters off the " +
+      "front) and the frame removed — the repair this page once made, kept " +
+      "as a demonstration",
+  );
 
   return {
-    title: "The chart wall's prose, returned to itself",
+    title: "The chart wall's prose, verified its own",
     covers: ["stories-text.text.delete"],
     elements: [],
     notes,

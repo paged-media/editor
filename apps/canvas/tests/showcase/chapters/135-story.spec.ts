@@ -45,7 +45,7 @@ annualChapter({
     // target carrying the story it was born with — 135-story's
     // oracle caught it, the manuscript logged it. Diagnose before
     // lifting this.
-    { id: "st-thread", pages: [p(34), p(35)], build: thread , unbatched: true },
+    { id: "st-thread", pages: [p(34), p(35)], build: thread },
     { id: "st-overset", pages: [p(36)], build: overset },
     { id: "st-frame-prefs", pages: [p(37)], build: framePrefs },
     { id: "st-autosize", pages: [p(38)], build: autosize },

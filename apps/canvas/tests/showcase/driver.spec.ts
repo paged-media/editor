@@ -80,6 +80,61 @@ test.describe("ShowcaseDoc", () => {
     await doc.select("textFrame", realFrame);
   });
 
+  test("a chain linked inside one batch carries ONE story, and storyIds resolves a handle @feat:layout-model.text-frame-chain @level:edge", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    const doc = new ShowcaseDoc(page);
+    await doc.load(FIXTURE);
+    const pageId = await doc.pageId(0);
+    // Four short frames below the fixture's own frame (which ends at
+    // y 546), each one line tall, so the pour below overflows through
+    // every link.
+    const boxes: Array<[number, number, number, number]> = [
+      [60, 560, 400, 584],
+      [60, 590, 400, 614],
+      [60, 620, 400, 644],
+      [60, 650, 400, 674],
+    ];
+    const text = "Threaded probe. ".repeat(60);
+
+    // Queued: four handles. The first link flushes the mints (`from` /
+    // `to` are not positions the driver rewrites), then the three links
+    // ride ONE batch and the pour another — the story chapter's exact
+    // shape, which batched authoring reported as a chain whose last
+    // frame carried a story of its own.
+    const { frames, storyA } = await doc.defer(async () => {
+      const frames: string[] = [];
+      for (const b of boxes) frames.push(await doc.textFrame(pageId, b));
+      for (let i = 0; i + 1 < frames.length; i += 1) {
+        await doc.linkFrames(frames[i], frames[i + 1]);
+      }
+      const storyA = await doc.storyOf(pageId, boxes[0]);
+      await doc.insertText(storyA, text);
+      return { frames, storyA };
+    });
+
+    // A handle compared against an ENGINE-reported list can never
+    // match; `storyIds` is the story-position read a module compares
+    // with, and a real id passes through it unchanged.
+    const [realStory] = await doc.storyIds(storyA);
+    expect(realStory.startsWith("$h:")).toBe(false);
+    expect(realStory).toBe(doc.resolveStory(frames[0]));
+    expect(realStory).not.toBe(doc.resolve(frames[0]));
+    expect(await doc.storyIds(realStory)).toEqual([realStory]);
+    expect(await doc.storyChars(realStory)).toBeGreaterThanOrEqual(text.length);
+
+    // Every frame of the chain answers with the ONE story. A link's
+    // target carries the SOURCE's story, not the one its own insert
+    // minted — which the mint record still names, and which is why
+    // `linkFrames` drops the target's box from the record and lets the
+    // hit test answer.
+    for (const [i, b] of boxes.entries()) {
+      if (i > 0) expect(doc.resolveStory(frames[i])).not.toBe(realStory);
+      expect(await doc.storyOf(pageId, b), `frame ${i} of the chain`).toBe(realStory);
+    }
+  });
+
   test("loads, enumerates pages, and authors a styled frame @feat:stories-text.text.insert @level:happy", async ({
     page,
   }) => {
