@@ -7,8 +7,6 @@ settings:
 overrides:
   esbuild@>=0.27.3 <0.28.1: ^0.28.1
   '@paged-media/doc': link:../plugins/plugin-doc/packages/doc-bundle
-  '@paged-media/canvas-wasm': file:/Users/drietsch/paged/.local-wasm/canvas-wasm
-  '@paged-media/introspect-wasm': file:/Users/drietsch/paged/.local-wasm/introspect-wasm
 
 importers:
 
@@ -30,8 +28,8 @@ importers:
   apps/canvas:
     dependencies:
       '@paged-media/canvas-wasm':
-        specifier: file:/Users/drietsch/paged/.local-wasm/canvas-wasm
-        version: file:../.local-wasm/canvas-wasm
+        specifier: 0.62.0
+        version: 0.62.0
       '@paged-media/catalog':
         specifier: workspace:*
         version: link:../../packages/catalog
@@ -133,8 +131,8 @@ importers:
   apps/devtools:
     dependencies:
       '@paged-media/introspect-wasm':
-        specifier: file:/Users/drietsch/paged/.local-wasm/introspect-wasm
-        version: file:../.local-wasm/introspect-wasm
+        specifier: 0.62.0
+        version: 0.62.0
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@18.3.7(@types/react@18.3.29))(@types/react@18.3.29)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -243,8 +241,8 @@ importers:
   packages/client:
     dependencies:
       '@paged-media/canvas-wasm':
-        specifier: file:/Users/drietsch/paged/.local-wasm/canvas-wasm
-        version: file:../.local-wasm/canvas-wasm
+        specifier: 0.62.0
+        version: 0.62.0
     devDependencies:
       typescript:
         specifier: ^5.6.3
@@ -905,8 +903,8 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@paged-media/canvas-wasm@file:../.local-wasm/canvas-wasm':
-    resolution: {directory: ../.local-wasm/canvas-wasm, type: directory}
+  '@paged-media/canvas-wasm@0.62.0':
+    resolution: {integrity: sha512-KKSyJ+4dn5iKIlp8ukzh4Yxcd1ceiAB4b81yQ6yTye+Ji+v8CPBcY1mCyUI54zkspMdaWMBHasE/GUy3qcdegg==}
 
   '@paged-media/data@0.1.0-canary.8':
     resolution: {integrity: sha512-VuuJHgKvFGrqMc0VxFIqSCPZTWSZn/CQQn+D8NYNK6Qfsz5sfhWIXYpIfXNr2oG+bvSAfgQTwTENvBwYAcoezQ==}
@@ -932,8 +930,8 @@ packages:
       '@paged-media/plugin-sdk': '>=0.2.29-canary.0'
       react: ^18.3.0
 
-  '@paged-media/introspect-wasm@file:../.local-wasm/introspect-wasm':
-    resolution: {directory: ../.local-wasm/introspect-wasm, type: directory}
+  '@paged-media/introspect-wasm@0.62.0':
+    resolution: {integrity: sha512-k+0ac4aMdA8we5n1yb7fOOaCiuvF4L6cfKHOZmlNHT7tYLFMj9mI2klbpMoCkxtB5ECAoAnF924dmcGFdncFkA==}
 
   '@paged-media/pdf@0.2.5-canary.0':
     resolution: {integrity: sha512-zBFcIxjWz1HlgyWZ/OZEEymRazGHfxWohWNRrFFen8DwP6IRPGWusZl5ML51ZBh2QDPzChTCI15VYRE9TPXH/g==}
@@ -3062,7 +3060,7 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
 
-  '@paged-media/canvas-wasm@file:../.local-wasm/canvas-wasm': {}
+  '@paged-media/canvas-wasm@0.62.0': {}
 
   '@paged-media/data@0.1.0-canary.8(@paged-media/plugin-api@0.2.33-canary.0)(@paged-media/plugin-sdk@0.2.33-canary.0(react@18.3.1))(react@18.3.1)':
     dependencies:
@@ -3089,7 +3087,7 @@ snapshots:
       '@paged-media/plugin-sdk': 0.2.33-canary.0(react@18.3.1)
       react: 18.3.1
 
-  '@paged-media/introspect-wasm@file:../.local-wasm/introspect-wasm': {}
+  '@paged-media/introspect-wasm@0.62.0': {}
 
   '@paged-media/pdf@0.2.5-canary.0(@paged-media/plugin-api@0.2.33-canary.0)(@paged-media/plugin-sdk@0.2.33-canary.0(react@18.3.1))':
     dependencies:

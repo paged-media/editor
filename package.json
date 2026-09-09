@@ -31,9 +31,7 @@
   "pnpm": {
     "overrides": {
       "esbuild@>=0.27.3 <0.28.1": "^0.28.1",
-      "@paged-media/doc": "link:../plugins/plugin-doc/packages/doc-bundle",
-      "@paged-media/canvas-wasm": "file:/Users/drietsch/paged/.local-wasm/canvas-wasm",
-      "@paged-media/introspect-wasm": "file:/Users/drietsch/paged/.local-wasm/introspect-wasm"
+      "@paged-media/doc": "link:../plugins/plugin-doc/packages/doc-bundle"
     }
   }
 }
