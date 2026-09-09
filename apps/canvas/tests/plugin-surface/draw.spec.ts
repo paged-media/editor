@@ -456,7 +456,7 @@ async function artworkCount(page: Page): Promise<number> {
 // ── 1. registry parity ──────────────────────────────────────────────
 
 test.describe("plugin surface · paged.draw", () => {
-  test("every contribution the manifest declares reaches a host registry @feat:plugin-draw.bundle-surface @feat:plugin-platform.bundle-lifecycle @level:happy", async ({
+  test("every contribution the manifest declares reaches a host registry @feat:plugin-draw.bundle-manifest @feat:plugin-platform.bundle-lifecycle @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -516,7 +516,7 @@ test.describe("plugin surface · paged.draw", () => {
 
   // ── 2. the rail ───────────────────────────────────────────────────
 
-  test("all 19 tools reach the tool rail and activate @feat:plugin-draw.tool-rail @feat:plugin-platform.bundle-lifecycle @level:gesture", async ({
+  test("all 19 tools reach the tool rail and activate @feat:plugin-platform.tool-registration @feat:plugin-platform.bundle-lifecycle @level:gesture", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -559,7 +559,7 @@ test.describe("plugin surface · paged.draw", () => {
 
   // ── 3. the panels ─────────────────────────────────────────────────
 
-  test("all 10 panels open as dock tabs and mount their body @feat:plugin-draw.panels @feat:plugin-platform.bundle-lifecycle @level:happy", async ({
+  test("all 10 panels open as dock tabs and mount their body @feat:plugin-platform.panel-registration @feat:plugin-platform.bundle-lifecycle @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -592,7 +592,7 @@ test.describe("plugin surface · paged.draw", () => {
 
   // ── 4. Insert ─────────────────────────────────────────────────────
 
-  test("the four Insert commands mint real paths @feat:plugin-draw.insert-shapes @level:happy", async ({
+  test("the four Insert commands mint real paths @feat:plugin-draw.tool-wave-2 @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -625,7 +625,7 @@ test.describe("plugin surface · paged.draw", () => {
 
   // ── 5. compound paths + the untested pathfinder ops ───────────────
 
-  test("compound path and the six remaining pathfinder ops rewrite the artwork @feat:plugin-draw.pathfinder @feat:plugin-draw.compound-path @level:happy", async ({
+  test("compound path and the six remaining pathfinder ops rewrite the artwork @feat:plugin-draw.pro-path-toolset @feat:plugin-draw.compound-paths @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -697,7 +697,7 @@ test.describe("plugin surface · paged.draw", () => {
 
   // ── 6. the appearance stack ───────────────────────────────────────
 
-  test("the appearance stack adds, reorders, removes, bakes and releases @feat:plugin-draw.appearance-stack @level:happy", async ({
+  test("the appearance stack adds, reorders, removes, bakes and releases @feat:plugin-draw.appearance @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -845,7 +845,7 @@ test.describe("plugin surface · paged.draw", () => {
 
   // ── 8. the recipe families ────────────────────────────────────────
 
-  test("repeat, blend and live paint build real artwork from a selection @feat:plugin-draw.repeat @feat:plugin-draw.blend @feat:plugin-draw.live-paint @level:happy", async ({
+  test("repeat, blend and live paint build real artwork from a selection @feat:plugin-draw.repeats @feat:plugin-draw.blends @feat:plugin-draw.live-paint @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -964,7 +964,7 @@ test.describe("plugin surface · paged.draw", () => {
 
   // ── 9. pattern + objects-on-path ──────────────────────────────────
 
-  test("a pattern field bakes from the selection and objects distribute onto a path @feat:plugin-draw.pattern @feat:plugin-draw.objects-on-path @level:happy", async ({
+  test("a pattern field bakes from the selection and objects distribute onto a path @feat:plugin-draw.pattern-bake @feat:plugin-draw.objects-on-path @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -1030,7 +1030,7 @@ test.describe("plugin surface · paged.draw", () => {
 
   // ── 10. the remaining single-shot commands ────────────────────────
 
-  test("close path, radial gradient, opacity mask and text-on-path all commit @feat:plugin-draw.path-ops @feat:plugin-draw.opacity-mask @feat:plugin-draw.text-on-path @level:happy", async ({
+  test("close path, radial gradient, opacity mask and text-on-path all commit @feat:plugin-draw.path-weld @feat:plugin-draw.opacity-mask-commands @feat:frames-paths.text-on-path @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -1133,7 +1133,7 @@ test.describe("plugin surface · paged.draw", () => {
   // a dead palette row, and the palette is the ONLY home a plugin
   // command has (the contract ships no `contribute.menu`).
 
-  test("no declared command throws when invoked from the palette @feat:plugin-draw.command-surface @level:edge", async ({
+  test("no declared command throws when invoked from the palette @feat:plugin-platform.command-registration @level:edge", async ({
     page,
   }) => {
     // Nine of the 92 can only ever be a no-op from the palette because
@@ -1228,7 +1228,7 @@ test.describe("plugin surface · paged.draw", () => {
 
   // ── 12. how a user would FIND any of this ─────────────────────────
 
-  test("every command is reachable from the palette, and only from there @feat:plugin-draw.command-surface @feat:plugin-platform.bundle-lifecycle @level:edge", async ({
+  test("every command is reachable from the palette, and only from there @feat:plugin-platform.command-registration @feat:plugin-platform.bundle-lifecycle @level:edge", async ({
     page,
   }) => {
     const designer = new Designer(page);

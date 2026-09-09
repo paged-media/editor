@@ -107,7 +107,7 @@ async function freehand(
 }
 
 test.describe("journey · paged.draw pro tools", () => {
-  test("a designer authors with the Pencil + Curvature, steers a gradient, and measures @feat:plugin-draw.pro-path-toolset @feat:plugin-platform.bundle-lifecycle @level:gesture", async ({
+  test("a designer authors with the Pencil + Curvature, steers a gradient, and measures @feat:plugin-draw.pro-path-toolset @feat:plugin-platform.bundle-lifecycle @feat:plugin-platform.tool-registration @level:gesture", async ({
     page,
   }) => {
     const designer = new Designer(page);

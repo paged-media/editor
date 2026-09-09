@@ -99,7 +99,7 @@ async function strokeWeight(
 }
 
 test.describe("journey · paged.draw appearance stack", () => {
-  test("a designer stacks a fill + stroke layer then clears the appearance @feat:plugin-draw.appearance @feat:plugin-platform.bundle-lifecycle @level:happy", async ({
+  test("a designer stacks a fill + stroke layer then clears the appearance @feat:plugin-draw.appearance @feat:plugin-platform.bundle-lifecycle @feat:plugin-platform.command-registration @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);

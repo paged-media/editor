@@ -99,7 +99,7 @@ test.describe("C1 — the Insert menu reaches plugin content", () => {
     }
   });
 
-  test("AC-SEAM-1 — the Data menu opens the panels its labels promise @feat:editor-shell.menus @feat:plugin-data.bindings @level:happy", async ({
+  test("AC-SEAM-1 — the Data menu opens the panels its labels promise @feat:editor-shell.menus @feat:data.plugin.bundle @level:happy", async ({
     page,
   }) => {
     // D1 — these three were `soon(…)` seams whose labels duplicated three

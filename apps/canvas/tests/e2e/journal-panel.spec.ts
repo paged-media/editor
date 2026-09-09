@@ -41,7 +41,7 @@ import { openCanvas, openPanel } from "../fidelity/canvas-driver";
 const SECRET_TEXT = "the quick brown fox jumps";
 const SECRET_PATH = "/Users/alice/Documents/Q4 Financials CONFIDENTIAL.idml";
 
-test.describe("journal panel @feat:editor-shell.panels", () => {
+test.describe("journal panel @feat:editor-shell.panels.journal", () => {
   test("AC-JRN-1 — the panel opens and reports what was recorded @level:smoke", async ({
     page,
   }) => {

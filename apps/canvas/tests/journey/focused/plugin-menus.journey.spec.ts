@@ -51,7 +51,7 @@ interface MenuItemLite {
 }
 
 test.describe("journey · plugin menu contributions", () => {
-  test("five bundles' verbs reach the menu bar @feat:plugin-platform.bundle-lifecycle @feat:editor-shell.plugin-bundles @level:happy", async ({
+  test("five bundles' verbs reach the menu bar @feat:plugin-platform.bundle-lifecycle @feat:plugin-platform.menu-contribution @feat:editor-shell.plugin-bundles @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);

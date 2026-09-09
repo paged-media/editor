@@ -71,7 +71,7 @@ async function link(page: Page, from: string, to: string): Promise<void> {
 }
 
 test.describe("journey · text thread overlay", () => {
-  test("threads draw on toggle, name their frames, and clear again @feat:editor-shell.overlays.text-threads @level:gesture", async ({
+  test("threads draw on toggle, name their frames, and clear again @feat:editor-tools.text.thread-lines @level:gesture", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -138,7 +138,7 @@ test.describe("journey · text thread overlay", () => {
     await expect(page.locator('[data-thread-lines="off"]')).toHaveCount(1);
   });
 
-  test("an unthreaded document draws nothing with the overlay ON @feat:editor-shell.overlays.text-threads", async ({
+  test("an unthreaded document draws nothing with the overlay ON @feat:editor-tools.text.thread-lines", async ({
     page,
   }) => {
     // The negative control: overlay ON over single-frame stories.
