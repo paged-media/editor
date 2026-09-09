@@ -556,7 +556,7 @@ test.describe("U7 — paged.insert.* command authoring", () => {
     expect(Math.abs(originAy - originBy)).toBeLessThan(2);
   });
 
-  test("Place image: Escape cancels and places NOTHING @feat:editor-shell.command-authoring @level:unhappy", async ({
+  test("Place image: Escape cancels and places NOTHING @feat:editor-shell.command-authoring @level:edge", async ({
     page,
   }) => {
     await openCanvas(page);
