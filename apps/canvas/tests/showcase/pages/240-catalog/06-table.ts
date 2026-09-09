@@ -59,7 +59,6 @@ import type { PageContext, PageReport } from "../../types";
 import {
   BINDINGS_PANEL,
   DATASET_PANEL,
-  chapterData,
   ensureOrdersReady,
   settleStableNew,
   spreadOffset,

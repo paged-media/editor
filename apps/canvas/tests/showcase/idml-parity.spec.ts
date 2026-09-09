@@ -85,7 +85,7 @@ interface PageDiff {
 test.describe("idml parity", () => {
   test.setTimeout(30 * 60 * 1000);
 
-  test("the interchange twin renders what the container renders @feat:companion-formats.idml-round-trip @level:happy", async ({
+  test("the interchange twin renders what the container renders @feat:round-tripping.idml-reserialization @level:happy", async ({
     page,
   }) => {
     const pagedPath = join(OUT, "showcase.paged");

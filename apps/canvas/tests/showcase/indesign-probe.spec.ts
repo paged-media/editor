@@ -58,7 +58,7 @@ import { inDesignAvailable, probeInDesign } from "./indesign/probe";
 test.describe("InDesign", () => {
   test.setTimeout(45 * 60 * 1000);
 
-  test("keeps what the annual's IDML declares @feat:companion-formats.idml-round-trip @level:happy", async () => {
+  test("keeps what the annual's IDML declares @feat:round-tripping.idml-reserialization @level:happy", async () => {
     const available = inDesignAvailable();
     if (!available && process.env.REQUIRE_REAL_INDESIGN) {
       throw new Error("REQUIRE_REAL_INDESIGN is set and Adobe InDesign 2025 is not installed");

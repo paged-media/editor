@@ -33,8 +33,6 @@ import { p } from "../names-annual";
 import { build as opener } from "../pages/230-long-read/01-opener";
 import { build as source } from "../pages/230-long-read/02-source";
 import { build as flows } from "../pages/230-long-read/03-flows";
-import { build as fragments } from "../pages/230-long-read/04-fragments";
-import { build as bake } from "../pages/230-long-read/05-bake";
 
 annualChapter({
   id: "230-long-read",

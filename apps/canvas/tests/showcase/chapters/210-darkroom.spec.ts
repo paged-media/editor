@@ -32,11 +32,6 @@ import { p } from "../names-annual";
 
 import { build as opener } from "../pages/210-darkroom/01-opener";
 import { build as contactSheet } from "../pages/210-darkroom/02-contact-sheet";
-import { build as selections } from "../pages/210-darkroom/03-selections";
-import { build as retouch } from "../pages/210-darkroom/04-retouch";
-import { build as paintType } from "../pages/210-darkroom/05-paint-type";
-import { build as psd } from "../pages/210-darkroom/06-psd";
-import { build as loop } from "../pages/210-darkroom/07-loop";
 
 annualChapter({
   id: "210-darkroom",

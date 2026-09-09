@@ -26,7 +26,6 @@
 // document set in the chapter's accent ink.
 
 import {
-  assignLayer,
   plate,
   proseFrame,
   specLabel,
@@ -48,7 +47,6 @@ const STATIONS: Array<{ name: string; what: string; accent: boolean }> = [
 
 export async function build(ctx: PageContext): Promise<PageReport> {
   const { doc } = ctx;
-  const pg = ctx.pageIds[0];
   const page = p(87);
   const elements: string[] = [];
 

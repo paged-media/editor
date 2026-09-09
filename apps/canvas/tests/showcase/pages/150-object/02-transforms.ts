@@ -53,7 +53,7 @@ import {
 } from "../../annual-support";
 import { LAYER, STYLE, SWATCH, contentBox, p } from "../../names-annual";
 import type { PageContext, PageReport } from "../../types";
-import { corner, elementCenter, elementGeometry, type WireId } from "./wire";
+import { corner, elementCenter, elementGeometry } from "./wire";
 
 /** The pennant: asymmetric on both axes, 96 x 56, at page (x, y). */
 const PENNANT = (

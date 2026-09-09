@@ -213,7 +213,7 @@ test.describe("tool rail — the six live tools no spec had named", () => {
       .toBeGreaterThan(before);
   });
 
-  test("AC-RAIL-type-draws — the Type tool drags out a text frame @feat:editor-tools.draw.rectangle @feat:stories-text.frame.insert @level:happy", async ({
+  test("AC-RAIL-type-draws — the Type tool drags out a text frame @feat:editor-tools.draw.rectangle @feat:frames-paths.frame.insert @level:happy", async ({
     page,
   }) => {
     // "Press T, drag a box, type" — the muscle memory of every InDesign

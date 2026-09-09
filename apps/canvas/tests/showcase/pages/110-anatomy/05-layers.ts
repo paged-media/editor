@@ -42,7 +42,6 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   const { doc } = ctx;
   const elements: string[] = [];
   const notes: string[] = [];
-  const pageId = ctx.pageIds[0];
 
   const [x0, y0, x1] = contentBox(p(17));
   const left = x0;

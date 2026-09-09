@@ -31,10 +31,6 @@ import { p } from "../names-annual";
 
 import { build as opener } from "../pages/220-ledger/01-opener";
 import { build as chartWall } from "../pages/220-ledger/02-chart-wall";
-import { build as pour } from "../pages/220-ledger/03-pour";
-import { build as formulas } from "../pages/220-ledger/04-formulas";
-import { build as chain } from "../pages/220-ledger/05-chain";
-import { build as roundtrip } from "../pages/220-ledger/06-roundtrip";
 
 annualChapter({
   id: "220-ledger",

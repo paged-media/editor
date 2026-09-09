@@ -169,16 +169,6 @@ test.describe("scripting bench", () => {
     // ── lane B: one script, the same ops, one crossing ───────────────
     const pageB = await scratch();
     const quads = Array.from({ length: OPS }, (_, i) => boundsFor(i));
-    const src = `
-      var page = ${JSON.stringify(pageB)};
-      var quads = ${JSON.stringify(quads)};
-      var made = 0;
-      for (var i = 0; i < quads.length; i++) {
-        var id = paged.insertFrame(page, quads[i]);
-        if (id) { paged.set(id, "frameFillColor", ${JSON.stringify(vermilion)}); made++; }
-      }
-      made;
-    `;
     const startB = Date.now();
     let scripted = 0;
     let crossings = 0;

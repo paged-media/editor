@@ -33,7 +33,6 @@ import {
   LAYER,
   STYLE,
   contentBox,
-  MARGIN_BOTTOM_PT,
   TRIM_H_PT,
 } from "./names-annual";
 import type { PageContext } from "./types";

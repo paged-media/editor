@@ -19,6 +19,7 @@
     "test:surface-coverage": "node scripts/surface-coverage.mjs",
     "test:seam-guard": "node scripts/seam-guard.mjs",
     "test:applicability": "node scripts/applicability-guard.mjs",
+    "test:feat-vocabulary": "node scripts/feat-vocabulary-guard.mjs",
     "test:solo-profiles": "node scripts/solo-profiles-guard.mjs"
   },
   "devDependencies": {

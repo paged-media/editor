@@ -81,6 +81,8 @@ const PANELS: Array<[string, string]> = [
   ["paged.export-tagging", "editor-shell.panels.export-tagging"],
   ["paged.anchored", "editor-shell.panels.anchored"],
   ["paged.problems", "editor-shell.panels.problems"],
+  ["paged.keyboard-shortcuts", "editor-shell.panels.keyboard-shortcuts"],
+  ["paged.journal", "editor-shell.panels.journal"],
 ];
 
 test.describe("journey · panel sweep", () => {
