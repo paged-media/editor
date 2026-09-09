@@ -1,0 +1,179 @@
+{
+  "chapter": "210-darkroom.solo",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "dk-opener",
+      "title": "Ch.15 opener — The Darkroom",
+      "pages": [
+        87
+      ],
+      "covers": []
+    },
+    {
+      "module": "dk-contact-sheet",
+      "title": "The kernel contact sheet",
+      "pages": [
+        88,
+        89
+      ],
+      "covers": [
+        "image.editor.adjust-breadth",
+        "image.editor.filters",
+        "image.editor.resample",
+        "image.kernel.breadth-2026-08",
+        "plugin-platform.importer-exporter",
+        "editor-shell.plugin-bundles"
+      ],
+      "notes": [
+        "each tile's committed bytes are the exporter's own output, unretouched — whatever a kernel currently does to these pixels is what the page shows",
+        "finding, from proofing this spread: the engine's line breaker composes certain caption rects as a character-wrapped sliver regardless of content (frame and story verify correct in the container; the p47 probe shows the same seam) — tile 2's caption is position-nudged 2 pt to dodge it",
+        "finding, from proofing this spread: on the builds this chapter was authored against, the gaussian-blur tile's export showed a corrupted band over its right 256-px tile column (the windowed kernel's halo seam is the suspect); the tile is committed exactly as exported — check the tile, not this note",
+        "kernel roster: 128 ids across 14 families, read from plugin-image/registry/kernels.yaml"
+      ]
+    },
+    {
+      "module": "dk-selections",
+      "title": "Selections — the mask made visible",
+      "pages": [
+        90
+      ],
+      "covers": [
+        "image.selection.mask-tools",
+        "image.selection.mask",
+        "image.selection.masked-pipeline"
+      ],
+      "notes": [
+        "selection runs at native resolution — resizeTo swaps the engine handle with no selectionBind (code reading; the resample+selection seam is untested territory this page chose not to stand on)"
+      ]
+    },
+    {
+      "module": "dk-retouch",
+      "title": "Retouch — clone, heal, content-aware fill",
+      "pages": [
+        91
+      ],
+      "covers": [
+        "image.editor.clone-stamp",
+        "image.editor.healing-brush",
+        "image.editor.content-aware-fill"
+      ],
+      "notes": [
+        "clone → Painted 15 dabs into layer “Background” — undoable (the stroke's tiles are journaled). The document and the source file ",
+        "heal → Painted 11 dabs into layer “Background” — undoable (the stroke's tiles are journaled). The document and the source file ",
+        "content-aware fill → Filled the selection with noise on layer “Background” — undoable. Document unchanged; Apply to recomposite."
+      ]
+    },
+    {
+      "module": "dk-paint-type",
+      "title": "Paint and the raster word",
+      "pages": [
+        92
+      ],
+      "covers": [],
+      "notes": [
+        "finding: every solid-paint stroke committed with zero dabs (brush and pencil, default and changed colour alike) while the sample-mode clone/heal on the previous page land through identical gestures — the solid-deposit lane, which brush, pencil and raster type share, is the measured suspect",
+        "brush, default colour, 150 px → Painted 0 dabs into layer “Background” — undoable (the strok",
+        "pencil, cyan, 26 px → Painted 0 dabs into layer “Background” — undoable (the strok",
+        "type → Type set in Space Grotesk.",
+        "the painted export is byte-identical to the identity baseline — no stroke or glyph landed; the captions state it"
+      ]
+    },
+    {
+      "module": "dk-psd",
+      "title": "PSD — list, edit, export, preserve",
+      "pages": [
+        93
+      ],
+      "covers": [
+        "image.psd.editor-doors"
+      ],
+      "notes": []
+    },
+    {
+      "module": "dk-loop",
+      "title": "The darkroom loop, closed",
+      "pages": [
+        94
+      ],
+      "covers": [],
+      "notes": []
+    }
+  ],
+  "notes": [
+    "dk-contact-sheet: each tile's committed bytes are the exporter's own output, unretouched — whatever a kernel currently does to these pixels is what the page shows",
+    "dk-contact-sheet: finding, from proofing this spread: the engine's line breaker composes certain caption rects as a character-wrapped sliver regardless of content (frame and story verify correct in the container; the p47 probe shows the same seam) — tile 2's caption is position-nudged 2 pt to dodge it",
+    "dk-contact-sheet: finding, from proofing this spread: on the builds this chapter was authored against, the gaussian-blur tile's export showed a corrupted band over its right 256-px tile column (the windowed kernel's halo seam is the suspect); the tile is committed exactly as exported — check the tile, not this note",
+    "dk-contact-sheet: kernel roster: 128 ids across 14 families, read from plugin-image/registry/kernels.yaml",
+    "dk-selections: selection runs at native resolution — resizeTo swaps the engine handle with no selectionBind (code reading; the resample+selection seam is untested territory this page chose not to stand on)",
+    "dk-retouch: clone → Painted 15 dabs into layer “Background” — undoable (the stroke's tiles are journaled). The document and the source file ",
+    "dk-retouch: heal → Painted 11 dabs into layer “Background” — undoable (the stroke's tiles are journaled). The document and the source file ",
+    "dk-retouch: content-aware fill → Filled the selection with noise on layer “Background” — undoable. Document unchanged; Apply to recomposite.",
+    "dk-paint-type: finding: every solid-paint stroke committed with zero dabs (brush and pencil, default and changed colour alike) while the sample-mode clone/heal on the previous page land through identical gestures — the solid-deposit lane, which brush, pencil and raster type share, is the measured suspect",
+    "dk-paint-type: brush, default colour, 150 px → Painted 0 dabs into layer “Background” — undoable (the strok",
+    "dk-paint-type: pencil, cyan, 26 px → Painted 0 dabs into layer “Background” — undoable (the strok",
+    "dk-paint-type: type → Type set in Space Grotesk.",
+    "dk-paint-type: the painted export is byte-identical to the identity baseline — no stroke or glyph landed; the captions state it"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 62,
+      "firstModule": "dk-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 116,
+      "firstModule": "dk-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 116,
+      "firstModule": "dk-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 115,
+      "firstModule": "dk-opener",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 23,
+      "firstModule": "dk-opener",
+      "transient": false
+    },
+    "placeImage": {
+      "count": 17,
+      "firstModule": "dk-contact-sheet",
+      "transient": false
+    },
+    "replaceImageBytes": {
+      "count": 31,
+      "firstModule": "dk-contact-sheet",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 85,
+      "firstModule": "dk-opener"
+    },
+    "frameFillColor": {
+      "count": 6,
+      "firstModule": "dk-opener"
+    },
+    "frameStrokeColor": {
+      "count": 5,
+      "firstModule": "dk-opener"
+    },
+    "frameStrokeWeight": {
+      "count": 5,
+      "firstModule": "dk-opener"
+    },
+    "appliedConditions": {
+      "count": 14,
+      "firstModule": "dk-opener"
+    }
+  }
+}

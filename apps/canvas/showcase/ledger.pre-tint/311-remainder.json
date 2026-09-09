@@ -1,0 +1,212 @@
+{
+  "chapter": "311-remainder",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "rm-bench",
+      "title": "The remainder bench — the doors that leave no mark",
+      "pages": [
+        134
+      ],
+      "covers": [],
+      "notes": [
+        "wire lane — 12 property path(s) exercised on the scratch page: frameBounds, frameFillTint, elementVisible, elementLocked, frameNonprinting, framePathPoint, pathPointInsert, pathPointCurveType, pathPointRemove, appliedParagraphStyle, appliedCharacterStyle, pluginMetadata",
+        "script lane — 8 catalog name(s) applied through paged.set: frameSatin, frameFeather, frameBevel, frameInnerGlow, frameInnerShadow, frameOuterGlow, frameDirectionalFeather, frameTextWrapInvert",
+        "read-only by engine contract — tableRowCount, tableColumnCount: the write door refuses them (core asserts the refusal in its own tests), so the bench reads them back instead of pretending to set them"
+      ]
+    }
+  ],
+  "notes": [
+    "rm-bench: wire lane — 12 property path(s) exercised on the scratch page: frameBounds, frameFillTint, elementVisible, elementLocked, frameNonprinting, framePathPoint, pathPointInsert, pathPointCurveType, pathPointRemove, appliedParagraphStyle, appliedCharacterStyle, pluginMetadata",
+    "rm-bench: script lane — 8 catalog name(s) applied through paged.set: frameSatin, frameFeather, frameBevel, frameInnerGlow, frameInnerShadow, frameOuterGlow, frameDirectionalFeather, frameTextWrapInvert",
+    "rm-bench: read-only by engine contract — tableRowCount, tableColumnCount: the write door refuses them (core asserts the refusal in its own tests), so the bench reads them back instead of pretending to set them",
+    "rm-bench: the module carries its own oracle — its doors leave no mark on a finished page by design"
+  ],
+  "ops": {
+    "insertPage": {
+      "count": 1,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "insertFrame": {
+      "count": 2,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "setElementProperty": {
+      "count": 16,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "moveFrame": {
+      "count": 1,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "insertPath": {
+      "count": 2,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "insertTextFrame": {
+      "count": 2,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "insertText": {
+      "count": 2,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "deleteRange": {
+      "count": 1,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "insertField": {
+      "count": 1,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "setFieldValue": {
+      "count": 1,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "insertTable": {
+      "count": 1,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "deleteFrame": {
+      "count": 1,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "attachTextToPath": {
+      "count": 1,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "detachTextFromPath": {
+      "count": 1,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "batch": {
+      "count": 1,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "bindCreated": {
+      "count": 1,
+      "firstModule": "rm-bench",
+      "transient": true
+    },
+    "deletePage": {
+      "count": 1,
+      "firstModule": "rm-bench",
+      "transient": true
+    }
+  },
+  "paths": {
+    "frameFillColor": {
+      "count": 2,
+      "firstModule": "rm-bench"
+    },
+    "frameBounds": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "frameFillTint": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "elementVisible": {
+      "count": 2,
+      "firstModule": "rm-bench"
+    },
+    "elementLocked": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "frameNonprinting": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "frameStrokeColor": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "framePathPoint": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "pathPointInsert": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "pathPointCurveType": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "pathPointRemove": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "appliedParagraphStyle": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "appliedCharacterStyle": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "tableRowCount": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "tableColumnCount": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "pluginMetadata": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "frameSatin": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "frameFeather": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "frameBevel": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "frameInnerGlow": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "frameInnerShadow": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "frameOuterGlow": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "frameDirectionalFeather": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    },
+    "frameTextWrapInvert": {
+      "count": 1,
+      "firstModule": "rm-bench"
+    }
+  }
+}

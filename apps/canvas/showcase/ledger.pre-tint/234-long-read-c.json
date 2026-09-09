@@ -1,0 +1,72 @@
+{
+  "chapter": "234-long-read-c",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "lr-fragments",
+      "title": "The fragmentation ladder",
+      "pages": [
+        106
+      ],
+      "covers": [
+        "plugin-web.flow-threading",
+        "plugin-web.metadata-persistence",
+        "plugin-web.flow-fragmentation",
+        "plugin-web.engine-rendering",
+        "plugin-platform.scene-layer"
+      ],
+      "notes": [
+        "PRODUCT FINDING — the card chain's renderWebFlow died in the plugin lane: the scene-layer submit for the image-bearing fragment was refused (Error: page.evaluate: Error: unexpected reply: mutationFailed); engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"malformed message: invalid type: null, expected f32 at line 1 column 10331\"}}}",
+        "flow renders this run: fares table across 3 frame(s), card column across 0 frame(s) — the header-repeat exhibit carries the fragmentation claim; the card exhibit's chain persists unrendered"
+      ]
+    }
+  ],
+  "notes": [
+    "lr-fragments: PRODUCT FINDING — the card chain's renderWebFlow died in the plugin lane: the scene-layer submit for the image-bearing fragment was refused (Error: page.evaluate: Error: unexpected reply: mutationFailed); engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"malformed message: invalid type: null, expected f32 at line 1 column 10331\"}}}",
+    "lr-fragments: flow renders this run: fares table across 3 frame(s), card column across 0 frame(s) — the header-repeat exhibit carries the fragmentation claim; the card exhibit's chain persists unrendered"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 6,
+      "firstModule": "lr-fragments",
+      "transient": false
+    },
+    "insertText": {
+      "count": 6,
+      "firstModule": "lr-fragments",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 7,
+      "firstModule": "lr-fragments",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 13,
+      "firstModule": "lr-fragments",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 5,
+      "firstModule": "lr-fragments",
+      "transient": false
+    },
+    "setPluginMetadata": {
+      "count": 2,
+      "firstModule": "lr-fragments",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 11,
+      "firstModule": "lr-fragments"
+    },
+    "appliedConditions": {
+      "count": 2,
+      "firstModule": "lr-fragments"
+    }
+  }
+}

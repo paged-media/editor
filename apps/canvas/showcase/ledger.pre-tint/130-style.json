@@ -1,0 +1,217 @@
+{
+  "chapter": "130-style",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "st-opener",
+      "title": "Ch.4 opener — The Style",
+      "pages": [
+        27
+      ],
+      "covers": [
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "st-cascade",
+      "title": "The cascade, self-illustrated",
+      "pages": [
+        28
+      ],
+      "covers": [
+        "styles.cascade",
+        "styles.based-on-chain"
+      ]
+    },
+    {
+      "module": "st-crud",
+      "title": "Live style CRUD",
+      "pages": [
+        29
+      ],
+      "covers": [
+        "styles.paragraph.crud",
+        "styles.character.crud",
+        "styles.set-style-property"
+      ]
+    },
+    {
+      "module": "st-nested-next",
+      "title": "Nested styles and the next style",
+      "pages": [
+        30
+      ],
+      "covers": [
+        "stories-text.nested-styles",
+        "styles.next-style-overrides"
+      ]
+    },
+    {
+      "module": "st-numbering",
+      "title": "Bullets, numbering, and the list resource",
+      "pages": [
+        31
+      ],
+      "covers": [
+        "styles.bullets-numbering"
+      ],
+      "notes": []
+    },
+    {
+      "module": "st-rules-tabs",
+      "title": "Rules, tabs, and the honest margin",
+      "pages": [
+        32
+      ],
+      "covers": [
+        "styles.paragraph-rules",
+        "typography.tab-stops"
+      ]
+    }
+  ],
+  "notes": [],
+  "ops": {
+    "insertTextFrame": {
+      "count": 41,
+      "firstModule": "st-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 78,
+      "firstModule": "st-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 82,
+      "firstModule": "st-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 71,
+      "firstModule": "st-opener",
+      "transient": false
+    },
+    "createParagraphStyle": {
+      "count": 2,
+      "firstModule": "st-crud",
+      "transient": false
+    },
+    "setStyleProperty": {
+      "count": 11,
+      "firstModule": "st-crud",
+      "transient": false
+    },
+    "renameParagraphStyle": {
+      "count": 2,
+      "firstModule": "st-crud",
+      "transient": false
+    },
+    "createCharacterStyle": {
+      "count": 2,
+      "firstModule": "st-crud",
+      "transient": false
+    },
+    "deleteParagraphStyle": {
+      "count": 1,
+      "firstModule": "st-crud",
+      "transient": true
+    },
+    "renameCharacterStyle": {
+      "count": 1,
+      "firstModule": "st-crud",
+      "transient": true
+    },
+    "deleteCharacterStyle": {
+      "count": 1,
+      "firstModule": "st-crud",
+      "transient": true
+    },
+    "createNumberingList": {
+      "count": 2,
+      "firstModule": "st-numbering",
+      "transient": false
+    },
+    "deleteNumberingList": {
+      "count": 1,
+      "firstModule": "st-numbering",
+      "transient": true
+    },
+    "editNumberingList": {
+      "count": 1,
+      "firstModule": "st-numbering",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 41,
+      "firstModule": "st-opener"
+    },
+    "appliedConditions": {
+      "count": 10,
+      "firstModule": "st-opener"
+    },
+    "characterFontSize": {
+      "count": 2,
+      "firstModule": "st-crud"
+    },
+    "characterTracking": {
+      "count": 2,
+      "firstModule": "st-crud"
+    },
+    "characterFillColor": {
+      "count": 2,
+      "firstModule": "st-crud"
+    },
+    "paragraphSpaceBefore": {
+      "count": 1,
+      "firstModule": "st-crud"
+    },
+    "paragraphSpaceAfter": {
+      "count": 1,
+      "firstModule": "st-crud"
+    },
+    "paragraphFirstLineIndent": {
+      "count": 1,
+      "firstModule": "st-crud"
+    },
+    "paragraphJustification": {
+      "count": 1,
+      "firstModule": "st-crud"
+    },
+    "paragraphStyleNextStyle": {
+      "count": 1,
+      "firstModule": "st-crud"
+    },
+    "paragraphRuleBelow": {
+      "count": 2,
+      "firstModule": "st-crud"
+    },
+    "paragraphListType": {
+      "count": 2,
+      "firstModule": "st-numbering"
+    },
+    "paragraphBulletCharacter": {
+      "count": 2,
+      "firstModule": "st-numbering"
+    },
+    "paragraphAppliedNumberingList": {
+      "count": 6,
+      "firstModule": "st-numbering"
+    },
+    "paragraphNumberingFormat": {
+      "count": 2,
+      "firstModule": "st-numbering"
+    },
+    "paragraphRuleAbove": {
+      "count": 1,
+      "firstModule": "st-rules-tabs"
+    },
+    "paragraphTabStops": {
+      "count": 5,
+      "firstModule": "st-rules-tabs"
+    }
+  }
+}

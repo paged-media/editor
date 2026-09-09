@@ -35,6 +35,9 @@ import { build as saveback } from "../pages/250-manuscript/03-saveback";
 
 annualChapter({
   id: "250-manuscript",
+  // Panel-driven modules poll the app; under machine contention every
+  // wait runs to its ceiling, and the chapter outran 40 minutes twice.
+  budgetMinutes: 90,
   title: "Ch.19 The Manuscript",
   modules: [
     { id: "mp-opener", pages: [p(115)], build: opener },

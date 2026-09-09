@@ -1,0 +1,95 @@
+{
+  "chapter": "240-catalog",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "ct-opener",
+      "title": "Ch.18 opener — The Catalog",
+      "pages": [
+        109
+      ],
+      "covers": []
+    },
+    {
+      "module": "ct-cards",
+      "title": "The record card",
+      "pages": [
+        110
+      ],
+      "covers": [
+        "editor-shell.plugin-bundles",
+        "plugin-platform.file-picker",
+        "data.bind.field-mapping",
+        "data.bind.engine",
+        "data.expr.engine",
+        "plugin-platform.text-caret-door",
+        "stories-text.fields.insert"
+      ],
+      "notes": [
+        "PRODUCT FINDING — the Arrow→RecordSet seam decodes a DATE column to epoch-milliseconds while the engine's Value::Date expects i32 days, so serde refuses the whole ingest of any dated result (`invalid value: integer 1735862400000, expected i32`). annual-orders.csv is the first dated source the seam has met; this chapter drives it with order_date withheld and says so in the margin."
+      ]
+    },
+    {
+      "module": "ct-sets",
+      "title": "Data sets and the refresh",
+      "pages": [
+        113
+      ],
+      "covers": [
+        "data.bind.preview-step",
+        "data.bind.change-report",
+        "data.dataset.palette"
+      ],
+      "notes": [
+        "refreshFields overwrote an applied data set's values — the Overridden sync state did not hold through the field-refresh loop on this lane (the palette's own apply path documents the opposite intent)."
+      ]
+    }
+  ],
+  "notes": [
+    "ct-cards: PRODUCT FINDING — the Arrow→RecordSet seam decodes a DATE column to epoch-milliseconds while the engine's Value::Date expects i32 days, so serde refuses the whole ingest of any dated result (`invalid value: integer 1735862400000, expected i32`). annual-orders.csv is the first dated source the seam has met; this chapter drives it with order_date withheld and says so in the margin.",
+    "ct-sets: refreshFields overwrote an applied data set's values — the Overridden sync state did not hold through the field-refresh loop on this lane (the palette's own apply path documents the opposite intent)."
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 24,
+      "firstModule": "ct-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 37,
+      "firstModule": "ct-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 39,
+      "firstModule": "ct-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 35,
+      "firstModule": "ct-opener",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 3,
+      "firstModule": "ct-opener",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 27,
+      "firstModule": "ct-opener"
+    },
+    "frameFillColor": {
+      "count": 3,
+      "firstModule": "ct-opener"
+    },
+    "appliedConditions": {
+      "count": 5,
+      "firstModule": "ct-opener"
+    }
+  }
+}

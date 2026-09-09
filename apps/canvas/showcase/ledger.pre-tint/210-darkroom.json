@@ -1,0 +1,103 @@
+{
+  "chapter": "210-darkroom",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "dk-opener",
+      "title": "Ch.15 opener — The Darkroom",
+      "pages": [
+        87
+      ],
+      "covers": []
+    },
+    {
+      "module": "dk-contact-sheet",
+      "title": "The kernel contact sheet",
+      "pages": [
+        88,
+        89
+      ],
+      "covers": [
+        "image.editor.adjust-breadth",
+        "image.editor.filters",
+        "image.editor.resample",
+        "image.kernel.breadth-2026-08",
+        "plugin-platform.importer-exporter",
+        "editor-shell.plugin-bundles"
+      ],
+      "notes": [
+        "each tile's committed bytes are the exporter's own output, unretouched — whatever a kernel currently does to these pixels is what the page shows",
+        "finding, from proofing this spread: the engine's line breaker composes certain caption rects as a character-wrapped sliver regardless of content (frame and story verify correct in the container; the p47 probe shows the same seam) — tile 2's caption is position-nudged 2 pt to dodge it",
+        "finding, from proofing this spread: on the builds this chapter was authored against, the gaussian-blur tile's export showed a corrupted band over its right 256-px tile column (the windowed kernel's halo seam is the suspect); the tile is committed exactly as exported — check the tile, not this note",
+        "kernel roster: 128 ids across 14 families, read from plugin-image/registry/kernels.yaml"
+      ]
+    }
+  ],
+  "notes": [
+    "dk-contact-sheet: each tile's committed bytes are the exporter's own output, unretouched — whatever a kernel currently does to these pixels is what the page shows",
+    "dk-contact-sheet: finding, from proofing this spread: the engine's line breaker composes certain caption rects as a character-wrapped sliver regardless of content (frame and story verify correct in the container; the p47 probe shows the same seam) — tile 2's caption is position-nudged 2 pt to dodge it",
+    "dk-contact-sheet: finding, from proofing this spread: on the builds this chapter was authored against, the gaussian-blur tile's export showed a corrupted band over its right 256-px tile column (the windowed kernel's halo seam is the suspect); the tile is committed exactly as exported — check the tile, not this note",
+    "dk-contact-sheet: kernel roster: 128 ids across 14 families, read from plugin-image/registry/kernels.yaml"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 30,
+      "firstModule": "dk-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 67,
+      "firstModule": "dk-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 68,
+      "firstModule": "dk-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 66,
+      "firstModule": "dk-opener",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 16,
+      "firstModule": "dk-opener",
+      "transient": false
+    },
+    "placeImage": {
+      "count": 10,
+      "firstModule": "dk-contact-sheet",
+      "transient": false
+    },
+    "replaceImageBytes": {
+      "count": 20,
+      "firstModule": "dk-contact-sheet",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 46,
+      "firstModule": "dk-opener"
+    },
+    "frameFillColor": {
+      "count": 6,
+      "firstModule": "dk-opener"
+    },
+    "frameStrokeColor": {
+      "count": 5,
+      "firstModule": "dk-opener"
+    },
+    "frameStrokeWeight": {
+      "count": 5,
+      "firstModule": "dk-opener"
+    },
+    "appliedConditions": {
+      "count": 4,
+      "firstModule": "dk-opener"
+    }
+  }
+}

@@ -49,6 +49,9 @@ import { build as table } from "../pages/240-catalog/06-table";
 // the checkpoint chain absorbs splits with zero logic change.
 annualChapter({
   id: "242-catalog-b",
+  // Panel-driven modules poll the app; under machine contention every
+  // wait runs to its ceiling, and the chapter outran 40 minutes twice.
+  budgetMinutes: 90,
   title: "Ch.18 The Catalog - the DSL, barcodes, the table",
   modules: [
     // Both drive the bindings PANEL (authoring row, refresh, lower) —

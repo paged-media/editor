@@ -1,0 +1,81 @@
+{
+  "chapter": "310-appendix",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "ax-limits",
+      "title": "Appendix A — the limits ledger, compiled from the sources",
+      "pages": [
+        127,
+        128,
+        129,
+        130
+      ],
+      "covers": [],
+      "notes": [
+        "limits compiled from sources: 76 (◪ 67 · □ 9)"
+      ]
+    },
+    {
+      "module": "ax-index",
+      "title": "Appendix A — the index, resolved from the document",
+      "pages": [
+        131,
+        132
+      ],
+      "covers": [
+        "cross-references-hyperlinks.index"
+      ],
+      "notes": [
+        "index resolved from the document's own export: 10 topics referenced, 12 marker page(s); topics collection lists 10"
+      ]
+    }
+  ],
+  "notes": [
+    "ax-limits: limits compiled from sources: 76 (◪ 67 · □ 9)",
+    "ax-index: index resolved from the document's own export: 10 topics referenced, 12 marker page(s); topics collection lists 10"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 19,
+      "firstModule": "ax-limits",
+      "transient": false
+    },
+    "insertText": {
+      "count": 49,
+      "firstModule": "ax-limits",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 129,
+      "firstModule": "ax-limits",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 24,
+      "firstModule": "ax-limits",
+      "transient": false
+    },
+    "batch": {
+      "count": 6,
+      "firstModule": "ax-limits",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 19,
+      "firstModule": "ax-limits"
+    },
+    "appliedConditions": {
+      "count": 3,
+      "firstModule": "ax-limits"
+    },
+    "paragraphTabStops": {
+      "count": 2,
+      "firstModule": "ax-index"
+    }
+  }
+}

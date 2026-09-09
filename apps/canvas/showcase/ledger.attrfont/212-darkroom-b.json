@@ -1,0 +1,137 @@
+{
+  "chapter": "212-darkroom-b",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "dk-selections",
+      "title": "Selections — the mask made visible",
+      "pages": [
+        90
+      ],
+      "covers": [
+        "image.selection.mask-tools",
+        "image.selection.mask",
+        "image.selection.masked-pipeline"
+      ],
+      "notes": [
+        "selection runs at native resolution — resizeTo swaps the engine handle with no selectionBind (code reading; the resample+selection seam is untested territory this page chose not to stand on)"
+      ]
+    },
+    {
+      "module": "dk-retouch",
+      "title": "Retouch — clone, heal, content-aware fill",
+      "pages": [
+        91
+      ],
+      "covers": [
+        "image.editor.content-aware-fill"
+      ],
+      "notes": [
+        "clone: no landing reported by the panel",
+        "heal: no landing reported by the panel",
+        "content-aware fill → Filled the selection with noise on layer “Background” — undoable. Document unchanged; Apply to recomposite."
+      ]
+    },
+    {
+      "module": "dk-paint-type",
+      "title": "Paint and the raster word",
+      "pages": [
+        92
+      ],
+      "covers": [],
+      "notes": [
+        "finding: every solid-paint stroke committed with zero dabs (brush and pencil, default and changed colour alike) while the sample-mode clone/heal on the previous page land through identical gestures — the solid-deposit lane, which brush, pencil and raster type share, is the measured suspect",
+        "type: no glyph run reported by the panel",
+        "the painted export is byte-identical to the identity baseline — no stroke or glyph landed; the captions state it"
+      ]
+    },
+    {
+      "module": "dk-psd",
+      "title": "PSD — list, edit, export, preserve",
+      "pages": [
+        93
+      ],
+      "covers": [
+        "image.psd.editor-doors"
+      ],
+      "notes": []
+    },
+    {
+      "module": "dk-loop",
+      "title": "The darkroom loop, closed",
+      "pages": [
+        94
+      ],
+      "covers": [],
+      "notes": []
+    }
+  ],
+  "notes": [
+    "dk-selections: selection runs at native resolution — resizeTo swaps the engine handle with no selectionBind (code reading; the resample+selection seam is untested territory this page chose not to stand on)",
+    "dk-retouch: clone: no landing reported by the panel",
+    "dk-retouch: heal: no landing reported by the panel",
+    "dk-retouch: content-aware fill → Filled the selection with noise on layer “Background” — undoable. Document unchanged; Apply to recomposite.",
+    "dk-paint-type: finding: every solid-paint stroke committed with zero dabs (brush and pencil, default and changed colour alike) while the sample-mode clone/heal on the previous page land through identical gestures — the solid-deposit lane, which brush, pencil and raster type share, is the measured suspect",
+    "dk-paint-type: type: no glyph run reported by the panel",
+    "dk-paint-type: the painted export is byte-identical to the identity baseline — no stroke or glyph landed; the captions state it"
+  ],
+  "ops": {
+    "batch": {
+      "count": 77,
+      "firstModule": "dk-selections",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 32,
+      "firstModule": "dk-selections",
+      "transient": false
+    },
+    "bindCreated": {
+      "count": 39,
+      "firstModule": "dk-selections",
+      "transient": false
+    },
+    "insertText": {
+      "count": 49,
+      "firstModule": "dk-selections",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 54,
+      "firstModule": "dk-selections",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 49,
+      "firstModule": "dk-selections",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 7,
+      "firstModule": "dk-selections",
+      "transient": false
+    },
+    "placeImage": {
+      "count": 7,
+      "firstModule": "dk-selections",
+      "transient": false
+    },
+    "replaceImageBytes": {
+      "count": 11,
+      "firstModule": "dk-selections",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 39,
+      "firstModule": "dk-selections"
+    },
+    "appliedConditions": {
+      "count": 10,
+      "firstModule": "dk-selections"
+    }
+  }
+}

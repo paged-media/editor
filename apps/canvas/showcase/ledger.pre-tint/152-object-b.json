@@ -1,0 +1,305 @@
+{
+  "chapter": "152-object-b",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "ob-strokes",
+      "title": "Stroke anatomy",
+      "pages": [
+        50
+      ],
+      "covers": [
+        "frames-paths.stroke-weight-caps-joins",
+        "frames-paths.stroke-dashed",
+        "frames-paths.stroke-gap-color",
+        "frames-paths.stroke-alignment",
+        "frames-paths.arrowheads"
+      ],
+      "notes": [
+        "8 arrowhead kinds enumerated live; miter limit demonstrated biting (12 keeps a 24-degree spike, 1.5 shears it); caps and alignment are rectangle-addressed on the wire, arrowheads graphic-line-only"
+      ]
+    },
+    {
+      "module": "ob-paths",
+      "title": "Path topology and the pathfinder",
+      "pages": [
+        51
+      ],
+      "covers": [
+        "frames-paths.path.insert",
+        "frames-paths.path.close",
+        "frames-paths.path.join",
+        "frames-paths.pathfinder-boolean",
+        "frames-paths.pathfinder-verbs",
+        "frames-paths.planar-arrangement",
+        "geometry-coordinates.path-topology-ops",
+        "geometry-coordinates.bezier-path-geometry"
+      ],
+      "notes": [
+        "all 10 topology ops and all 11 planar ops (4 boolean modes, 6 region verbs, faces) applied on-page with before/after pairs; edit positions and face ids read back, never guessed"
+      ]
+    },
+    {
+      "module": "ob-grouping",
+      "title": "Grouping, nesting and the dressed frame",
+      "pages": [
+        52
+      ],
+      "covers": [
+        "frames-paths.groups",
+        "frames-paths.nested-content",
+        "styles.object.crud"
+      ],
+      "notes": [
+        "deleteFrame on the nested child refused as expected: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: invalid value for FrameTransform on Oval(\\\"ueeeba7\\\"): B-18: the item is pasted into a container — release it before removing\"}}",
+        "object style definition door closed as recorded: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: property FrameFillColor is not supported on Layer(\\\"ObjectStyle/Annual Exhibit Frame\\\")\"}}"
+      ]
+    }
+  ],
+  "notes": [
+    "ob-strokes: 8 arrowhead kinds enumerated live; miter limit demonstrated biting (12 keeps a 24-degree spike, 1.5 shears it); caps and alignment are rectangle-addressed on the wire, arrowheads graphic-line-only",
+    "ob-paths: all 10 topology ops and all 11 planar ops (4 boolean modes, 6 region verbs, faces) applied on-page with before/after pairs; edit positions and face ids read back, never guessed",
+    "ob-grouping: deleteFrame on the nested child refused as expected: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: invalid value for FrameTransform on Oval(\\\"ueeeba7\\\"): B-18: the item is pasted into a container — release it before removing\"}}",
+    "ob-grouping: object style definition door closed as recorded: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: property FrameFillColor is not supported on Layer(\\\"ObjectStyle/Annual Exhibit Frame\\\")\"}}"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 25,
+      "firstModule": "ob-strokes",
+      "transient": false
+    },
+    "insertText": {
+      "count": 26,
+      "firstModule": "ob-strokes",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 28,
+      "firstModule": "ob-strokes",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 348,
+      "firstModule": "ob-strokes",
+      "transient": false
+    },
+    "insertLine": {
+      "count": 17,
+      "firstModule": "ob-strokes",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 15,
+      "firstModule": "ob-strokes",
+      "transient": false
+    },
+    "insertPath": {
+      "count": 51,
+      "firstModule": "ob-strokes",
+      "transient": false
+    },
+    "pathPointInsert": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "pathPointSet": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "pathPointCurveType": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "pathPointRemove": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "pathOpenAt": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "closePath": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "joinPaths": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "simplifyPath": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "outlineStroke": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "offsetPath": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "pathfinderBoolean": {
+      "count": 4,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "pathfinderDivide": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "pathfinderTrim": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "pathfinderMerge": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "pathfinderCrop": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "pathfinderOutline": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "pathfinderMinusBack": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "pathfinderFaces": {
+      "count": 1,
+      "firstModule": "ob-paths",
+      "transient": false
+    },
+    "createGroup": {
+      "count": 2,
+      "firstModule": "ob-grouping",
+      "transient": false
+    },
+    "setGroupTransform": {
+      "count": 1,
+      "firstModule": "ob-grouping",
+      "transient": false
+    },
+    "dissolveGroup": {
+      "count": 1,
+      "firstModule": "ob-grouping",
+      "transient": false
+    },
+    "insertOval": {
+      "count": 2,
+      "firstModule": "ob-grouping",
+      "transient": false
+    },
+    "pasteInto": {
+      "count": 2,
+      "firstModule": "ob-grouping",
+      "transient": false
+    },
+    "releaseFrom": {
+      "count": 1,
+      "firstModule": "ob-grouping",
+      "transient": false
+    },
+    "createObjectStyle": {
+      "count": 2,
+      "firstModule": "ob-grouping",
+      "transient": false
+    },
+    "renameObjectStyle": {
+      "count": 2,
+      "firstModule": "ob-grouping",
+      "transient": false
+    },
+    "deleteObjectStyle": {
+      "count": 1,
+      "firstModule": "ob-grouping",
+      "transient": true
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 110,
+      "firstModule": "ob-strokes"
+    },
+    "frameStrokeColor": {
+      "count": 65,
+      "firstModule": "ob-strokes"
+    },
+    "frameStrokeWeight": {
+      "count": 66,
+      "firstModule": "ob-strokes"
+    },
+    "frameStrokeType": {
+      "count": 9,
+      "firstModule": "ob-strokes"
+    },
+    "frameStrokeDashArray": {
+      "count": 1,
+      "firstModule": "ob-strokes"
+    },
+    "frameStrokeEndCap": {
+      "count": 3,
+      "firstModule": "ob-strokes"
+    },
+    "frameFillColor": {
+      "count": 66,
+      "firstModule": "ob-strokes"
+    },
+    "frameStrokeJoin": {
+      "count": 5,
+      "firstModule": "ob-strokes"
+    },
+    "frameStrokeMiterLimit": {
+      "count": 2,
+      "firstModule": "ob-strokes"
+    },
+    "frameStrokeAlignment": {
+      "count": 3,
+      "firstModule": "ob-strokes"
+    },
+    "frameStrokeGapColor": {
+      "count": 2,
+      "firstModule": "ob-strokes"
+    },
+    "frameStrokeGapTint": {
+      "count": 2,
+      "firstModule": "ob-strokes"
+    },
+    "frameStrokeStartArrowhead": {
+      "count": 4,
+      "firstModule": "ob-strokes"
+    },
+    "frameStrokeEndArrowhead": {
+      "count": 4,
+      "firstModule": "ob-strokes"
+    },
+    "appliedConditions": {
+      "count": 5,
+      "firstModule": "ob-strokes"
+    },
+    "appliedObjectStyle": {
+      "count": 1,
+      "firstModule": "ob-grouping"
+    }
+  }
+}

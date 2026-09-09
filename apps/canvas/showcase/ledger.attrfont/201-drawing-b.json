@@ -1,0 +1,128 @@
+{
+  "chapter": "201-drawing-b",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "do-pathfinder",
+      "title": "The pathfinder wall",
+      "pages": [
+        79
+      ],
+      "covers": [
+        "plugin-draw.pro-path-toolset"
+      ],
+      "notes": []
+    },
+    {
+      "module": "do-livepaint",
+      "title": "The builder and the bucket",
+      "pages": [
+        80
+      ],
+      "covers": [
+        "plugin-draw.shape-builder"
+      ],
+      "notes": [
+        "plugin-draw.live-paint is registry-partial — demonstrated on this page, deliberately not claimed"
+      ]
+    },
+    {
+      "module": "do-appearance",
+      "title": "The appearance stack",
+      "pages": [
+        81
+      ],
+      "covers": [
+        "plugin-draw.appearance",
+        "plugin-draw.graphic-styles"
+      ],
+      "notes": []
+    },
+    {
+      "module": "do-paint",
+      "title": "Paint — banked in-chain, proven in isolation",
+      "pages": [
+        82
+      ],
+      "covers": []
+    }
+  ],
+  "notes": [
+    "do-livepaint: plugin-draw.live-paint is registry-partial — demonstrated on this page, deliberately not claimed"
+  ],
+  "ops": {
+    "batch": {
+      "count": 172,
+      "firstModule": "do-pathfinder",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 23,
+      "firstModule": "do-pathfinder",
+      "transient": false
+    },
+    "bindCreated": {
+      "count": 75,
+      "firstModule": "do-pathfinder",
+      "transient": false
+    },
+    "insertText": {
+      "count": 24,
+      "firstModule": "do-pathfinder",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 28,
+      "firstModule": "do-pathfinder",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 153,
+      "firstModule": "do-pathfinder",
+      "transient": false
+    },
+    "insertPath": {
+      "count": 48,
+      "firstModule": "do-pathfinder",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 4,
+      "firstModule": "do-livepaint",
+      "transient": false
+    },
+    "deleteFrame": {
+      "count": 2,
+      "firstModule": "do-livepaint",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 74,
+      "firstModule": "do-pathfinder"
+    },
+    "frameFillColor": {
+      "count": 52,
+      "firstModule": "do-pathfinder"
+    },
+    "appliedConditions": {
+      "count": 8,
+      "firstModule": "do-pathfinder"
+    },
+    "frameStrokeColor": {
+      "count": 8,
+      "firstModule": "do-livepaint"
+    },
+    "frameStrokeWeight": {
+      "count": 8,
+      "firstModule": "do-livepaint"
+    },
+    "frameTransform": {
+      "count": 3,
+      "firstModule": "do-livepaint"
+    }
+  }
+}

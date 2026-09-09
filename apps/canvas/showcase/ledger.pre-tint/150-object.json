@@ -1,0 +1,167 @@
+{
+  "chapter": "150-object",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "ob-opener",
+      "title": "Ch.8 opener — the z-order ladder",
+      "pages": [
+        47
+      ],
+      "covers": [
+        "layers.z-ordering",
+        "frames-paths.frame.insert"
+      ],
+      "notes": [
+        "reorderElement A -> front: repainted",
+        "reorderElement B -> front (over A): repainted",
+        "reorderElement A -> forward (back over B): repainted",
+        "reorderElement A -> backward (under B again): repainted",
+        "reorderElement E -> back: repainted",
+        "reorderElement D -> index 0 (absolute back): repainted"
+      ]
+    },
+    {
+      "module": "ob-transforms",
+      "title": "Transforms and corners",
+      "pages": [
+        48,
+        49
+      ],
+      "covers": [
+        "geometry-coordinates.item-transform",
+        "frames-paths.corner-options",
+        "frames-paths.corner-options-polygon"
+      ],
+      "notes": [
+        "transform pivot: single-knob writes pivot about the item-space origin (translation preserved) — every tile pre-seeds t = c - Mc; frameTransform replace semantics proved by readback"
+      ]
+    }
+  ],
+  "notes": [
+    "ob-opener: reorderElement A -> front: repainted",
+    "ob-opener: reorderElement B -> front (over A): repainted",
+    "ob-opener: reorderElement A -> forward (back over B): repainted",
+    "ob-opener: reorderElement A -> backward (under B again): repainted",
+    "ob-opener: reorderElement E -> back: repainted",
+    "ob-opener: reorderElement D -> index 0 (absolute back): repainted",
+    "ob-transforms: transform pivot: single-knob writes pivot about the item-space origin (translation preserved) — every tile pre-seeds t = c - Mc; frameTransform replace semantics proved by readback"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 31,
+      "firstModule": "ob-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 32,
+      "firstModule": "ob-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 34,
+      "firstModule": "ob-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 163,
+      "firstModule": "ob-opener",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 11,
+      "firstModule": "ob-opener",
+      "transient": false
+    },
+    "reorderElement": {
+      "count": 6,
+      "firstModule": "ob-opener",
+      "transient": false
+    },
+    "insertPath": {
+      "count": 11,
+      "firstModule": "ob-transforms",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 53,
+      "firstModule": "ob-opener"
+    },
+    "frameFillColor": {
+      "count": 22,
+      "firstModule": "ob-opener"
+    },
+    "appliedConditions": {
+      "count": 5,
+      "firstModule": "ob-opener"
+    },
+    "frameTransform": {
+      "count": 10,
+      "firstModule": "ob-transforms"
+    },
+    "frameRotationAngle": {
+      "count": 3,
+      "firstModule": "ob-transforms"
+    },
+    "frameScaleX": {
+      "count": 1,
+      "firstModule": "ob-transforms"
+    },
+    "frameScaleY": {
+      "count": 1,
+      "firstModule": "ob-transforms"
+    },
+    "frameFlipH": {
+      "count": 1,
+      "firstModule": "ob-transforms"
+    },
+    "frameFlipV": {
+      "count": 1,
+      "firstModule": "ob-transforms"
+    },
+    "frameStrokeColor": {
+      "count": 7,
+      "firstModule": "ob-transforms"
+    },
+    "frameStrokeWeight": {
+      "count": 7,
+      "firstModule": "ob-transforms"
+    },
+    "frameCornerOptionTopLeft": {
+      "count": 7,
+      "firstModule": "ob-transforms"
+    },
+    "frameCornerRadiusTopLeft": {
+      "count": 7,
+      "firstModule": "ob-transforms"
+    },
+    "frameCornerOptionTopRight": {
+      "count": 7,
+      "firstModule": "ob-transforms"
+    },
+    "frameCornerRadiusTopRight": {
+      "count": 7,
+      "firstModule": "ob-transforms"
+    },
+    "frameCornerOptionBottomLeft": {
+      "count": 6,
+      "firstModule": "ob-transforms"
+    },
+    "frameCornerRadiusBottomLeft": {
+      "count": 6,
+      "firstModule": "ob-transforms"
+    },
+    "frameCornerOptionBottomRight": {
+      "count": 6,
+      "firstModule": "ob-transforms"
+    },
+    "frameCornerRadiusBottomRight": {
+      "count": 6,
+      "firstModule": "ob-transforms"
+    }
+  }
+}

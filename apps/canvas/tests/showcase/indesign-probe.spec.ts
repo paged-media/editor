@@ -106,8 +106,19 @@ test.describe("InDesign", () => {
     // IDML cannot embed pixels; the export writes `<Link>`s with absolute
     // URIs into the `Links/` folder beside the `.idml`, and InDesign must
     // find every one — a missing link is an empty frame in Adobe's hands.
+    const modelPath = join(workDir, "model.json");
+    const model = existsSync(modelPath)
+      ? (JSON.parse(readFileSync(modelPath, "utf8")) as {
+          oversetStories: number;
+          unresolvableLinks?: number;
+        })
+      : null;
     expect(seen.links?.total, "links InDesign found").toBe(expected.links);
-    expect(seen.links?.missing, "links InDesign could not resolve").toBe(0);
+    // The book keeps ONE link deliberately broken (the press chapter's
+    // exhibit); the assembly counts those, and nothing else may be missing.
+    expect(seen.links?.missing, "links InDesign could not resolve").toBe(
+      model?.unresolvableLinks ?? 0,
+    );
 
     // ── faces: the book's own, installed and resolved ────────────────
     // A substituted face reflows every line it touches; fidelity in
@@ -122,9 +133,7 @@ test.describe("InDesign", () => {
     // The assembly records the model's overset count beside the export;
     // the book carries deliberate overset exhibits, so InDesign may
     // report those — and nothing beyond them.
-    const modelPath = join(workDir, "model.json");
-    if (existsSync(modelPath)) {
-      const model = JSON.parse(readFileSync(modelPath, "utf8")) as { oversetStories: number };
+    if (model) {
       expect(seen.overset_stories, "overset stories, against the model's own count").toBeLessThanOrEqual(
         model.oversetStories,
       );

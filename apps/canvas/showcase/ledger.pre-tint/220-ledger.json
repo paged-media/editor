@@ -1,0 +1,93 @@
+{
+  "chapter": "220-ledger",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "lg-opener",
+      "title": "Ch.16 opener — The Ledger",
+      "pages": [
+        95
+      ],
+      "covers": []
+    },
+    {
+      "module": "lg-chart-wall",
+      "title": "The chart wall — ten kinds, all native",
+      "pages": [
+        96,
+        97
+      ],
+      "covers": [
+        "sheet.plugin.bundle",
+        "plugin-platform.file-picker",
+        "plugin-platform.bundle-lifecycle",
+        "editor-shell.plugin-bundles",
+        "sheet.chart.engine",
+        "sheet.chart.graphs"
+      ],
+      "notes": [
+        "ten charts lowered as 99 native path(s) and 102 label frame(s); stacked-column, stacked-bar and radar are the 2026-08 kind-set additions that make the set a superset of Illustrator's nine"
+      ]
+    }
+  ],
+  "notes": [
+    "lg-chart-wall: ten charts lowered as 99 native path(s) and 102 label frame(s); stacked-column, stacked-bar and radar are the 2026-08 kind-set additions that make the set a superset of Illustrator's nine"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 19,
+      "firstModule": "lg-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 19,
+      "firstModule": "lg-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 19,
+      "firstModule": "lg-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 225,
+      "firstModule": "lg-opener",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 3,
+      "firstModule": "lg-opener",
+      "transient": false
+    },
+    "deleteFrame": {
+      "count": 2,
+      "firstModule": "lg-chart-wall",
+      "transient": false
+    },
+    "batch": {
+      "count": 10,
+      "firstModule": "lg-chart-wall",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 20,
+      "firstModule": "lg-opener"
+    },
+    "frameFillColor": {
+      "count": 1,
+      "firstModule": "lg-opener"
+    },
+    "appliedConditions": {
+      "count": 3,
+      "firstModule": "lg-opener"
+    },
+    "frameTransform": {
+      "count": 201,
+      "firstModule": "lg-chart-wall"
+    }
+  }
+}

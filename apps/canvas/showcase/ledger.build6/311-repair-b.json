@@ -1,0 +1,62 @@
+{
+  "chapter": "311-repair-b",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "lr-prose",
+      "title": "The chart wall's prose, verified its own",
+      "pages": [
+        96
+      ],
+      "covers": [
+        "stories-text.text.delete"
+      ],
+      "notes": [
+        "the chart wall's heading: clean (14 characters)",
+        "the chart wall's standfirst: clean (238 characters)",
+        "deleteRange demonstrated on a scratch frame (four characters off the front) and the frame removed — the repair this page once made, kept as a demonstration"
+      ]
+    }
+  ],
+  "notes": [
+    "lr-prose: the chart wall's heading: clean (14 characters)",
+    "lr-prose: the chart wall's standfirst: clean (238 characters)",
+    "lr-prose: deleteRange demonstrated on a scratch frame (four characters off the front) and the frame removed — the repair this page once made, kept as a demonstration",
+    "lr-prose: the module carries its own oracle — its doors leave no mark on a finished page by design"
+  ],
+  "ops": {
+    "batch": {
+      "count": 2,
+      "firstModule": "lr-prose",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 1,
+      "firstModule": "lr-prose",
+      "transient": true
+    },
+    "bindCreated": {
+      "count": 1,
+      "firstModule": "lr-prose",
+      "transient": true
+    },
+    "insertText": {
+      "count": 1,
+      "firstModule": "lr-prose",
+      "transient": true
+    },
+    "deleteRange": {
+      "count": 1,
+      "firstModule": "lr-prose",
+      "transient": true
+    },
+    "deleteFrame": {
+      "count": 1,
+      "firstModule": "lr-prose",
+      "transient": false
+    }
+  },
+  "paths": {}
+}

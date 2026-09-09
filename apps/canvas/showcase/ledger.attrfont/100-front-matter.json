@@ -1,0 +1,191 @@
+{
+  "chapter": "100-front-matter",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "fm-sections",
+      "title": "Sections — the folios become real",
+      "pages": [
+        3
+      ],
+      "covers": [
+        "sections-numbering-variables.sections",
+        "sections-numbering-variables.section-ops",
+        "sections-numbering-variables.page-number-resolution"
+      ]
+    },
+    {
+      "module": "fm-cover",
+      "title": "Cover",
+      "pages": [
+        1
+      ],
+      "covers": [
+        "color-swatches.gradients",
+        "color-swatches.fill-stroke-apply",
+        "layers.item-assignment"
+      ]
+    },
+    {
+      "module": "fm-title",
+      "title": "Frontispiece and title",
+      "pages": [
+        2,
+        3
+      ],
+      "covers": [
+        "frames-paths.line.insert",
+        "frames-paths.frame.insert",
+        "stories-text.text.insert",
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "fm-imprint",
+      "title": "Imprint — conditional text",
+      "pages": [
+        4
+      ],
+      "covers": [
+        "conditional-text.applied-conditions",
+        "conditional-text.condition-ops",
+        "conditional-text.visibility-filtering"
+      ]
+    },
+    {
+      "module": "fm-contents",
+      "title": "Contents — tab stops with leaders",
+      "pages": [
+        5,
+        6
+      ],
+      "covers": [
+        "typography.tab-stops"
+      ]
+    },
+    {
+      "module": "fm-legend",
+      "title": "How to read this book",
+      "pages": [
+        7
+      ],
+      "covers": [
+        "layers.model"
+      ]
+    },
+    {
+      "module": "fm-foreword",
+      "title": "Foreword",
+      "pages": [
+        8
+      ],
+      "covers": [
+        "styles.cascade",
+        "styles.based-on-chain"
+      ]
+    },
+    {
+      "module": "fm-poster",
+      "title": "The capability map",
+      "pages": [
+        9,
+        10
+      ],
+      "covers": [
+        "color-swatches.process-spot-tint"
+      ]
+    }
+  ],
+  "notes": [],
+  "ops": {
+    "batch": {
+      "count": 158,
+      "firstModule": "fm-sections",
+      "transient": false
+    },
+    "insertSection": {
+      "count": 4,
+      "firstModule": "fm-sections",
+      "transient": false
+    },
+    "editSection": {
+      "count": 1,
+      "firstModule": "fm-sections",
+      "transient": false
+    },
+    "deleteSection": {
+      "count": 1,
+      "firstModule": "fm-sections",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 30,
+      "firstModule": "fm-cover",
+      "transient": false
+    },
+    "bindCreated": {
+      "count": 81,
+      "firstModule": "fm-cover",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 125,
+      "firstModule": "fm-cover",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 47,
+      "firstModule": "fm-cover",
+      "transient": false
+    },
+    "insertText": {
+      "count": 101,
+      "firstModule": "fm-cover",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 104,
+      "firstModule": "fm-cover",
+      "transient": false
+    },
+    "insertLine": {
+      "count": 4,
+      "firstModule": "fm-title",
+      "transient": false
+    },
+    "setConditionVisible": {
+      "count": 2,
+      "firstModule": "fm-imprint",
+      "transient": false
+    },
+    "activateConditionSet": {
+      "count": 1,
+      "firstModule": "fm-imprint",
+      "transient": false
+    }
+  },
+  "paths": {
+    "frameFillColor": {
+      "count": 30,
+      "firstModule": "fm-cover"
+    },
+    "itemLayer": {
+      "count": 81,
+      "firstModule": "fm-cover"
+    },
+    "frameStrokeColor": {
+      "count": 4,
+      "firstModule": "fm-title"
+    },
+    "appliedConditions": {
+      "count": 8,
+      "firstModule": "fm-title"
+    },
+    "paragraphTabStops": {
+      "count": 2,
+      "firstModule": "fm-contents"
+    }
+  }
+}

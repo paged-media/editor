@@ -1,0 +1,93 @@
+{
+  "chapter": "223-ledger-c",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "lg-chain",
+      "title": "A day-book across the gutter",
+      "pages": [
+        100,
+        101
+      ],
+      "covers": [
+        "sheet.lower.page",
+        "sheet.calc.spill",
+        "layout-model.text-frame-chain"
+      ],
+      "notes": [
+        "wire-shape finding: insert bounds are PAGE-local; resizeFrame bounds are SPREAD-space (spine at x 0, verso negative) — a page-local resize walks a verso frame onto the recto while it stays parented to its own page",
+        "the hit test answered the frame's story but no table-cell context at its centre, so the header band could not be added — tables.header-footer-repeat is NOT claimed by this page"
+      ]
+    },
+    {
+      "module": "lg-roundtrip",
+      "title": "Round trips",
+      "pages": [
+        102
+      ],
+      "covers": [
+        "sheet.edit.ops",
+        "sheet.xlsx.roundtrip",
+        "plugin-platform.importer-exporter",
+        "package-anatomy.paged-parts-door",
+        "sheet.plugin.bundle"
+      ],
+      "notes": [
+        "sorting the spill range C3:C6 was NOT refused — the engine reported \"Sorted.\"; the refusal contract may have moved",
+        "clipboard lane degraded on this run: [media.paged.sheet] pasteAtSelection: the clipboard is empty",
+        "FINDING — the Export Center rendered no plugin-exports section in this session (built-in targets only), while the exporter registry reports [media.paged.draw.exporter.svg, media.paged.sheet.exporter.xlsx, media.paged.image.exporter.psd, media.paged.image.exporter.png, media.paged.image.exporter.jpeg, media.paged.publish.exporter.idml, media.paged.doc.exporter.docx]; the workbook bytes were pulled through that registry — the same door the panel reads"
+      ]
+    }
+  ],
+  "notes": [
+    "lg-chain: wire-shape finding: insert bounds are PAGE-local; resizeFrame bounds are SPREAD-space (spine at x 0, verso negative) — a page-local resize walks a verso frame onto the recto while it stays parented to its own page",
+    "lg-chain: the hit test answered the frame's story but no table-cell context at its centre, so the header band could not be added — tables.header-footer-repeat is NOT claimed by this page",
+    "lg-roundtrip: sorting the spill range C3:C6 was NOT refused — the engine reported \"Sorted.\"; the refusal contract may have moved",
+    "lg-roundtrip: clipboard lane degraded on this run: [media.paged.sheet] pasteAtSelection: the clipboard is empty",
+    "lg-roundtrip: FINDING — the Export Center rendered no plugin-exports section in this session (built-in targets only), while the exporter registry reports [media.paged.draw.exporter.svg, media.paged.sheet.exporter.xlsx, media.paged.image.exporter.psd, media.paged.image.exporter.png, media.paged.image.exporter.jpeg, media.paged.publish.exporter.idml, media.paged.doc.exporter.docx]; the workbook bytes were pulled through that registry — the same door the panel reads"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 13,
+      "firstModule": "lg-chain",
+      "transient": false
+    },
+    "insertText": {
+      "count": 19,
+      "firstModule": "lg-chain",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 21,
+      "firstModule": "lg-chain",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 19,
+      "firstModule": "lg-chain",
+      "transient": false
+    },
+    "resizeFrame": {
+      "count": 1,
+      "firstModule": "lg-chain",
+      "transient": false
+    },
+    "linkFrames": {
+      "count": 1,
+      "firstModule": "lg-chain",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 14,
+      "firstModule": "lg-chain"
+    },
+    "appliedConditions": {
+      "count": 5,
+      "firstModule": "lg-chain"
+    }
+  }
+}

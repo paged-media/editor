@@ -164,6 +164,17 @@ function hasUnrewritableRef(value: unknown, key?: string): boolean {
   return false;
 }
 
+/** One `<Link>` the IDML export wrote under its link base. `bytes` is
+ *  the pixel data for an image placed from bytes — the caller writes it
+ *  as `fileName` under the base so InDesign resolves the link; `null`
+ *  for a link the model only ever held as a uri. */
+export interface ExportedLink {
+  fileName: string;
+  sourceUri: string;
+  hasBytes: boolean;
+  bytes: Buffer | null;
+}
+
 export class ShowcaseDoc {
   readonly designer: Designer;
 
@@ -1173,33 +1184,73 @@ export class ShowcaseDoc {
    * assembly spec asserts that list EQUALS the expected loss set, so a
    * new silent loss fails the build instead of vanishing.
    */
-  async exportIdmlWithLost(): Promise<{ bytes: Buffer; lost: string[] }> {
+  async exportIdmlWithLost(
+    opts: { linkBase?: string } = {},
+  ): Promise<{ bytes: Buffer; lost: string[]; links: ExportedLink[] }> {
     await this.flush();
-    const out = await this.page.evaluate(async () => {
+    const out = await this.page.evaluate(async (linkBase) => {
       const c = (
         globalThis as unknown as {
           __canvas: {
             client: {
               send: (m: unknown) => Promise<{
                 kind: string;
-                payload?: { idmlBytes?: number[]; lost?: string[]; error?: string };
+                payload?: {
+                  idmlBytes?: number[];
+                  lost?: string[];
+                  error?: string;
+                  // Additive (no protocol bump): every `<Link>` the export
+                  // wrote under `linkBase`, with the bytes the caller must
+                  // put there for an image placed from bytes.
+                  links?: Array<{
+                    fileName?: string;
+                    file_name?: string;
+                    sourceUri?: string;
+                    source_uri?: string;
+                    hasBytes?: boolean;
+                    has_bytes?: boolean;
+                    bytes?: number[];
+                  }>;
+                };
               }>;
             };
           };
         }
       ).__canvas;
-      const reply = await c.client.send({ kind: "exportIdml", payload: {} });
+      const payload = linkBase ? { linkBase } : {};
+      const reply = await c.client.send({ kind: "exportIdml", payload });
       if (reply.kind !== "idmlExported") {
         throw new Error(
           `exportIdml failed: ${reply.payload?.error ?? reply.kind}`,
         );
       }
-      const bytes = new Uint8Array(reply.payload?.idmlBytes ?? []);
-      let s = "";
-      for (const b of bytes) s += String.fromCharCode(b);
-      return { b64: btoa(s), lost: reply.payload?.lost ?? [] };
-    });
-    return { bytes: Buffer.from(out.b64, "base64"), lost: out.lost };
+      const b64 = (arr: number[] | undefined): string => {
+        const bytes = new Uint8Array(arr ?? []);
+        let s = "";
+        for (const b of bytes) s += String.fromCharCode(b);
+        return btoa(s);
+      };
+      return {
+        b64: b64(reply.payload?.idmlBytes),
+        lost: reply.payload?.lost ?? [],
+        links: (reply.payload?.links ?? []).map((l) => ({
+          fileName: l.fileName ?? l.file_name ?? "",
+          sourceUri: l.sourceUri ?? l.source_uri ?? "",
+          hasBytes: l.hasBytes ?? l.has_bytes ?? false,
+          b64: l.bytes && l.bytes.length > 0 ? b64(l.bytes) : null,
+        })),
+      };
+    }, opts.linkBase ?? null);
+    return {
+      bytes: Buffer.from(out.b64, "base64"),
+      lost: out.lost,
+      links: out.links.map((l) => ({
+        fileName: l.fileName,
+        sourceUri: l.sourceUri,
+        hasBytes: l.hasBytes,
+        bytes: l.b64 === null ? null : Buffer.from(l.b64, "base64"),
+      })),
+    };
   }
 
   /**

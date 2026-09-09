@@ -1,0 +1,128 @@
+{
+  "chapter": "170-table",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "tb-opener",
+      "title": "Ch.12 opener — The Table",
+      "pages": [
+        65
+      ],
+      "covers": []
+    },
+    {
+      "module": "tb-ledger",
+      "title": "One table, two pages — the repeating bands",
+      "pages": [
+        66,
+        67
+      ],
+      "covers": [
+        "tables.model",
+        "tables.cell-composition",
+        "tables.row-col-sizing",
+        "tables.spans",
+        "tables.header-footer-repeat",
+        "tables.borders-strokes",
+        "tables.style-cascade",
+        "tables.alternating-fills"
+      ]
+    }
+  ],
+  "notes": [],
+  "ops": {
+    "insertTextFrame": {
+      "count": 10,
+      "firstModule": "tb-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 102,
+      "firstModule": "tb-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 102,
+      "firstModule": "tb-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 114,
+      "firstModule": "tb-opener",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 1,
+      "firstModule": "tb-opener",
+      "transient": false
+    },
+    "linkFrames": {
+      "count": 1,
+      "firstModule": "tb-ledger",
+      "transient": false
+    },
+    "insertTable": {
+      "count": 1,
+      "firstModule": "tb-ledger",
+      "transient": false
+    },
+    "insertHeaderRow": {
+      "count": 1,
+      "firstModule": "tb-ledger",
+      "transient": false
+    },
+    "insertFooterRow": {
+      "count": 1,
+      "firstModule": "tb-ledger",
+      "transient": false
+    },
+    "setRowHeight": {
+      "count": 2,
+      "firstModule": "tb-ledger",
+      "transient": false
+    },
+    "setColumnWidth": {
+      "count": 2,
+      "firstModule": "tb-ledger",
+      "transient": false
+    },
+    "setCellSpan": {
+      "count": 1,
+      "firstModule": "tb-ledger",
+      "transient": false
+    },
+    "batch": {
+      "count": 1,
+      "firstModule": "tb-ledger",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 11,
+      "firstModule": "tb-opener"
+    },
+    "frameFillColor": {
+      "count": 1,
+      "firstModule": "tb-opener"
+    },
+    "appliedConditions": {
+      "count": 3,
+      "firstModule": "tb-opener"
+    },
+    "cellInsetLeft": {
+      "count": 27,
+      "firstModule": "tb-ledger"
+    },
+    "cellInsetRight": {
+      "count": 71,
+      "firstModule": "tb-ledger"
+    },
+    "appliedTableStyle": {
+      "count": 1,
+      "firstModule": "tb-ledger"
+    }
+  }
+}

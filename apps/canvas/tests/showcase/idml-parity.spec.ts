@@ -120,7 +120,13 @@ test.describe("idml parity", () => {
     // for a whole campaign while the IDML parts carried no table, no
     // picture, no section and no guide. Strip first; the stripped file
     // is written beside the twin so it can be opened elsewhere too.
-    const exported = readFileSync(idmlPath);
+    // The assembly's `showcase.idml` rebases every placed image onto
+    // `Links/` as a `file:` URI for InDesign; a browser-loaded twin
+    // cannot read those, so the parity twin is exported here WITHOUT a
+    // link base — image bytes inline — from the same loaded container.
+    // The assembly's own file is still the one InDesign opens.
+    const exported = Buffer.from((await doc.exportIdmlWithLost({})).bytes);
+    expect(existsSync(idmlPath), "the assembly's export exists beside it").toBe(true);
     const foreign = zipEntryNames(exported).filter((n) => !isIdmlEntry(n));
     const projectionPath = join(OUT, "showcase-projection.idml");
     writeFileSync(projectionPath, stripZip(exported));

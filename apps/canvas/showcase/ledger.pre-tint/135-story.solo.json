@@ -1,0 +1,261 @@
+{
+  "chapter": "135-story.solo",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "st-opener",
+      "title": "Ch.5 opener — The Story",
+      "pages": [
+        33
+      ],
+      "covers": []
+    },
+    {
+      "module": "st-thread",
+      "title": "The thread — one story through four frames",
+      "pages": [
+        34,
+        35
+      ],
+      "covers": [
+        "layout-model.text-frame-chain",
+        "stories-text.text-wrap",
+        "stories-text.footnotes",
+        "stories-text.story-model"
+      ]
+    },
+    {
+      "module": "st-overset",
+      "title": "Overset + page-number fields",
+      "pages": [
+        36
+      ],
+      "covers": [
+        "stories-text.overset",
+        "stories-text.fields.insert",
+        "stories-text.page-number-markers"
+      ]
+    },
+    {
+      "module": "st-frame-prefs",
+      "title": "Text-frame preferences",
+      "pages": [
+        37
+      ],
+      "covers": [
+        "layout-model.vertical-justification",
+        "layout-model.first-baseline-offset"
+      ]
+    },
+    {
+      "module": "st-autosize",
+      "title": "Auto-sizing — five modes",
+      "pages": [
+        38
+      ],
+      "covers": [
+        "layout-model.frame-autosizing"
+      ]
+    },
+    {
+      "module": "st-wrap",
+      "title": "The wrap catalog",
+      "pages": [
+        39
+      ],
+      "covers": [
+        "stories-text.text-wrap",
+        "frames-paths.path.insert"
+      ]
+    },
+    {
+      "module": "st-anchored",
+      "title": "Anchored objects — one insert, two banked refusals",
+      "pages": [
+        40
+      ],
+      "covers": [
+        "stories-text.text.insert"
+      ]
+    }
+  ],
+  "notes": [],
+  "ops": {
+    "insertTextFrame": {
+      "count": 70,
+      "firstModule": "st-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 70,
+      "firstModule": "st-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 76,
+      "firstModule": "st-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 160,
+      "firstModule": "st-opener",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 7,
+      "firstModule": "st-opener",
+      "transient": false
+    },
+    "linkFrames": {
+      "count": 5,
+      "firstModule": "st-thread",
+      "transient": false
+    },
+    "unlinkFrames": {
+      "count": 1,
+      "firstModule": "st-thread",
+      "transient": true
+    },
+    "batch": {
+      "count": 7,
+      "firstModule": "st-thread",
+      "transient": false
+    },
+    "deleteFrame": {
+      "count": 2,
+      "firstModule": "st-thread",
+      "transient": true
+    },
+    "insertField": {
+      "count": 2,
+      "firstModule": "st-overset",
+      "transient": false
+    },
+    "insertPath": {
+      "count": 1,
+      "firstModule": "st-wrap",
+      "transient": false
+    },
+    "insertAnchoredFrame": {
+      "count": 2,
+      "firstModule": "st-anchored",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 72,
+      "firstModule": "st-opener"
+    },
+    "frameFillColor": {
+      "count": 8,
+      "firstModule": "st-opener"
+    },
+    "appliedConditions": {
+      "count": 14,
+      "firstModule": "st-opener"
+    },
+    "textFrameColumnCount": {
+      "count": 3,
+      "firstModule": "st-frame-prefs"
+    },
+    "textFrameColumnGutter": {
+      "count": 3,
+      "firstModule": "st-frame-prefs"
+    },
+    "textFrameColumnBalance": {
+      "count": 1,
+      "firstModule": "st-frame-prefs"
+    },
+    "textFrameVerticalJustification": {
+      "count": 1,
+      "firstModule": "st-frame-prefs"
+    },
+    "frameInsetSpacing": {
+      "count": 1,
+      "firstModule": "st-frame-prefs"
+    },
+    "frameStrokeColor": {
+      "count": 12,
+      "firstModule": "st-frame-prefs"
+    },
+    "frameStrokeWeight": {
+      "count": 12,
+      "firstModule": "st-frame-prefs"
+    },
+    "textFrameFirstBaseline": {
+      "count": 6,
+      "firstModule": "st-frame-prefs"
+    },
+    "textFrameAutoSizing": {
+      "count": 5,
+      "firstModule": "st-autosize"
+    },
+    "framePath": {
+      "count": 1,
+      "firstModule": "st-wrap"
+    },
+    "frameTextWrapMode": {
+      "count": 6,
+      "firstModule": "st-wrap"
+    },
+    "frameTextWrapContourType": {
+      "count": 1,
+      "firstModule": "st-wrap"
+    },
+    "frameTextWrapOffsets": {
+      "count": 2,
+      "firstModule": "st-wrap"
+    },
+    "frameTextWrapContourIncludeInside": {
+      "count": 1,
+      "firstModule": "st-wrap"
+    },
+    "textWrapInvert": {
+      "count": 1,
+      "firstModule": "st-wrap"
+    },
+    "anchoredPosition": {
+      "count": 1,
+      "firstModule": "st-anchored"
+    },
+    "anchorPoint": {
+      "count": 1,
+      "firstModule": "st-anchored"
+    },
+    "anchoredHorizontalReference": {
+      "count": 1,
+      "firstModule": "st-anchored"
+    },
+    "anchoredHorizontalAlignment": {
+      "count": 1,
+      "firstModule": "st-anchored"
+    },
+    "anchoredXOffset": {
+      "count": 1,
+      "firstModule": "st-anchored"
+    },
+    "anchoredVerticalReference": {
+      "count": 1,
+      "firstModule": "st-anchored"
+    },
+    "anchoredVerticalAlignment": {
+      "count": 1,
+      "firstModule": "st-anchored"
+    },
+    "anchoredYOffset": {
+      "count": 1,
+      "firstModule": "st-anchored"
+    },
+    "anchoredSpineRelative": {
+      "count": 1,
+      "firstModule": "st-anchored"
+    },
+    "anchoredLockPosition": {
+      "count": 1,
+      "firstModule": "st-anchored"
+    }
+  }
+}

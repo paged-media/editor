@@ -1,0 +1,123 @@
+{
+  "chapter": "200-drawing-office",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "do-divider",
+      "title": "Part II divider",
+      "pages": [
+        75,
+        76
+      ],
+      "covers": [
+        "color-swatches.fill-stroke-apply",
+        "stories-text.text.insert"
+      ]
+    },
+    {
+      "module": "do-opener",
+      "title": "Ch.14 opener — the crest, lowered to native paths",
+      "pages": [
+        77
+      ],
+      "covers": [
+        "plugin-draw.svg-io",
+        "plugin-draw.compound-paths",
+        "plugin-draw.bundle-manifest",
+        "plugin-platform.importer-exporter",
+        "editor-shell.plugin-bundles"
+      ],
+      "notes": []
+    },
+    {
+      "module": "do-drafting",
+      "title": "The drafting instruments",
+      "pages": [
+        78
+      ],
+      "covers": [
+        "plugin-draw.tool-wave-2",
+        "plugin-draw.geometry-bezier",
+        "plugin-draw.geometry-rdp",
+        "plugin-draw.path-weld",
+        "plugin-draw.pro-path-toolset",
+        "plugin-draw.pen-machine",
+        "plugin-draw.anchor-add",
+        "plugin-draw.anchor-delete",
+        "plugin-draw.anchor-convert"
+      ],
+      "notes": []
+    }
+  ],
+  "notes": [],
+  "ops": {
+    "insertFrame": {
+      "count": 4,
+      "firstModule": "do-divider",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 124,
+      "firstModule": "do-divider",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 14,
+      "firstModule": "do-divider",
+      "transient": false
+    },
+    "insertText": {
+      "count": 16,
+      "firstModule": "do-divider",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 18,
+      "firstModule": "do-divider",
+      "transient": false
+    },
+    "deleteFrame": {
+      "count": 3,
+      "firstModule": "do-drafting",
+      "transient": false
+    },
+    "batch": {
+      "count": 9,
+      "firstModule": "do-drafting",
+      "transient": false
+    },
+    "insertPath": {
+      "count": 4,
+      "firstModule": "do-drafting",
+      "transient": false
+    }
+  },
+  "paths": {
+    "frameFillColor": {
+      "count": 2,
+      "firstModule": "do-divider"
+    },
+    "itemLayer": {
+      "count": 44,
+      "firstModule": "do-divider"
+    },
+    "appliedConditions": {
+      "count": 5,
+      "firstModule": "do-divider"
+    },
+    "frameTransform": {
+      "count": 21,
+      "firstModule": "do-drafting"
+    },
+    "frameStrokeColor": {
+      "count": 26,
+      "firstModule": "do-drafting"
+    },
+    "frameStrokeWeight": {
+      "count": 26,
+      "firstModule": "do-drafting"
+    }
+  }
+}

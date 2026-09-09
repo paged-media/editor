@@ -31,9 +31,19 @@
 // until the baseline is raised (so the number can never silently rot,
 // same contract as scripts/surface-coverage.mjs).
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve as pathResolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
+
+const __dirname = pathResolve(fileURLToPath(import.meta.url), "..");
 
 import { openCanvas } from "../../fidelity/canvas-driver";
 import {
@@ -69,7 +79,32 @@ const CORE = pathResolve(OUT, "..", "..", "..", "..", "core");
  * resolve. Same string on both sides — the document stores the NAME.
  */
 const PRESS_PROFILE = "Paged Default CMYK";
-const BASELINE_PATH = pathResolve(OUT, "..", "tests", "showcase", "coverage-baseline.json");
+/**
+ * The CMYK space the DOCUMENT itself names (`<ColorSetting
+ * CMYKProfile=…>`), and the one InDesign converts with when it renders
+ * the reference — `indesign/render.jsx` sets `doc.cmykProfile` to this
+ * same string.
+ *
+ * The canvas has no filesystem, so a profile only exists there if the
+ * host registers its BYTES. Nothing did, so every CMYK fill in the
+ * annual was painted with the naive `255·(1−ink)·(1−k)` fallback:
+ * Slate 65/45/30/10 came out (80, 126, 161) against InDesign's
+ * (101, 122, 144) — the naive formula, digit for digit. Registering
+ * the real profile before the page renders is what makes the compare
+ * a comparison of LAYOUT rather than of colour management.
+ */
+const DOC_CMYK_PROFILE = "Coated FOGRA39 (ISO 12647-2:2004)";
+const DOC_CMYK_PROFILE_PATHS = [
+  "/Library/Application Support/Adobe/Color/Profiles/Recommended/CoatedFOGRA39.icc",
+  "/Library/Application Support/Adobe/Color/Profiles/CoatedFOGRA39.icc",
+];
+const BASELINE_PATH = pathResolve(
+  OUT,
+  "..",
+  "tests",
+  "showcase",
+  "coverage-baseline.json",
+);
 
 interface Baseline {
   registryRowsClaimed: number;
@@ -125,9 +160,10 @@ test.describe("annual assembly", () => {
     const doubled = manifest.parts
       .map((p) => p.path)
       .filter((p) => /^paged\/[^/]+\/paged\//.test(p));
-    expect(doubled, "no plugin part carries a doubled namespace prefix").toEqual(
-      [],
-    );
+    expect(
+      doubled,
+      "no plugin part carries a doubled namespace prefix",
+    ).toEqual([]);
     writeFileSync(join(OUT, "showcase.paged"), live);
 
     const pluginParts = manifest.parts
@@ -139,7 +175,51 @@ test.describe("annual assembly", () => {
     );
 
     // ── the interchange twin + the honest-loss ledger ───────────────
-    const { bytes: idml, lost } = await doc.exportIdmlWithLost();
+    // The interchange twin is exported with a LINK BASE: every placed
+    // image becomes `<Image><Link LinkResourceURI="file:…/Links/…">`
+    // pointing at the folder beside the `.idml`, and the export hands
+    // back the bytes an image placed from bytes needs there. IDML cannot
+    // embed pixels; a resolvable link is the only way a picture reaches
+    // InDesign at all.
+    const linksDir = join(OUT, "Links");
+    mkdirSync(linksDir, { recursive: true });
+    const {
+      bytes: idml,
+      lost,
+      links,
+    } = await doc.exportIdmlWithLost({
+      linkBase: linksDir,
+    });
+    const assetByName = new Map<string, string>();
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else assetByName.set(entry.name, full);
+      }
+    };
+    walk(pathResolve(__dirname, "..", "assets"));
+    let unresolvableLinks = 0;
+    for (const l of links) {
+      const target = join(linksDir, l.fileName);
+      if (l.bytes) {
+        writeFileSync(target, l.bytes);
+      } else if (assetByName.has(l.fileName)) {
+        copyFileSync(assetByName.get(l.fileName)!, target);
+      } else if (!existsSync(target)) {
+        // The book's deliberately missing asset (the press chapter's
+        // broken-link exhibit) stays missing — and is COUNTED, so the
+        // InDesign probe can demand exactly this many missing links.
+        unresolvableLinks += 1;
+        notes.push(
+          `link \`${l.fileName}\` has no source (${l.sourceUri || "bytes-less"}) — left unresolved`,
+        );
+      }
+    }
+    // eslint-disable-next-line no-console
+    console.log(
+      `[assemble] links: ${links.length} written under Links/, ${unresolvableLinks} unresolvable by design`,
+    );
     assertUcfMimetypeFirst(idml, "application/vnd.adobe.indesign-idml-package");
     expect(zipEntryNames(idml)).toContain("designmap.xml");
     writeFileSync(join(OUT, "showcase.idml"), idml);
@@ -164,20 +244,37 @@ test.describe("annual assembly", () => {
       ).__canvas;
       const reply = await c.client.executeScript("paged.stories()");
       const rows = JSON.parse(reply.output[0] ?? "[]") as Array<{
+        selfId?: string;
         overset?: boolean;
       }>;
-      return { stories: rows.length, overset: rows.filter((r) => r.overset).length };
+      const oversetRows = rows.filter((r) => r.overset);
+      return {
+        stories: rows.length,
+        overset: oversetRows.length,
+        // The ids too, so an InDesign probe can say WHICH stories it
+        // oversets that the engine does not (and the reverse).
+        oversetIds: oversetRows.map((r) => r.selfId ?? ""),
+      };
     });
     mkdirSync(join(OUT, "indesign"), { recursive: true });
     writeFileSync(
       join(OUT, "indesign", "model.json"),
       JSON.stringify(
-        { stories: modelStories.stories, oversetStories: modelStories.overset, lost },
+        {
+          stories: modelStories.stories,
+          oversetStories: modelStories.overset,
+          oversetIds: modelStories.oversetIds,
+          links: links.length,
+          unresolvableLinks,
+          lost,
+        },
         null,
         2,
       ),
     );
-    notes.push(`model: ${modelStories.stories} stories, ${modelStories.overset} overset`);
+    notes.push(
+      `model: ${modelStories.stories} stories, ${modelStories.overset} overset`,
+    );
 
     // ── the born-shared oracle ──────────────────────────────────────
     // Two unthreaded frames on one story were born that way (the story
@@ -189,14 +286,22 @@ test.describe("annual assembly", () => {
     notes.push(`stories threaded across frames: ${shared.threads.length}`);
     expect(
       shared.bornShared.map(
-        (s) => `${s.story} ← ${s.frames.join(", ")} (${s.heads.length} heads) on ${s.spreads.join(", ")}`,
+        (s) =>
+          `${s.story} ← ${s.frames.join(", ")} (${s.heads.length} heads) on ${s.spreads.join(", ")}`,
       ),
       "no two unthreaded frames share a story — frames born on one story",
     ).toEqual([]);
     // Loss is legitimate ONLY for `.paged`-native constructs (opacity
     // masks and kin). Anything else in the list is a silent-loss
     // regression. The allow-list grows only with a written reason.
-    const allowedLoss = [/opacity/i];
+    //
+    // Orphan stories — a story no frame flows — are the second entry:
+    // InDesign discards such a story on open (measured 2026-09-05), so
+    // the exporter drops it and the ledger names it. The annual carries
+    // six (exhibit leftovers: a deleted table's story, a released
+    // anchored frame's); they are junk, not silent loss, and a repair
+    // chapter deleting them is the book-side answer.
+    const allowedLoss = [/opacity/i, /referenced by no frame/];
     const unexpectedLoss = lost.filter(
       (l) => !allowedLoss.some((re) => re.test(l)),
     );
@@ -301,12 +406,62 @@ test.describe("annual assembly", () => {
       return { b64: btoa(s), diagnostics: out.diagnostics };
     }, PRESS_PROFILE);
     const pressBytes = Buffer.from(press.b64, "base64");
-    expect(
-      pressBytes.subarray(0, 5).toString("latin1"),
-      "PDF/X-4 magic",
-    ).toBe("%PDF-");
+    expect(pressBytes.subarray(0, 5).toString("latin1"), "PDF/X-4 magic").toBe(
+      "%PDF-",
+    );
     writeFileSync(join(OUT, "showcase-pressready.pdf"), pressBytes);
     for (const d of press.diagnostics) notes.push(`pdfx4 export: ${d}`);
+
+    // ── colour-manage the page renders ──────────────────────────────
+    // The document names Coated FOGRA39; give the canvas its bytes so
+    // the PNGs below are converted the way InDesign converts them.
+    const docProfilePath = DOC_CMYK_PROFILE_PATHS.find((p) => existsSync(p));
+    if (docProfilePath) {
+      const docIccB64 = readFileSync(docProfilePath).toString("base64");
+      await page.evaluate(
+        async ({ name, b64 }) => {
+          const c = (
+            globalThis as unknown as {
+              __canvas: {
+                client: {
+                  registerColorProfile: (
+                    n: string,
+                    bytes: Uint8Array,
+                  ) => Promise<void>;
+                };
+              };
+            }
+          ).__canvas;
+          const bin = atob(b64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+          await c.client.registerColorProfile(name, bytes);
+        },
+        { name: DOC_CMYK_PROFILE, b64: docIccB64 },
+      );
+      // Registering the bytes is not enough: the model binds its
+      // active profile at LOAD, so a post-load registration only
+      // becomes the working space on the next setColorSettings.
+      // RelativeColorimetric + BPC is the calibrated default the
+      // native gate uses, so both lanes convert alike.
+      await doc.mutate("setColorSettings", {
+        cmykProfileName: DOC_CMYK_PROFILE,
+        rgbPolicy: null,
+        intent: "RelativeColorimetric",
+        bpc: true,
+      });
+      notes.push(
+        `colour management — registered ${DOC_CMYK_PROFILE} from ` +
+          `${docProfilePath} and made it the working space before the ` +
+          `page renders`,
+      );
+    } else {
+      notes.push(
+        `colour management — ${DOC_CMYK_PROFILE} not installed on this ` +
+          `host; the page renders fall back to naive CMYK math and will ` +
+          `not match an InDesign export's colour`,
+      );
+    }
 
     // ── one render per page ─────────────────────────────────────────
     for (let i = 0; i < ANNUAL_PAGES; i += 1) {
@@ -438,14 +593,15 @@ test.describe("annual assembly", () => {
       pathsUsed: pathsUsed.length,
     };
     if (!existsSync(BASELINE_PATH)) {
-      writeFileSync(
-        BASELINE_PATH,
-        `${JSON.stringify(current, null, 2)}\n`,
-      );
+      writeFileSync(BASELINE_PATH, `${JSON.stringify(current, null, 2)}\n`);
       // eslint-disable-next-line no-console
-      console.log(`[assemble] seeded coverage baseline: ${JSON.stringify(current)}`);
+      console.log(
+        `[assemble] seeded coverage baseline: ${JSON.stringify(current)}`,
+      );
     } else {
-      const baseline = JSON.parse(readFileSync(BASELINE_PATH, "utf8")) as Baseline;
+      const baseline = JSON.parse(
+        readFileSync(BASELINE_PATH, "utf8"),
+      ) as Baseline;
       for (const key of Object.keys(baseline) as (keyof Baseline)[]) {
         expect(
           current[key],

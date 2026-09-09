@@ -1,0 +1,93 @@
+{
+  "chapter": "140-scripts",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "sc-opener",
+      "title": "Ch.6 opener — Scripts of the World",
+      "pages": [
+        41
+      ],
+      "covers": []
+    },
+    {
+      "module": "sc-bidi",
+      "title": "Bidirectional text",
+      "pages": [
+        42
+      ],
+      "covers": [
+        "typography.bidi",
+        "typography.font-selection"
+      ]
+    },
+    {
+      "module": "sc-vertical",
+      "title": "CJK vertical writing",
+      "pages": [
+        43,
+        44
+      ],
+      "covers": [
+        "typography.cjk-vertical-writing"
+      ],
+      "notes": [
+        "ruby + kenten rows deliberately unclaimed (renderer stages partial); limits recorded as margin notes on p43/p44"
+      ]
+    }
+  ],
+  "notes": [
+    "sc-vertical: ruby + kenten rows deliberately unclaimed (renderer stages partial); limits recorded as margin notes on p43/p44"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 23,
+      "firstModule": "sc-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 23,
+      "firstModule": "sc-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 26,
+      "firstModule": "sc-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 37,
+      "firstModule": "sc-opener",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 1,
+      "firstModule": "sc-opener",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 24,
+      "firstModule": "sc-opener"
+    },
+    "frameFillColor": {
+      "count": 1,
+      "firstModule": "sc-opener"
+    },
+    "appliedConditions": {
+      "count": 6,
+      "firstModule": "sc-opener"
+    },
+    "characterFontFamily": {
+      "count": 3,
+      "firstModule": "sc-bidi"
+    },
+    "paragraphJustification": {
+      "count": 3,
+      "firstModule": "sc-bidi"
+    }
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "chapter": "242-catalog-b.solo",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "ct-dsl",
+      "title": "The expression language",
+      "pages": [
+        114
+      ],
+      "covers": [
+        "data.expr.engine",
+        "data.barcode.symbology",
+        "data.bind.authoring"
+      ],
+      "notes": [
+        "PRODUCT FINDING — the Arrow→RecordSet seam decodes a DATE column to epoch-milliseconds while the engine's Value::Date expects i32 days, so serde refuses the whole ingest of any dated result (`invalid value: integer 1735862400000, expected i32`). annual-orders.csv is the first dated source the seam has met; this chapter drives it with order_date withheld and says so in the margin.",
+        "SEAM FINDING — the barcode lowering feeds the bound rectangle's STORED geometry to the page-local insertPath wire, so on this page (stored offset -540,0) every module landed one page width off, on the pasteboard; the page translated the fresh modules back by the measured offset in one batch."
+      ]
+    },
+    {
+      "module": "ct-barcodes",
+      "title": "Four symbologies, one order book",
+      "pages": [
+        112
+      ],
+      "covers": [
+        "data.barcode.symbology",
+        "frames-paths.path.insert",
+        "data.bind.authoring"
+      ],
+      "notes": [
+        "SEAM FINDING — the four symbols (and the re-drawn expression specimens) landed one page width off (stored offset -540,0); translated back by the measured offset in one batch before classification.",
+        "lowerAll re-drew the expression page's bound symbols onto this page (584 stray path modules) — removed; a re-lower always draws afresh onto the active page rather than replacing in place.",
+        "UPC-A — upc: no modules — the likely cause is the CSV type sniffer reading the leading-zero UPC column numerically (072034010010 → 72034010010), an 11-digit value no UPC-A encoder accepts; the missing policy drew nothing rather than a fake symbol."
+      ]
+    },
+    {
+      "module": "ct-table",
+      "title": "A native table, governed",
+      "pages": [
+        111
+      ],
+      "covers": [
+        "tables.model",
+        "data.bind.engine",
+        "data.governed.extract",
+        "data.automation.batch",
+        "data.provider.contract"
+      ],
+      "notes": [
+        "lowerAll re-drew the six bound symbols during the table pass — 1118 stray path modules removed from the active page.",
+        "the lowered table paints past its frame (a native table ignores the frame's bottom bound), so the page trimmed it to one header and eight records via deleteTableRow — an ordinary table edit, stated on the page."
+      ]
+    }
+  ],
+  "notes": [
+    "ct-dsl: PRODUCT FINDING — the Arrow→RecordSet seam decodes a DATE column to epoch-milliseconds while the engine's Value::Date expects i32 days, so serde refuses the whole ingest of any dated result (`invalid value: integer 1735862400000, expected i32`). annual-orders.csv is the first dated source the seam has met; this chapter drives it with order_date withheld and says so in the margin.",
+    "ct-dsl: SEAM FINDING — the barcode lowering feeds the bound rectangle's STORED geometry to the page-local insertPath wire, so on this page (stored offset -540,0) every module landed one page width off, on the pasteboard; the page translated the fresh modules back by the measured offset in one batch.",
+    "ct-barcodes: SEAM FINDING — the four symbols (and the re-drawn expression specimens) landed one page width off (stored offset -540,0); translated back by the measured offset in one batch before classification.",
+    "ct-barcodes: lowerAll re-drew the expression page's bound symbols onto this page (584 stray path modules) — removed; a re-lower always draws afresh onto the active page rather than replacing in place.",
+    "ct-barcodes: UPC-A — upc: no modules — the likely cause is the CSV type sniffer reading the leading-zero UPC column numerically (072034010010 → 72034010010), an 11-digit value no UPC-A encoder accepts; the missing policy drew nothing rather than a fake symbol.",
+    "ct-table: lowerAll re-drew the six bound symbols during the table pass — 1118 stray path modules removed from the active page.",
+    "ct-table: the lowered table paints past its frame (a native table ignores the frame's bottom bound), so the page trimmed it to one header and eight records via deleteTableRow — an ordinary table edit, stated on the page."
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 32,
+      "firstModule": "ct-dsl",
+      "transient": false
+    },
+    "insertText": {
+      "count": 44,
+      "firstModule": "ct-dsl",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 47,
+      "firstModule": "ct-dsl",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 2864,
+      "firstModule": "ct-dsl",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 9,
+      "firstModule": "ct-dsl",
+      "transient": false
+    },
+    "deleteFrame": {
+      "count": 1706,
+      "firstModule": "ct-dsl",
+      "transient": false
+    },
+    "batch": {
+      "count": 30,
+      "firstModule": "ct-dsl",
+      "transient": false
+    },
+    "bindCreated": {
+      "count": 8,
+      "firstModule": "ct-table",
+      "transient": false
+    },
+    "resizeFrame": {
+      "count": 1,
+      "firstModule": "ct-table",
+      "transient": false
+    },
+    "deleteTableRow": {
+      "count": 40,
+      "firstModule": "ct-table",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 1156,
+      "firstModule": "ct-dsl"
+    },
+    "frameTransform": {
+      "count": 1702,
+      "firstModule": "ct-dsl"
+    },
+    "appliedConditions": {
+      "count": 6,
+      "firstModule": "ct-dsl"
+    }
+  }
+}

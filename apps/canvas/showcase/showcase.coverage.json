@@ -2,7 +2,7 @@
   "generatedFrom": "/Users/drietsch/paged/state/registry/features",
   "registryFound": true,
   "registryRows": 575,
-  "claimedRows": 186,
+  "claimedRows": 194,
   "claims": [
     {
       "module": "fm-sections",
@@ -457,7 +457,6 @@
         "cross-references-hyperlinks.bookmarks"
       ],
       "notes": [
-        "ENGINE FINDING: both live insertHyperlink calls minted the same id (Hyperlink/ueeeafc) — the wire's mint scans page items only and a hyperlink adds none, so successive inserts collide",
         "hyperlinks 3 -> 5 (2 authored live, both URL destinations); bookmarks 3, all fixture-authored"
       ]
     },
@@ -559,7 +558,7 @@
         "styles.object.crud"
       ],
       "notes": [
-        "deleteFrame on the nested child refused as expected: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: invalid value for FrameTransform on Oval(\\\"ueeeba7\\\"): B-18: the item is pasted into a container — release it before removing\"}}",
+        "deleteFrame on the nested child refused as expected: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: invalid value for FrameTransform on Oval(\\\"ueeeba4\\\"): B-18: the item is pasted into a container — release it before removing\"}}",
         "object style definition door closed as recorded: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: property FrameFillColor is not supported on Layer(\\\"ObjectStyle/Annual Exhibit Frame\\\")\"}}"
       ]
     },
@@ -900,7 +899,7 @@
         "plugin-draw.repeats"
       ],
       "notes": [
-        "updateRepeat refused on this engine — [media.paged.draw] media.paged.draw.command.updateRepeat: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 55: invalid value for FrameTransform on Group(\\\"ueeedb9\\\"): a member already belongs to another group\"}}}",
+        "updateRepeat refused on this engine — [media.paged.draw] media.paged.draw.command.updateRepeat: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 55: invalid value for FrameTransform on Group(\\\"ueeedb6\\\"): a member already belongs to another group\"}}}",
         "redefineSymbol deliberately NOT run: its per-instance rebuild rides the one-batch dissolve-and-regroup this engine refuses (recorded for updateRepeat on this page), and a half-applied rebuild strands artwork",
         "plugin-draw.symbols is registry-partial — demonstrated on this page, deliberately not claimed"
       ]
@@ -916,7 +915,7 @@
         "plugin-draw.objects-on-path"
       ],
       "notes": [
-        "reverseBlendSpine refused on this engine — [media.paged.draw] media.paged.draw.command.reverseBlendSpine: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 43: invalid value for FrameTransform on Group(\\\"ueeee2a\\\"): a member already belongs to another group\"}}}"
+        "reverseBlendSpine refused on this engine — [media.paged.draw] media.paged.draw.command.reverseBlendSpine: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 43: invalid value for FrameTransform on Group(\\\"ueeee27\\\"): a member already belongs to another group\"}}}"
       ]
     },
     {
@@ -1194,8 +1193,8 @@
       ],
       "notes": [
         "the bake materialized 30 native item(s): 1 rectangle(s), 28 text frame(s), 1 path(s), plus 6 minted swatch(es)",
-        "listPagedParts paged/media.paged.web/ — 1 part(s): ueef010/source.json",
-        "renderWebFrame died in the plugin lane (a scene-layer submit was refused): Error: page.evaluate: Error: unexpected reply: mutationFailed",
+        "listPagedParts paged/media.paged.web/ — 1 part(s): ueef00e/source.json",
+        "renderWebFrame died in the plugin lane (a scene-layer submit was refused): Error: page.raw: Error: unexpected reply: mutationFailed",
         "the live lane never submitted a scene layer on this run — p108 carries the panel-committed source without live paint; plugin-web.engine-rendering is NOT claimed by this module"
       ]
     },
@@ -1213,7 +1212,7 @@
         "plugin-platform.scene-layer"
       ],
       "notes": [
-        "PRODUCT FINDING — the card chain's renderWebFlow died in the plugin lane: the scene-layer submit for the image-bearing fragment was refused (Error: page.evaluate: Error: unexpected reply: mutationFailed); engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"malformed message: invalid type: null, expected f32 at line 1 column 10331\"}}}",
+        "PRODUCT FINDING — the card chain's renderWebFlow died in the plugin lane: the scene-layer submit for the image-bearing fragment was refused (Error: page.raw: Error: unexpected reply: mutationFailed); engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"malformed message: invalid type: null, expected f32 at line 1 column 10331\"}}}",
         "flow renders this run: fares table across 3 frame(s), card column across 0 frame(s) — the header-repeat exhibit carries the fragmentation claim; the card exhibit's chain persists unrendered"
       ]
     },
@@ -1265,7 +1264,15 @@
       "pages": [
         114
       ],
-      "covers": []
+      "covers": [
+        "data.expr.engine",
+        "data.barcode.symbology",
+        "data.bind.authoring"
+      ],
+      "notes": [
+        "PRODUCT FINDING — the Arrow→RecordSet seam decodes a DATE column to epoch-milliseconds while the engine's Value::Date expects i32 days, so serde refuses the whole ingest of any dated result (`invalid value: integer 1735862400000, expected i32`). annual-orders.csv is the first dated source the seam has met; this chapter drives it with order_date withheld and says so in the margin.",
+        "SEAM FINDING — the barcode lowering feeds the bound rectangle's STORED geometry to the page-local insertPath wire, so on this page (stored offset -540,0) every module landed one page width off, on the pasteboard; the page translated the fresh modules back by the measured offset in one batch."
+      ]
     },
     {
       "module": "ct-barcodes",
@@ -1273,7 +1280,17 @@
       "pages": [
         112
       ],
-      "covers": []
+      "covers": [
+        "data.barcode.symbology",
+        "frames-paths.path.insert",
+        "data.bind.authoring"
+      ],
+      "notes": [
+        "SEAM FINDING — the four symbols (and the re-drawn expression specimens) landed one page width off (stored offset -540,0); translated back by the measured offset in one batch before classification.",
+        "lowerAll re-drew the expression page's bound symbols onto this page (584 stray path modules) — removed; a re-lower always draws afresh onto the active page rather than replacing in place.",
+        "UPC-A — upc: no modules — the likely cause is the CSV type sniffer reading the leading-zero UPC column numerically (072034010010 → 72034010010), an 11-digit value no UPC-A encoder accepts; the missing policy drew nothing rather than a fake symbol.",
+        "QR — url: no modules reached its frame on this lane."
+      ]
     },
     {
       "module": "ct-table",
@@ -1281,7 +1298,15 @@
       "pages": [
         111
       ],
-      "covers": []
+      "covers": [
+        "data.governed.extract",
+        "data.automation.batch",
+        "data.provider.contract"
+      ],
+      "notes": [
+        "lowerAll re-drew the six bound symbols during the table pass — 1118 stray path modules removed from the active page.",
+        "the bound table lowered no frame onto this page — commitLoweredTable did not resolve the supplied active page."
+      ]
     },
     {
       "module": "mp-opener",
@@ -1299,6 +1324,8 @@
         117
       ],
       "covers": [
+        "plugin-doc.outline-panel",
+        "plugin-doc.read-path",
         "plugin-doc.embedded-placement",
         "editor-shell.plugin-bundles",
         "plugin-platform.file-picker",
@@ -1306,7 +1333,7 @@
         "package-anatomy.paged-parts-door"
       ],
       "notes": [
-        "the paged.doc outline panel never reported ready — the DOCX read path did not complete. Plugin log: nothing",
+        "paged.doc save-back readiness on this lane: verbatim.",
         "the engine rejected at least one pour op — an applyStyle over an EMPTY range (start == end), which the host-model emitted for a zero-length style span; the pour continued and the refusal was logged, never swallowed (ADR-007).",
         "FINDING — the poured story renders visually UNSTYLED on this lane: the synthesized heading/caption styles and both list families are applied over the story (the outline panel counts them) but the paint shows one face and size, no bold, no bullet or number glyphs, and the docx docDefaults face does not reach the render.",
         "FINDING — the embedded plate-mark PNG lowers to an anchored image frame that paints the missing-image placeholder (its bytes have no URI-addressable home through insertAnchoredFrame) and the anchored frame overlaps the table rows beneath it; the ledger lines' dot-leader tabs paint as substitute glyphs."
@@ -1368,7 +1395,7 @@
         "the-renderer.export-diagnostics"
       ],
       "notes": [
-        "exportPdf standard=pdf17 — 29427260 bytes (discarded), 27 diagnostic(s), 27 finding(s), 19.4s"
+        "exportPdf standard=pdf17 — 29554812 bytes (discarded), 27 diagnostic(s), 27 finding(s), 33.7s"
       ]
     },
     {
@@ -1396,7 +1423,7 @@
         "effects-transparency.opacity-mask"
       ],
       "notes": [
-        "exportIdml — 11941923 bytes (discarded), lost: 3 entr(ies)"
+        "exportIdml — 12053012 bytes (discarded), lost: 3 entr(ies)"
       ]
     },
     {
@@ -1464,6 +1491,21 @@
       ]
     },
     {
+      "module": "lr-prose",
+      "title": "The chart wall's prose, verified its own",
+      "pages": [
+        96
+      ],
+      "covers": [
+        "stories-text.text.delete"
+      ],
+      "notes": [
+        "the chart wall's heading: clean (14 characters)",
+        "the chart wall's standfirst: clean (238 characters)",
+        "deleteRange demonstrated on a scratch frame (four characters off the front) and the frame removed — the repair this page once made, kept as a demonstration"
+      ]
+    },
+    {
       "module": "ax-colophon",
       "title": "Colophon — and the last line",
       "pages": [
@@ -1474,7 +1516,7 @@
         "package-anatomy.paged-parts-door"
       ],
       "notes": [
-        "colophon numbers — chapters 36 · rows 186 · ops 117/117 · paths 176/176 · parts 15 · canvas-wasm 0.62.0 (protocol 62)"
+        "colophon numbers — chapters 37 · rows 194 · ops 117/117 · paths 176/176 · parts 15 · canvas-wasm 0.0.0-local (protocol 62)"
       ]
     }
   ],
@@ -1484,8 +1526,8 @@
     "sections-numbering-variables": 4,
     "color-swatches": 22,
     "layers": 6,
-    "frames-paths": 24,
-    "stories-text": 24,
+    "frames-paths": 25,
+    "stories-text": 25,
     "conditional-text": 6,
     "typography": 20,
     "styles": 11,
@@ -1503,8 +1545,8 @@
     "sheet": 14,
     "package-anatomy": 6,
     "plugin-web": 15,
-    "data": 6,
-    "plugin-doc": 2,
+    "data": 14,
+    "plugin-doc": 4,
     "the-renderer": 2,
     "round-tripping": 1
   },
@@ -1520,7 +1562,6 @@
     "lt-metrics: optical kerning falls back to metrics (recorded limit, margin note)",
     "pg-keeps: keep flags measured inert: paragraphKeepLinesTogether and paragraphKeepWithNext are accepted, stored, and round-trip on the wire, but setting them moved no pixels — the composer does not yet consult them when fragmenting across linked frames",
     "sc-vertical: ruby + kenten rows deliberately unclaimed (renderer stages partial); limits recorded as margin notes on p43/p44",
-    "ap-navigation: ENGINE FINDING: both live insertHyperlink calls minted the same id (Hyperlink/ueeeafc) — the wire's mint scans page items only and a hyperlink adds none, so successive inserts collide",
     "ap-navigation: hyperlinks 3 -> 5 (2 authored live, both URL destinations); bookmarks 3, all fixture-authored",
     "ap-destination: indexTopics 10 (collection live); cross-reference verified via export (1 source marker) + carrier hyperlink xref-overleaf — the crossReferences collection reads a never-populated designmap vector and lists 0",
     "ob-opener: reorderElement A -> front: repainted",
@@ -1532,7 +1573,7 @@
     "ob-transforms: transform pivot: single-knob writes pivot about the item-space origin (translation preserved) — every tile pre-seeds t = c - Mc; frameTransform replace semantics proved by readback",
     "ob-strokes: 8 arrowhead kinds enumerated live; miter limit demonstrated biting (12 keeps a 24-degree spike, 1.5 shears it); caps and alignment are rectangle-addressed on the wire, arrowheads graphic-line-only",
     "ob-paths: all 10 topology ops and all 11 planar ops (4 boolean modes, 6 region verbs, faces) applied on-page with before/after pairs; edit positions and face ids read back, never guessed",
-    "ob-grouping: deleteFrame on the nested child refused as expected: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: invalid value for FrameTransform on Oval(\\\"ueeeba7\\\"): B-18: the item is pasted into a container — release it before removing\"}}",
+    "ob-grouping: deleteFrame on the nested child refused as expected: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: invalid value for FrameTransform on Oval(\\\"ueeeba4\\\"): B-18: the item is pasted into a container — release it before removing\"}}",
     "ob-grouping: object style definition door closed as recorded: {\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: property FrameFillColor is not supported on Layer(\\\"ObjectStyle/Annual Exhibit Frame\\\")\"}}",
     "il-light: sweep/conic gradient paint exists in the renderer with no authoring door — GradientSpec is Linear|Radial (margin-noted)",
     "il-light: opacity masks certified on the CPU lane; IDML export names masked items as lost (margin-noted; the assembly asserts the loss list)",
@@ -1542,10 +1583,10 @@
     "tb-anatomy: cellFillTint: recorded on the wire and in the model, but the cell fill composites at full strength on this build — measured on this page (the tinted cell matches the untinted one); edge-stroke tints render correctly",
     "pi-formats: EPS bytes: the store accepted them (the wire is format-agnostic); the RENDER declines the decode and falls back to the frame's own fill — which is the exhibit",
     "do-livepaint: plugin-draw.live-paint is registry-partial — demonstrated on this page, deliberately not claimed",
-    "do-repeats: updateRepeat refused on this engine — [media.paged.draw] media.paged.draw.command.updateRepeat: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 55: invalid value for FrameTransform on Group(\\\"ueeedb9\\\"): a member already belongs to another group\"}}}",
+    "do-repeats: updateRepeat refused on this engine — [media.paged.draw] media.paged.draw.command.updateRepeat: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 55: invalid value for FrameTransform on Group(\\\"ueeedb6\\\"): a member already belongs to another group\"}}}",
     "do-repeats: redefineSymbol deliberately NOT run: its per-instance rebuild rides the one-batch dissolve-and-regroup this engine refuses (recorded for updateRepeat on this page), and a half-applied rebuild strands artwork",
     "do-repeats: plugin-draw.symbols is registry-partial — demonstrated on this page, deliberately not claimed",
-    "do-blends: reverseBlendSpine refused on this engine — [media.paged.draw] media.paged.draw.command.reverseBlendSpine: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 43: invalid value for FrameTransform on Group(\\\"ueeee2a\\\"): a member already belongs to another group\"}}}",
+    "do-blends: reverseBlendSpine refused on this engine — [media.paged.draw] media.paged.draw.command.reverseBlendSpine: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 43: invalid value for FrameTransform on Group(\\\"ueeee27\\\"): a member already belongs to another group\"}}}",
     "do-plate: plugin-draw.image-trace is registry-partial — demonstrated as this plate, deliberately not claimed",
     "dk-contact-sheet: each tile's committed bytes are the exporter's own output, unretouched — whatever a kernel currently does to these pixels is what the page shows",
     "dk-contact-sheet: finding, from proofing this spread: the engine's line breaker composes certain caption rects as a character-wrapped sliver regardless of content (frame and story verify correct in the container; the p47 probe shows the same seam) — tile 2's caption is position-nudged 2 pt to dodge it",
@@ -1571,21 +1612,29 @@
     "lr-flows: renderWebFlow submitted 4 frame(s) across the two flows (overset reported past the last frame)",
     "lr-flows: flow readout: Render flow #2 — 4 frame(s) · overset CSS Regions: 'article#annual-longread' flows into 'article-flow' across the frame chain multiple named",
     "lr-bake: the bake materialized 30 native item(s): 1 rectangle(s), 28 text frame(s), 1 path(s), plus 6 minted swatch(es)",
-    "lr-bake: listPagedParts paged/media.paged.web/ — 1 part(s): ueef010/source.json",
-    "lr-bake: renderWebFrame died in the plugin lane (a scene-layer submit was refused): Error: page.evaluate: Error: unexpected reply: mutationFailed",
+    "lr-bake: listPagedParts paged/media.paged.web/ — 1 part(s): ueef00e/source.json",
+    "lr-bake: renderWebFrame died in the plugin lane (a scene-layer submit was refused): Error: page.raw: Error: unexpected reply: mutationFailed",
     "lr-bake: the live lane never submitted a scene layer on this run — p108 carries the panel-committed source without live paint; plugin-web.engine-rendering is NOT claimed by this module",
-    "lr-fragments: PRODUCT FINDING — the card chain's renderWebFlow died in the plugin lane: the scene-layer submit for the image-bearing fragment was refused (Error: page.evaluate: Error: unexpected reply: mutationFailed); engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"malformed message: invalid type: null, expected f32 at line 1 column 10331\"}}}",
+    "lr-fragments: PRODUCT FINDING — the card chain's renderWebFlow died in the plugin lane: the scene-layer submit for the image-bearing fragment was refused (Error: page.raw: Error: unexpected reply: mutationFailed); engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"malformed message: invalid type: null, expected f32 at line 1 column 10331\"}}}",
     "lr-fragments: flow renders this run: fares table across 3 frame(s), card column across 0 frame(s) — the header-repeat exhibit carries the fragmentation claim; the card exhibit's chain persists unrendered",
     "ct-cards: PRODUCT FINDING — the Arrow→RecordSet seam decodes a DATE column to epoch-milliseconds while the engine's Value::Date expects i32 days, so serde refuses the whole ingest of any dated result (`invalid value: integer 1735862400000, expected i32`). annual-orders.csv is the first dated source the seam has met; this chapter drives it with order_date withheld and says so in the margin.",
     "ct-sets: refreshFields overwrote an applied data set's values — the Overridden sync state did not hold through the field-refresh loop on this lane (the palette's own apply path documents the opposite intent).",
-    "mp-manuscript: the paged.doc outline panel never reported ready — the DOCX read path did not complete. Plugin log: nothing",
+    "ct-dsl: PRODUCT FINDING — the Arrow→RecordSet seam decodes a DATE column to epoch-milliseconds while the engine's Value::Date expects i32 days, so serde refuses the whole ingest of any dated result (`invalid value: integer 1735862400000, expected i32`). annual-orders.csv is the first dated source the seam has met; this chapter drives it with order_date withheld and says so in the margin.",
+    "ct-dsl: SEAM FINDING — the barcode lowering feeds the bound rectangle's STORED geometry to the page-local insertPath wire, so on this page (stored offset -540,0) every module landed one page width off, on the pasteboard; the page translated the fresh modules back by the measured offset in one batch.",
+    "ct-barcodes: SEAM FINDING — the four symbols (and the re-drawn expression specimens) landed one page width off (stored offset -540,0); translated back by the measured offset in one batch before classification.",
+    "ct-barcodes: lowerAll re-drew the expression page's bound symbols onto this page (584 stray path modules) — removed; a re-lower always draws afresh onto the active page rather than replacing in place.",
+    "ct-barcodes: UPC-A — upc: no modules — the likely cause is the CSV type sniffer reading the leading-zero UPC column numerically (072034010010 → 72034010010), an 11-digit value no UPC-A encoder accepts; the missing policy drew nothing rather than a fake symbol.",
+    "ct-barcodes: QR — url: no modules reached its frame on this lane.",
+    "ct-table: lowerAll re-drew the six bound symbols during the table pass — 1118 stray path modules removed from the active page.",
+    "ct-table: the bound table lowered no frame onto this page — commitLoweredTable did not resolve the supplied active page.",
+    "mp-manuscript: paged.doc save-back readiness on this lane: verbatim.",
     "mp-manuscript: the engine rejected at least one pour op — an applyStyle over an EMPTY range (start == end), which the host-model emitted for a zero-length style span; the pour continued and the refusal was logged, never swallowed (ADR-007).",
     "mp-manuscript: FINDING — the poured story renders visually UNSTYLED on this lane: the synthesized heading/caption styles and both list families are applied over the story (the outline panel counts them) but the paint shows one face and size, no bold, no bullet or number glyphs, and the docx docDefaults face does not reach the render.",
     "mp-manuscript: FINDING — the embedded plate-mark PNG lowers to an anchored image frame that paints the missing-image placeholder (its bytes have no URI-addressable home through insertAnchoredFrame) and the anchored frame overlaps the table rows beneath it; the ledger lines' dot-leader tabs paint as substitute glyphs.",
     "mp-saveback: FINDING — the exporter IS in the host exporter registry (registry lists: media.paged.draw.exporter.svg, media.paged.sheet.exporter.xlsx, media.paged.image.exporter.psd, media.paged.image.exporter.png, media.paged.image.exporter.jpeg, media.paged.publish.exporter.idml, media.paged.doc.exporter.docx) but the export center's plugin section never rendered its row, so the one-click download surface missed a registered exporter; the page pulled the bytes through the registry (the journey lane) and the blob-to-download door went unexercised.",
-    "pr-preflight: exportPdf standard=pdf17 — 29427260 bytes (discarded), 27 diagnostic(s), 27 finding(s), 19.4s",
+    "pr-preflight: exportPdf standard=pdf17 — 29554812 bytes (discarded), 27 diagnostic(s), 27 finding(s), 33.7s",
     "pr-container: listPagedParts paged/ — 14 part(s) before this page, 15 after; paged/annual/manifest-note.json written (caller unset) and read back 153 bytes",
-    "pr-losses: exportIdml — 11941923 bytes (discarded), lost: 3 entr(ies)",
+    "pr-losses: exportIdml — 12053012 bytes (discarded), lost: 3 entr(ies)",
     "ax-limits: limits compiled from sources: 76 (◪ 67 · □ 9)",
     "ax-index: index resolved from the document's own export: 10 topics referenced, 12 marker page(s); topics collection lists 10",
     "rm-bench: wire lane — 12 property path(s) exercised on the scratch page: frameBounds, frameFillTint, elementVisible, elementLocked, frameNonprinting, framePathPoint, pathPointInsert, pathPointCurveType, pathPointRemove, appliedParagraphStyle, appliedCharacterStyle, pluginMetadata",
@@ -1594,10 +1643,23 @@
     "rm-bench: the module carries its own oracle — its doors leave no mark on a finished page by design",
     "rp-crest: the cover carried 4 polygon(s) the cover module never wrote — the SVG import's output, minted onto page one because the host re-derives the active page from the camera on every render",
     "rp-crest: carried 4 contour(s) to page 77 by copying framePath (anchors + subpathStarts, so compounds stay compound) and re-basing by the probed spread seam (0, 0)",
-    "ax-colophon: colophon numbers — chapters 36 · rows 186 · ops 117/117 · paths 176/176 · parts 15 · canvas-wasm 0.62.0 (protocol 62)",
-    "idml export lost: opacity mask on `ueeec0b` (artwork `ueeec0c`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
-    "idml export lost: opacity mask on `ueeec0d` (artwork `ueeec0e`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
-    "idml export lost: opacity mask on `ueef0de` (artwork `ueef0df`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
+    "lr-prose: the chart wall's heading: clean (14 characters)",
+    "lr-prose: the chart wall's standfirst: clean (238 characters)",
+    "lr-prose: deleteRange demonstrated on a scratch frame (four characters off the front) and the frame removed — the repair this page once made, kept as a demonstration",
+    "lr-prose: the module carries its own oracle — its doors leave no mark on a finished page by design",
+    "ax-colophon: colophon numbers — chapters 37 · rows 194 · ops 117/117 · paths 176/176 · parts 15 · canvas-wasm 0.0.0-local (protocol 62)",
+    "link `annual-lost-plate.tif` has no source (assets/photos/annual-lost-plate.tif) — left unresolved",
+    "idml export lost: opacity mask on `ueeec08` (artwork `ueeec09`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
+    "idml export lost: opacity mask on `ueeec0a` (artwork `ueeec0b`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
+    "idml export lost: opacity mask on `ueef784` (artwork `ueef785`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
+    "idml export lost: story `Story/u1074` (6 chars, 0 tables) is referenced by no frame — dropped from the export; delete it or place it",
+    "idml export lost: story `Story/u1155` (58 chars, 1 tables) is referenced by no frame — dropped from the export; delete it or place it",
+    "idml export lost: story `Story/u1156` (19 chars, 0 tables) is referenced by no frame — dropped from the export; delete it or place it",
+    "idml export lost: story `Story/u1157` (14 chars, 0 tables) is referenced by no frame — dropped from the export; delete it or place it",
+    "idml export lost: story `Story/u233` (203 chars, 0 tables) is referenced by no frame — dropped from the export; delete it or place it",
+    "idml export lost: story `Story/u642` (29 chars, 0 tables) is referenced by no frame — dropped from the export; delete it or place it",
+    "model: 1063 stories, 134 overset",
+    "stories threaded across frames: 4",
     "pdf export: font \"Noto Sans Hebrew\" is not available; a substitute face was used",
     "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
     "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
@@ -1619,6 +1681,117 @@
     "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
     "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
     "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: table rows overflow the last frame in the chain; trailing rows clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: table rows overflow the last frame in the chain; trailing rows clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdf export: table rows overflow the last frame in the chain; trailing rows clipped (overset)",
     "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
     "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
     "pdf export: text overflows the last frame in its chain; trailing lines clipped (overset)",
@@ -1650,9 +1823,121 @@
     "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
     "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
     "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: table rows overflow the last frame in the chain; trailing rows clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: table rows overflow the last frame in the chain; trailing rows clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: table rows overflow the last frame in the chain; trailing rows clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
+    "pdfx4 export: text overflows the last frame in its chain; trailing lines clipped (overset)",
     "pdfx4 export: placed image could not be decoded; frame fill used instead",
     "pdfx4 export: placed image link could not be resolved; placeholder drawn",
-    "pdfx4 export: placed image link could not be resolved; placeholder drawn"
+    "pdfx4 export: placed image link could not be resolved; placeholder drawn",
+    "colour management — registered Coated FOGRA39 (ISO 12647-2:2004) from /Library/Application Support/Adobe/Color/Profiles/Recommended/CoatedFOGRA39.icc and made it the working space before the page renders"
   ],
   "registryClosure": {
     "armed": false,
@@ -1691,18 +1976,11 @@
       "package-anatomy.composition-part",
       "parser-internals.streaming-xml",
       "parser-internals.zip-entry-streaming",
-      "data.automation.batch",
-      "data.governed.extract",
-      "data.provider.contract",
       "data.i18n.display",
       "data.perf.gates",
-      "data.barcode.symbology",
-      "data.bind.authoring",
       "data.dataset.library-xml",
       "plugin-doc.opc-foundation",
-      "plugin-doc.read-path",
       "plugin-doc.save-back",
-      "plugin-doc.outline-panel",
       "plugin-doc.save-back-feedback",
       "plugin-doc.atomic-pour",
       "plugin-doc.save-back-table-structure",
@@ -1819,7 +2097,6 @@
       "scripting.visible-results",
       "scripting.full-mutation-surface",
       "scripting.docs-playground-seeds",
-      "stories-text.text.delete",
       "stories-text.caret-selection",
       "styles.cell.crud",
       "styles.table.crud",
@@ -1861,14 +2138,9 @@
     "transient": [
       "applyMasterToPage",
       "attachTextToPath",
-      "bindCreated",
       "deleteCellStyle",
-      "deleteCharacterStyle",
       "deleteGradient",
-      "deleteNumberingList",
-      "deleteObjectStyle",
       "deletePage",
-      "deleteParagraphStyle",
       "deleteRange",
       "deleteTableColumn",
       "deleteTableRow",
@@ -1877,10 +2149,8 @@
       "duplicatePage",
       "insertPage",
       "moveFrame",
-      "releaseOpacityMask",
       "removeFooterRow",
       "removeHeaderRow",
-      "renameCharacterStyle",
       "resizePage",
       "setFieldValue",
       "unlinkFrames"
@@ -1892,8 +2162,14 @@
     "missing": []
   },
   "idmlLost": [
-    "opacity mask on `ueeec0b` (artwork `ueeec0c`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
-    "opacity mask on `ueeec0d` (artwork `ueeec0e`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
-    "opacity mask on `ueef0de` (artwork `ueef0df`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it."
+    "opacity mask on `ueeec08` (artwork `ueeec09`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
+    "opacity mask on `ueeec0a` (artwork `ueeec0b`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
+    "opacity mask on `ueef784` (artwork `ueef785`) is a paged-native construct — IDML has no opacity-mask element, so the mask is dropped and its artwork exports as an ordinary item. Save as `.paged` to keep it.",
+    "story `Story/u1074` (6 chars, 0 tables) is referenced by no frame — dropped from the export; delete it or place it",
+    "story `Story/u1155` (58 chars, 1 tables) is referenced by no frame — dropped from the export; delete it or place it",
+    "story `Story/u1156` (19 chars, 0 tables) is referenced by no frame — dropped from the export; delete it or place it",
+    "story `Story/u1157` (14 chars, 0 tables) is referenced by no frame — dropped from the export; delete it or place it",
+    "story `Story/u233` (203 chars, 0 tables) is referenced by no frame — dropped from the export; delete it or place it",
+    "story `Story/u642` (29 chars, 0 tables) is referenced by no frame — dropped from the export; delete it or place it"
   ]
 }

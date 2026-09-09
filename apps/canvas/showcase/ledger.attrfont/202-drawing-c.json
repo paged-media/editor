@@ -1,0 +1,160 @@
+{
+  "chapter": "202-drawing-c",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "do-repeats",
+      "title": "Repeats and symbols",
+      "pages": [
+        83
+      ],
+      "covers": [
+        "plugin-draw.repeats"
+      ],
+      "notes": [
+        "updateRepeat refused on this engine — [media.paged.draw] media.paged.draw.command.updateRepeat: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 55: invalid value for FrameTransform on Group(\\\"ueeedb6\\\"): a member already belongs to another group\"}}}",
+        "redefineSymbol deliberately NOT run: its per-instance rebuild rides the one-batch dissolve-and-regroup this engine refuses (recorded for updateRepeat on this page), and a half-applied rebuild strands artwork",
+        "plugin-draw.symbols is registry-partial — demonstrated on this page, deliberately not claimed"
+      ]
+    },
+    {
+      "module": "do-blends",
+      "title": "Blends and objects on a path",
+      "pages": [
+        84
+      ],
+      "covers": [
+        "plugin-draw.blends",
+        "plugin-draw.objects-on-path"
+      ],
+      "notes": [
+        "reverseBlendSpine refused on this engine — [media.paged.draw] media.paged.draw.command.reverseBlendSpine: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 43: invalid value for FrameTransform on Group(\\\"ueeee27\\\"): a member already belongs to another group\"}}}"
+      ]
+    },
+    {
+      "module": "do-typepath",
+      "title": "Type on a path, corners and kin",
+      "pages": [
+        85
+      ],
+      "covers": [
+        "frames-paths.text-on-path",
+        "plugin-draw.live-corners",
+        "plugin-draw.select-same"
+      ],
+      "notes": []
+    },
+    {
+      "module": "do-plate",
+      "title": "The image-trace plate",
+      "pages": [
+        86
+      ],
+      "covers": [
+        "images-graphics.placed-images",
+        "plugin-draw.opacity-mask-commands",
+        "effects-transparency.opacity-mask"
+      ],
+      "notes": [
+        "plugin-draw.image-trace is registry-partial — demonstrated as this plate, deliberately not claimed"
+      ]
+    }
+  ],
+  "notes": [
+    "do-repeats: updateRepeat refused on this engine — [media.paged.draw] media.paged.draw.command.updateRepeat: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 55: invalid value for FrameTransform on Group(\\\"ueeedb6\\\"): a member already belongs to another group\"}}}",
+    "do-repeats: redefineSymbol deliberately NOT run: its per-instance rebuild rides the one-batch dissolve-and-regroup this engine refuses (recorded for updateRepeat on this page), and a half-applied rebuild strands artwork",
+    "do-repeats: plugin-draw.symbols is registry-partial — demonstrated on this page, deliberately not claimed",
+    "do-blends: reverseBlendSpine refused on this engine — [media.paged.draw] media.paged.draw.command.reverseBlendSpine: rejected by engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"frame mutation failed: batch failed at index 43: invalid value for FrameTransform on Group(\\\"ueeee27\\\"): a member already belongs to another group\"}}}",
+    "do-plate: plugin-draw.image-trace is registry-partial — demonstrated as this plate, deliberately not claimed"
+  ],
+  "ops": {
+    "batch": {
+      "count": 129,
+      "firstModule": "do-repeats",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 8,
+      "firstModule": "do-repeats",
+      "transient": false
+    },
+    "bindCreated": {
+      "count": 68,
+      "firstModule": "do-repeats",
+      "transient": false
+    },
+    "deleteFrame": {
+      "count": 12,
+      "firstModule": "do-repeats",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 26,
+      "firstModule": "do-repeats",
+      "transient": false
+    },
+    "insertText": {
+      "count": 26,
+      "firstModule": "do-repeats",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 30,
+      "firstModule": "do-repeats",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 387,
+      "firstModule": "do-repeats",
+      "transient": false
+    },
+    "insertPath": {
+      "count": 25,
+      "firstModule": "do-repeats",
+      "transient": false
+    },
+    "createSwatch": {
+      "count": 4,
+      "firstModule": "do-blends",
+      "transient": false
+    },
+    "insertOval": {
+      "count": 9,
+      "firstModule": "do-blends",
+      "transient": false
+    },
+    "replaceImageBytes": {
+      "count": 1,
+      "firstModule": "do-plate",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 147,
+      "firstModule": "do-repeats"
+    },
+    "frameFillColor": {
+      "count": 33,
+      "firstModule": "do-repeats"
+    },
+    "frameStrokeColor": {
+      "count": 7,
+      "firstModule": "do-repeats"
+    },
+    "frameStrokeWeight": {
+      "count": 7,
+      "firstModule": "do-repeats"
+    },
+    "appliedConditions": {
+      "count": 8,
+      "firstModule": "do-repeats"
+    },
+    "frameTransform": {
+      "count": 185,
+      "firstModule": "do-blends"
+    }
+  }
+}
