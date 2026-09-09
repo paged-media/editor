@@ -173,7 +173,11 @@ test.describe("tool rail — the six live tools no spec had named", () => {
   });
 
   for (const tool of TOOLS) {
-    test(`AC-RAIL-${tool.slot} — ${tool.title} has a rail slot and its shortcut activates it @feat:editor-shell.tool-rail @feat:editor-tools.stub-tools @level:happy`, async ({
+    // NOT `editor-tools.stub-tools`. These six are the LIVE tools — the
+    // describe says so — and this asserts their shortcut ACTIVATES them,
+    // while the stub row's whole content is that stubs REFUSE
+    // activation.
+    test(`AC-RAIL-${tool.slot} — ${tool.title} has a rail slot and its shortcut activates it @feat:editor-shell.tool-rail @level:happy`, async ({
       page,
     }) => {
       // The slot renders. A tool that fell out of the registry has none,
