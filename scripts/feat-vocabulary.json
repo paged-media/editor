@@ -3,9 +3,9 @@
     "repo": "paged-media/state",
     "path": "registry/features/*.yaml",
     "by": "scripts/sync-feat-vocabulary.mjs",
-    "commit": "a862660849c3439b1e02dd1e6c663707ae62a9c9"
+    "commit": "dfcd3fa85cbdcfeeb601b45a8ef3a887bc4380bb"
   },
-  "count": 578,
+  "count": 579,
   "ids": [
     "anchored-inline-objects.anchor-alignment",
     "anchored-inline-objects.anchored-frames",
@@ -159,6 +159,7 @@
     "editor-tools.stub-tools",
     "editor-tools.text.caret-typing",
     "editor-tools.text.drag-drop",
+    "editor-tools.text.thread-lines",
     "editor-tools.text.threading-ports",
     "effects-transparency.bevel-emboss",
     "effects-transparency.blend-modes",
