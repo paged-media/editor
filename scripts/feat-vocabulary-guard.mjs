@@ -69,6 +69,15 @@ const ACKNOWLEDGED = Object.freeze({});
 
 const TAG = /@feat:([A-Za-z0-9_.-]+)/g;
 
+/** The coverage-depth vocabulary, which is closed. An invalid `@level:`
+ *  fails nothing today: state's converter drops it with a warning into a
+ *  CI log nobody reads, and the spec then reports NO depth at all — so a
+ *  test written to prove an edge case contributes untyped coverage to
+ *  the very axis it was written for. One had been sitting in the tree as
+ *  `@level:unhappy` since it was written. */
+const LEVELS = new Set(["smoke", "happy", "edge", "gesture"]);
+const LEVEL_TAG = /@level:([A-Za-z0-9_-]+)/g;
+
 function specFiles(dir) {
   const out = [];
   for (const entry of readdirSync(dir)) {
@@ -123,6 +132,22 @@ function main() {
     process.exit(1);
   }
 
+  // Coverage levels, scanned in the same pass over the same files.
+  const badLevels = new Map();
+  for (const file of specFiles(TESTS)) {
+    const rel = relative(ROOT, file);
+    readFileSync(file, "utf8")
+      .split("\n")
+      .forEach((line, i) => {
+        for (const m of line.matchAll(LEVEL_TAG)) {
+          if (!LEVELS.has(m[1])) badLevels.set(`${rel}:${i + 1}`, m[1]);
+        }
+      });
+  }
+  for (const [at, level] of badLevels) {
+    console.error(`[feat-vocabulary] BAD LEVEL  @level:${level}  ${at}`);
+  }
+
   const unknown = [...claims.keys()].filter((id) => !known.has(id)).sort();
   const unexplained = unknown.filter((id) => !(id in ACKNOWLEDGED));
   const rotted = Object.keys(ACKNOWLEDGED).filter((id) => known.has(id)).sort();
@@ -146,6 +171,14 @@ function main() {
       (unknown.length ? `; ${unknown.length} unknown` : ""),
   );
 
+  if (badLevels.size) {
+    console.error(
+      `\n[feat-vocabulary] FAIL — @level: is a closed set ` +
+        `(${[...LEVELS].join(" | ")}). An invalid one is dropped by the ` +
+        `ingest with a warning, and the spec then carries no depth at all.`,
+    );
+    process.exit(1);
+  }
   if (unexplained.length || rotted.length) {
     console.error(
       `\n[feat-vocabulary] FAIL — an id that names no row covers nothing.\n` +
