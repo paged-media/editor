@@ -117,7 +117,14 @@ test.describe("itemLayer — protocol 62 layer assignment", () => {
     rect = fx.frames.find((f) => f.ref.kind === "rectangle")!.ref;
   });
 
-  test("AC-ITEMLAYER-1 — paged.set moves an existing item onto another layer @feat:layers.item-assignment @feat:scripting.property-readwrite @level:happy", async ({
+  // Tagged for the WIRE, not for scripting. The body sends
+  // `setElementProperty` on the protocol channel; the `paged.set` route
+  // is AC-ITEMLAYER-3, and it is the one that proves the route does not
+  // work yet. Claiming `scripting.property-readwrite` here put green
+  // evidence on `editor.script` — a stage `layers.item-assignment` marks
+  // `planned` for exactly that reason — and the join reported it as
+  // impl-without-claim drift the first time the editor lane published.
+  test("AC-ITEMLAYER-1 — setElementProperty moves an existing item onto another layer @feat:layers.item-assignment @level:happy", async ({
     page,
   }) => {
     // A second layer to move onto. `layerInsert` positions from the BACK.
