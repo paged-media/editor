@@ -30,8 +30,6 @@
 import { annualChapter } from "../chapter";
 import { p } from "../names-annual";
 
-import { build as opener } from "../pages/210-darkroom/01-opener";
-import { build as contactSheet } from "../pages/210-darkroom/02-contact-sheet";
 import { build as selections } from "../pages/210-darkroom/03-selections";
 import { build as retouch } from "../pages/210-darkroom/04-retouch";
 import { build as paintType } from "../pages/210-darkroom/05-paint-type";

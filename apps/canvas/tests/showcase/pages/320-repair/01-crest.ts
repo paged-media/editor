@@ -52,7 +52,7 @@ import { expect } from "@playwright/test";
 
 import { assignLayer } from "../../annual-support";
 import { LAYER, p } from "../../names-annual";
-import { geometryOf, newRefs, sceneRefs, type Ref } from "../../plugin-support";
+import { geometryOf, sceneRefs } from "../../plugin-support";
 import { pathAnchors } from "../150-object/wire";
 import { spreadOffset } from "../250-manuscript/00-support";
 import type { PageContext, PageReport } from "../../types";
@@ -157,7 +157,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   const dx = targetOff[0] - coverOff[0];
   const dy = targetOff[1] - coverOff[1];
 
-  const before = await sceneRefs(ctx.page, "polygon");
+  await sceneRefs(ctx.page, "polygon");
   let carried = 0;
   for (const stray of strays) {
     const contour = await readContour(ctx, stray.id);

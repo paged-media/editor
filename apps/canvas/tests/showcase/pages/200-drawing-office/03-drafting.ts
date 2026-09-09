@@ -58,7 +58,6 @@ import {
 
 /** The v0 insert commands' shared default source box (page-local). */
 const SRC: [number, number] = [100, 100];
-const SRC_SIZE = 200;
 
 interface AnchorsReply {
   result?: {

@@ -37,7 +37,6 @@
 // before the symbology and table pages, so its lowering pass has no
 // earlier symbols to re-draw and nothing to clean up.
 
-import { expect } from "@playwright/test";
 
 import { marginNote, proseFrame, specLabel } from "../../annual-support";
 import { withActivePage } from "../../active-page";

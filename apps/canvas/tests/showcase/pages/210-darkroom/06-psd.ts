@@ -51,7 +51,6 @@ import {
   exportDownload,
   ingestIntoFrame,
   openAdjustments,
-  replaceBytesFromFile,
 } from "./00-support";
 
 const PSD = pathResolve(ASSETS, "annual-layers.psd");

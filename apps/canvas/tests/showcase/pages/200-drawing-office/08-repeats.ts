@@ -46,7 +46,6 @@ import {
   draw,
   path,
   polygons,
-  propOf,
   readDrawPart,
   reseat,
   spreadOffset,

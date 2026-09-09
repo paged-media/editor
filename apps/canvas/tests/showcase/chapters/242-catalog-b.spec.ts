@@ -40,9 +40,6 @@
 import { annualChapter } from "../chapter";
 import { p } from "../names-annual";
 
-import { build as opener } from "../pages/240-catalog/01-opener";
-import { build as cards } from "../pages/240-catalog/02-cards";
-import { build as sets } from "../pages/240-catalog/03-sets";
 import { build as dsl } from "../pages/240-catalog/04-dsl";
 import { build as barcodes } from "../pages/240-catalog/05-barcodes";
 import { build as table } from "../pages/240-catalog/06-table";

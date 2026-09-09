@@ -50,7 +50,6 @@ const FIRST_BASELINE_MODES = [
 
 export async function build(ctx: PageContext): Promise<PageReport> {
   const { doc } = ctx;
-  const pageId = ctx.pageIds[0];
   const page = p(37);
   const elements: string[] = [];
 
