@@ -421,7 +421,11 @@ test.describe("plugin surface · paged.data", () => {
     await expect(page.getByRole("combobox", { name: /Locale/i })).toBeVisible();
   });
 
-  test("KNOWN DEFECT D1 — 'Import data (.csv)' imports nothing; it raises a panel @feat:data.plugin.bundle @level:edge", async ({
+  // DELIBERATELY UNTAGGED — see AC-ITEMLAYER-3. A `@feat:` tag is a
+  // COVERAGE claim, and this test passes by proving the capability does
+  // not work. `data.plugin.bundle` is covered four more times in this
+  // file by tests that assert it working.
+  test("KNOWN DEFECT D1 — 'Import data (.csv)' imports nothing; it raises a panel @level:edge", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -526,7 +530,10 @@ test.describe("plugin surface · paged.data", () => {
     }
   });
 
-  test("KNOWN DEFECT D3 — the dataBinding context claims correctly but loses the double-click to paged.draw @feat:data.plugin.bundle @feat:plugin-platform.bundle-lifecycle @level:gesture", async ({
+  // DELIBERATELY UNTAGGED — a defect characterisation is evidence of the
+  // defect, not of the feature. Both ids it claimed are covered by tests
+  // in this file that assert them working.
+  test("KNOWN DEFECT D3 — the dataBinding context claims correctly but loses the double-click to paged.draw @level:gesture", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -696,7 +703,9 @@ test.describe("plugin surface · paged.doc", () => {
     ).not.toContain("partTypes");
   });
 
-  test("KNOWN DEFECT D2 — 'Place Word document…' has no category, so the palette files it under Other @feat:plugin-doc.embedded-placement @feat:editor-shell.menus @level:edge", async ({
+  // DELIBERATELY UNTAGGED — see D1. Both ids are covered elsewhere by
+  // tests that assert the behaviour rather than characterise its absence.
+  test("KNOWN DEFECT D2 — 'Place Word document…' has no category, so the palette files it under Other @level:edge", async ({
     page,
   }) => {
     const designer = new Designer(page);

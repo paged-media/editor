@@ -78,6 +78,24 @@ const TAG = /@feat:([A-Za-z0-9_.-]+)/g;
 const LEVELS = new Set(["smoke", "happy", "edge", "gesture"]);
 const LEVEL_TAG = /@level:([A-Za-z0-9_-]+)/g;
 
+/** Titles that announce the test passes by proving something is BROKEN.
+ *
+ *  A `@feat:` tag is a COVERAGE claim, so tagging one of these tells the
+ *  registry the capability is covered — on the strength of a test that
+ *  demonstrates it is not. Four were doing exactly that, and the one
+ *  outside the plugin-surface tier showed up as drift the first time the
+ *  editor lane published after 2026-08-22: green evidence for
+ *  `layers.item-assignment` on `editor.script`, a stage the row marks
+ *  `planned` for precisely that reason.
+ *
+ *  The other three sat in `plugin-surface/`, which had never been
+ *  ingested — so their over-claim was invisible rather than absent, and
+ *  would have arrived the moment that tier started counting.
+ *
+ *  When the defect is fixed the assertions flip; that is when the tag
+ *  comes back, and the two edits belong in the same commit. */
+const DEFECT_MARKERS = [/KNOWN DEFECT/i, /characteris[a-z]*ion of a defect/i];
+
 function specFiles(dir) {
   const out = [];
   for (const entry of readdirSync(dir)) {
@@ -148,6 +166,22 @@ function main() {
     console.error(`[feat-vocabulary] BAD LEVEL  @level:${level}  ${at}`);
   }
 
+  // A defect characterisation may not claim the feature it refutes.
+  const overclaims = [];
+  for (const file of specFiles(TESTS)) {
+    const rel = relative(ROOT, file);
+    readFileSync(file, "utf8")
+      .split("\n")
+      .forEach((line, i) => {
+        if (!DEFECT_MARKERS.some((re) => re.test(line))) return;
+        const claimed = [...line.matchAll(TAG)].map((m) => m[1]);
+        if (claimed.length) overclaims.push(`${rel}:${i + 1} claims ${claimed.join(", ")}`);
+      });
+  }
+  for (const o of overclaims) {
+    console.error(`[feat-vocabulary] DEFECT CLAIMS A FEATURE  ${o}`);
+  }
+
   const unknown = [...claims.keys()].filter((id) => !known.has(id)).sort();
   const unexplained = unknown.filter((id) => !(id in ACKNOWLEDGED));
   const rotted = Object.keys(ACKNOWLEDGED).filter((id) => known.has(id)).sort();
@@ -171,6 +205,15 @@ function main() {
       (unknown.length ? `; ${unknown.length} unknown` : ""),
   );
 
+  if (overclaims.length) {
+    console.error(
+      `\n[feat-vocabulary] FAIL — a test that passes by proving a capability ` +
+        `BROKEN must not carry a @feat: tag: the tag is a coverage claim, and ` +
+        `the registry would read the defect as evidence of the feature. Drop ` +
+        `the tag; put it back in the commit that flips the assertions.`,
+    );
+    process.exit(1);
+  }
   if (badLevels.size) {
     console.error(
       `\n[feat-vocabulary] FAIL — @level: is a closed set ` +
