@@ -169,6 +169,26 @@ const EFFECT_CASES: EffectCase[] = [
     fieldPath: "frameDirectionalFeatherLeftWidth",
     fieldValue: { type: "length", value: 12 },
     assertField: (v) => expect((v as { value: number }).value).toBe(12),
+    // RENDER GAP — the published engine, not the test.
+    //
+    // The model write lands and reads back; the pixels do not move,
+    // because canvas-wasm 0.62.0 (tagged 2026-08-22) approximates a
+    // directional feather by stamping a WHITE blurred path inside the
+    // object's own layer with SrcOver. That paints ink where InDesign
+    // REMOVES it, so on this fixture's ground it is invisible — and on a
+    // tinted one it is a plainly wrong halo, which is how the annual's
+    // page 59 lost the panel under the cloud.
+    //
+    // core 72cd7b3 (2026-09-06) replaced it with the real coverage mask
+    // the PDF lane uses, shared across all three lanes. Verified
+    // headlessly: `directional_feather_mask` on a 200x120 rect with a
+    // 12pt left width yields 5,520 partially-transparent pixels, so the
+    // compose layer is right and only the shipped engine is behind.
+    //
+    // DROP THIS FLAG when the editor's canvas-wasm pin includes
+    // 72cd7b3 — the other six effects each carried it and lost it the
+    // same way.
+    renderGap: true,
   },
 ];
 
