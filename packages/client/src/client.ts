@@ -165,7 +165,17 @@ export class CanvasClient {
   private readonly tilesNeededListeners = new Set<
     (need: ResourceTilesNeededWire) => void
   >();
+  /**
+   * The view transform, in shared memory. Written by the host at input
+   * rate and read by the render worker on its own schedule, so panning
+   * and zooming never queue a message per frame.
+   */
   readonly camera: CameraBuffer;
+  /**
+   * Pointer deltas for a live drag, in shared memory — the same trade
+   * as {@link camera}: a drag emits far more samples than the channel
+   * should carry, so the worker samples the buffer instead.
+   */
   readonly gestureSab: GestureBuffer;
   /** See {@link CanvasClientOptions.defaultFontProvider}. */
   private readonly defaultFontProvider?: () => Promise<Uint8Array | undefined>;
@@ -319,6 +329,12 @@ export class CanvasClient {
     }
   }
 
+  /**
+   * Ask the worker to lay out and paint one page at a level of detail.
+   * The reply carries the page's render; the LOD tier is a hint about
+   * how much of the document's detail is worth resolving at the
+   * current zoom.
+   */
   async requestPage(pageId: PageId, lod: LodTier): Promise<WorkerToMain> {
     return this.send({ kind: "requestPage", payload: { pageId, lod } });
   }
@@ -348,6 +364,22 @@ export class CanvasClient {
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
+  /**
+   * Apply one mutation to the document — THE write door.
+   *
+   * Every authoring operation the engine has, all 117 of them, is a
+   * variant of `Mutation`, and this method takes the type rather than
+   * a per-operation method, so a mutation added to the engine is
+   * reachable from this SDK the moment the types are re-vendored.
+   * That is why the typed helpers below (`setSelection`,
+   * `registerFont`, …) exist only where a call needs shaping — they
+   * are conveniences over this, never the only way through.
+   *
+   * The reply is `mutationApplied` (carrying the ids the engine minted,
+   * which is how a caller learns the id of a thing it just created) or
+   * `mutationFailed` with the engine's own words. It does not throw on
+   * a rejected mutation: a refusal is an answer, not an exception.
+   */
   async mutate(mutation: Mutation): Promise<WorkerToMain> {
     return this.send({ kind: "mutate", payload: mutation });
   }
@@ -1257,6 +1289,11 @@ export class CanvasClient {
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
+  /**
+   * Undo the last applied mutation. The undo stack lives in the
+   * worker, so this is a message rather than a local replay — a host
+   * with several clients over one worker shares one history.
+   */
   async undo(): Promise<WorkerToMain> {
     return this.send({ kind: "undo" });
   }
@@ -1348,6 +1385,7 @@ export class CanvasClient {
     (bytes: Uint8Array | null) => void
   >();
 
+  /** Redo the last undone mutation. See {@link undo}. */
   async redo(): Promise<WorkerToMain> {
     return this.send({ kind: "redo" });
   }
@@ -1405,6 +1443,12 @@ export class CanvasClient {
     };
   }
 
+  /**
+   * Tear the session down: stop listening and terminate the worker.
+   * The wasm core, the loaded document and the undo history all live
+   * in that worker, so this discards them — call it on unmount, and
+   * not before an export has resolved.
+   */
   dispose(): void {
     this.worker.removeEventListener("message", this.onMessage);
     this.worker.terminate();

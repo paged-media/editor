@@ -20,7 +20,8 @@
     "test:seam-guard": "node scripts/seam-guard.mjs",
     "test:applicability": "node scripts/applicability-guard.mjs",
     "test:feat-vocabulary": "node scripts/feat-vocabulary-guard.mjs",
-    "test:solo-profiles": "node scripts/solo-profiles-guard.mjs"
+    "test:solo-profiles": "node scripts/solo-profiles-guard.mjs",
+    "test:client-catalog": "node scripts/client-api-catalog.mjs --check"
   },
   "devDependencies": {
     "@eslint/js": "9.39.4",

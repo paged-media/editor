@@ -189,6 +189,13 @@ jobs:
       # `sync-feat-vocabulary.mjs --check` keeps the copy current.
       - name: feature-id vocabulary (@feat tags resolve)
         run: pnpm test:feat-vocabulary
+      # `packages/client` is the programmable SDK — the write surface the
+      # read-only viewer SDK deliberately is not. Its api-catalog.json is
+      # GENERATED from the source, so this step is two assertions at once:
+      # the artifact is current, and no public member ships without a doc
+      # comment to generate a summary from.
+      - name: client SDK catalog is current
+        run: pnpm test:client-catalog
 
   playwright:
     name: playwright (shard ${{ matrix.shard }}/3)

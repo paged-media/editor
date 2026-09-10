@@ -1,0 +1,27 @@
+{
+  // The PUBLISH build. `tsconfig.json` is the editor's view of this
+  // package — `noEmit`, source consumed straight through the pnpm
+  // workspace so an edit is live without a build step. Consumers off
+  // npm get JavaScript and `.d.ts` instead, which is what this emits;
+  // `publishConfig` in package.json repoints the entry points at
+  // `dist/` for the published tarball only.
+  //
+  // Module resolution stays "bundler", so the emitted imports are
+  // extensionless. That is a real constraint on consumers — plain Node
+  // ESM will not resolve them — and it is the right one here: this
+  // package constructs a `Worker`, reads a `SharedArrayBuffer` and
+  // paints a `<canvas>`, so every consumer is a browser bundle and
+  // already runs a bundler. Rewriting the whole source to carry `.js`
+  // extensions would buy a Node compatibility nothing can use.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "allowImportingTsExtensions": false
+  },
+  "include": ["src"]
+}
