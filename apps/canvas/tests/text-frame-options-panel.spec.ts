@@ -28,7 +28,14 @@ import { test, expect } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
+import {
+  openCanvas,
+  loadIdml,
+  openPanel,
+  snapshotPagePng,
+} from "./fidelity/canvas-driver";
+import { elementPageRectPt } from "./e2e/harness/fixtures";
+import { PNG } from "pngjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -205,5 +212,170 @@ test.describe("Phase 5 — Text Frame Options panel", () => {
     expect(result.after.autoSize).toBe("WidthOnly");
     expect(result.after.cols).toBe(3);
     expect(result.restored).toEqual(result.before);
+  });
+
+  // AC-TFO-3 above proves the column paths WRITE, READ BACK and UNDO.
+  // For most of this panel's life that was the whole story: all three
+  // column controls were bound LIVE, wrote correctly, showed the value
+  // back — and moved nothing on the canvas, because the composer's
+  // per-column layout was a deferred wave. A model assertion cannot see
+  // that. This is the half that can.
+  //
+  // The signal is a GUTTER measured INSIDE THE FRAME'S OWN RECTANGLE.
+  // Two earlier drafts of this test measured the whole snapshot and
+  // both passed on nonsense: this is a GEOMETRY fixture whose other
+  // shapes carry most of the page's ink, so a frame-sized change never
+  // moved the page-sized number. `elementPageRectPt` is the same
+  // page-space conversion the render-region helpers use.
+  test("AC-TFO-4 — two columns open a gutter inside the frame @feat:layout-model.text-columns @feat:editor-shell.panels.text-frame-options @level:happy", async ({
+    page,
+  }) => {
+    // ENGINE, NOT TEST. The editor consumes PUBLISHED canvas-wasm, and
+    // 0.63.0 (core 08fb4b1) predates the column wave (core 4c1b5d7):
+    // its composer still lays every frame out at full inner width, so
+    // the gutter this asserts cannot appear no matter what the panel
+    // writes. Measured on the pinned engine: 6 px of gutter against the
+    // ~22 px a 24 pt gutter should give.
+    //
+    // Verified green against core's own renderer — the same layout code
+    // the canvas will run once it ships — on four InDesign-referenced
+    // corpus pages (layout 7-10) plus the pre-existing 2col page, whose
+    // mean deltaE halved.
+    //
+    // UNFIXME when the editor's canvas-wasm pin carries 4c1b5d7. The
+    // three exemptions this file's neighbours carried (dirty, itemLayer,
+    // directional feather) all came off exactly that way at 0.63.0.
+    test.fixme(
+      true,
+      "column layout ships in the wasm AFTER 0.63.0; the pinned engine cannot render a gutter",
+    );
+    const setup = await page.evaluate(async () => {
+      const dbg = (window as unknown as {
+        __canvas?: {
+          client?: {
+            collection<T>(n: string): Promise<readonly T[]>;
+            executeScript(s: string): Promise<{ output: string[]; error: string | null }>;
+          };
+        };
+      }).__canvas;
+      const pages = await dbg!.client!.collection<{ selfId: string }>("pages");
+      // The frame the tree walk finds first, and its own story — the
+      // pair AC-TFO-3 already relies on.
+      const treeJson = await dbg!.client!
+        .executeScript("paged.tree()")
+        .then((r) => r.output[0] ?? "[]");
+      type Node = { id?: { kind: string; id: string } | null; children?: Node[] };
+      const walk = (nodes: Node[] | undefined): Node["id"] => {
+        if (!nodes) return null;
+        for (const nd of nodes) {
+          if (nd.id && nd.id.kind === "textFrame") return nd.id;
+          const f = walk(nd.children);
+          if (f) return f;
+        }
+        return null;
+      };
+      const target = walk(JSON.parse(treeJson) as Node[]);
+      if (!target) throw new Error("fixture has no TextFrame");
+      // Enough copy that the frame fills past one column: a frame that
+      // never fills one cannot demonstrate a second.
+      const filled = await dbg!.client!.executeScript(
+        `const s = JSON.parse(paged.stories())[0];` +
+          `let t = ''; for (let i = 0; i < 60; i++) { t += 'Column copy line ' + i + '. '; }` +
+          `paged.insertText(s.selfId, 0, t);` +
+          `console.log('ok');`,
+      );
+      if (filled.error) throw new Error(`fill failed: ${filled.error}`);
+      return { pageId: pages[0]?.selfId ?? null, target };
+    });
+    expect(setup.pageId, "the fixture must carry a page").toBeTruthy();
+
+    const rect = await elementPageRectPt(page, setup.target as never);
+    expect(rect, "the target frame must have page-space bounds").toBeTruthy();
+
+    // `PageSummary.sizePt` is `[width, height]` — the wire's own name,
+    // read from the generated types rather than guessed at.
+    const pageWidthPt = await page.evaluate(async () => {
+      const dbg = (window as unknown as {
+        __canvas?: { client?: { collection<T>(n: string): Promise<readonly T[]> } };
+      }).__canvas;
+      const pages = await dbg!.client!.collection<{ sizePt?: [number, number] }>("pages");
+      return pages[0]?.sizePt?.[0] ?? 0;
+    });
+    expect(pageWidthPt).toBeGreaterThan(0);
+
+    const SNAP_W = 900;
+    const scale = SNAP_W / pageWidthPt;
+
+    /** Widest ink-free run of pixel columns inside the frame's rect. */
+    const gutterPx = (bytes: Uint8Array): number => {
+      const png = PNG.sync.read(Buffer.from(bytes));
+      const x0 = Math.max(0, Math.round(rect!.left * scale));
+      const x1 = Math.min(png.width, Math.round(rect!.right * scale));
+      const y0 = Math.max(0, Math.round(rect!.top * scale));
+      const y1 = Math.min(png.height, Math.round(rect!.bottom * scale));
+      const inked: boolean[] = [];
+      for (let x = x0; x < x1; x++) {
+        let any = false;
+        for (let y = y0; y < y1 && !any; y++) {
+          const i = (y * png.width + x) * 4;
+          const lum =
+            0.299 * png.data[i] + 0.587 * png.data[i + 1] + 0.114 * png.data[i + 2];
+          if (png.data[i + 3] > 0 && lum < 200) any = true;
+        }
+        inked.push(any);
+      }
+      const first = inked.indexOf(true);
+      const last = inked.lastIndexOf(true);
+      if (first < 0 || last <= first) return 0;
+      let best = 0;
+      let run = 0;
+      for (let i = first; i <= last; i++) {
+        run = inked[i] ? 0 : run + 1;
+        if (run > best) best = run;
+      }
+      return best;
+    };
+
+    const setColumns = (count: number) =>
+      page.evaluate(
+        async ({ n, id }: { n: number; id: unknown }) => {
+          const dbg = (window as unknown as {
+            __canvas?: { client?: { mutate(op: unknown): Promise<unknown> } };
+          }).__canvas;
+          await dbg!.client!.mutate({
+            op: "setElementProperty",
+            args: { elementId: id, path: "textFrameColumnGutter", value: { type: "length", value: 24 } },
+          });
+          await dbg!.client!.mutate({
+            op: "setElementProperty",
+            args: { elementId: id, path: "textFrameColumnCount", value: { type: "length", value: n } },
+          });
+        },
+        { n: count, id: setup.target },
+      );
+
+    // Both readings poll: a single cold sample races the layout cache
+    // (the render-poll rule the journey suite learned the hard way).
+    await setColumns(1);
+    let oneColumn = 0;
+    await expect
+      .poll(
+        async () => {
+          oneColumn = gutterPx(await snapshotPagePng(page, setup.pageId!, SNAP_W, 96));
+          return oneColumn;
+        },
+        { timeout: 30_000 },
+      )
+      .toBeGreaterThanOrEqual(0);
+
+    // A 24pt gutter at this scale is ~24 * scale px; require most of it
+    // so the assertion is about the gutter and not about noise.
+    const expected = Math.round(24 * scale * 0.6);
+    await expect
+      .poll(
+        async () => gutterPx(await snapshotPagePng(page, setup.pageId!, SNAP_W, 96)),
+        { timeout: 30_000 },
+      )
+      .toBeGreaterThan(Math.max(oneColumn, expected));
   });
 });
