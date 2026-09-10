@@ -1,0 +1,191 @@
+{
+  "chapter": "300-press.solo",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "pr-divider",
+      "title": "Part III divider",
+      "pages": [
+        119,
+        120
+      ],
+      "covers": [
+        "color-swatches.fill-stroke-apply",
+        "stories-text.text.insert"
+      ]
+    },
+    {
+      "module": "pr-opener",
+      "title": "Ch.20 opener — the exits-honestly thesis",
+      "pages": [
+        121
+      ],
+      "covers": []
+    },
+    {
+      "module": "pr-marks",
+      "title": "The marks plate — trim, bleed and marks anatomy",
+      "pages": [
+        122
+      ],
+      "covers": [
+        "frames-paths.line.insert",
+        "frames-paths.shape-tools",
+        "color-swatches.fill-stroke-apply"
+      ]
+    },
+    {
+      "module": "pr-preflight",
+      "title": "The preflight — the export door's own findings",
+      "pages": [
+        123
+      ],
+      "covers": [
+        "the-renderer.pdf-export",
+        "the-renderer.export-diagnostics"
+      ],
+      "notes": [
+        "exportPdf standard=pdf17 — 1494373 bytes (discarded), 0 diagnostic(s), 0 finding(s), 1.0s"
+      ]
+    },
+    {
+      "module": "pr-container",
+      "title": "The container, opened — parts listed, written, read back",
+      "pages": [
+        124
+      ],
+      "covers": [
+        "package-anatomy.paged-container",
+        "package-anatomy.paged-parts-door"
+      ],
+      "notes": [
+        "listPagedParts paged/ — 0 part(s) before this page, 1 after; paged/annual/manifest-note.json written (caller unset) and read back 153 bytes"
+      ]
+    },
+    {
+      "module": "pr-losses",
+      "title": "The loss ledger — what IDML export names and leaves",
+      "pages": [
+        125
+      ],
+      "covers": [
+        "round-tripping.idml-reserialization",
+        "effects-transparency.opacity-mask"
+      ],
+      "notes": [
+        "exportIdml — 82894 bytes (discarded), lost: 1 entr(ies)"
+      ]
+    },
+    {
+      "module": "pr-exits",
+      "title": "The exit paths — the chapter close",
+      "pages": [
+        126
+      ],
+      "covers": []
+    }
+  ],
+  "notes": [
+    "pr-preflight: exportPdf standard=pdf17 — 1494373 bytes (discarded), 0 diagnostic(s), 0 finding(s), 1.0s",
+    "pr-container: listPagedParts paged/ — 0 part(s) before this page, 1 after; paged/annual/manifest-note.json written (caller unset) and read back 153 bytes",
+    "pr-losses: exportIdml — 82894 bytes (discarded), lost: 1 entr(ies)"
+  ],
+  "ops": {
+    "insertFrame": {
+      "count": 7,
+      "firstModule": "pr-divider",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 179,
+      "firstModule": "pr-divider",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 37,
+      "firstModule": "pr-divider",
+      "transient": false
+    },
+    "insertText": {
+      "count": 66,
+      "firstModule": "pr-divider",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 66,
+      "firstModule": "pr-divider",
+      "transient": false
+    },
+    "insertLine": {
+      "count": 22,
+      "firstModule": "pr-marks",
+      "transient": false
+    },
+    "insertOval": {
+      "count": 3,
+      "firstModule": "pr-marks",
+      "transient": false
+    },
+    "batch": {
+      "count": 4,
+      "firstModule": "pr-marks",
+      "transient": false
+    },
+    "insertTable": {
+      "count": 3,
+      "firstModule": "pr-preflight",
+      "transient": false
+    },
+    "insertHeaderRow": {
+      "count": 3,
+      "firstModule": "pr-preflight",
+      "transient": false
+    },
+    "setRowHeight": {
+      "count": 3,
+      "firstModule": "pr-preflight",
+      "transient": false
+    },
+    "applyOpacityMask": {
+      "count": 1,
+      "firstModule": "pr-losses",
+      "transient": false
+    }
+  },
+  "paths": {
+    "frameFillColor": {
+      "count": 10,
+      "firstModule": "pr-divider"
+    },
+    "itemLayer": {
+      "count": 69,
+      "firstModule": "pr-divider"
+    },
+    "appliedConditions": {
+      "count": 11,
+      "firstModule": "pr-divider"
+    },
+    "frameStrokeColor": {
+      "count": 25,
+      "firstModule": "pr-marks"
+    },
+    "frameStrokeWeight": {
+      "count": 25,
+      "firstModule": "pr-marks"
+    },
+    "cellInsetLeft": {
+      "count": 18,
+      "firstModule": "pr-preflight"
+    },
+    "cellInsetRight": {
+      "count": 18,
+      "firstModule": "pr-preflight"
+    },
+    "appliedTableStyle": {
+      "count": 3,
+      "firstModule": "pr-preflight"
+    }
+  }
+}

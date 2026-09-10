@@ -345,15 +345,18 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     // carries a second spelling for each effect's enable flag and for
     // the text-wrap invert. Each returns a boolean; only a true is
     // recorded, and a false is reported rather than hidden.
+    // The script lane names its element inside the SOURCE, which no
+    // handle rule can reach — ask the driver for the real ids first.
+    const [rectId, tfId] = await doc.ids(rect, tf);
     const aliases: Array<[string, string, string]> = [
-      [`rectangle:${rect}`, "frameSatin", "true"],
-      [`rectangle:${rect}`, "frameFeather", "true"],
-      [`rectangle:${rect}`, "frameBevel", "true"],
-      [`rectangle:${rect}`, "frameInnerGlow", "true"],
-      [`rectangle:${rect}`, "frameInnerShadow", "true"],
-      [`rectangle:${rect}`, "frameOuterGlow", "true"],
-      [`rectangle:${rect}`, "frameDirectionalFeather", "true"],
-      [`textFrame:${tf}`, "frameTextWrapInvert", "true"],
+      [`rectangle:${rectId}`, "frameSatin", "true"],
+      [`rectangle:${rectId}`, "frameFeather", "true"],
+      [`rectangle:${rectId}`, "frameBevel", "true"],
+      [`rectangle:${rectId}`, "frameInnerGlow", "true"],
+      [`rectangle:${rectId}`, "frameInnerShadow", "true"],
+      [`rectangle:${rectId}`, "frameOuterGlow", "true"],
+      [`rectangle:${rectId}`, "frameDirectionalFeather", "true"],
+      [`textFrame:${tfId}`, "frameTextWrapInvert", "true"],
     ];
     const refused: string[] = [];
     for (const [id, path, value] of aliases) {

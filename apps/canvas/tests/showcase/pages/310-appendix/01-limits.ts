@@ -228,9 +228,18 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   const summaries = JSON.parse(
     (await script(ctx.page, "paged.stories()"))[0] ?? "[]",
   ) as Array<{ selfId: string; overset?: boolean }>;
-  for (const storyId of columnStories) {
+  // `paged.stories()` reports ENGINE ids; the column stories were
+  // captured as handles while the pour was queued. Resolve them, and
+  // insist each is FOUND — an unmatched handle read as "not overset" is
+  // exactly the vacuous pass this oracle exists to refuse.
+  for (const storyId of await doc.storyIds(...columnStories)) {
+    const summary = summaries.find((s) => s.selfId === storyId);
     expect(
-      summaries.find((s) => s.selfId === storyId)?.overset ?? false,
+      summary,
+      `limits column story ${storyId} is missing from paged.stories()`,
+    ).toBeTruthy();
+    expect(
+      summary?.overset ?? false,
       "a limits column oversets — nothing recorded may be cut",
     ).toBe(false);
   }

@@ -1,0 +1,125 @@
+{
+  "chapter": "250-manuscript",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "mp-opener",
+      "title": "Ch.19 opener — The Manuscript",
+      "pages": [
+        115
+      ],
+      "covers": []
+    },
+    {
+      "module": "mp-manuscript",
+      "title": "The placed manuscript",
+      "pages": [
+        116,
+        117
+      ],
+      "covers": [
+        "plugin-doc.outline-panel",
+        "plugin-doc.read-path",
+        "plugin-doc.embedded-placement",
+        "editor-shell.plugin-bundles",
+        "plugin-platform.file-picker",
+        "layout-model.text-frame-chain",
+        "package-anatomy.paged-parts-door"
+      ],
+      "notes": [
+        "paged.doc save-back readiness on this lane: verbatim.",
+        "the engine rejected at least one pour op — an applyStyle over an EMPTY range (start == end), which the host-model emitted for a zero-length style span; the pour continued and the refusal was logged, never swallowed (ADR-007).",
+        "FINDING — the poured story renders visually UNSTYLED on this lane: the synthesized heading/caption styles and both list families are applied over the story (the outline panel counts them) but the paint shows one face and size, no bold, no bullet or number glyphs, and the docx docDefaults face does not reach the render.",
+        "FINDING — the embedded plate-mark PNG lowers to an anchored image frame that paints the missing-image placeholder (its bytes have no URI-addressable home through insertAnchoredFrame) and the anchored frame overlaps the table rows beneath it; the ledger lines' dot-leader tabs paint as substitute glyphs."
+      ]
+    },
+    {
+      "module": "mp-saveback",
+      "title": "Save-back readiness",
+      "pages": [
+        118
+      ],
+      "covers": [
+        "plugin-doc.verbatim-export"
+      ],
+      "notes": [
+        "FINDING — the exporter IS in the host exporter registry (registry lists: media.paged.draw.exporter.svg, media.paged.sheet.exporter.xlsx, media.paged.image.exporter.psd, media.paged.image.exporter.png, media.paged.image.exporter.jpeg, media.paged.publish.exporter.idml, media.paged.doc.exporter.docx) but the export center's plugin section never rendered its row, so the one-click download surface missed a registered exporter; the page pulled the bytes through the registry (the journey lane) and the blob-to-download door went unexercised."
+      ]
+    }
+  ],
+  "notes": [
+    "mp-manuscript: paged.doc save-back readiness on this lane: verbatim.",
+    "mp-manuscript: the engine rejected at least one pour op — an applyStyle over an EMPTY range (start == end), which the host-model emitted for a zero-length style span; the pour continued and the refusal was logged, never swallowed (ADR-007).",
+    "mp-manuscript: FINDING — the poured story renders visually UNSTYLED on this lane: the synthesized heading/caption styles and both list families are applied over the story (the outline panel counts them) but the paint shows one face and size, no bold, no bullet or number glyphs, and the docx docDefaults face does not reach the render.",
+    "mp-manuscript: FINDING — the embedded plate-mark PNG lowers to an anchored image frame that paints the missing-image placeholder (its bytes have no URI-addressable home through insertAnchoredFrame) and the anchored frame overlaps the table rows beneath it; the ledger lines' dot-leader tabs paint as substitute glyphs.",
+    "mp-saveback: FINDING — the exporter IS in the host exporter registry (registry lists: media.paged.draw.exporter.svg, media.paged.sheet.exporter.xlsx, media.paged.image.exporter.psd, media.paged.image.exporter.png, media.paged.image.exporter.jpeg, media.paged.publish.exporter.idml, media.paged.doc.exporter.docx) but the export center's plugin section never rendered its row, so the one-click download surface missed a registered exporter; the page pulled the bytes through the registry (the journey lane) and the blob-to-download door went unexercised."
+  ],
+  "ops": {
+    "batch": {
+      "count": 22,
+      "firstModule": "mp-opener",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 19,
+      "firstModule": "mp-opener",
+      "transient": false
+    },
+    "bindCreated": {
+      "count": 11,
+      "firstModule": "mp-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 20,
+      "firstModule": "mp-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 22,
+      "firstModule": "mp-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 28,
+      "firstModule": "mp-opener",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 2,
+      "firstModule": "mp-opener",
+      "transient": false
+    },
+    "deleteFrame": {
+      "count": 1,
+      "firstModule": "mp-manuscript",
+      "transient": false
+    },
+    "resizeFrame": {
+      "count": 1,
+      "firstModule": "mp-manuscript",
+      "transient": false
+    },
+    "linkFrames": {
+      "count": 1,
+      "firstModule": "mp-manuscript",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 21,
+      "firstModule": "mp-opener"
+    },
+    "frameFillColor": {
+      "count": 1,
+      "firstModule": "mp-opener"
+    },
+    "appliedConditions": {
+      "count": 6,
+      "firstModule": "mp-opener"
+    }
+  }
+}

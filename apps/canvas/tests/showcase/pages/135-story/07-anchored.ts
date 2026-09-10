@@ -128,15 +128,19 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   ];
   let applied = 0;
   let firstRefusal = "";
-  for (const [path, value] of battery) {
-    try {
-      await doc.setProperty("rectangle", anchored, path, value);
-      applied += 1;
-    } catch (err) {
-      if (!firstRefusal)
-        firstRefusal = err instanceof Error ? err.message : String(err);
+  // ONE BY ONE means alone: queued, the ten writes would ride one batch
+  // and the first refusal would sink the other nine, outside the try.
+  await doc.alone(async () => {
+    for (const [path, value] of battery) {
+      try {
+        await doc.setProperty("rectangle", anchored, path, value);
+        applied += 1;
+      } catch (err) {
+        if (!firstRefusal)
+          firstRefusal = err instanceof Error ? err.message : String(err);
+      }
     }
-  }
+  });
 
   const outcome =
     applied === battery.length

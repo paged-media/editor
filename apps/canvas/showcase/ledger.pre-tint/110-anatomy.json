@@ -1,0 +1,240 @@
+{
+  "chapter": "110-anatomy",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "an-divider",
+      "title": "Part I divider",
+      "pages": [
+        11,
+        12
+      ],
+      "covers": [
+        "color-swatches.fill-stroke-apply",
+        "stories-text.text.insert"
+      ]
+    },
+    {
+      "module": "an-opener",
+      "title": "Chapter 1 opener — Anatomy of This Book",
+      "pages": [
+        13
+      ],
+      "covers": [
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "an-grid",
+      "title": "The self-exposing grid + live guides",
+      "pages": [
+        14,
+        15
+      ],
+      "covers": [
+        "layout-model.guides",
+        "geometry-coordinates.geometric-bounds",
+        "effects-transparency.opacity",
+        "frames-paths.frame.insert",
+        "master-spreads-overrides.override-resolution"
+      ],
+      "notes": [
+        "guides are overlay-only by design — demonstrated live, invisible in the render (margin note on p14)",
+        "deleteGuide re-indexes the survivors' positional ids — a stale GuideSummary id addresses a different guide after a delete"
+      ]
+    },
+    {
+      "module": "an-masters",
+      "title": "Masters and the transient page",
+      "pages": [
+        16
+      ],
+      "covers": [
+        "layout-model.spreads-pages",
+        "master-spreads-overrides.apply-master-op",
+        "master-spreads-overrides.master-stamping"
+      ],
+      "notes": [
+        "page-op battery ran on a scratch page and restored the 134-page plan; master names recovered via IDML export (no name surface on the wire)"
+      ]
+    },
+    {
+      "module": "an-layers",
+      "title": "Layers — lifecycle, assignment, Arrange",
+      "pages": [
+        17
+      ],
+      "covers": [
+        "layers.ops",
+        "layers.item-assignment",
+        "layers.z-ordering"
+      ],
+      "notes": [
+        "layerRemove succeeds while the layer is occupied — the item keeps a dangling itemLayer ref; re-homed to Content here"
+      ]
+    },
+    {
+      "module": "an-apparatus",
+      "title": "Conditions and variables",
+      "pages": [
+        18
+      ],
+      "covers": [
+        "conditional-text.applied-conditions",
+        "conditional-text.condition-ops",
+        "conditional-text.visibility-filtering",
+        "sections-numbering-variables.text-variables"
+      ],
+      "notes": [
+        "text-variable inventory read from the document's designmap via the export door — no variables collection exists on the wire"
+      ]
+    }
+  ],
+  "notes": [
+    "an-grid: guides are overlay-only by design — demonstrated live, invisible in the render (margin note on p14)",
+    "an-grid: deleteGuide re-indexes the survivors' positional ids — a stale GuideSummary id addresses a different guide after a delete",
+    "an-masters: page-op battery ran on a scratch page and restored the 134-page plan; master names recovered via IDML export (no name surface on the wire)",
+    "an-layers: layerRemove succeeds while the layer is occupied — the item keeps a dangling itemLayer ref; re-homed to Content here",
+    "an-apparatus: text-variable inventory read from the document's designmap via the export door — no variables collection exists on the wire"
+  ],
+  "ops": {
+    "insertFrame": {
+      "count": 71,
+      "firstModule": "an-divider",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 256,
+      "firstModule": "an-divider",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 43,
+      "firstModule": "an-divider",
+      "transient": false
+    },
+    "insertText": {
+      "count": 63,
+      "firstModule": "an-divider",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 63,
+      "firstModule": "an-divider",
+      "transient": false
+    },
+    "insertGuide": {
+      "count": 2,
+      "firstModule": "an-grid",
+      "transient": false
+    },
+    "moveGuide": {
+      "count": 1,
+      "firstModule": "an-grid",
+      "transient": false
+    },
+    "deleteGuide": {
+      "count": 1,
+      "firstModule": "an-grid",
+      "transient": false
+    },
+    "insertPage": {
+      "count": 1,
+      "firstModule": "an-masters",
+      "transient": true
+    },
+    "applyMasterToPage": {
+      "count": 2,
+      "firstModule": "an-masters",
+      "transient": true
+    },
+    "duplicatePage": {
+      "count": 1,
+      "firstModule": "an-masters",
+      "transient": true
+    },
+    "resizePage": {
+      "count": 1,
+      "firstModule": "an-masters",
+      "transient": true
+    },
+    "deletePage": {
+      "count": 2,
+      "firstModule": "an-masters",
+      "transient": true
+    },
+    "layerInsert": {
+      "count": 1,
+      "firstModule": "an-layers",
+      "transient": false
+    },
+    "layerSetName": {
+      "count": 1,
+      "firstModule": "an-layers",
+      "transient": false
+    },
+    "layerSetVisible": {
+      "count": 2,
+      "firstModule": "an-layers",
+      "transient": false
+    },
+    "layerSetLocked": {
+      "count": 2,
+      "firstModule": "an-layers",
+      "transient": false
+    },
+    "layerSetPrintable": {
+      "count": 2,
+      "firstModule": "an-layers",
+      "transient": false
+    },
+    "layerMove": {
+      "count": 1,
+      "firstModule": "an-layers",
+      "transient": false
+    },
+    "layerRemove": {
+      "count": 1,
+      "firstModule": "an-layers",
+      "transient": false
+    },
+    "reorderElement": {
+      "count": 2,
+      "firstModule": "an-layers",
+      "transient": false
+    },
+    "setConditionVisible": {
+      "count": 2,
+      "firstModule": "an-apparatus",
+      "transient": false
+    }
+  },
+  "paths": {
+    "frameFillColor": {
+      "count": 71,
+      "firstModule": "an-divider"
+    },
+    "itemLayer": {
+      "count": 116,
+      "firstModule": "an-divider"
+    },
+    "appliedConditions": {
+      "count": 13,
+      "firstModule": "an-divider"
+    },
+    "frameStrokeColor": {
+      "count": 2,
+      "firstModule": "an-grid"
+    },
+    "frameStrokeWeight": {
+      "count": 2,
+      "firstModule": "an-grid"
+    },
+    "frameOpacity": {
+      "count": 52,
+      "firstModule": "an-grid"
+    }
+  }
+}

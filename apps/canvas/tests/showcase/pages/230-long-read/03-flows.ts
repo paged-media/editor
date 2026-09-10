@@ -101,7 +101,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   await runOnSelection(ctx, [ref(src), ref(r1), ref(r2)], `${WEB_CMD}.threadWebFlow`);
   const threaded = await settle(
     page,
-    async () => ((await partRecipients(page, src)) ?? []).length === 2,
+    async () => ((await partRecipients(doc, src)) ?? []).length === 2,
     10_000,
   );
   expect(
@@ -112,12 +112,14 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   await runOnSelection(ctx, [ref(src), ref(sidebar)], `${WEB_CMD}.threadWebFlowNamed`);
   await settle(
     page,
-    async () => ((await partRecipients(page, src)) ?? []).length === 3,
+    async () => ((await partRecipients(doc, src)) ?? []).length === 3,
     10_000,
   );
-  const recipients = (await partRecipients(page, src)) ?? [];
+  const recipients = (await partRecipients(doc, src)) ?? [];
   expect(recipients.length, "three recipients persisted").toBe(3);
-  const sidebarEntry = recipients.find((r) => r.id === sidebar);
+  // The part records ENGINE ids; `sidebar` may still be a handle.
+  const [sidebarId] = await doc.ids(sidebar);
+  const sidebarEntry = recipients.find((r) => r.id === sidebarId);
   expect(
     sidebarEntry?.flow,
     "the third recipient is routed to the NAMED sidebar flow",
@@ -131,13 +133,13 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     await runOnSelection(ctx, [ref(src), ref(scratch)], `${WEB_CMD}.threadWebFlow`);
     const grew = await settle(
       page,
-      async () => ((await partRecipients(page, src)) ?? []).length === 4,
+      async () => ((await partRecipients(doc, src)) ?? []).length === 4,
       10_000,
     );
     await runOnSelection(ctx, [ref(src), ref(scratch)], `${WEB_CMD}.unthreadWebFlow`);
     const shrank = await settle(
       page,
-      async () => ((await partRecipients(page, src)) ?? []).length === 3,
+      async () => ((await partRecipients(doc, src)) ?? []).length === 3,
       10_000,
     );
     await doc.mutate("deleteFrame", { frameId: scratch });

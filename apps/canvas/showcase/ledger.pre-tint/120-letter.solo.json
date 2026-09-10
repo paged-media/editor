@@ -1,0 +1,158 @@
+{
+  "chapter": "120-letter.solo",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "lt-opener",
+      "title": "Chapter 2 opener — The Letter",
+      "pages": [
+        19
+      ],
+      "covers": [
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "lt-features",
+      "title": "The feature specimen",
+      "pages": [
+        20,
+        21
+      ],
+      "covers": [
+        "typography.ligatures-opentype",
+        "typography.capitalization",
+        "typography.position-super-subscript",
+        "typography.font-selection",
+        "typography.leading",
+        "stories-text.style-apply-range"
+      ],
+      "notes": [
+        "characterOtfFeatures is authoring metadata only — the shaper consumes discrete OTF toggles (run/character-style), and no wire door writes those discrete flags",
+        "characterCase SmallCaps passes text through unchanged (smcp not driven, P-12); AllCaps renders",
+        "paragraph-style OTFFigureStyle never reaches run resolution (paged-scene merge_below_paragraph has no otf arm) — figure-style rows rely on the style definitions only"
+      ]
+    },
+    {
+      "module": "lt-metrics",
+      "title": "Kerning, tracking, scale, skew",
+      "pages": [
+        22
+      ],
+      "covers": [
+        "typography.tracking-kerning",
+        "typography.baseline-shift",
+        "typography.scale-skew",
+        "typography.vertical-scale",
+        "typography.underline-strikethru"
+      ],
+      "notes": [
+        "optical kerning falls back to metrics (recorded limit, margin note)"
+      ]
+    }
+  ],
+  "notes": [
+    "lt-features: characterOtfFeatures is authoring metadata only — the shaper consumes discrete OTF toggles (run/character-style), and no wire door writes those discrete flags",
+    "lt-features: characterCase SmallCaps passes text through unchanged (smcp not driven, P-12); AllCaps renders",
+    "lt-features: paragraph-style OTFFigureStyle never reaches run resolution (paged-scene merge_below_paragraph has no otf arm) — figure-style rows rely on the style definitions only",
+    "lt-metrics: optical kerning falls back to metrics (recorded limit, margin note)"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 29,
+      "firstModule": "lt-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 57,
+      "firstModule": "lt-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 61,
+      "firstModule": "lt-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 146,
+      "firstModule": "lt-opener",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 29,
+      "firstModule": "lt-opener"
+    },
+    "appliedConditions": {
+      "count": 6,
+      "firstModule": "lt-opener"
+    },
+    "characterFontFamily": {
+      "count": 25,
+      "firstModule": "lt-features"
+    },
+    "characterFontSize": {
+      "count": 25,
+      "firstModule": "lt-features"
+    },
+    "characterLeading": {
+      "count": 25,
+      "firstModule": "lt-features"
+    },
+    "characterLigatures": {
+      "count": 1,
+      "firstModule": "lt-features"
+    },
+    "characterOtfFeatures": {
+      "count": 8,
+      "firstModule": "lt-features"
+    },
+    "characterCase": {
+      "count": 2,
+      "firstModule": "lt-features"
+    },
+    "characterPosition": {
+      "count": 8,
+      "firstModule": "lt-features"
+    },
+    "characterFontStyle": {
+      "count": 1,
+      "firstModule": "lt-features"
+    },
+    "characterTracking": {
+      "count": 5,
+      "firstModule": "lt-metrics"
+    },
+    "characterHorizontalScale": {
+      "count": 2,
+      "firstModule": "lt-metrics"
+    },
+    "characterVerticalScale": {
+      "count": 1,
+      "firstModule": "lt-metrics"
+    },
+    "characterSkew": {
+      "count": 1,
+      "firstModule": "lt-metrics"
+    },
+    "characterBaselineShift": {
+      "count": 2,
+      "firstModule": "lt-metrics"
+    },
+    "characterKerningMethod": {
+      "count": 3,
+      "firstModule": "lt-metrics"
+    },
+    "characterUnderline": {
+      "count": 1,
+      "firstModule": "lt-metrics"
+    },
+    "characterStrikethru": {
+      "count": 1,
+      "firstModule": "lt-metrics"
+    }
+  }
+}

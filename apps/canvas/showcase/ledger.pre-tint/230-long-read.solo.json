@@ -1,0 +1,162 @@
+{
+  "chapter": "230-long-read.solo",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "lr-opener",
+      "title": "Ch.17 opener — The Long Read",
+      "pages": [
+        103
+      ],
+      "covers": []
+    },
+    {
+      "module": "lr-source",
+      "title": "Source beside render",
+      "pages": [
+        104
+      ],
+      "covers": [
+        "plugin-web.source-model",
+        "plugin-web.metadata-persistence",
+        "plugin-platform.document-metadata",
+        "plugin-web.insert-command",
+        "plugin-web.engine-rendering",
+        "plugin-platform.scene-layer",
+        "plugin-web.render-readout"
+      ],
+      "notes": [
+        "insertWebFrame minted its frame + starter envelope on this page (one undoable batch, verified by geometry) — the demonstration frame was then removed and the exhibit frame authored at the design box, because reshaping the default frame in place would take SPREAD-space resizeFrame bounds (the chain spread records that wire shape)",
+        "the source panel kept its earlier draft after the direct metadata write — the envelope reached the document (the render below reads it) but the open panel lane still shows 67 chars; the panel re-reads on selection CHANGE, and re-selecting the same frame is not one"
+      ]
+    },
+    {
+      "module": "lr-flows",
+      "title": "One source, two flows, four frames",
+      "pages": [
+        105
+      ],
+      "covers": [
+        "plugin-web.flow-threading",
+        "plugin-web.metadata-persistence",
+        "plugin-web.engine-rendering",
+        "plugin-platform.scene-layer"
+      ],
+      "notes": [
+        "unthreadWebFlow round trip verified through the container part (chain 3 → 4 → 3); the scratch frame was deleted — demonstrated, not resident",
+        "renderWebFlow submitted 4 frame(s) across the two flows (overset reported past the last frame)",
+        "flow readout: Render flow #2 — 4 frame(s) · overset CSS Regions: 'article#annual-longread' flows into 'article-flow' across the frame chain multiple named"
+      ]
+    },
+    {
+      "module": "lr-bake",
+      "title": "The bake — live versus native",
+      "pages": [
+        107,
+        108
+      ],
+      "covers": [
+        "plugin-platform.document-metadata",
+        "plugin-web.render-readout",
+        "package-anatomy.paged-parts-door",
+        "plugin-web.source-panel",
+        "plugin-web.metadata-persistence"
+      ],
+      "notes": [
+        "the bake materialized 30 native item(s): 1 rectangle(s), 28 text frame(s), 1 path(s), plus 6 minted swatch(es)",
+        "listPagedParts paged/media.paged.web/ — 1 part(s): ueee979/source.json",
+        "the live lane's first renderWebFrame reported no submitted layer (the plugin printed its engine-not-loaded fallback) — retried once",
+        "the live lane never submitted a scene layer on this run — p108 carries the panel-committed source without live paint; plugin-web.engine-rendering is NOT claimed by this module"
+      ]
+    },
+    {
+      "module": "lr-fragments",
+      "title": "The fragmentation ladder",
+      "pages": [
+        106
+      ],
+      "covers": [
+        "plugin-web.flow-threading",
+        "plugin-web.metadata-persistence",
+        "plugin-web.flow-fragmentation",
+        "plugin-web.engine-rendering",
+        "plugin-platform.scene-layer"
+      ],
+      "notes": [
+        "PRODUCT FINDING — the card chain's renderWebFlow died in the plugin lane: the scene-layer submit for the image-bearing fragment was refused (Error: page.evaluate: Error: unexpected reply: mutationFailed); engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"malformed message: invalid type: null, expected f32 at line 1 column 10331\"}}}",
+        "flow renders this run: fares table across 3 frame(s), card column across 0 frame(s) — the header-repeat exhibit carries the fragmentation claim; the card exhibit's chain persists unrendered"
+      ]
+    }
+  ],
+  "notes": [
+    "lr-source: insertWebFrame minted its frame + starter envelope on this page (one undoable batch, verified by geometry) — the demonstration frame was then removed and the exhibit frame authored at the design box, because reshaping the default frame in place would take SPREAD-space resizeFrame bounds (the chain spread records that wire shape)",
+    "lr-source: the source panel kept its earlier draft after the direct metadata write — the envelope reached the document (the render below reads it) but the open panel lane still shows 67 chars; the panel re-reads on selection CHANGE, and re-selecting the same frame is not one",
+    "lr-flows: unthreadWebFlow round trip verified through the container part (chain 3 → 4 → 3); the scratch frame was deleted — demonstrated, not resident",
+    "lr-flows: renderWebFlow submitted 4 frame(s) across the two flows (overset reported past the last frame)",
+    "lr-flows: flow readout: Render flow #2 — 4 frame(s) · overset CSS Regions: 'article#annual-longread' flows into 'article-flow' across the frame chain multiple named",
+    "lr-bake: the bake materialized 30 native item(s): 1 rectangle(s), 28 text frame(s), 1 path(s), plus 6 minted swatch(es)",
+    "lr-bake: listPagedParts paged/media.paged.web/ — 1 part(s): ueee979/source.json",
+    "lr-bake: the live lane's first renderWebFrame reported no submitted layer (the plugin printed its engine-not-loaded fallback) — retried once",
+    "lr-bake: the live lane never submitted a scene layer on this run — p108 carries the panel-committed source without live paint; plugin-web.engine-rendering is NOT claimed by this module",
+    "lr-fragments: PRODUCT FINDING — the card chain's renderWebFlow died in the plugin lane: the scene-layer submit for the image-bearing fragment was refused (Error: page.evaluate: Error: unexpected reply: mutationFailed); engine: {\"error\":{\"kind\":\"notImplemented\",\"details\":{\"what\":\"malformed message: invalid type: null, expected f32 at line 1 column 10331\"}}}",
+    "lr-fragments: flow renders this run: fares table across 3 frame(s), card column across 0 frame(s) — the header-repeat exhibit carries the fragmentation claim; the card exhibit's chain persists unrendered"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 33,
+      "firstModule": "lr-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 60,
+      "firstModule": "lr-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 60,
+      "firstModule": "lr-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 57,
+      "firstModule": "lr-opener",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 14,
+      "firstModule": "lr-opener",
+      "transient": false
+    },
+    "batch": {
+      "count": 1,
+      "firstModule": "lr-source",
+      "transient": true
+    },
+    "deleteFrame": {
+      "count": 2,
+      "firstModule": "lr-source",
+      "transient": true
+    },
+    "setPluginMetadata": {
+      "count": 5,
+      "firstModule": "lr-source",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 45,
+      "firstModule": "lr-opener"
+    },
+    "frameFillColor": {
+      "count": 1,
+      "firstModule": "lr-opener"
+    },
+    "appliedConditions": {
+      "count": 11,
+      "firstModule": "lr-opener"
+    }
+  }
+}

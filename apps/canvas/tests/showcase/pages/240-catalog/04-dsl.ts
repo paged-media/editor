@@ -46,7 +46,7 @@ import type { PageContext, PageReport } from "../../types";
 import {
   addAuthoredBinding,
   assignLayerBatch,
-  chapterData,
+  ensureOrdersReady,
   clickLower,
   readDslRoster,
   settleStableNew,
@@ -158,7 +158,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     `${C128_EXPR} — not evaluated: the query engine never reached ready on this lane.`;
   let qrLine = `${QR_EXPR} — not evaluated on this lane.`;
 
-  if (chapterData.ready) {
+  if (await ensureOrdersReady(ctx, notes)) {
     // ── author the two expression bindings, then ONE lowering ───────
     await doc.select("rectangle", c128Rect);
     await addAuthoredBinding(page, "barcode", C128_EXPR, "code128");

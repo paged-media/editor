@@ -1,0 +1,70 @@
+{
+  "chapter": "242-catalog-b",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "ct-dsl",
+      "title": "The expression language",
+      "pages": [
+        114
+      ],
+      "covers": []
+    },
+    {
+      "module": "ct-barcodes",
+      "title": "Four symbologies, one order book",
+      "pages": [
+        112
+      ],
+      "covers": []
+    },
+    {
+      "module": "ct-table",
+      "title": "A native table, governed",
+      "pages": [
+        111
+      ],
+      "covers": []
+    }
+  ],
+  "notes": [],
+  "ops": {
+    "insertTextFrame": {
+      "count": 31,
+      "firstModule": "ct-dsl",
+      "transient": false
+    },
+    "insertText": {
+      "count": 38,
+      "firstModule": "ct-dsl",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 41,
+      "firstModule": "ct-dsl",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 43,
+      "firstModule": "ct-dsl",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 6,
+      "firstModule": "ct-dsl",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 37,
+      "firstModule": "ct-dsl"
+    },
+    "appliedConditions": {
+      "count": 6,
+      "firstModule": "ct-dsl"
+    }
+  }
+}

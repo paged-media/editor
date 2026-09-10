@@ -1,0 +1,412 @@
+{
+  "chapter": "160-effects",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "fx-opener",
+      "title": "Chapter 10 opener — The Effects",
+      "pages": [
+        57
+      ],
+      "covers": [
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "fx-families",
+      "title": "The contact sheet and the heroes",
+      "pages": [
+        58,
+        59
+      ],
+      "covers": [
+        "effects-transparency.drop-shadow",
+        "effects-transparency.inner-shadow",
+        "effects-transparency.glows",
+        "effects-transparency.bevel-emboss",
+        "effects-transparency.satin",
+        "effects-transparency.feather",
+        "effects-transparency.gradient-feather"
+      ]
+    },
+    {
+      "module": "fx-parameters",
+      "title": "The parameter table",
+      "pages": [
+        60
+      ],
+      "covers": [
+        "effects-transparency.drop-shadow",
+        "effects-transparency.inner-shadow",
+        "effects-transparency.glows",
+        "effects-transparency.bevel-emboss",
+        "effects-transparency.satin",
+        "effects-transparency.feather"
+      ],
+      "notes": [
+        "satin invert: registry records it as ignored, but the inverted tile renders visibly darker on this build — record drift, margin-noted",
+        "transparency-group raster bounds clip wide overhangs that PDF keeps (margin-noted, recorded defect)",
+        "feather compositing darkens the vermilion fill at some width/corner settings on this build — engine render behaviour, shown as rendered"
+      ]
+    }
+  ],
+  "notes": [
+    "fx-parameters: satin invert: registry records it as ignored, but the inverted tile renders visibly darker on this build — record drift, margin-noted",
+    "fx-parameters: transparency-group raster bounds clip wide overhangs that PDF keeps (margin-noted, recorded defect)",
+    "fx-parameters: feather compositing darkens the vermilion fill at some width/corner settings on this build — engine render behaviour, shown as rendered"
+  ],
+  "ops": {
+    "batch": {
+      "count": 191,
+      "firstModule": "fx-opener",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 65,
+      "firstModule": "fx-opener",
+      "transient": false
+    },
+    "bindCreated": {
+      "count": 119,
+      "firstModule": "fx-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 66,
+      "firstModule": "fx-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 83,
+      "firstModule": "fx-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 650,
+      "firstModule": "fx-opener",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 52,
+      "firstModule": "fx-families",
+      "transient": false
+    },
+    "insertOval": {
+      "count": 2,
+      "firstModule": "fx-families",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 119,
+      "firstModule": "fx-opener"
+    },
+    "appliedConditions": {
+      "count": 6,
+      "firstModule": "fx-opener"
+    },
+    "frameFillColor": {
+      "count": 54,
+      "firstModule": "fx-families"
+    },
+    "frameCornerOptionTopLeft": {
+      "count": 8,
+      "firstModule": "fx-families"
+    },
+    "frameCornerRadiusTopLeft": {
+      "count": 8,
+      "firstModule": "fx-families"
+    },
+    "frameCornerOptionTopRight": {
+      "count": 8,
+      "firstModule": "fx-families"
+    },
+    "frameCornerRadiusTopRight": {
+      "count": 8,
+      "firstModule": "fx-families"
+    },
+    "frameCornerOptionBottomLeft": {
+      "count": 8,
+      "firstModule": "fx-families"
+    },
+    "frameCornerRadiusBottomLeft": {
+      "count": 8,
+      "firstModule": "fx-families"
+    },
+    "frameCornerOptionBottomRight": {
+      "count": 8,
+      "firstModule": "fx-families"
+    },
+    "frameCornerRadiusBottomRight": {
+      "count": 8,
+      "firstModule": "fx-families"
+    },
+    "frameDropShadow": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameDropShadowMode": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameDropShadowXOffset": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameDropShadowYOffset": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameDropShadowSize": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameDropShadowOpacity": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameDropShadowColor": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameInnerShadowEnabled": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameInnerShadowBlendMode": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameInnerShadowColor": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameInnerShadowOpacity": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameInnerShadowAngle": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameInnerShadowDistance": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameInnerShadowSize": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameInnerShadowChoke": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameInnerShadowNoise": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameOuterGlowEnabled": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameOuterGlowBlendMode": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameOuterGlowColor": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameOuterGlowOpacity": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameOuterGlowSpread": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameOuterGlowSize": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameOuterGlowNoise": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameInnerGlowEnabled": {
+      "count": 5,
+      "firstModule": "fx-families"
+    },
+    "frameInnerGlowBlendMode": {
+      "count": 5,
+      "firstModule": "fx-families"
+    },
+    "frameInnerGlowColor": {
+      "count": 5,
+      "firstModule": "fx-families"
+    },
+    "frameInnerGlowOpacity": {
+      "count": 5,
+      "firstModule": "fx-families"
+    },
+    "frameInnerGlowSource": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameInnerGlowChoke": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameInnerGlowSize": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameInnerGlowNoise": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameBevelEnabled": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameBevelStyle": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameBevelTechnique": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameBevelDepth": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameBevelDirection": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameBevelSize": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameBevelSoften": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameBevelAngle": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameBevelAltitude": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameBevelHighlightColor": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameBevelHighlightOpacity": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameBevelShadowColor": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameBevelShadowOpacity": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameSatinEnabled": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameSatinBlendMode": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameSatinColor": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameSatinOpacity": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameSatinAngle": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameSatinDistance": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameSatinSize": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameSatinInvert": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameFeatherEnabled": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameFeatherWidth": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameFeatherCornerType": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameFeatherNoise": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameFeatherChoke": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameDirectionalFeatherEnabled": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameDirectionalFeatherLeftWidth": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameDirectionalFeatherRightWidth": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameDirectionalFeatherTopWidth": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameDirectionalFeatherBottomWidth": {
+      "count": 7,
+      "firstModule": "fx-families"
+    },
+    "frameDirectionalFeatherAngle": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameDirectionalFeatherNoise": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameDirectionalFeatherChoke": {
+      "count": 6,
+      "firstModule": "fx-families"
+    },
+    "frameGradientFeather": {
+      "count": 1,
+      "firstModule": "fx-families"
+    }
+  }
+}

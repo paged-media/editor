@@ -1,0 +1,137 @@
+{
+  "chapter": "175-picture",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "pi-opener",
+      "title": "Ch.13 opener — The Picture",
+      "pages": [
+        71
+      ],
+      "covers": [
+        "images-graphics.placed-images"
+      ]
+    },
+    {
+      "module": "pi-formats",
+      "title": "The format gallery",
+      "pages": [
+        72,
+        73
+      ],
+      "covers": [
+        "images-graphics.placed-images",
+        "images-graphics.cmyk-jpeg-icc",
+        "images-graphics.eps-decode"
+      ],
+      "notes": [
+        "EPS bytes: the store accepted them (the wire is format-agnostic); the RENDER declines the decode and falls back to the frame's own fill — which is the exhibit"
+      ]
+    },
+    {
+      "module": "pi-fitting",
+      "title": "Fitting and the inline lane",
+      "pages": [
+        74
+      ],
+      "covers": [
+        "images-graphics.frame-fitting",
+        "images-graphics.placed-images",
+        "images-graphics.missing-image-placeholder"
+      ]
+    }
+  ],
+  "notes": [
+    "pi-formats: EPS bytes: the store accepted them (the wire is format-agnostic); the RENDER declines the decode and falls back to the frame's own fill — which is the exhibit"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 27,
+      "firstModule": "pi-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 27,
+      "firstModule": "pi-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 29,
+      "firstModule": "pi-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 59,
+      "firstModule": "pi-opener",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 14,
+      "firstModule": "pi-opener",
+      "transient": false
+    },
+    "placeImage": {
+      "count": 14,
+      "firstModule": "pi-opener",
+      "transient": false
+    },
+    "replaceImageBytes": {
+      "count": 15,
+      "firstModule": "pi-opener",
+      "transient": false
+    },
+    "batch": {
+      "count": 1,
+      "firstModule": "pi-formats",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 41,
+      "firstModule": "pi-opener"
+    },
+    "appliedObjectStyle": {
+      "count": 1,
+      "firstModule": "pi-opener"
+    },
+    "appliedConditions": {
+      "count": 6,
+      "firstModule": "pi-opener"
+    },
+    "frameFillColor": {
+      "count": 1,
+      "firstModule": "pi-formats"
+    },
+    "frameStrokeColor": {
+      "count": 1,
+      "firstModule": "pi-formats"
+    },
+    "frameStrokeWeight": {
+      "count": 1,
+      "firstModule": "pi-formats"
+    },
+    "frameFittingType": {
+      "count": 3,
+      "firstModule": "pi-fitting"
+    },
+    "frameFittingCrops": {
+      "count": 2,
+      "firstModule": "pi-fitting"
+    },
+    "frameFittingReferencePoint": {
+      "count": 1,
+      "firstModule": "pi-fitting"
+    },
+    "frameAutoFit": {
+      "count": 1,
+      "firstModule": "pi-fitting"
+    },
+    "imageContentTransform": {
+      "count": 1,
+      "firstModule": "pi-fitting"
+    }
+  }
+}

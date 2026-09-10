@@ -73,6 +73,49 @@ Write `pages/NN-name.ts` exporting `build(ctx)`, then add a line to
   failures are invisible is a brochure; one that says "the Blitz engine
   did not load on this lane" is evidence.
 
+## The two InDesign gates
+
+The suite ends with two lanes that ask Adobe rather than our own loader.
+Both need macOS with InDesign 2025 installed, both SKIP when it is
+absent, and `REQUIRE_REAL_INDESIGN=1` turns that skip into a failure.
+
+- **`indesign-probe.spec.ts`** — what InDesign READS. It opens the
+  exported `showcase.idml` and compares InDesign's counts (page items,
+  stories, sections, guides, hyperlinks, conditions, tables, links,
+  faces, overset) against what the package declares. Our round-trip
+  cannot find this class of bug: the reader accepts whatever the writer
+  emits, so a private spelling passes here and vanishes there.
+- **`indesign-render.spec.ts`** — what InDesign DRAWS. It asks InDesign
+  to export one JPEG per page at the resolution the assembly's own page
+  PNGs use (1224 px on a 540 pt trim = 163.2 dpi), then compares pixel
+  for pixel. The ceiling per page lives in
+  `indesign-render-thresholds.json`; a page over its ceiling is a
+  renderer regression to fix, never a ceiling to raise.
+
+  Why InDesign's own raster and not its exported PDF: poppler renders
+  InDesign's knockout transparency groups wrongly — the effects
+  chapter's bevelled moon and feathered veil come out white — so a
+  compare against that raster scores the renderer against an artefact.
+
+  ```bash
+  pnpm showcase:indesign-render                       # gate
+  SHOWCASE_RENDER_PAGES=59,60 pnpm showcase:indesign-render   # two pages
+  pnpm showcase:indesign-render:capture               # re-bake the ceilings
+  ```
+
+  Knobs: `SHOWCASE_RENDER_MODE` (`gate`|`capture`|`advisory`),
+  `SHOWCASE_RENDER_PAGES`, `SHOWCASE_RENDER_MANIFEST_ONLY`,
+  `SHOWCASE_RENDER_DPI`, `SHOWCASE_RENDER_TOLERANCE`,
+  `SHOWCASE_RENDER_FORCE`, `SHOWCASE_CMYK_PROFILE`,
+  `INDESIGN_RENDER_IDML`. Outputs land in
+  `showcase/indesign/render/`: `page-NNN.{jpg,png}` (InDesign),
+  `heat-NNN.png`, `worst/page-NNN-canvas-vs-indesign.png`,
+  `compare.json`, `report.json`.
+
+  Prerequisite: `paged-diff` must be built —
+  `cargo build --release -p paged-fidelity --bin paged-diff` from the
+  core checkout (this repo has no Cargo workspace of its own).
+
 ## What is not in it, and why
 
 - **paged.slide** — a reserved repository with no commits.

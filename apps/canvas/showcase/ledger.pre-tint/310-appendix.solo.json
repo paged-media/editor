@@ -1,0 +1,100 @@
+{
+  "chapter": "310-appendix.solo",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "ax-limits",
+      "title": "Appendix A — the limits ledger, compiled from the sources",
+      "pages": [
+        127,
+        128,
+        129,
+        130
+      ],
+      "covers": [],
+      "notes": [
+        "limits compiled from sources: 75 (◪ 66 · □ 9)"
+      ]
+    },
+    {
+      "module": "ax-index",
+      "title": "Appendix A — the index, resolved from the document",
+      "pages": [
+        131,
+        132
+      ],
+      "covers": [
+        "cross-references-hyperlinks.index"
+      ],
+      "notes": [
+        "index resolved from the document's own export: 10 topics referenced, 12 marker page(s); topics collection lists 10"
+      ]
+    },
+    {
+      "module": "ax-colophon",
+      "title": "Colophon — and the last line",
+      "pages": [
+        133,
+        134
+      ],
+      "covers": [
+        "package-anatomy.paged-parts-door"
+      ],
+      "notes": [
+        "colophon numbers — chapters 13 · rows 95 · ops 87/117 · paths 106/176 · parts 0 · canvas-wasm 0.62.0 (protocol 62)"
+      ]
+    }
+  ],
+  "notes": [
+    "ax-limits: limits compiled from sources: 75 (◪ 66 · □ 9)",
+    "ax-index: index resolved from the document's own export: 10 topics referenced, 12 marker page(s); topics collection lists 10",
+    "ax-colophon: colophon numbers — chapters 13 · rows 95 · ops 87/117 · paths 106/176 · parts 0 · canvas-wasm 0.62.0 (protocol 62)"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 23,
+      "firstModule": "ax-limits",
+      "transient": false
+    },
+    "insertText": {
+      "count": 62,
+      "firstModule": "ax-limits",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 140,
+      "firstModule": "ax-limits",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 30,
+      "firstModule": "ax-limits",
+      "transient": false
+    },
+    "batch": {
+      "count": 6,
+      "firstModule": "ax-limits",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 23,
+      "firstModule": "ax-limits"
+    },
+    "appliedConditions": {
+      "count": 4,
+      "firstModule": "ax-limits"
+    },
+    "paragraphTabStops": {
+      "count": 2,
+      "firstModule": "ax-index"
+    },
+    "paragraphJustification": {
+      "count": 1,
+      "firstModule": "ax-colophon"
+    }
+  }
+}

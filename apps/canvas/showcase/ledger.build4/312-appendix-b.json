@@ -1,0 +1,71 @@
+{
+  "chapter": "312-appendix-b",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "ax-colophon",
+      "title": "Colophon — and the last line",
+      "pages": [
+        133,
+        134
+      ],
+      "covers": [
+        "package-anatomy.paged-parts-door"
+      ],
+      "notes": [
+        "colophon numbers — chapters 37 · rows 189 · ops 117/117 · paths 176/176 · parts 15 · canvas-wasm 0.0.0-local (protocol 62)"
+      ]
+    }
+  ],
+  "notes": [
+    "ax-colophon: colophon numbers — chapters 37 · rows 189 · ops 117/117 · paths 176/176 · parts 15 · canvas-wasm 0.0.0-local (protocol 62)"
+  ],
+  "ops": {
+    "batch": {
+      "count": 16,
+      "firstModule": "ax-colophon",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 4,
+      "firstModule": "ax-colophon",
+      "transient": false
+    },
+    "bindCreated": {
+      "count": 4,
+      "firstModule": "ax-colophon",
+      "transient": false
+    },
+    "insertText": {
+      "count": 13,
+      "firstModule": "ax-colophon",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 13,
+      "firstModule": "ax-colophon",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 6,
+      "firstModule": "ax-colophon",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 4,
+      "firstModule": "ax-colophon"
+    },
+    "appliedConditions": {
+      "count": 1,
+      "firstModule": "ax-colophon"
+    },
+    "paragraphJustification": {
+      "count": 1,
+      "firstModule": "ax-colophon"
+    }
+  }
+}

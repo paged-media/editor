@@ -92,4 +92,18 @@ export interface SpreadSpec {
    * gates are a smell; this one is applied where the work happens.
    */
   readonly selfGated?: boolean;
+  /**
+   * True when the module must author one mutation at a time.
+   *
+   * The runner batches a module's ops into one mutation by default —
+   * the engine rebuilds the whole document per mutation, so on a book
+   * this size that is the difference between a chapter in minutes and
+   * a chapter in hours. Deferred mode holds the invariant that no READ
+   * sees a document missing the module's queued writes (every read
+   * flushes, `page.evaluate` included), but a module that drives the
+   * EDITOR'S UI — clicking a panel, dragging on canvas — acts on what
+   * the app is showing, which a queued write has not reached. Those
+   * modules opt out here.
+   */
+  readonly unbatched?: boolean;
 }

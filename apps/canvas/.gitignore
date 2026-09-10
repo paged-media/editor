@@ -29,3 +29,7 @@ showcase/ledger/
 # the committed page evidence is the contact sheet (WP5)
 showcase/pages/
 showcase/preview/
+# InDesign probe work dir (staged copies + reports) — tests/showcase/indesign-probe.spec.ts
+showcase/indesign/
+# IDML export link folder (copied/handed-back image files) — 900-assemble.spec.ts
+showcase/Links/

@@ -1,0 +1,111 @@
+{
+  "chapter": "304-press-c",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "pr-losses",
+      "title": "The loss ledger — what IDML export names and leaves",
+      "pages": [
+        125
+      ],
+      "covers": [
+        "round-tripping.idml-reserialization",
+        "effects-transparency.opacity-mask"
+      ],
+      "notes": [
+        "exportIdml — 11941923 bytes (discarded), lost: 3 entr(ies)"
+      ]
+    },
+    {
+      "module": "pr-exits",
+      "title": "The exit paths — the chapter close",
+      "pages": [
+        126
+      ],
+      "covers": []
+    }
+  ],
+  "notes": [
+    "pr-losses: exportIdml — 11941923 bytes (discarded), lost: 3 entr(ies)"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 10,
+      "firstModule": "pr-losses",
+      "transient": false
+    },
+    "insertText": {
+      "count": 22,
+      "firstModule": "pr-losses",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 23,
+      "firstModule": "pr-losses",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 34,
+      "firstModule": "pr-losses",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 2,
+      "firstModule": "pr-losses",
+      "transient": false
+    },
+    "applyOpacityMask": {
+      "count": 1,
+      "firstModule": "pr-losses",
+      "transient": false
+    },
+    "insertTable": {
+      "count": 1,
+      "firstModule": "pr-losses",
+      "transient": false
+    },
+    "insertHeaderRow": {
+      "count": 1,
+      "firstModule": "pr-losses",
+      "transient": false
+    },
+    "setRowHeight": {
+      "count": 1,
+      "firstModule": "pr-losses",
+      "transient": false
+    },
+    "batch": {
+      "count": 1,
+      "firstModule": "pr-losses",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 12,
+      "firstModule": "pr-losses"
+    },
+    "frameFillColor": {
+      "count": 2,
+      "firstModule": "pr-losses"
+    },
+    "cellInsetLeft": {
+      "count": 8,
+      "firstModule": "pr-losses"
+    },
+    "cellInsetRight": {
+      "count": 8,
+      "firstModule": "pr-losses"
+    },
+    "appliedTableStyle": {
+      "count": 1,
+      "firstModule": "pr-losses"
+    },
+    "appliedConditions": {
+      "count": 3,
+      "firstModule": "pr-losses"
+    }
+  }
+}

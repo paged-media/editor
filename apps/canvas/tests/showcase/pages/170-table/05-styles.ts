@@ -92,12 +92,16 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   // refusal is kept and quoted.
   let refusal = "";
   try {
-    await doc.mutate("setStyleProperty", {
-      collection: "cell",
-      styleId: CURRENCY_ID,
-      path: "cellFillColor",
-      value: { type: "colorRef", value: await doc.swatch("Paper Warm") },
-    });
+    // A probe goes ALONE: queued, its refusal would surface at the next
+    // flush, outside this try, and sink every other op in the batch.
+    await doc.alone(async () =>
+      doc.mutate("setStyleProperty", {
+        collection: "cell",
+        styleId: CURRENCY_ID,
+        path: "cellFillColor",
+        value: { type: "colorRef", value: await doc.swatch("Paper Warm") },
+      }),
+    );
     notes.push(
       "setStyleProperty on the cell collection APPLIED — the recorded " +
         "engine boundary has moved; update this page to dress TD Currency",

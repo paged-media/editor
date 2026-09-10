@@ -1,0 +1,71 @@
+{
+  "chapter": "311-repair",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "rp-crest",
+      "title": "Ch.14 — the crest, carried to the page that describes it",
+      "pages": [
+        77
+      ],
+      "covers": [
+        "plugin-draw.svg-io",
+        "frames-paths.path.insert"
+      ],
+      "notes": [
+        "the cover carried 4 polygon(s) the cover module never wrote — the SVG import's output, minted onto page one because the host re-derives the active page from the camera on every render",
+        "carried 4 contour(s) to page 77 by copying framePath (anchors + subpathStarts, so compounds stay compound) and re-basing by the probed spread seam (0, 0)"
+      ]
+    }
+  ],
+  "notes": [
+    "rp-crest: the cover carried 4 polygon(s) the cover module never wrote — the SVG import's output, minted onto page one because the host re-derives the active page from the camera on every render",
+    "rp-crest: carried 4 contour(s) to page 77 by copying framePath (anchors + subpathStarts, so compounds stay compound) and re-basing by the probed spread seam (0, 0)"
+  ],
+  "ops": {
+    "insertFrame": {
+      "count": 2,
+      "firstModule": "rp-crest",
+      "transient": false
+    },
+    "deleteFrame": {
+      "count": 6,
+      "firstModule": "rp-crest",
+      "transient": false
+    },
+    "insertPath": {
+      "count": 4,
+      "firstModule": "rp-crest",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 19,
+      "firstModule": "rp-crest",
+      "transient": false
+    }
+  },
+  "paths": {
+    "framePath": {
+      "count": 4,
+      "firstModule": "rp-crest"
+    },
+    "frameFillColor": {
+      "count": 3,
+      "firstModule": "rp-crest"
+    },
+    "frameStrokeColor": {
+      "count": 4,
+      "firstModule": "rp-crest"
+    },
+    "frameStrokeWeight": {
+      "count": 4,
+      "firstModule": "rp-crest"
+    },
+    "itemLayer": {
+      "count": 4,
+      "firstModule": "rp-crest"
+    }
+  }
+}

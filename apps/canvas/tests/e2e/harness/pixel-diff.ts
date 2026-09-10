@@ -53,11 +53,20 @@ export interface DiffStats {
  * inside/outside for containment assertions. Throws when dimensions
  * differ — the harness always snapshots the same page at the same
  * dpi, so a size change is itself a bug signal.
+ *
+ * `tolerance` is the per-channel absolute difference a pixel may carry
+ * and still count as unchanged. It defaults to 0 (exact), which is what
+ * the operation suite wants: same renderer, same page, so any delta is
+ * real. The showcase's InDesign compare passes a real tolerance instead
+ * — two DIFFERENT renderers rasterising the same page never agree to
+ * the byte on an anti-aliased edge, and JPEG (InDesign exports JPEG)
+ * adds its own block ringing.
  */
 export function diffPngPixels(
   a: Uint8Array,
   b: Uint8Array,
   region?: PxRect | null,
+  tolerance = 0,
 ): DiffStats {
   const pa = PNG.sync.read(Buffer.from(a));
   const pb = PNG.sync.read(Buffer.from(b));
@@ -80,12 +89,17 @@ export function diffPngPixels(
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
-      if (
-        da[i] !== db[i] ||
-        da[i + 1] !== db[i + 1] ||
-        da[i + 2] !== db[i + 2] ||
-        da[i + 3] !== db[i + 3]
-      ) {
+      const differs =
+        tolerance === 0
+          ? da[i] !== db[i] ||
+            da[i + 1] !== db[i + 1] ||
+            da[i + 2] !== db[i + 2] ||
+            da[i + 3] !== db[i + 3]
+          : Math.abs(da[i] - db[i]) > tolerance ||
+            Math.abs(da[i + 1] - db[i + 1]) > tolerance ||
+            Math.abs(da[i + 2] - db[i + 2]) > tolerance ||
+            Math.abs(da[i + 3] - db[i + 3]) > tolerance;
+      if (differs) {
         changed++;
         if (x < minX) minX = x;
         if (y < minY) minY = y;

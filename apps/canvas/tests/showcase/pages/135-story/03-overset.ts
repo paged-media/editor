@@ -85,8 +85,11 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   // diagnostics, so compose the page before reading it.)
   expect(await doc.storyChars(exhibit.storyId)).toBe(OVERSET_TEXT.length);
   await doc.renderPage(page);
+  // `paged.stories()` reports ENGINE ids; the poured story may still be
+  // the frame's handle here, so resolve it before the comparison.
+  const [pouredStory] = await doc.storyIds(exhibit.storyId);
   const summary = (await storySummaries(ctx.page)).find(
-    (s) => s.selfId === exhibit.storyId,
+    (s) => s.selfId === pouredStory,
   );
   expect(summary, "the poured story is missing from paged.stories()").toBeTruthy();
   expect(

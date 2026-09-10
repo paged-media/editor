@@ -1,0 +1,105 @@
+{
+  "chapter": "300-press",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "pr-divider",
+      "title": "Part III divider",
+      "pages": [
+        119,
+        120
+      ],
+      "covers": [
+        "color-swatches.fill-stroke-apply",
+        "stories-text.text.insert"
+      ]
+    },
+    {
+      "module": "pr-opener",
+      "title": "Ch.20 opener — the exits-honestly thesis",
+      "pages": [
+        121
+      ],
+      "covers": []
+    },
+    {
+      "module": "pr-marks",
+      "title": "The marks plate — trim, bleed and marks anatomy",
+      "pages": [
+        122
+      ],
+      "covers": [
+        "frames-paths.line.insert",
+        "frames-paths.shape-tools",
+        "color-swatches.fill-stroke-apply"
+      ]
+    }
+  ],
+  "notes": [],
+  "ops": {
+    "insertFrame": {
+      "count": 5,
+      "firstModule": "pr-divider",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 109,
+      "firstModule": "pr-divider",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 16,
+      "firstModule": "pr-divider",
+      "transient": false
+    },
+    "insertText": {
+      "count": 19,
+      "firstModule": "pr-divider",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 21,
+      "firstModule": "pr-divider",
+      "transient": false
+    },
+    "insertLine": {
+      "count": 22,
+      "firstModule": "pr-marks",
+      "transient": false
+    },
+    "insertOval": {
+      "count": 3,
+      "firstModule": "pr-marks",
+      "transient": false
+    },
+    "batch": {
+      "count": 1,
+      "firstModule": "pr-marks",
+      "transient": false
+    }
+  },
+  "paths": {
+    "frameFillColor": {
+      "count": 8,
+      "firstModule": "pr-divider"
+    },
+    "itemLayer": {
+      "count": 46,
+      "firstModule": "pr-divider"
+    },
+    "appliedConditions": {
+      "count": 5,
+      "firstModule": "pr-divider"
+    },
+    "frameStrokeColor": {
+      "count": 25,
+      "firstModule": "pr-marks"
+    },
+    "frameStrokeWeight": {
+      "count": 25,
+      "firstModule": "pr-marks"
+    }
+  }
+}

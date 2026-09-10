@@ -1,0 +1,698 @@
+{
+  "dpi": 163.2,
+  "tolerance": 32,
+  "default": {
+    "max_changed_ratio": 0.06,
+    "max_mean_de": 6,
+    "min_ssim": 0.8
+  },
+  "pages": {
+    "1": {
+      "max_changed_ratio": 0.0325,
+      "max_mean_de": 1.528,
+      "min_ssim": 0.9463,
+      "rationale": "cover — the mean ΔE fell 7.40 → 1.14 the moment the canvas got the document's own Coated FOGRA39 to convert with; the changed-pixel COUNT nudged up because a large flat field that used to sit far past the tolerance now sits just past it."
+    },
+    "2": {
+      "max_changed_ratio": 0.0043,
+      "max_mean_de": 0.248,
+      "min_ssim": 0.9793
+    },
+    "3": {
+      "max_changed_ratio": 0.009,
+      "max_mean_de": 0.339,
+      "min_ssim": 0.9714
+    },
+    "4": {
+      "max_changed_ratio": 0.0079,
+      "max_mean_de": 0.253,
+      "min_ssim": 0.976
+    },
+    "5": {
+      "max_changed_ratio": 0.0195,
+      "max_mean_de": 0.809,
+      "min_ssim": 0.9506
+    },
+    "6": {
+      "max_changed_ratio": 0.0194,
+      "max_mean_de": 0.818,
+      "min_ssim": 0.946
+    },
+    "7": {
+      "max_changed_ratio": 0.0247,
+      "max_mean_de": 0.996,
+      "min_ssim": 0.9511
+    },
+    "8": {
+      "max_changed_ratio": 0.0152,
+      "max_mean_de": 0.481,
+      "min_ssim": 0.9699
+    },
+    "9": {
+      "max_changed_ratio": 0.0121,
+      "max_mean_de": 1.26,
+      "min_ssim": 0.9518
+    },
+    "10": {
+      "max_changed_ratio": 0.01,
+      "max_mean_de": 1.159,
+      "min_ssim": 0.9579
+    },
+    "11": {
+      "max_changed_ratio": 0.0164,
+      "max_mean_de": 3.049,
+      "min_ssim": 0.9576
+    },
+    "12": {
+      "max_changed_ratio": 0.0068,
+      "max_mean_de": 0.212,
+      "min_ssim": 0.9767
+    },
+    "13": {
+      "max_changed_ratio": 0.0325,
+      "max_mean_de": 1.319,
+      "min_ssim": 0.9397
+    },
+    "14": {
+      "max_changed_ratio": 0.0299,
+      "max_mean_de": 1.651,
+      "min_ssim": 0.9375
+    },
+    "15": {
+      "max_changed_ratio": 0.0196,
+      "max_mean_de": 0.766,
+      "min_ssim": 0.9537
+    },
+    "16": {
+      "max_changed_ratio": 0.0326,
+      "max_mean_de": 1.412,
+      "min_ssim": 0.9419
+    },
+    "17": {
+      "max_changed_ratio": 0.0387,
+      "max_mean_de": 1.645,
+      "min_ssim": 0.9286
+    },
+    "18": {
+      "max_changed_ratio": 0.0482,
+      "max_mean_de": 1.646,
+      "min_ssim": 0.915
+    },
+    "19": {
+      "max_changed_ratio": 0.0176,
+      "max_mean_de": 0.496,
+      "min_ssim": 0.9708
+    },
+    "20": {
+      "max_changed_ratio": 0.0282,
+      "max_mean_de": 1.067,
+      "min_ssim": 0.9466
+    },
+    "21": {
+      "max_changed_ratio": 0.0265,
+      "max_mean_de": 1.007,
+      "min_ssim": 0.9461
+    },
+    "22": {
+      "max_changed_ratio": 0.037,
+      "max_mean_de": 1.751,
+      "min_ssim": 0.9134
+    },
+    "23": {
+      "max_changed_ratio": 0.0223,
+      "max_mean_de": 0.713,
+      "min_ssim": 0.943
+    },
+    "24": {
+      "max_changed_ratio": 0.0395,
+      "max_mean_de": 1.229,
+      "min_ssim": 0.9477
+    },
+    "25": {
+      "max_changed_ratio": 0.0664,
+      "max_mean_de": 3.052,
+      "min_ssim": 0.8706
+    },
+    "26": {
+      "max_changed_ratio": 0.0406,
+      "max_mean_de": 1.459,
+      "min_ssim": 0.9395,
+      "rationale": "the drop cap — 4.93% → 3.09% once an indented first line stopped composing into the full measure."
+    },
+    "27": {
+      "max_changed_ratio": 0.0237,
+      "max_mean_de": 0.709,
+      "min_ssim": 0.9405
+    },
+    "28": {
+      "max_changed_ratio": 0.039,
+      "max_mean_de": 1.562,
+      "min_ssim": 0.929,
+      "rationale": "auto-sizing battery: the HeightAndWidth frame fits 44 fragment lines where InDesign fits 35 (narrow-column fallback, WP5)"
+    },
+    "29": {
+      "max_changed_ratio": 0.0665,
+      "max_mean_de": 1.905,
+      "min_ssim": 0.8567
+    },
+    "30": {
+      "max_changed_ratio": 0.0459,
+      "max_mean_de": 1.695,
+      "min_ssim": 0.9285
+    },
+    "31": {
+      "max_changed_ratio": 0.0491,
+      "max_mean_de": 2.061,
+      "min_ssim": 0.9088
+    },
+    "32": {
+      "max_changed_ratio": 0.0396,
+      "max_mean_de": 1.352,
+      "min_ssim": 0.9353
+    },
+    "33": {
+      "max_changed_ratio": 0.0224,
+      "max_mean_de": 0.673,
+      "min_ssim": 0.946
+    },
+    "34": {
+      "max_changed_ratio": 0.0215,
+      "max_mean_de": 0.6,
+      "min_ssim": 0.9684
+    },
+    "35": {
+      "max_changed_ratio": 0.0293,
+      "max_mean_de": 1.042,
+      "min_ssim": 0.9438
+    },
+    "36": {
+      "max_changed_ratio": 0.0249,
+      "max_mean_de": 1.117,
+      "min_ssim": 0.9325
+    },
+    "37": {
+      "max_changed_ratio": 0.0256,
+      "max_mean_de": 0.91,
+      "min_ssim": 0.9502
+    },
+    "38": {
+      "max_changed_ratio": 0.0425,
+      "max_mean_de": 1.479,
+      "min_ssim": 0.9205
+    },
+    "39": {
+      "max_changed_ratio": 0.0849,
+      "max_mean_de": 4.004,
+      "min_ssim": 0.7895
+    },
+    "40": {
+      "max_changed_ratio": 0.046,
+      "max_mean_de": 2.023,
+      "min_ssim": 0.9081
+    },
+    "41": {
+      "max_changed_ratio": 0.0152,
+      "max_mean_de": 0.496,
+      "min_ssim": 0.9668
+    },
+    "42": {
+      "max_changed_ratio": 0.034,
+      "max_mean_de": 1.355,
+      "min_ssim": 0.9364
+    },
+    "43": {
+      "max_changed_ratio": 0.0254,
+      "max_mean_de": 1.103,
+      "min_ssim": 0.942
+    },
+    "44": {
+      "max_changed_ratio": 0.019,
+      "max_mean_de": 0.91,
+      "min_ssim": 0.9483
+    },
+    "45": {
+      "max_changed_ratio": 0.0273,
+      "max_mean_de": 0.878,
+      "min_ssim": 0.9569
+    },
+    "46": {
+      "max_changed_ratio": 0.0404,
+      "max_mean_de": 1.476,
+      "min_ssim": 0.9299
+    },
+    "47": {
+      "max_changed_ratio": 0.0218,
+      "max_mean_de": 0.767,
+      "min_ssim": 0.9594
+    },
+    "48": {
+      "max_changed_ratio": 0.0296,
+      "max_mean_de": 1.071,
+      "min_ssim": 0.9514
+    },
+    "49": {
+      "max_changed_ratio": 0.0234,
+      "max_mean_de": 0.954,
+      "min_ssim": 0.9581
+    },
+    "50": {
+      "max_changed_ratio": 0.0496,
+      "max_mean_de": 2.442,
+      "min_ssim": 0.9278
+    },
+    "51": {
+      "max_changed_ratio": 0.0231,
+      "max_mean_de": 0.788,
+      "min_ssim": 0.9656
+    },
+    "52": {
+      "max_changed_ratio": 0.0996,
+      "max_mean_de": 1.889,
+      "min_ssim": 0.9597
+    },
+    "53": {
+      "max_changed_ratio": 0.0307,
+      "max_mean_de": 1.242,
+      "min_ssim": 0.9431
+    },
+    "54": {
+      "max_changed_ratio": 0.0262,
+      "max_mean_de": 2.073,
+      "min_ssim": 0.9722,
+      "rationale": "the sixteen blend modes. Colour management moved the inputs (mean ΔE 1.61 → 1.58) but Overlay / ColorDodge / Screen / ColorBurn still composite in our linear-RGB working space where InDesign composites in the document's CMYK blend space — the remaining difference on this page is that space, not the paints."
+    },
+    "55": {
+      "max_changed_ratio": 0.1019,
+      "max_mean_de": 3.96,
+      "min_ssim": 0.9394
+    },
+    "56": {
+      "max_changed_ratio": 0.2056,
+      "max_mean_de": 5.261,
+      "min_ssim": 0.9399,
+      "rationale": "gradients and masks: the two opacity masks are the declared loss — InDesign draws no mask there at all. What is left beside them is a gradient between a CMYK stop and an RGB one, where our CMYK-tessellated path runs darker and more saturated than InDesign's; measured, not yet modelled."
+    },
+    "57": {
+      "max_changed_ratio": 0.0234,
+      "max_mean_de": 0.764,
+      "min_ssim": 0.962
+    },
+    "58": {
+      "max_changed_ratio": 0.0175,
+      "max_mean_de": 0.981,
+      "min_ssim": 0.971,
+      "rationale": "effect parameters — 3.73% → 1.75% once the bevel was measured against InDesign rather than guessed and the soft effects stopped using `Size` as a Gaussian σ."
+    },
+    "59": {
+      "max_changed_ratio": 0.0394,
+      "max_mean_de": 1.221,
+      "min_ssim": 0.9635,
+      "rationale": "the effects battery — 6.16% → 3.94%. All three lanes build their effects from the shared coverage masks in `paged-compose::mask`, and those masks now carry InDesign's own facet and blur geometry."
+    },
+    "60": {
+      "max_changed_ratio": 0.0449,
+      "max_mean_de": 1.195,
+      "min_ssim": 0.9533,
+      "rationale": "the effect matrix — 9.89% → 4.49%, the largest single-page gain of the calibration pass. The bevel was invisible (a gain that multiplied two small numbers, and a Depth pinned to 100%), the inner shadow was cast on the wrong edge, and every blur was twice as wide as InDesign's."
+    },
+    "61": {
+      "max_changed_ratio": 0.0299,
+      "max_mean_de": 0.78,
+      "min_ssim": 0.9633
+    },
+    "62": {
+      "max_changed_ratio": 0.0368,
+      "max_mean_de": 1.311,
+      "min_ssim": 0.9484
+    },
+    "63": {
+      "max_changed_ratio": 0.0301,
+      "max_mean_de": 1.004,
+      "min_ssim": 0.9534
+    },
+    "64": {
+      "max_changed_ratio": 0.0301,
+      "max_mean_de": 1.045,
+      "min_ssim": 0.9543
+    },
+    "65": {
+      "max_changed_ratio": 0.0271,
+      "max_mean_de": 0.796,
+      "min_ssim": 0.9323
+    },
+    "66": {
+      "max_changed_ratio": 0.0988,
+      "max_mean_de": 6.189,
+      "min_ssim": 0.7998,
+      "rationale": "measured 5.04% against the poppler reference; re-capture against InDesign's own render"
+    },
+    "67": {
+      "max_changed_ratio": 0.0524,
+      "max_mean_de": 2.693,
+      "min_ssim": 0.8998
+    },
+    "68": {
+      "max_changed_ratio": 0.0584,
+      "max_mean_de": 2.783,
+      "min_ssim": 0.8926
+    },
+    "69": {
+      "max_changed_ratio": 0.0767,
+      "max_mean_de": 3.933,
+      "min_ssim": 0.851
+    },
+    "70": {
+      "max_changed_ratio": 0.0798,
+      "max_mean_de": 4.201,
+      "min_ssim": 0.8598
+    },
+    "71": {
+      "max_changed_ratio": 0.0609,
+      "max_mean_de": 2.378,
+      "min_ssim": 0.8451
+    },
+    "72": {
+      "max_changed_ratio": 0.0359,
+      "max_mean_de": 1.41,
+      "min_ssim": 0.9487
+    },
+    "73": {
+      "max_changed_ratio": 0.1353,
+      "max_mean_de": 5.807,
+      "min_ssim": 0.8999,
+      "rationale": "the picture: the EPS frame is a declared loss — no PostScript interpreter, by declaration, so the frame's own fill stands in where InDesign interprets the file."
+    },
+    "74": {
+      "max_changed_ratio": 0.0723,
+      "max_mean_de": 2.446,
+      "min_ssim": 0.9164
+    },
+    "75": {
+      "max_changed_ratio": 0.0156,
+      "max_mean_de": 2.973,
+      "min_ssim": 0.9575
+    },
+    "76": {
+      "max_changed_ratio": 0.0132,
+      "max_mean_de": 0.389,
+      "min_ssim": 0.9649
+    },
+    "77": {
+      "max_changed_ratio": 0.0366,
+      "max_mean_de": 1.597,
+      "min_ssim": 0.9291,
+      "rationale": "one of seven pages where the narrower (correct) first-line measure lands a word differently than InDesign's dictionary does; the page's mean ΔE moved 0.70 → 1.20 while 63 other pages improved."
+    },
+    "78": {
+      "max_changed_ratio": 0.0346,
+      "max_mean_de": 1.317,
+      "min_ssim": 0.9472
+    },
+    "79": {
+      "max_changed_ratio": 0.0224,
+      "max_mean_de": 0.736,
+      "min_ssim": 0.964
+    },
+    "80": {
+      "max_changed_ratio": 0.025,
+      "max_mean_de": 0.858,
+      "min_ssim": 0.9571
+    },
+    "81": {
+      "max_changed_ratio": 0.0254,
+      "max_mean_de": 0.907,
+      "min_ssim": 0.9575
+    },
+    "82": {
+      "max_changed_ratio": 0.0255,
+      "max_mean_de": 0.937,
+      "min_ssim": 0.9558
+    },
+    "83": {
+      "max_changed_ratio": 0.0278,
+      "max_mean_de": 0.819,
+      "min_ssim": 0.961
+    },
+    "84": {
+      "max_changed_ratio": 0.0283,
+      "max_mean_de": 0.854,
+      "min_ssim": 0.963
+    },
+    "85": {
+      "max_changed_ratio": 0.029,
+      "max_mean_de": 1.054,
+      "min_ssim": 0.9517
+    },
+    "86": {
+      "max_changed_ratio": 0.0227,
+      "max_mean_de": 2.06,
+      "min_ssim": 0.9585
+    },
+    "87": {
+      "max_changed_ratio": 0.0752,
+      "max_mean_de": 3.207,
+      "min_ssim": 0.9142
+    },
+    "88": {
+      "max_changed_ratio": 0.1763,
+      "max_mean_de": 6.14,
+      "min_ssim": 0.8528
+    },
+    "89": {
+      "max_changed_ratio": 0.1455,
+      "max_mean_de": 6.122,
+      "min_ssim": 0.8547
+    },
+    "90": {
+      "max_changed_ratio": 0.1699,
+      "max_mean_de": 5.549,
+      "min_ssim": 0.8675
+    },
+    "91": {
+      "max_changed_ratio": 0.0426,
+      "max_mean_de": 2.019,
+      "min_ssim": 0.9067
+    },
+    "92": {
+      "max_changed_ratio": 0.1445,
+      "max_mean_de": 4.326,
+      "min_ssim": 0.8982
+    },
+    "93": {
+      "max_changed_ratio": 0.0317,
+      "max_mean_de": 1.31,
+      "min_ssim": 0.9477
+    },
+    "94": {
+      "max_changed_ratio": 0.0894,
+      "max_mean_de": 2.784,
+      "min_ssim": 0.9094,
+      "rationale": "the page that named the FirstLineIndent bug — 9.80% → 6.99%. Its five numbered items each set a line shorter than InDesign's because our indented first lines composed into the FULL measure and were shifted right afterwards, so every one ran 13.2 pt past the frame."
+    },
+    "95": {
+      "max_changed_ratio": 0.0115,
+      "max_mean_de": 0.421,
+      "min_ssim": 0.9696
+    },
+    "96": {
+      "max_changed_ratio": 0.0395,
+      "max_mean_de": 1.233,
+      "min_ssim": 0.9424
+    },
+    "97": {
+      "max_changed_ratio": 0.0291,
+      "max_mean_de": 1.032,
+      "min_ssim": 0.9445
+    },
+    "98": {
+      "max_changed_ratio": 0.036,
+      "max_mean_de": 1.571,
+      "min_ssim": 0.929
+    },
+    "99": {
+      "max_changed_ratio": 0.1005,
+      "max_mean_de": 6.023,
+      "min_ssim": 0.8042,
+      "rationale": "sheet tables: cell text sits ~4pt high (WP4)"
+    },
+    "100": {
+      "max_changed_ratio": 0.0463,
+      "max_mean_de": 2.417,
+      "min_ssim": 0.9192
+    },
+    "101": {
+      "max_changed_ratio": 0.021,
+      "max_mean_de": 0.956,
+      "min_ssim": 0.9573
+    },
+    "102": {
+      "max_changed_ratio": 0.034,
+      "max_mean_de": 1.148,
+      "min_ssim": 0.9464
+    },
+    "103": {
+      "max_changed_ratio": 0.0117,
+      "max_mean_de": 0.426,
+      "min_ssim": 0.969
+    },
+    "104": {
+      "max_changed_ratio": 0.0493,
+      "max_mean_de": 2.126,
+      "min_ssim": 0.8977
+    },
+    "105": {
+      "max_changed_ratio": 0.0167,
+      "max_mean_de": 0.513,
+      "min_ssim": 0.9643
+    },
+    "106": {
+      "max_changed_ratio": 0.0245,
+      "max_mean_de": 0.76,
+      "min_ssim": 0.9568
+    },
+    "107": {
+      "max_changed_ratio": 0.0735,
+      "max_mean_de": 3.28,
+      "min_ssim": 0.8514
+    },
+    "108": {
+      "max_changed_ratio": 0.0105,
+      "max_mean_de": 0.309,
+      "min_ssim": 0.9743
+    },
+    "109": {
+      "max_changed_ratio": 0.0288,
+      "max_mean_de": 0.938,
+      "min_ssim": 0.9546
+    },
+    "110": {
+      "max_changed_ratio": 0.0446,
+      "max_mean_de": 1.995,
+      "min_ssim": 0.9036
+    },
+    "111": {
+      "max_changed_ratio": 0.0593,
+      "max_mean_de": 2.366,
+      "min_ssim": 0.8959
+    },
+    "112": {
+      "max_changed_ratio": 0.022,
+      "max_mean_de": 0.913,
+      "min_ssim": 0.9603
+    },
+    "113": {
+      "max_changed_ratio": 0.0447,
+      "max_mean_de": 1.55,
+      "min_ssim": 0.9362
+    },
+    "114": {
+      "max_changed_ratio": 0.0327,
+      "max_mean_de": 1.309,
+      "min_ssim": 0.9429
+    },
+    "115": {
+      "max_changed_ratio": 0.0264,
+      "max_mean_de": 0.801,
+      "min_ssim": 0.9382
+    },
+    "116": {
+      "max_changed_ratio": 0.0599,
+      "max_mean_de": 1.844,
+      "min_ssim": 0.9349,
+      "rationale": "manuscript, poured: an unstyled `<ParagraphStyleRange>` now inherits `[No paragraph style]`, so the 29-paragraph DOCX report composes instead of leaving an empty table grid."
+    },
+    "117": {
+      "max_changed_ratio": 0.1589,
+      "max_mean_de": 8.065,
+      "min_ssim": 0.7423,
+      "rationale": "manuscript tables: the tab character, the paragraph mark, the tab stop record and the cell row-height rule are all measured and fixed; the table's rows and the text below now match. What is left is the DECLARED images-from-bytes loss — the anchored PNG has no URI the frame door can fetch, so we stamp the missing-image placeholder over the rows where InDesign draws the picture."
+    },
+    "118": {
+      "max_changed_ratio": 0.0521,
+      "max_mean_de": 1.955,
+      "min_ssim": 0.9208
+    },
+    "119": {
+      "max_changed_ratio": 0.0146,
+      "max_mean_de": 2.899,
+      "min_ssim": 0.9599
+    },
+    "120": {
+      "max_changed_ratio": 0.0102,
+      "max_mean_de": 0.297,
+      "min_ssim": 0.9746
+    },
+    "121": {
+      "max_changed_ratio": 0.0559,
+      "max_mean_de": 2.436,
+      "min_ssim": 0.9011
+    },
+    "122": {
+      "max_changed_ratio": 0.0083,
+      "max_mean_de": 2.108,
+      "min_ssim": 0.9618
+    },
+    "123": {
+      "max_changed_ratio": 0.1128,
+      "max_mean_de": 5.877,
+      "min_ssim": 0.7975,
+      "rationale": "the preflight table — 8.86%. The row pitch is InDesign's rule for rule; what is left is cell text, where our hyphenation dictionary and Adobe's Proximity one disagree on individual words."
+    },
+    "124": {
+      "max_changed_ratio": 0.1002,
+      "max_mean_de": 5.522,
+      "min_ssim": 0.811,
+      "rationale": "container parts table: cell baselines ~4pt high (WP4)"
+    },
+    "125": {
+      "max_changed_ratio": 0.1077,
+      "max_mean_de": 4.435,
+      "min_ssim": 0.8591
+    },
+    "126": {
+      "max_changed_ratio": 0.0643,
+      "max_mean_de": 2.622,
+      "min_ssim": 0.8952
+    },
+    "127": {
+      "max_changed_ratio": 0.0727,
+      "max_mean_de": 2.729,
+      "min_ssim": 0.8909
+    },
+    "128": {
+      "max_changed_ratio": 0.055,
+      "max_mean_de": 1.707,
+      "min_ssim": 0.9329
+    },
+    "129": {
+      "max_changed_ratio": 0.0511,
+      "max_mean_de": 1.592,
+      "min_ssim": 0.9343
+    },
+    "130": {
+      "max_changed_ratio": 0.0198,
+      "max_mean_de": 0.542,
+      "min_ssim": 0.9689
+    },
+    "131": {
+      "max_changed_ratio": 0.0193,
+      "max_mean_de": 0.628,
+      "min_ssim": 0.9589
+    },
+    "132": {
+      "max_changed_ratio": 0.0574,
+      "max_mean_de": 2.481,
+      "min_ssim": 0.8704
+    },
+    "133": {
+      "max_changed_ratio": 0.0363,
+      "max_mean_de": 1.682,
+      "min_ssim": 0.8772
+    },
+    "134": {
+      "max_changed_ratio": 0.0057,
+      "max_mean_de": 0.207,
+      "min_ssim": 0.9709
+    }
+  }
+}

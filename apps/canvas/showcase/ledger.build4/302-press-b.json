@@ -1,0 +1,109 @@
+{
+  "chapter": "302-press-b",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "pr-preflight",
+      "title": "The preflight — the export door's own findings",
+      "pages": [
+        123
+      ],
+      "covers": [
+        "the-renderer.pdf-export",
+        "the-renderer.export-diagnostics"
+      ],
+      "notes": [
+        "exportPdf standard=pdf17 — 29426971 bytes (discarded), 27 diagnostic(s), 27 finding(s), 30.1s"
+      ]
+    },
+    {
+      "module": "pr-container",
+      "title": "The container, opened — parts listed, written, read back",
+      "pages": [
+        124
+      ],
+      "covers": [
+        "package-anatomy.paged-container",
+        "package-anatomy.paged-parts-door"
+      ],
+      "notes": [
+        "listPagedParts paged/ — 14 part(s) before this page, 15 after; paged/annual/manifest-note.json written (caller unset) and read back 153 bytes"
+      ]
+    }
+  ],
+  "notes": [
+    "pr-preflight: exportPdf standard=pdf17 — 29426971 bytes (discarded), 27 diagnostic(s), 27 finding(s), 30.1s",
+    "pr-container: listPagedParts paged/ — 14 part(s) before this page, 15 after; paged/annual/manifest-note.json written (caller unset) and read back 153 bytes"
+  ],
+  "ops": {
+    "batch": {
+      "count": 32,
+      "firstModule": "pr-preflight",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 11,
+      "firstModule": "pr-preflight",
+      "transient": false
+    },
+    "bindCreated": {
+      "count": 11,
+      "firstModule": "pr-preflight",
+      "transient": false
+    },
+    "insertText": {
+      "count": 92,
+      "firstModule": "pr-preflight",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 93,
+      "firstModule": "pr-preflight",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 176,
+      "firstModule": "pr-preflight",
+      "transient": false
+    },
+    "insertTable": {
+      "count": 2,
+      "firstModule": "pr-preflight",
+      "transient": false
+    },
+    "insertHeaderRow": {
+      "count": 2,
+      "firstModule": "pr-preflight",
+      "transient": false
+    },
+    "setRowHeight": {
+      "count": 2,
+      "firstModule": "pr-preflight",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 11,
+      "firstModule": "pr-preflight"
+    },
+    "cellInsetLeft": {
+      "count": 80,
+      "firstModule": "pr-preflight"
+    },
+    "cellInsetRight": {
+      "count": 80,
+      "firstModule": "pr-preflight"
+    },
+    "appliedTableStyle": {
+      "count": 2,
+      "firstModule": "pr-preflight"
+    },
+    "appliedConditions": {
+      "count": 3,
+      "firstModule": "pr-preflight"
+    }
+  }
+}

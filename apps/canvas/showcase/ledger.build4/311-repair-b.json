@@ -1,0 +1,39 @@
+{
+  "chapter": "311-repair-b",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "lr-prose",
+      "title": "The chart wall's prose, returned to itself",
+      "pages": [
+        96
+      ],
+      "covers": [
+        "stories-text.text.delete"
+      ],
+      "notes": [
+        "the chart wall's heading: deleted 4 character(s) the chart lowering poured into this story at offset 0 (the label pour targets a story the page already owns — a product defect, recorded)",
+        "the chart wall's standfirst: deleted 4 character(s) the chart lowering poured into this story at offset 0 (the label pour targets a story the page already owns — a product defect, recorded)"
+      ]
+    }
+  ],
+  "notes": [
+    "lr-prose: the chart wall's heading: deleted 4 character(s) the chart lowering poured into this story at offset 0 (the label pour targets a story the page already owns — a product defect, recorded)",
+    "lr-prose: the chart wall's standfirst: deleted 4 character(s) the chart lowering poured into this story at offset 0 (the label pour targets a story the page already owns — a product defect, recorded)"
+  ],
+  "ops": {
+    "batch": {
+      "count": 2,
+      "firstModule": "lr-prose",
+      "transient": false
+    },
+    "deleteRange": {
+      "count": 2,
+      "firstModule": "lr-prose",
+      "transient": false
+    }
+  },
+  "paths": {}
+}

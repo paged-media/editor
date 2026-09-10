@@ -1,0 +1,140 @@
+{
+  "chapter": "125-paragraph",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "pg-opener",
+      "title": "Ch.3 opener — The Paragraph",
+      "pages": [
+        23
+      ],
+      "covers": [
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "pg-knuth-plass",
+      "title": "The Knuth-Plass demonstration",
+      "pages": [
+        24,
+        25
+      ],
+      "covers": [
+        "typography.knuth-plass",
+        "typography.hyphenation",
+        "typography.justification-spacing",
+        "typography.tracking-kerning",
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "pg-keeps",
+      "title": "Keeps, breaks, drop caps and indents",
+      "pages": [
+        26
+      ],
+      "covers": [
+        "typography.drop-caps",
+        "stories-text.style-apply-range"
+      ],
+      "notes": [
+        "keep flags measured inert: paragraphKeepLinesTogether and paragraphKeepWithNext are accepted, stored, and round-trip on the wire, but setting them moved no pixels — the composer does not yet consult them when fragmenting across linked frames"
+      ]
+    }
+  ],
+  "notes": [
+    "pg-keeps: keep flags measured inert: paragraphKeepLinesTogether and paragraphKeepWithNext are accepted, stored, and round-trip on the wire, but setting them moved no pixels — the composer does not yet consult them when fragmenting across linked frames"
+  ],
+  "ops": {
+    "batch": {
+      "count": 59,
+      "firstModule": "pg-opener",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 31,
+      "firstModule": "pg-opener",
+      "transient": false
+    },
+    "bindCreated": {
+      "count": 31,
+      "firstModule": "pg-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 42,
+      "firstModule": "pg-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 45,
+      "firstModule": "pg-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 52,
+      "firstModule": "pg-opener",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 31,
+      "firstModule": "pg-opener"
+    },
+    "appliedConditions": {
+      "count": 5,
+      "firstModule": "pg-opener"
+    },
+    "paragraphHyphenation": {
+      "count": 2,
+      "firstModule": "pg-knuth-plass"
+    },
+    "paragraphJustification": {
+      "count": 2,
+      "firstModule": "pg-knuth-plass"
+    },
+    "characterTracking": {
+      "count": 3,
+      "firstModule": "pg-knuth-plass"
+    },
+    "paragraphKeepLinesTogether": {
+      "count": 1,
+      "firstModule": "pg-keeps"
+    },
+    "paragraphKeepWithNext": {
+      "count": 1,
+      "firstModule": "pg-keeps"
+    },
+    "paragraphDropCapCharacters": {
+      "count": 1,
+      "firstModule": "pg-keeps"
+    },
+    "paragraphDropCapLines": {
+      "count": 1,
+      "firstModule": "pg-keeps"
+    },
+    "paragraphSpaceBefore": {
+      "count": 1,
+      "firstModule": "pg-keeps"
+    },
+    "paragraphSpaceAfter": {
+      "count": 1,
+      "firstModule": "pg-keeps"
+    },
+    "paragraphFirstLineIndent": {
+      "count": 1,
+      "firstModule": "pg-keeps"
+    },
+    "paragraphLeftIndent": {
+      "count": 1,
+      "firstModule": "pg-keeps"
+    },
+    "paragraphRightIndent": {
+      "count": 1,
+      "firstModule": "pg-keeps"
+    }
+  }
+}

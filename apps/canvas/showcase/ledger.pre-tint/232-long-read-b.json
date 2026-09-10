@@ -1,0 +1,77 @@
+{
+  "chapter": "232-long-read-b",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "lr-bake",
+      "title": "The bake — live versus native",
+      "pages": [
+        107,
+        108
+      ],
+      "covers": [
+        "plugin-platform.document-metadata",
+        "plugin-web.render-readout",
+        "package-anatomy.paged-parts-door",
+        "plugin-web.source-panel",
+        "plugin-web.metadata-persistence"
+      ],
+      "notes": [
+        "the bake materialized 30 native item(s): 1 rectangle(s), 28 text frame(s), 1 path(s), plus 6 minted swatch(es)",
+        "listPagedParts paged/media.paged.web/ — 1 part(s): ueef010/source.json",
+        "renderWebFrame died in the plugin lane (a scene-layer submit was refused): Error: page.evaluate: Error: unexpected reply: mutationFailed",
+        "the live lane never submitted a scene layer on this run — p108 carries the panel-committed source without live paint; plugin-web.engine-rendering is NOT claimed by this module"
+      ]
+    }
+  ],
+  "notes": [
+    "lr-bake: the bake materialized 30 native item(s): 1 rectangle(s), 28 text frame(s), 1 path(s), plus 6 minted swatch(es)",
+    "lr-bake: listPagedParts paged/media.paged.web/ — 1 part(s): ueef010/source.json",
+    "lr-bake: renderWebFrame died in the plugin lane (a scene-layer submit was refused): Error: page.evaluate: Error: unexpected reply: mutationFailed",
+    "lr-bake: the live lane never submitted a scene layer on this run — p108 carries the panel-committed source without live paint; plugin-web.engine-rendering is NOT claimed by this module"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 10,
+      "firstModule": "lr-bake",
+      "transient": false
+    },
+    "insertText": {
+      "count": 18,
+      "firstModule": "lr-bake",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 20,
+      "firstModule": "lr-bake",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 16,
+      "firstModule": "lr-bake",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 2,
+      "firstModule": "lr-bake",
+      "transient": false
+    },
+    "setPluginMetadata": {
+      "count": 1,
+      "firstModule": "lr-bake",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 12,
+      "firstModule": "lr-bake"
+    },
+    "appliedConditions": {
+      "count": 4,
+      "firstModule": "lr-bake"
+    }
+  }
+}

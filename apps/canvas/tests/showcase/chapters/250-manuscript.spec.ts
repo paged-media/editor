@@ -35,10 +35,19 @@ import { build as saveback } from "../pages/250-manuscript/03-saveback";
 
 annualChapter({
   id: "250-manuscript",
+  // Panel-driven modules poll the app; under machine contention every
+  // wait runs to its ceiling, and the chapter outran 40 minutes twice.
+  budgetMinutes: 90,
   title: "Ch.19 The Manuscript",
   modules: [
     { id: "mp-opener", pages: [p(115)], build: opener },
-    { id: "mp-manuscript", pages: [p(116), p(117)], build: manuscript },
+    // UNBATCHED: threading. The links go out with real ids and the
+    // engine composes them (core's batch_composition pins four
+    // shapes), but through the editor a batched chain leaves the
+    // target carrying the story it was born with — 135-story's
+    // oracle caught it, the manuscript logged it. Diagnose before
+    // lifting this.
+    { id: "mp-manuscript", pages: [p(116), p(117)], build: manuscript , unbatched: true },
     { id: "mp-saveback", pages: [p(118)], build: saveback },
   ],
 });

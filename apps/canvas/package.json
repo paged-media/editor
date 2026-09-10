@@ -20,7 +20,9 @@
     "test:fidelity:report": "playwright show-report",
     "fonts:list": "tsx scripts/fonts-resolve.ts --list",
     "fonts:resolve": "tsx scripts/fonts-resolve.ts",
-    "typecheck:showcase": "tsc --noEmit -p tests/showcase/tsconfig.json"
+    "typecheck:showcase": "tsc --noEmit -p tests/showcase/tsconfig.json",
+    "showcase:indesign-render": "playwright test --project=showcase --grep \"InDesign render\"",
+    "showcase:indesign-render:capture": "SHOWCASE_RENDER_MODE=capture playwright test --project=showcase --grep \"InDesign render\""
   },
   "dependencies": {
     "@paged-media/canvas-wasm": "0.62.0",

@@ -1,0 +1,256 @@
+{
+  "chapter": "172-table-b",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "tb-anatomy",
+      "title": "Cell anatomy — the property paths",
+      "pages": [
+        68
+      ],
+      "covers": [
+        "tables.model",
+        "tables.cell-composition",
+        "tables.cell-vertical-justification",
+        "tables.borders-strokes"
+      ],
+      "notes": [
+        "cellFillTint: recorded on the wire and in the model, but the cell fill composites at full strength on this build — measured on this page (the tinted cell matches the untinted one); edge-stroke tints render correctly"
+      ]
+    },
+    {
+      "module": "tb-structure",
+      "title": "Structure ops — the grid rebuilt live",
+      "pages": [
+        69
+      ],
+      "covers": [
+        "tables.model",
+        "tables.cell-composition"
+      ]
+    },
+    {
+      "module": "tb-styles",
+      "title": "Table and cell styles",
+      "pages": [
+        70
+      ],
+      "covers": [
+        "tables.model",
+        "tables.style-cascade",
+        "tables.cell-composition"
+      ]
+    }
+  ],
+  "notes": [
+    "tb-anatomy: cellFillTint: recorded on the wire and in the model, but the cell fill composites at full strength on this build — measured on this page (the tinted cell matches the untinted one); edge-stroke tints render correctly"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 23,
+      "firstModule": "tb-anatomy",
+      "transient": false
+    },
+    "insertText": {
+      "count": 87,
+      "firstModule": "tb-anatomy",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 90,
+      "firstModule": "tb-anatomy",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 183,
+      "firstModule": "tb-anatomy",
+      "transient": false
+    },
+    "insertTable": {
+      "count": 6,
+      "firstModule": "tb-anatomy",
+      "transient": false
+    },
+    "batch": {
+      "count": 8,
+      "firstModule": "tb-anatomy",
+      "transient": false
+    },
+    "insertTableRow": {
+      "count": 2,
+      "firstModule": "tb-structure",
+      "transient": false
+    },
+    "insertTableColumn": {
+      "count": 2,
+      "firstModule": "tb-structure",
+      "transient": false
+    },
+    "setColumnWidth": {
+      "count": 1,
+      "firstModule": "tb-structure",
+      "transient": false
+    },
+    "deleteTableRow": {
+      "count": 1,
+      "firstModule": "tb-structure",
+      "transient": true
+    },
+    "deleteTableColumn": {
+      "count": 1,
+      "firstModule": "tb-structure",
+      "transient": true
+    },
+    "insertHeaderRow": {
+      "count": 1,
+      "firstModule": "tb-structure",
+      "transient": true
+    },
+    "removeHeaderRow": {
+      "count": 1,
+      "firstModule": "tb-structure",
+      "transient": true
+    },
+    "insertFooterRow": {
+      "count": 1,
+      "firstModule": "tb-structure",
+      "transient": true
+    },
+    "removeFooterRow": {
+      "count": 1,
+      "firstModule": "tb-structure",
+      "transient": true
+    },
+    "createTableStyle": {
+      "count": 2,
+      "firstModule": "tb-styles",
+      "transient": false
+    },
+    "renameTableStyle": {
+      "count": 1,
+      "firstModule": "tb-styles",
+      "transient": false
+    },
+    "createCellStyle": {
+      "count": 2,
+      "firstModule": "tb-styles",
+      "transient": false
+    },
+    "renameCellStyle": {
+      "count": 1,
+      "firstModule": "tb-styles",
+      "transient": false
+    },
+    "setStyleProperty": {
+      "count": 1,
+      "firstModule": "tb-styles",
+      "transient": false
+    },
+    "deleteTableStyle": {
+      "count": 1,
+      "firstModule": "tb-styles",
+      "transient": true
+    },
+    "deleteCellStyle": {
+      "count": 1,
+      "firstModule": "tb-styles",
+      "transient": true
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 23,
+      "firstModule": "tb-anatomy"
+    },
+    "cellInsetLeft": {
+      "count": 57,
+      "firstModule": "tb-anatomy"
+    },
+    "cellInsetRight": {
+      "count": 62,
+      "firstModule": "tb-anatomy"
+    },
+    "cellFillColor": {
+      "count": 3,
+      "firstModule": "tb-anatomy"
+    },
+    "cellFillTint": {
+      "count": 1,
+      "firstModule": "tb-anatomy"
+    },
+    "appliedCellStyle": {
+      "count": 10,
+      "firstModule": "tb-anatomy"
+    },
+    "cellInsetTop": {
+      "count": 1,
+      "firstModule": "tb-anatomy"
+    },
+    "cellInsetBottom": {
+      "count": 1,
+      "firstModule": "tb-anatomy"
+    },
+    "cellVerticalJustification": {
+      "count": 5,
+      "firstModule": "tb-anatomy"
+    },
+    "cellTopEdgeStrokeColor": {
+      "count": 1,
+      "firstModule": "tb-anatomy"
+    },
+    "cellTopEdgeStrokeWeight": {
+      "count": 1,
+      "firstModule": "tb-anatomy"
+    },
+    "cellTopEdgeStrokeTint": {
+      "count": 1,
+      "firstModule": "tb-anatomy"
+    },
+    "cellBottomEdgeStrokeColor": {
+      "count": 1,
+      "firstModule": "tb-anatomy"
+    },
+    "cellBottomEdgeStrokeWeight": {
+      "count": 1,
+      "firstModule": "tb-anatomy"
+    },
+    "cellBottomEdgeStrokeTint": {
+      "count": 1,
+      "firstModule": "tb-anatomy"
+    },
+    "cellLeftEdgeStrokeColor": {
+      "count": 1,
+      "firstModule": "tb-anatomy"
+    },
+    "cellLeftEdgeStrokeWeight": {
+      "count": 1,
+      "firstModule": "tb-anatomy"
+    },
+    "cellLeftEdgeStrokeTint": {
+      "count": 1,
+      "firstModule": "tb-anatomy"
+    },
+    "cellRightEdgeStrokeColor": {
+      "count": 1,
+      "firstModule": "tb-anatomy"
+    },
+    "cellRightEdgeStrokeWeight": {
+      "count": 1,
+      "firstModule": "tb-anatomy"
+    },
+    "cellRightEdgeStrokeTint": {
+      "count": 1,
+      "firstModule": "tb-anatomy"
+    },
+    "appliedConditions": {
+      "count": 6,
+      "firstModule": "tb-anatomy"
+    },
+    "appliedTableStyle": {
+      "count": 3,
+      "firstModule": "tb-styles"
+    }
+  }
+}

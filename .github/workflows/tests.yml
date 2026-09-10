@@ -178,6 +178,17 @@ jobs:
       # draft named a draw "layers" panel that has never existed.
       - name: solo profiles resolve
         run: pnpm test:solo-profiles
+      # A `@feat:` tag that matches no registry row covers NOTHING, and
+      # says so nowhere: the join files it as drift in another repo and
+      # the spec still passes. Twenty ids in this tree were in that state
+      # on 2026-09-09, fourteen of them in the plugin-surface tier — the
+      # one tier that asserts capability x surface reachability. The
+      # vocabulary is vendored (scripts/feat-vocabulary.json) rather than
+      # read across the repo boundary, because both repos are private and
+      # a token-gated read degrades to a skip. state's
+      # `sync-feat-vocabulary.mjs --check` keeps the copy current.
+      - name: feature-id vocabulary (@feat tags resolve)
+        run: pnpm test:feat-vocabulary
 
   playwright:
     name: playwright (shard ${{ matrix.shard }}/3)

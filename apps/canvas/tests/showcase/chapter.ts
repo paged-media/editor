@@ -130,10 +130,40 @@ export interface ChapterSpec {
  */
 export function discoverChapterIds(): string[] {
   const dir = pathResolve(__dirname, "chapters");
-  return readdirSync(dir)
-    .filter((f) => f.endsWith(".spec.ts") && !f.startsWith("900-"))
-    .map((f) => f.replace(/\.spec\.ts$/, ""))
-    .sort();
+  return (
+    readdirSync(dir)
+      .filter((f) => f.endsWith(".spec.ts") && !f.startsWith("900-"))
+      // Sort the FILENAMES, not the ids stripped out of them: the test
+      // runner orders spec FILES, and `-` sorts before `.`, so
+      // `311-repair-b.spec.ts` runs before `311-repair.spec.ts` while
+      // the stripped ids say the opposite. The chain then computed a
+      // predecessor that had not run yet — invisible for as long as
+      // every checkpoint was already on disk from an earlier build, and
+      // fatal on the first rebuild from scratch (three chapters and the
+      // assembly died in 123 ms each). Sorting here the way the runner
+      // does makes the two orders the same by construction; the `-a`
+      // suffix on `311-repair-a` is what makes that order the INTENDED
+      // one as well.
+      .sort()
+      .map((f) => f.replace(/\.spec\.ts$/, ""))
+      // …and the two readings of the order must AGREE. A file whose id
+      // sorts differently from its filename (`311-repair` vs
+      // `311-repair-b`) reads as one order here and runs in another;
+      // suffix it so both agree rather than leaving the chain to guess.
+      .reduce<string[]>((ids, id) => {
+        const prev = ids[ids.length - 1];
+        if (prev !== undefined && prev > id) {
+          throw new Error(
+            `chapter ${id} sorts before ${prev} by ID but after it by ` +
+              `FILENAME — the chain would build on a predecessor that has ` +
+              `not run. Rename it so both orders agree (a "-a" suffix on ` +
+              `the earlier one does it).`,
+          );
+        }
+        ids.push(id);
+        return ids;
+      }, [])
+  );
 }
 
 /**
@@ -207,7 +237,11 @@ function shouldSkip(spec: ChapterSpec): string | null {
  * checkpoint + ledger fragment, and sample earlier pages for the
  * incremental round-trip regression.
  */
-export async function runChapter(page: Page, spec: ChapterSpec): Promise<void> {
+export async function runChapter(
+  page: Page,
+  spec: ChapterSpec,
+  allowBatching = true,
+): Promise<void> {
   const skip = shouldSkip(spec);
   if (skip) {
     test.skip(true, skip);
@@ -257,12 +291,21 @@ export async function runChapter(page: Page, spec: ChapterSpec): Promise<void> {
     // Snapshot BEFORE — a module cannot mark its own homework.
     const before = await doc.renderPage(spread.pages[0]);
 
-    const report = await spread.build({
-      page,
-      doc,
-      pageIndexes: spread.pages,
-      pageIds,
-    });
+    // ONE REBUILD PER MODULE. The engine rebuilds the whole document
+    // per mutation, so on a book this size the wire lane's cost is the
+    // rebuild, not the round trip (~14 s per op in wasm on the finished
+    // 134 pages — the fifteen hours the first build took). Deferred
+    // mode collects the module's ops into one `batch`, which the engine
+    // rebuilds once; reads inside the module flush it first, so a
+    // module still sees its own writes. `ANNUAL_BATCH=0` restores the
+    // one-mutation-per-op lane.
+    const batched =
+      allowBatching && process.env.ANNUAL_BATCH !== "0" && !spread.unbatched;
+    const build = () =>
+      spread.build({ page, doc, pageIndexes: spread.pages, pageIds });
+    const t0 = Date.now();
+    const report = batched ? await doc.defer(build) : await build();
+    const authorMs = Date.now() - t0;
 
     claims.push({
       module: spread.id,
@@ -292,7 +335,8 @@ export async function runChapter(page: Page, spec: ChapterSpec): Promise<void> {
     // eslint-disable-next-line no-console
     console.log(
       `[${spec.id}] ${spread.id} — ${report.title} ` +
-        `(${report.elements.length} elements, ${report.covers.length} rows)`,
+        `(${report.elements.length} elements, ${report.covers.length} rows, ` +
+        `${(authorMs / 1000).toFixed(1)}s${batched ? " batched" : ""})`,
     );
   }
 
@@ -368,8 +412,16 @@ export function chapterTest(spec: ChapterSpec): void {
     test.setTimeout((spec.budgetMinutes ?? 40) * 60 * 1000);
     test(`${spec.title} @feat:package-anatomy.paged-container @level:happy`, async ({
       page,
-    }) => {
-      await runChapter(page, spec);
+    }, testInfo) => {
+      // FAST BY DEFAULT, CORRECT ALWAYS. The first attempt authors each
+      // module as one batch; a retry falls back to one mutation per op.
+      // A module that drives the editor's UI or carries an absolute
+      // index measured before the batch (`reorderElement { index }`)
+      // can only be right on the slow lane, and this way the chain
+      // finishes unattended and the log says which chapters took it —
+      // instead of a run stopping on the first module that cannot be
+      // deferred.
+      await runChapter(page, spec, testInfo.retry === 0);
     });
   });
 }

@@ -1,0 +1,79 @@
+{
+  "chapter": "145-apparatus",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "ap-navigation",
+      "title": "Ch.7 opener — navigation, live where a door exists",
+      "pages": [
+        45
+      ],
+      "covers": [
+        "cross-references-hyperlinks.hyperlinks",
+        "cross-references-hyperlinks.bookmarks"
+      ],
+      "notes": [
+        "ENGINE FINDING: both live insertHyperlink calls minted the same id (Hyperlink/ueeeafc) — the wire's mint scans page items only and a hyperlink adds none, so successive inserts collide",
+        "hyperlinks 3 -> 5 (2 authored live, both URL destinations); bookmarks 3, all fixture-authored"
+      ]
+    },
+    {
+      "module": "ap-destination",
+      "title": "The destination side and the index-tab system",
+      "pages": [
+        46
+      ],
+      "covers": [
+        "cross-references-hyperlinks.cross-references",
+        "cross-references-hyperlinks.index"
+      ],
+      "notes": [
+        "indexTopics 10 (collection live); cross-reference verified via export (1 source marker) + carrier hyperlink xref-overleaf — the crossReferences collection reads a never-populated designmap vector and lists 0"
+      ]
+    }
+  ],
+  "notes": [
+    "ap-navigation: ENGINE FINDING: both live insertHyperlink calls minted the same id (Hyperlink/ueeeafc) — the wire's mint scans page items only and a hyperlink adds none, so successive inserts collide",
+    "ap-navigation: hyperlinks 3 -> 5 (2 authored live, both URL destinations); bookmarks 3, all fixture-authored",
+    "ap-destination: indexTopics 10 (collection live); cross-reference verified via export (1 source marker) + carrier hyperlink xref-overleaf — the crossReferences collection reads a never-populated designmap vector and lists 0"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 14,
+      "firstModule": "ap-navigation",
+      "transient": false
+    },
+    "insertText": {
+      "count": 20,
+      "firstModule": "ap-navigation",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 24,
+      "firstModule": "ap-navigation",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 18,
+      "firstModule": "ap-navigation",
+      "transient": false
+    },
+    "insertHyperlink": {
+      "count": 2,
+      "firstModule": "ap-navigation",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 14,
+      "firstModule": "ap-navigation"
+    },
+    "appliedConditions": {
+      "count": 4,
+      "firstModule": "ap-navigation"
+    }
+  }
+}

@@ -1,0 +1,181 @@
+{
+  "chapter": "155-ink-light",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "il-opener",
+      "title": "Chapter 9 opener — Ink & Light",
+      "pages": [
+        53
+      ],
+      "covers": [
+        "stories-text.style-apply-range"
+      ]
+    },
+    {
+      "module": "il-modes",
+      "title": "The sixteen blend modes",
+      "pages": [
+        54,
+        55
+      ],
+      "covers": [
+        "effects-transparency.blend-modes"
+      ]
+    },
+    {
+      "module": "il-light",
+      "title": "Gradients, opacity, masks",
+      "pages": [
+        56
+      ],
+      "covers": [
+        "color-swatches.gradients",
+        "color-swatches.fill-stroke-apply",
+        "effects-transparency.opacity",
+        "effects-transparency.opacity-mask"
+      ],
+      "notes": [
+        "sweep/conic gradient paint exists in the renderer with no authoring door — GradientSpec is Linear|Radial (margin-noted)",
+        "opacity masks certified on the CPU lane; IDML export names masked items as lost (margin-noted; the assembly asserts the loss list)"
+      ]
+    }
+  ],
+  "notes": [
+    "il-light: sweep/conic gradient paint exists in the renderer with no authoring door — GradientSpec is Linear|Radial (margin-noted)",
+    "il-light: opacity masks certified on the CPU lane; IDML export names masked items as lost (margin-noted; the assembly asserts the loss list)"
+  ],
+  "ops": {
+    "batch": {
+      "count": 122,
+      "firstModule": "il-opener",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 38,
+      "firstModule": "il-opener",
+      "transient": false
+    },
+    "bindCreated": {
+      "count": 104,
+      "firstModule": "il-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 39,
+      "firstModule": "il-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 56,
+      "firstModule": "il-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 201,
+      "firstModule": "il-opener",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 32,
+      "firstModule": "il-modes",
+      "transient": false
+    },
+    "insertOval": {
+      "count": 34,
+      "firstModule": "il-modes",
+      "transient": false
+    },
+    "reorderElement": {
+      "count": 16,
+      "firstModule": "il-modes",
+      "transient": false
+    },
+    "createGradient": {
+      "count": 3,
+      "firstModule": "il-light",
+      "transient": false
+    },
+    "editGradient": {
+      "count": 1,
+      "firstModule": "il-light",
+      "transient": false
+    },
+    "applyOpacityMask": {
+      "count": 3,
+      "firstModule": "il-light",
+      "transient": false
+    },
+    "deleteGradient": {
+      "count": 1,
+      "firstModule": "il-light",
+      "transient": true
+    },
+    "releaseOpacityMask": {
+      "count": 1,
+      "firstModule": "il-light",
+      "transient": false
+    },
+    "deleteFrame": {
+      "count": 2,
+      "firstModule": "il-light",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 100,
+      "firstModule": "il-opener"
+    },
+    "appliedConditions": {
+      "count": 6,
+      "firstModule": "il-opener"
+    },
+    "frameFillColor": {
+      "count": 64,
+      "firstModule": "il-modes"
+    },
+    "frameBlendMode": {
+      "count": 16,
+      "firstModule": "il-modes"
+    },
+    "frameGradientFillAngle": {
+      "count": 1,
+      "firstModule": "il-light"
+    },
+    "frameGradientFillLength": {
+      "count": 2,
+      "firstModule": "il-light"
+    },
+    "frameStrokeColor": {
+      "count": 1,
+      "firstModule": "il-light"
+    },
+    "frameStrokeWeight": {
+      "count": 1,
+      "firstModule": "il-light"
+    },
+    "frameGradientStrokeAngle": {
+      "count": 1,
+      "firstModule": "il-light"
+    },
+    "frameGradientStrokeLength": {
+      "count": 1,
+      "firstModule": "il-light"
+    },
+    "frameOpacity": {
+      "count": 6,
+      "firstModule": "il-light"
+    },
+    "frameFeatherEnabled": {
+      "count": 1,
+      "firstModule": "il-light"
+    },
+    "frameFeatherWidth": {
+      "count": 1,
+      "firstModule": "il-light"
+    }
+  }
+}

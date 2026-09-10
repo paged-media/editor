@@ -1,0 +1,118 @@
+{
+  "chapter": "222-ledger-b",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "lg-pour",
+      "title": "The native pour",
+      "pages": [
+        98
+      ],
+      "covers": [
+        "sheet.lower.page",
+        "plugin-platform.text-measurement"
+      ],
+      "notes": [
+        "showGridInFrame painted the live grid into the lowered frame (C-1 scene layer), and hideGridInFrame cleared it — demonstrated, not resident: session state never reaches the checkpoint"
+      ]
+    },
+    {
+      "module": "lg-formulas",
+      "title": "Formulas, spill, and the roster",
+      "pages": [
+        99
+      ],
+      "covers": [
+        "sheet.calc.engine",
+        "sheet.fn.library",
+        "sheet.calc.spill",
+        "sheet.format.engine",
+        "sheet.lower.page"
+      ],
+      "notes": []
+    }
+  ],
+  "notes": [
+    "lg-pour: showGridInFrame painted the live grid into the lowered frame (C-1 scene layer), and hideGridInFrame cleared it — demonstrated, not resident: session state never reaches the checkpoint"
+  ],
+  "ops": {
+    "insertTextFrame": {
+      "count": 10,
+      "firstModule": "lg-pour",
+      "transient": false
+    },
+    "insertText": {
+      "count": 50,
+      "firstModule": "lg-pour",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 52,
+      "firstModule": "lg-pour",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 98,
+      "firstModule": "lg-pour",
+      "transient": false
+    },
+    "batch": {
+      "count": 3,
+      "firstModule": "lg-pour",
+      "transient": false
+    },
+    "insertTable": {
+      "count": 1,
+      "firstModule": "lg-formulas",
+      "transient": false
+    },
+    "insertHeaderRow": {
+      "count": 1,
+      "firstModule": "lg-formulas",
+      "transient": false
+    },
+    "insertFooterRow": {
+      "count": 1,
+      "firstModule": "lg-formulas",
+      "transient": false
+    },
+    "setRowHeight": {
+      "count": 2,
+      "firstModule": "lg-formulas",
+      "transient": false
+    },
+    "setCellSpan": {
+      "count": 1,
+      "firstModule": "lg-formulas",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 11,
+      "firstModule": "lg-pour"
+    },
+    "frameTransform": {
+      "count": 2,
+      "firstModule": "lg-pour"
+    },
+    "appliedConditions": {
+      "count": 4,
+      "firstModule": "lg-pour"
+    },
+    "cellInsetLeft": {
+      "count": 40,
+      "firstModule": "lg-formulas"
+    },
+    "cellInsetRight": {
+      "count": 40,
+      "firstModule": "lg-formulas"
+    },
+    "appliedTableStyle": {
+      "count": 1,
+      "firstModule": "lg-formulas"
+    }
+  }
+}

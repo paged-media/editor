@@ -1,0 +1,189 @@
+{
+  "chapter": "165-color",
+  "pageCount": 134,
+  "gpu": true,
+  "gpuReason": "",
+  "claims": [
+    {
+      "module": "co-opener",
+      "title": "Ch.11 opener — The Colour",
+      "pages": [
+        61
+      ],
+      "covers": [
+        "color-swatches.fill-stroke-apply",
+        "color-swatches.process-spot-tint",
+        "color-swatches.lab-mixed-ink"
+      ]
+    },
+    {
+      "module": "co-crud",
+      "title": "Minting ink — swatch and group CRUD",
+      "pages": [
+        62
+      ],
+      "covers": [
+        "color-swatches.swatch.crud",
+        "color-swatches.color-groups",
+        "color-swatches.character-fill",
+        "color-swatches.overprint",
+        "color-swatches.fill-stroke-apply"
+      ]
+    },
+    {
+      "module": "co-ase",
+      "title": "The .ase round trip",
+      "pages": [
+        63
+      ],
+      "covers": [
+        "color-swatches.swatch.crud",
+        "color-swatches.color-groups"
+      ]
+    },
+    {
+      "module": "co-management",
+      "title": "The prepress bench — colour management",
+      "pages": [
+        64
+      ],
+      "covers": [
+        "color-swatches.icc-cmm",
+        "color-swatches.ink-manager",
+        "color-swatches.document-defaults"
+      ]
+    }
+  ],
+  "notes": [],
+  "ops": {
+    "batch": {
+      "count": 85,
+      "firstModule": "co-opener",
+      "transient": false
+    },
+    "insertTextFrame": {
+      "count": 42,
+      "firstModule": "co-opener",
+      "transient": false
+    },
+    "bindCreated": {
+      "count": 60,
+      "firstModule": "co-opener",
+      "transient": false
+    },
+    "insertText": {
+      "count": 49,
+      "firstModule": "co-opener",
+      "transient": false
+    },
+    "applyStyle": {
+      "count": 52,
+      "firstModule": "co-opener",
+      "transient": false
+    },
+    "setElementProperty": {
+      "count": 89,
+      "firstModule": "co-opener",
+      "transient": false
+    },
+    "insertFrame": {
+      "count": 18,
+      "firstModule": "co-opener",
+      "transient": false
+    },
+    "createSwatch": {
+      "count": 7,
+      "firstModule": "co-crud",
+      "transient": false
+    },
+    "editSwatch": {
+      "count": 1,
+      "firstModule": "co-crud",
+      "transient": false
+    },
+    "deleteSwatch": {
+      "count": 4,
+      "firstModule": "co-crud",
+      "transient": false
+    },
+    "createColorGroup": {
+      "count": 3,
+      "firstModule": "co-crud",
+      "transient": false
+    },
+    "deleteColorGroup": {
+      "count": 2,
+      "firstModule": "co-crud",
+      "transient": false
+    },
+    "editColorGroup": {
+      "count": 1,
+      "firstModule": "co-crud",
+      "transient": false
+    },
+    "importSwatchLibrary": {
+      "count": 1,
+      "firstModule": "co-ase",
+      "transient": false
+    },
+    "setColorSettings": {
+      "count": 1,
+      "firstModule": "co-management",
+      "transient": false
+    },
+    "setProofSetup": {
+      "count": 1,
+      "firstModule": "co-management",
+      "transient": false
+    },
+    "setInkSetting": {
+      "count": 1,
+      "firstModule": "co-management",
+      "transient": false
+    },
+    "setUseStandardLabForSpots": {
+      "count": 1,
+      "firstModule": "co-management",
+      "transient": false
+    },
+    "setDocumentDefaults": {
+      "count": 1,
+      "firstModule": "co-management",
+      "transient": false
+    }
+  },
+  "paths": {
+    "itemLayer": {
+      "count": 60,
+      "firstModule": "co-opener"
+    },
+    "frameFillColor": {
+      "count": 17,
+      "firstModule": "co-opener"
+    },
+    "appliedConditions": {
+      "count": 7,
+      "firstModule": "co-opener"
+    },
+    "characterFillColor": {
+      "count": 1,
+      "firstModule": "co-crud"
+    },
+    "frameStrokeColor": {
+      "count": 1,
+      "firstModule": "co-crud"
+    },
+    "frameStrokeWeight": {
+      "count": 1,
+      "firstModule": "co-crud"
+    },
+    "frameOverprintFill": {
+      "count": 1,
+      "firstModule": "co-crud"
+    },
+    "frameOverprintStroke": {
+      "count": 1,
+      "firstModule": "co-crud"
+    }
+  }
+}
