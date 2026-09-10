@@ -118,6 +118,12 @@ export default tseslint.config(
   {
     ignores: [
       "**/dist/**",
+      // `dist-demo/` is `build:demo`'s output. It is gitignored, so CI's
+      // clean checkout never sees it and CI's lint has always passed —
+      // but anyone who has run `build:demo` locally then gets 118 errors
+      // out of minified vendor bundles. Build output is build output
+      // whatever the directory is called.
+      "**/dist-demo/**",
       "**/node_modules/**",
       "**/.vite/**",
       "**/playwright-report/**",
