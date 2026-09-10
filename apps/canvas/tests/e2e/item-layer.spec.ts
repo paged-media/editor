@@ -237,30 +237,26 @@ test.describe("itemLayer — protocol 62 layer assignment", () => {
     await expect(visToggle).toHaveText("Show");
   });
 
-  // DELIBERATELY UNTAGGED. This test passes by proving the capability
-  // does NOT work here, and a `@feat:` tag is a COVERAGE claim — so
-  // tagging it told the registry that `layers.item-assignment` is
-  // covered on `editor.script`, a stage the row itself marks `planned`
-  // for exactly this reason. The join reported that as drift the first
-  // time the editor lane published after 2026-08-22, which is how it was
-  // found. A characterisation of a defect is evidence of the defect, not
-  // of the feature.
+  // TAGGED AGAIN, and it means something now.
   //
-  // RE-TAG IT when the pin carries the fix and the assertions flip —
-  // then it really is evidence.
-  test("AC-ITEMLAYER-3 — KNOWN DEFECT: paged.set refuses itemLayer on the published wasm @level:edge", async ({
+  // This test used to pass by proving the capability did NOT work here,
+  // and so carried no `@feat:` tag: a tag is a COVERAGE claim, and
+  // tagging it told the registry that `layers.item-assignment` was
+  // covered on `editor.script` — a stage the row marked `planned` for
+  // exactly that reason. A characterisation of a defect is evidence of
+  // the defect, not of the feature.
+  //
+  // The pin now carries a806321 (canvas-wasm 0.63.0), so the assertions
+  // are flipped and the tag is back.
+  test("AC-ITEMLAYER-3 — paged.set writes itemLayer @feat:layers.item-assignment @level:happy", async ({
     page,
   }) => {
-    // Characterisation, not endorsement. `paged.set` returns "false" and
-    // writes nothing: the path parses (it is in the introspect catalog)
-    // and then `js_value_to_wire` has no arm making it string-valued.
-    // Fixed in core at a806321; the editor pins PUBLISHED canvas-wasm,
-    // so this stays true here until a 0.62.x release.
-    //
-    // FLIP THIS when the editor's canvas-wasm pin includes the fix: the
-    // expectation becomes "true" and the readback becomes `target`, the
-    // `@feat:` tags come back, and the registry row's editor.script stage
-    // goes back to shipped.
+    // The defect this replaces: `paged.set` returned "false" and wrote
+    // nothing, because protocol 62 added the path to the introspect
+    // catalog (so the script host PARSED it) and to the mutate layer (so
+    // the wire APPLIED it), and never taught `js_value_to_wire` that it
+    // is string-valued — the conversion between parse and apply had no
+    // arm for it. Fixed in core at a806321, shipped in 0.63.0.
     const before = await layerIds(page);
     await mutate(page, { op: "layerInsert", args: { position: 0, name: "Script target" } });
     const target = (await layerIds(page)).find((id) => !before.includes(id))!;
@@ -269,7 +265,7 @@ test.describe("itemLayer — protocol 62 layer assignment", () => {
       page,
       `paged.set(${JSON.stringify(refStr(rect))}, "itemLayer", ${JSON.stringify(target)});`,
     );
-    expect(out[0], "paged.set(itemLayer) unexpectedly succeeded — flip this test").toBe("false");
-    expect(await readItemLayer(page, rect)).not.toBe(target);
+    expect(out[0], "paged.set(itemLayer) returned false — the pin may have moved back").toBe("true");
+    expect(await readItemLayer(page, rect)).toBe(target);
   });
 });

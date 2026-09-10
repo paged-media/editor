@@ -87,13 +87,10 @@ test.describe("Info panel", () => {
   }) => {
     // ENGINE FINDING (2026-08-18, this spec's first run): DocumentMeta.dirty
     // was HARDCODED false in paged-canvas — the status chip, title dot and
-    // this row permanently claimed a clean document. Fixed engine-side
-    // (model.rs computes it from the undo log; rides the v0.61.2 tag) —
-    // unfixme when the canvas-wasm pin carries it.
-    test.fixme(
-      true,
-      "DocumentMeta.dirty is hardcoded false in the pinned canvas-wasm; engine fix rides v0.61.2",
-    );
+    // this row permanently claimed a clean document. Fixed engine-side in
+    // 6ca43e8 (model.rs computes it from the undo log), which the v0.62.0
+    // tag carried; the fixme outlived its gap by a pin move and comes off
+    // here.
     await expect(
       page.locator('[data-info-row="Dirty"] [data-info-value]'),
     ).toHaveText("no");

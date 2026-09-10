@@ -25,7 +25,7 @@
     "showcase:indesign-render:capture": "SHOWCASE_RENDER_MODE=capture playwright test --project=showcase --grep \"InDesign render\""
   },
   "dependencies": {
-    "@paged-media/canvas-wasm": "0.62.0",
+    "@paged-media/canvas-wasm": "0.63.0",
     "@paged-media/catalog": "workspace:*",
     "@paged-media/client": "workspace:*",
     "@paged-media/doc": "0.1.0-canary.0",
