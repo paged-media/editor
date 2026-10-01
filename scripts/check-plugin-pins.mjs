@@ -2,8 +2,8 @@
 // Plugin-canary drift check — the bundle half of the Decision-B
 // package-boundary model.
 //
-// `check-protocol-version.sh` guards the ENGINE boundary (protocol.ts vs
-// the installed @paged-media/canvas-wasm minor). This guards the PLUGIN
+// The ENGINE boundary needs no check: protocol.ts reads the protocol from
+// the installed @paged-media/canvas-wasm version. This guards the PLUGIN
 // boundary, which had no check at all and had quietly drifted on six of
 // eight bundles by 2026-08-04:
 //
@@ -30,8 +30,7 @@
 //   node scripts/check-plugin-pins.mjs              # fails on drift
 //   node scripts/check-plugin-pins.mjs --warn-only  # reports, exits 0
 //
-// Invoked directly rather than through a package.json script, matching
-// check-protocol-version.sh.
+// Invoked directly rather than through a package.json script.
 
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";

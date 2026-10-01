@@ -7,11 +7,10 @@ name: protocol-version
 # `packages/client/src/wasm/*.d.ts` to catch wire-format drift. After
 # the package boundary, the wire types + engine wasm ship in the
 # published `@paged-media/canvas-wasm` package, so there is nothing to
-# regenerate. The drift guard is now static and dependency-based: the
-# minor of the installed canvas-wasm version must equal the TS-side
-# `PROTOCOL_VERSION` constant (convention: `0.<protocol>.<patch>`).
-#
-# See `scripts/check-protocol-version.sh` for the full rationale.
+# regenerate. Since 2026-10-01 there is no drift guard either: the TS
+# side READS `PROTOCOL_VERSION` from the installed canvas-wasm version
+# (convention `0.<protocol>.<patch>`, packages/client/src/protocol.ts), so
+# there is one number. What is left here is the plugin-pin check.
 
 on:
   pull_request:
@@ -20,7 +19,6 @@ on:
       - "packages/client/package.json"
       - "apps/canvas/package.json"
       - "pnpm-lock.yaml"
-      - "scripts/check-protocol-version.sh"
       - "scripts/check-plugin-pins.mjs"
       - ".github/workflows/protocol-version.yml"
   workflow_dispatch:
@@ -45,8 +43,9 @@ jobs:
       # installed @paged-media/canvas-wasm version.
       - run: pnpm install --frozen-lockfile
 
-      - name: Check protocol-version / package agreement
-        run: bash scripts/check-protocol-version.sh
+      # No protocol-version / package agreement step: protocol.ts READS
+      # the protocol from the installed package's version, so there is no
+      # second number to agree with.
 
       # Release-lane half of the pins story (audit 17082026 E6): with no
       # sibling checkouts in CI the script self-SKIPs (exit 0) — honest,

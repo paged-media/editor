@@ -77,13 +77,12 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       "utf8",
     ),
   ) as { version: string };
-  // The wire protocol is a property of the ENGINE, not of a version
-  // string. Deriving it from `0.<protocol>.<patch>` printed "protocol 0"
-  // the first time the book was built against a locally-built wasm —
-  // a colophon that lied about the very thing it exists to record.
-  // `PROTOCOL_VERSION` is the number the editor speaks, and CI
-  // (`scripts/check-protocol-version.sh`) checks it against the
-  // installed wasm, so it cannot drift from the engine in the package.
+  // `PROTOCOL_VERSION` is the number the editor speaks. It is read from
+  // the installed package's `0.<protocol>.<patch>` version (protocol.ts).
+  // That once printed "protocol 0" here, against a local wasm stamped
+  // 0.0.0-local; `sync-wasm.sh` now stamps 0.<protocol>.0-local, and any
+  // build stamped wrong fails LOUDLY, because the worker refuses a wasm
+  // whose own protocol differs (ADR 031) instead of printing a wrong one.
   const protocol = PROTOCOL_VERSION;
   notes.push(
     `colophon numbers — chapters ${fragments.length} · rows ${rowsClaimed.size} · ` +

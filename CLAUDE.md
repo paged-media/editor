@@ -66,10 +66,12 @@ there is no build-from-core step and no vendored `.d.ts` (types come
 from the package).
 
 - **Version convention**: package `0.<protocol>.<patch>` — the minor
-  IS the wire protocol. `scripts/check-protocol-version.sh` (CI:
-  protocol-version.yml) asserts `protocol.ts PROTOCOL_VERSION ==`
-  installed package minor; the worker handshake still catches runtime
-  drift (`protocolMismatch`).
+  IS the wire protocol, and `protocol.ts` READS `PROTOCOL_VERSION` from
+  the installed package's version (no hand-kept copy, so nothing to
+  drift; the old `check-protocol-version.sh` is retired). The worker
+  handshake still refuses a wasm whose own protocol differs
+  (`protocolMismatch`, fatal). Local engine builds go through
+  `~/paged/sync-wasm.sh`, which stamps `0.<protocol>.0-local`.
 - **Engine bumps**: core tags `v0.<protocol>.<patch>` → its
   publish-wasm workflow ships the packages → bump the three pins +
   `PROTOCOL_VERSION` here in one change.

@@ -30,17 +30,27 @@
 // this barrel exists so consumers don't have to learn the wasm import
 // path.
 //
-// CI enforces the version contract: `scripts/check-protocol-version.sh`
-// compares `PROTOCOL_VERSION` below against the `ProtocolVersion` tuple
-// baked into the installed package's `.d.ts` and fails on drift (see
-// `.github/workflows/protocol-version.yml`).
-//
-// `PROTOCOL_VERSION` stays a TS constant because the canvas
-// outgoing messages need a value (not a type) at runtime; the
-// matching Rust constant is in `paged-canvas/src/channel.rs` and
-// the published package must update in lockstep.
+// `PROTOCOL_VERSION` is READ from the installed engine package, not
+// copied. The package version IS the protocol by convention (thoughts
+// ADR 006: `@paged-media/canvas-wasm` publishes as `0.<protocol>.<patch>`,
+// from the Rust constant in `paged-canvas/src/channel.rs`). It used to be
+// a hand-kept `63` plus a CI script comparing it with the package; now
+// moving the pin is the whole protocol bump on this side. The worker
+// still checks it against the wasm it loads and refuses to attach on a
+// mismatch (ADR 031). The main thread needs the value without loading
+// the wasm, hence the package.json rather than the module.
+import canvasWasmPackage from "@paged-media/canvas-wasm/package.json" with { type: "json" };
 
-export const PROTOCOL_VERSION = 63 as const;
+export const PROTOCOL_VERSION: number = protocolFromVersion(canvasWasmPackage.version);
+
+/** The protocol a `0.<protocol>.<patch>` package version carries. */
+export function protocolFromVersion(version: string): number {
+  const minor = Number(version.split(".")[1]);
+  if (!Number.isInteger(minor)) {
+    throw new Error(`@paged-media/canvas-wasm version ${version} is not 0.<protocol>.<patch>`);
+  }
+  return minor;
+}
 
 export type {
   AnchorId,
