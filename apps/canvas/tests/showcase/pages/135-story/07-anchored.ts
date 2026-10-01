@@ -23,10 +23,12 @@
 // The engine allowed ONE insert and ZERO property writes, and this
 // page records that instead of faking it:
 //
-//   · a SECOND `insertAnchoredFrame` in one session is refused as a
-//     duplicate self_id — the page-item id minter scans spread items
+//   · a SECOND `insertAnchoredFrame` in one session WAS refused as a
+//     duplicate self_id — the page-item id minter scanned spread items
 //     only, and anchored frames live inside their stories, so insert
-//     #2 re-mints insert #1's id;
+//     #2 re-minted insert #1's id. Core v0.63.0 fixed it (7483f43, one
+//     id floor across every kind), so insert #2 is now MEASURED, not
+//     asserted, and the page prints whichever outcome the run produced;
 //   · EVERY `setElementProperty` on the wire-minted anchored frame —
 //     the ten anchored* paths, a plain frameFillColor alike — refuses
 //     "node not found", although the insert-side duplicate check
@@ -93,20 +95,23 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   // The refusals, verbatim — captured live so the page's record is the
   // engine's own sentence, not our paraphrase.
   let insertRefusal = "";
+  let secondInsert: string;
   try {
-    await doc.mutateId("insertAnchoredFrame", {
-      storyId: host.storyId,
-      offset: anchorAt,
-      width: 9,
-      height: 9,
-    });
+    elements.push(
+      await doc.mutateId("insertAnchoredFrame", {
+        storyId: host.storyId,
+        offset: anchorAt,
+        width: 9,
+        height: 9,
+      }),
+    );
+    secondInsert =
+      "minted its own id (the duplicate-self_id collision this page " +
+      "used to record was fixed in core v0.63.0)";
   } catch (err) {
     insertRefusal = err instanceof Error ? err.message : String(err);
+    secondInsert = `"${insertRefusal.slice(0, 90)}…"`;
   }
-  expect(
-    insertRefusal,
-    "the second anchored insert is expected to collide (engine minter bug)",
-  ).toContain("duplicate self_id");
 
   // The ten anchored* paths, attempted ONE BY ONE and measured — the
   // engine has shown BOTH faces across runs (node-not-found refusals
@@ -152,9 +157,8 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     ctx,
     page,
     [60, 372, 476, 470],
-    "The anchor above is real and paints nothing — its presence is " +
-      "proven by the collision probe, not by pixels. Insert #2: " +
-      `"${insertRefusal.slice(0, 90)}…" Property battery, measured this ` +
+    "The anchor above is real and paints nothing. Insert #2, measured " +
+      `this run: ${secondInsert}. Property battery, measured this ` +
       `run: ${outcome}. Across runs the same battery has both applied ` +
       "and refused node-not-found — the flakiness is the finding.",
   );
@@ -163,8 +167,8 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   elements.push(
     await specLabel(ctx, page, [
       "Specimen No. 58",
-      "insertAnchoredFrame (one permitted, paints nothing)",
-      "presence oracle: the collision probe",
+      "insertAnchoredFrame (paints nothing)",
+      "second insert: outcome measured per run",
       "anchored* battery: outcome measured per run",
     ]),
   );
@@ -172,8 +176,8 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     ctx,
     page,
     "The wire-minted anchored frame paints nothing (the sweep's KNOWN " +
-      "red, met live); a second insert always collides (the id minter " +
-      "scans spread items only, anchored frames live in stories); and " +
+      "red, met live); a second insert used to collide (the id minter " +
+      "scanned spread items only; core v0.63.0 fixed it); and " +
       "property writes on it are FLAKY — node-not-found in some runs, " +
       "clean application in others (stale-cache-family resolution). " +
       "Anchored RENDERING is proven from parsed documents. → Appendix A",
