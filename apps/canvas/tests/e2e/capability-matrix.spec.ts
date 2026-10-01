@@ -1162,6 +1162,24 @@ const TEXT_PROBES: Probe[] = [
         : null,
   },
   {
+    op: "setFlowGrowRule",
+    // proto 64 (plugin-doc's standalone open, ADR 026/029) — the story's
+    // frame chain grows generated pages while it oversets. maxPages null
+    // = unbounded; copyFrameOptions keeps the last frame's options.
+    build: async ({ fx }) =>
+      fx.firstStory
+        ? {
+            op: "setFlowGrowRule",
+            args: {
+              storyId: fx.firstStory.selfId,
+              grow: true,
+              maxPages: null,
+              copyFrameOptions: true,
+            },
+          }
+        : null,
+  },
+  {
     op: "setFieldValue",
     // v43 (D-01) — re-resolves a placeholder FIELD's cached display,
     // and the fixture carries none: insert one, then address it at the
