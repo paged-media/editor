@@ -1,0 +1,70 @@
+name: plugin-doc from source
+description: >-
+  STOPGAP until @paged-media/doc is published. The editor consumes it through a
+  pnpm `link:` to ../plugins/plugin-doc, so every workflow that installs the
+  editor needs the repo checked out there, its deps installed and its engine
+  wasm built. DELETE this action (and every `uses:` of it) once the package
+  publishes and a version pin replaces the link.
+
+# Expects the multi-repo layout: the editor checked out at `editor/`, so the
+# link target lands at `plugins/plugin-doc` under the runner workspace. Needs
+# rustup + pnpm + node on PATH (every caller already has them).
+
+runs:
+  using: composite
+  steps:
+    - name: checkout plugin-doc (the one link-consumed bundle)
+      uses: actions/checkout@v4
+      with:
+        repository: paged-media/plugin-doc
+        path: plugins/plugin-doc
+
+    - name: install plugin-doc (the link target needs its own deps)
+      shell: bash
+      working-directory: plugins/plugin-doc
+      run: pnpm install --frozen-lockfile
+
+    # The wasm is not produced by `pnpm install`, and
+    # `packages/doc-bundle/bin/*.js` is gitignored. main.tsx imports
+    # @paged-media/doc at module scope, and Vite resolves `../bin/docx_js.js`
+    # at TRANSFORM time, so without the build the whole app fails to boot
+    # (engine.ts's runtime guard cannot fire). The published package will
+    # ship exactly this artifact, so CI reproduces production.
+    - name: install pinned wasm-bindgen-cli (plugin-doc Cargo.lock version)
+      shell: bash
+      working-directory: plugins/plugin-doc
+      run: |
+        V=$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | grep version | head -1 | cut -d'"' -f2)
+        # A cached ~/.cargo/bin may already hold it; a plain install would die
+        # with "binary already exists". Skip when the cached version matches.
+        if wasm-bindgen --version 2>/dev/null | grep -qw "$V"; then
+          echo "wasm-bindgen $V already installed (cache hit)"
+        else
+          cargo install wasm-bindgen-cli --version "$V" --locked --force
+        fi
+
+    # build-wasm.sh has a hard 8 MiB gate and only runs wasm-opt when it is on
+    # PATH. Pinned, not apt: an old binaryen miscompiles wasm-bindgen's
+    # externref table grow ("Table.grow failed"). Same pin as plugin-doc's
+    # rust.yml.
+    - name: install pinned binaryen (reftypes-safe wasm-opt)
+      shell: bash
+      # tests.yml runs on ubuntu (x64), showcase-nightly on macos-14 (arm64).
+      run: |
+        case "${{ runner.os }}-${{ runner.arch }}" in
+          Linux-X64)   T=x86_64-linux ;;
+          macOS-ARM64) T=arm64-macos ;;
+          macOS-X64)   T=x86_64-macos ;;
+          *) echo "::error::no binaryen build for ${{ runner.os }}-${{ runner.arch }}"; exit 1 ;;
+        esac
+        curl -fsSL "https://github.com/WebAssembly/binaryen/releases/download/version_119/binaryen-version_119-$T.tar.gz" | tar xz
+        echo "$PWD/binaryen-version_119/bin" >> "$GITHUB_PATH"
+
+    - name: build the paged.doc engine wasm
+      shell: bash
+      working-directory: plugins/plugin-doc
+      run: |
+        rustup target add wasm32-unknown-unknown
+        bash scripts/build-wasm.sh
+        test -f packages/doc-bundle/bin/docx_js.js \
+          || { echo "::error::doc wasm glue absent after build"; exit 1; }

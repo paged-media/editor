@@ -70,6 +70,12 @@ jobs:
         run: bash scripts/regen-fixtures.sh
         working-directory: core
 
+      # Without it the dev server cannot resolve @paged-media/doc, the app
+      # never boots (`__canvas` times out at 30 s) and every chapter fails —
+      # every night since 2026-09-11. DROP with the action when doc publishes.
+      - name: plugin-doc from source (stopgap until @paged-media/doc publishes)
+        uses: ./editor/.github/actions/plugin-doc-from-source
+
       - name: install (editor)
         run: pnpm install --frozen-lockfile
         working-directory: editor
