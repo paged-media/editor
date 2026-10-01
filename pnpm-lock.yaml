@@ -339,8 +339,8 @@ importers:
         specifier: workspace:*
         version: link:../client
       '@paged-media/draw':
-        specifier: 0.1.0-canary.1
-        version: 0.1.0-canary.1(react@18.3.1)
+        specifier: 0.1.0-canary.10
+        version: 0.1.0-canary.10(@paged-media/plugin-api@0.2.8-canary.0)(@paged-media/plugin-sdk@0.2.8-canary.0(react@18.3.1))(react@18.3.1)
       '@paged-media/shell':
         specifier: workspace:*
         version: link:../shell
@@ -919,9 +919,6 @@ packages:
       '@paged-media/plugin-sdk': '>=0.2.29-canary.0'
       react: ^18.3.0
 
-  '@paged-media/draw@0.1.0-canary.1':
-    resolution: {integrity: sha512-FeRvXwQ1OwNVo1YU6R71Wse/48bT30Eqai2+akx8052w3byc98Xxq0BaP4u6VmS5GSIQ4dFy96prXg/48cJrcA==}
-
   '@paged-media/draw@0.1.0-canary.10':
     resolution: {integrity: sha512-QO70N5/ips7917N1Pqw6mfN/o7NV/UoflMSmqIgVxR5Xkqwyib8flVHAkyO7Os3Gmhms+7HipiTHg2bW/hFeoA==}
     peerDependencies:
@@ -945,22 +942,22 @@ packages:
       '@paged-media/plugin-api': 0.2.27-canary.0
       '@paged-media/plugin-sdk': 0.2.27-canary.0
 
-  '@paged-media/plugin-api@0.2.25-canary.0':
-    resolution: {integrity: sha512-yPB4aQ+/WWhipsSUdcCZt7Uzox4KG8r2c9WN0GXAUAhC2/+Oa8+li/adp9Ubx8pSdEtNBh13N0IiIPTBhc2eDQ==}
-
   '@paged-media/plugin-api@0.2.33-canary.0':
     resolution: {integrity: sha512-bpO+MYUn8PPppGGS8L+rGV88FUYNYlpAM5NMkWSiHnwpsE/zegWgVqJhVRmumL+VIL38Hnh+hnhISBCORx/eBA==}
 
-  '@paged-media/plugin-sdk@0.2.25-canary.0':
-    resolution: {integrity: sha512-CAOG3q39foJCLJrowG//eKD5ORnufiAOmzT1sjOeHjtqHTkVe6MYc4ppFbdXMtPtrwfLddEx4g9YGWRmMclPLA==}
+  '@paged-media/plugin-api@0.2.8-canary.0':
+    resolution: {integrity: sha512-qk0gNiJrFhJjXA/+Pv49OZSof6yAzfkxMlARl5S3KnFzJqGj3AdruTjUNaE8hdfGe2MJyT2pHm1ZmmM/Q1wZJQ==}
+
+  '@paged-media/plugin-sdk@0.2.33-canary.0':
+    resolution: {integrity: sha512-9pJ7mMzBGAOgouTPg9MgKWGilFKgR2ZWzmpaZmax7URhVjtiGv7KMXvothYG2u7l3ofD1L98biBAjU43TDNxqw==}
     peerDependencies:
       react: ^18.3.0
     peerDependenciesMeta:
       react:
         optional: true
 
-  '@paged-media/plugin-sdk@0.2.33-canary.0':
-    resolution: {integrity: sha512-9pJ7mMzBGAOgouTPg9MgKWGilFKgR2ZWzmpaZmax7URhVjtiGv7KMXvothYG2u7l3ofD1L98biBAjU43TDNxqw==}
+  '@paged-media/plugin-sdk@0.2.8-canary.0':
+    resolution: {integrity: sha512-+002gh3mt1k+sT40lyx6NFmjhEVyEh/B9sLaxYkU0A3nsgdHfHn69ssvH0LTF5D2hfMyEL8okggJ+HQB/c4zbA==}
     peerDependencies:
       react: ^18.3.0
     peerDependenciesMeta:
@@ -3047,17 +3044,16 @@ snapshots:
       '@paged-media/plugin-sdk': 0.2.33-canary.0(react@18.3.1)
       react: 18.3.1
 
-  '@paged-media/draw@0.1.0-canary.1(react@18.3.1)':
-    dependencies:
-      '@paged-media/plugin-api': 0.2.25-canary.0
-      '@paged-media/plugin-sdk': 0.2.25-canary.0(react@18.3.1)
-    transitivePeerDependencies:
-      - react
-
   '@paged-media/draw@0.1.0-canary.10(@paged-media/plugin-api@0.2.33-canary.0)(@paged-media/plugin-sdk@0.2.33-canary.0(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@paged-media/plugin-api': 0.2.33-canary.0
       '@paged-media/plugin-sdk': 0.2.33-canary.0(react@18.3.1)
+      react: 18.3.1
+
+  '@paged-media/draw@0.1.0-canary.10(@paged-media/plugin-api@0.2.8-canary.0)(@paged-media/plugin-sdk@0.2.8-canary.0(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@paged-media/plugin-api': 0.2.8-canary.0
+      '@paged-media/plugin-sdk': 0.2.8-canary.0(react@18.3.1)
       react: 18.3.1
 
   '@paged-media/image@0.1.0-canary.15(@paged-media/plugin-api@0.2.33-canary.0)(@paged-media/plugin-sdk@0.2.33-canary.0(react@18.3.1))(react@18.3.1)':
@@ -3074,23 +3070,23 @@ snapshots:
       '@paged-media/plugin-sdk': 0.2.33-canary.0(react@18.3.1)
       jszip: 3.10.2
 
-  '@paged-media/plugin-api@0.2.25-canary.0':
-    dependencies:
-      '@types/react': 18.3.31
-
   '@paged-media/plugin-api@0.2.33-canary.0':
     dependencies:
       '@types/react': 18.3.31
 
-  '@paged-media/plugin-sdk@0.2.25-canary.0(react@18.3.1)':
+  '@paged-media/plugin-api@0.2.8-canary.0':
     dependencies:
-      '@paged-media/plugin-api': 0.2.25-canary.0
-    optionalDependencies:
-      react: 18.3.1
+      '@types/react': 18.3.31
 
   '@paged-media/plugin-sdk@0.2.33-canary.0(react@18.3.1)':
     dependencies:
       '@paged-media/plugin-api': 0.2.33-canary.0
+    optionalDependencies:
+      react: 18.3.1
+
+  '@paged-media/plugin-sdk@0.2.8-canary.0(react@18.3.1)':
+    dependencies:
+      '@paged-media/plugin-api': 0.2.8-canary.0
     optionalDependencies:
       react: 18.3.1
 
