@@ -72,6 +72,16 @@ const WORD_PAGES: Array<[number, number]> = [
 ];
 /** Each page's top margin: section 1 has 1 in, section 2 has 0.5 in. */
 const WORD_MARGIN_TOP = [72, 72, 72, 36, 36];
+/** What Word put on each page (plugin-doc docx-conformance/fixtures/
+ *  pagination.word.json): every paragraph is one line, and S1 P054's
+ *  keepNext moves it off page 1 — so page 1 holds 53 lines, not 54. */
+const WORD_PAGE_CONTENT: PageContent[] = [
+  { lines: 53, first: "S1 P001", last: "S1 P053" },
+  { lines: 54, first: "S1 P054", last: "S1 P107" },
+  { lines: 13, first: "S1 P108", last: "S1 P120" },
+  { lines: 28, first: "S2 P001", last: "S2 P028" },
+  { lines: 12, first: "S2 P029", last: "S2 P040" },
+];
 
 type Registries = {
   commands: { invoke: (id: string) => Promise<unknown> };
@@ -90,6 +100,76 @@ const invoke = (page: Page, id: string) =>
     (cmd) => (globalThis as unknown as CanvasGlobal).__canvas.registries.commands.invoke(cmd),
     id,
   );
+
+type PageContent = { lines: number; first: string; last: string };
+
+/** Where every line and paragraph of the two section stories landed: the
+ *  engine's rect-per-line selection geometry (`client.selectionGeometry`)
+ *  names each line's page; paragraph text + offsets come from the story's
+ *  content (`requestStoryContent`). */
+async function pageContent(page: Page): Promise<PageContent[]> {
+  return page.evaluate(async () => {
+    type Rect = { pageId: string };
+    const c = (
+      globalThis as unknown as {
+        __canvas: {
+          client: {
+            send: (m: unknown) => Promise<{
+              kind: string;
+              payload?: { content?: { paragraphs?: Array<{ runs: Array<{ text: string }> }> } };
+            }>;
+            selectionGeometry: (s: unknown) => Promise<Rect[]>;
+            executeScript: (s: string) => Promise<{ output: string[] }>;
+          };
+        };
+      }
+    ).__canvas.client;
+    const pageIds = (
+      JSON.parse((await c.executeScript("paged.pages()")).output[0] ?? "[]") as Array<{
+        selfId: string;
+      }>
+    ).map((p) => p.selfId);
+    const stories = JSON.parse(
+      (await c.executeScript("paged.stories()")).output[0] ?? "[]",
+    ) as Array<{ selfId: string }>;
+    const out = pageIds.map(() => ({ lines: 0, first: "", last: "" }));
+    const sections: Array<{ label: string; storyId: string; paras: string[] }> = [];
+    for (const { selfId } of stories) {
+      const r = await c.send({ kind: "requestStoryContent", payload: { storyId: selfId } });
+      const paras = (r.payload?.content?.paragraphs ?? []).map((p) =>
+        p.runs.map((run) => run.text).join(""),
+      );
+      if (/^S\d P\d{3}/.test(paras[0] ?? "")) {
+        sections.push({ label: paras[0].slice(0, 2), storyId: selfId, paras });
+      }
+    }
+    sections.sort((a, b) => a.label.localeCompare(b.label));
+    for (const { storyId, paras } of sections) {
+      const end = paras.reduce((n, p) => n + p.length + 1, 0) - 1;
+      const lines = await c.selectionGeometry({ storyId, start: 0, end, affinity: false });
+      for (const l of lines) {
+        const i = pageIds.indexOf(l.pageId);
+        if (i >= 0) out[i].lines += 1;
+      }
+      let at = 0;
+      for (const text of paras) {
+        const rects = await c.selectionGeometry({
+          storyId,
+          start: at,
+          end: at + text.length,
+          affinity: false,
+        });
+        at += text.length + 1;
+        const i = rects.length ? pageIds.indexOf(rects[0].pageId) : -1;
+        if (i < 0) continue;
+        const label = text.slice(0, 7);
+        if (!out[i].first) out[i].first = label;
+        out[i].last = label;
+      }
+    }
+    return out;
+  });
+}
 
 type PageRow = { sizePt?: [number, number]; widthPt?: number; heightPt?: number; marginTopPt?: number };
 
@@ -169,6 +249,14 @@ test.describe("plugin-doc — standalone open (ADR 029)", () => {
       expect(Math.abs(w - WORD_PAGES[i][0]), `page ${i + 1} width`).toBeLessThan(0.5);
       expect(Math.abs(h - WORD_PAGES[i][1]), `page ${i + 1} height`).toBeLessThan(0.5);
     });
+
+    // What lands on each page is Word's map, keepNext included: S1 P054
+    // leaves page 1 for page 2 (page 1 holds 53 of its 54 lines).
+    const content = await pageContent(page);
+    console.log(`[AC-DOCSO-1] per-page content: ${JSON.stringify(content)}`);
+    expect(content, "each page carries Word's lines, first to last").toEqual(
+      WORD_PAGE_CONTENT,
+    );
 
     // Save-back reads every section story and stitches one body again: the
     // exported document carries all 160 paragraphs in order.
