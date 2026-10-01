@@ -354,11 +354,10 @@ test.describe("E2E paragraph ops", () => {
   // rather than hyphenating. ENGINE GAP: the hyphenation toggle does not
   // change the composed line breaks for any fixture-shaped content.
   test.fixme("AC-E2E-PARA-hyphenation — paragraphHyphenation (toggle produces no composed-break delta on 0.35.1) @feat:editor-shell.panels.paragraph @level:happy", async () => {});
-  // keep_lines_together / keep_with_next round-trip through mutate but
-  // are NOT consumed by paged-compose/paged-text for frame-break
-  // decisions (stored on structs, never read in the break logic).
-  // Verified: no render delta even on the threaded/overset fixture.
-  // ENGINE GAP: keep-options not honoured in layout.
-  test.fixme("AC-E2E-PARA-keepLines — paragraphKeepLinesTogether (not consumed by the composer's frame-break logic)", async () => {});
-  test.fixme("AC-E2E-PARA-keepNext — paragraphKeepWithNext (not consumed by the composer's frame-break logic)", async () => {});
+  // keep_lines_together / keep_with_next WERE recorded here as engine gaps
+  // (stored, never read by the frame-break logic). Core's ADR 028 wired
+  // the keep options into the composer by protocol 64; their op + layout
+  // proofs (driven through the Paragraph panel) now live in
+  // paragraph-flow-ops.spec.ts — AC-E2E-FLOW-keepWithNext /
+  // keepLinesTogether / keepStartEnd / keepAllLines.
 });

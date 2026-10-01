@@ -55,6 +55,7 @@ import {
   ComingSoon,
   ListRows,
   StatusPill,
+  TogglePill,
   useCamera,
   useCanvasClient,
   useCollection,
@@ -64,6 +65,7 @@ import {
   type ListRowSpec,
 } from "@paged-media/shell";
 import type { ElementId, StorySummary } from "@paged-media/client";
+import { NumberInput } from "@paged-media/ui";
 
 import { layoutPages, fitCamera } from "../../ui/layout";
 import { useAnimatedCamera } from "../../ui/useAnimatedCamera";
@@ -285,6 +287,9 @@ function StoryInspector({
         testId="story-overset"
       />
 
+      {/* LIVE (v64) — the story's grow rule (setFlowGrowRule). */}
+      <StoryReflow key={story.selfId} storyId={story.selfId} />
+
       {/* HONEST SEAMS — no story-keyed read on the current wire. Each
           names the read a core follow-up must add. (The frame chain is
           no longer a seam: `requestFrameChain` is a real story→frame
@@ -398,6 +403,113 @@ function Seam({
       >
         awaits wire read
       </span>
+    </div>
+  );
+}
+
+/** What this session last wrote for a story's grow rule. `null` =
+ *  unknown: the wire has no grow-rule READ, so after an undo / redo /
+ *  load the panel cannot say what the model holds and must not guess. */
+interface GrowRuleState {
+  grow: boolean;
+  maxPages: number | null;
+}
+
+/**
+ * Protocol 64 — Smart Text Reflow for ONE story (`setFlowGrowRule`,
+ * thoughts ADR 026). With the rule on, the renderer adds generated
+ * pages after the chain's last frame while the story oversets and drops
+ * them when they empty — derived at layout, so the op carries only the
+ * rule. InDesign keeps this as a document preference; the engine scopes
+ * it per story, which is why it lives in the story inspector.
+ *
+ * Committing a max turns the rule on with that cap (InDesign has no
+ * separate "on" step for a limit either).
+ *
+ * WRITE-FORWARD, honestly labelled: `StorySummary` carries no grow-rule
+ * field and no request reads it back, so the controls show what THIS
+ * session last wrote and fall back to "unknown" (a mixed pill, an
+ * em-dash) whenever an undo / redo could have changed it.
+ */
+function StoryReflow({ storyId }: { storyId: string }) {
+  const client = useCanvasClient();
+  const [rule, setRule] = useState<GrowRuleState | null>(null);
+
+  useEffect(
+    () =>
+      client.subscribe((msg) => {
+        if (msg.kind === "undoApplied" || msg.kind === "redoApplied") {
+          setRule(null);
+        }
+      }),
+    [client],
+  );
+
+  const write = (next: GrowRuleState) => {
+    void client
+      .mutate({
+        op: "setFlowGrowRule",
+        args: { storyId, grow: next.grow, maxPages: next.maxPages },
+      })
+      .then((reply) => {
+        if (reply.kind === "mutationApplied") setRule(next);
+      })
+      .catch(() => {});
+  };
+
+  return (
+    <div data-story-reflow={storyId} style={{ marginTop: 10 }}>
+      <div className="pg-label" style={{ marginBottom: 4 }}>
+        Smart text reflow
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          padding: "4px 0",
+        }}
+      >
+        <span className="pg-ui-xs">Add pages while overset</span>
+        <TogglePill
+          testId="story-reflow-grow"
+          checked={rule?.grow ?? false}
+          mixed={rule === null}
+          onToggle={(grow) =>
+            write({ grow, maxPages: rule?.maxPages ?? null })
+          }
+        />
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 96px",
+          alignItems: "center",
+          gap: 12,
+          padding: "2px 0",
+        }}
+      >
+        <span className="pg-ui-xs">Max added pages</span>
+        <NumberInput
+          value={rule?.maxPages ?? null}
+          min={1}
+          precision={0}
+          onChange={() => {}}
+          onCommit={(n) =>
+            write({ grow: true, maxPages: Math.max(1, Math.round(n)) })
+          }
+          aria-label="story-reflow-max-pages"
+        />
+      </div>
+      <div
+        className="pg-ui-xs"
+        data-story-reflow-note
+        style={{ marginTop: 4, fontStyle: "italic", color: "var(--pg-muted-fg)" }}
+      >
+        No read-back on the wire: shows this session's last write, unknown
+        after undo or redo.
+      </div>
     </div>
   );
 }

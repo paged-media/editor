@@ -133,4 +133,42 @@ test.describe("Phase 3 — Paragraph panel (declarative composition)", () => {
       )
       .toBeLessThan(4);
   });
+
+  test("AC-PARA-4 — Keep options and Span columns open as collapsible sections with their v64 controls @feat:editor-shell.panels.paragraph @level:smoke", async ({
+    page,
+  }) => {
+    const root = page.locator('[data-paragraph-panel="ready"]');
+    for (const title of ["Keep options", "Span columns"]) {
+      const toggle = root.locator(
+        `[data-section="${title}"] > [data-section-toggle]`,
+      );
+      // Collapsed by default — the panel stays the gallery card's height.
+      await expect(toggle).toHaveAttribute("aria-expanded", "false");
+      await toggle.click();
+      await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    }
+    const keep = root.locator('[data-section="Keep options"]');
+    // (The mixed sentinel option is excluded: with no caret the selects
+    // show "—".)
+    // Keep with next is a line COUNT (a number field), not a switch.
+    await expect(
+      keep.locator('div.grid:has(> span:text-is("Keep with next")) input'),
+    ).toBeVisible();
+    await expect(keep.locator('[data-check-row="Keep lines together"]')).toBeVisible();
+    await expect(keep.locator('[data-check-row="All lines in paragraph"]')).toBeVisible();
+    await expect(
+      keep.locator('div.mb-px:has(> div:text-is("Start paragraph")) select option:not([value="__mixed__"])'),
+    ).toHaveCount(7);
+    const span = root.locator('[data-section="Span columns"]');
+    await expect(
+      span.locator('div.mb-px:has(> div:text-is("Paragraph layout")) select option:not([value="__mixed__"])'),
+    ).toHaveCount(4);
+    await expect(
+      span.locator('div.grid:has(> span:text-is("Columns")) select'),
+    ).toBeVisible();
+    // No caret yet: every v64 control is inert (no commit target).
+    await expect(
+      span.locator('div.mb-px:has(> div:text-is("Paragraph layout")) select'),
+    ).toBeDisabled();
+  });
 });

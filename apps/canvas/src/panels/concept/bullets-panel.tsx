@@ -49,23 +49,35 @@
 // (Enter / blur), undoable. Content scope; the apply layer rounds the
 // StoryRange to whole paragraphs.
 //
-// Still-seam gallery rows: Level / numbering-style picker / Char
-// style / Restart scope / Position — they await a per-paragraph
-// list-level model (the run carries only the type + glyph + format
-// expression + the applied-list ref today).
+// Protocol 64 (2026-10-01) — the list-marker overrides became settable
+// paragraph paths: Number (`paragraphNumberingExpression` — the
+// marker template; until now this row wrote `paragraphNumberingFormat`,
+// which is the COUNTER STYLE, so "^#.^t" landed in the wrong field),
+// Style (`paragraphNumberingFormat`, now a picker over IDML's sample
+// strings), Mode / Start at (`paragraphNumberingContinue` /
+// `paragraphNumberingStartAt`), Text after (`paragraphBulletsTextAfter`)
+// and both marker character styles (`paragraphBulletsCharacterStyle` /
+// `paragraphNumberingCharacterStyle`, picked from the document's
+// character styles).
+//
+// Still-seam gallery rows: Level / Restart scope / Position — they
+// await a per-paragraph list-level model.
 
 import { useState } from "react";
 
+import type { CompositionNode } from "@paged-media/catalog";
 import {
   CatalogRegistryProvider,
   CompositionRenderer,
   Icon,
+  PAGED_INPUT_COLLECTION_SELECT,
   useBindings,
   useCanvasClient,
   useCollection,
   useContentSelection,
 } from "@paged-media/shell";
 import type { NumberingListSummary, Value } from "@paged-media/client";
+import { KitSelect, NumberInput } from "@paged-media/ui";
 
 import { appCatalogRegistry } from "../catalog-registry";
 import { bulletsNumberingComposition } from "../bullets-numbering.composition";
@@ -82,7 +94,82 @@ const TEXT_BINDINGS = {
     scope: "content" as const,
     path: "paragraphNumberingFormat" as const,
   },
+  expression: {
+    kind: "selectionProperty" as const,
+    scope: "content" as const,
+    path: "paragraphNumberingExpression" as const,
+  },
+  textAfter: {
+    kind: "selectionProperty" as const,
+    scope: "content" as const,
+    path: "paragraphBulletsTextAfter" as const,
+  },
+  startAt: {
+    kind: "selectionProperty" as const,
+    scope: "content" as const,
+    path: "paragraphNumberingStartAt" as const,
+  },
+  continue: {
+    kind: "selectionProperty" as const,
+    scope: "content" as const,
+    path: "paragraphNumberingContinue" as const,
+  },
 };
+
+/** IDML `NumberingFormat` sample strings — the counter style the
+ *  renderer reads from the text before the first comma. */
+const NUMBERING_FORMATS = [
+  "1, 2, 3, 4...",
+  "01, 02, 03...",
+  "I, II, III, IV...",
+  "i, ii, iii, iv...",
+  "A, B, C, D...",
+  "a, b, c, d...",
+];
+
+/** A character-style picker over the document's `characterStyles`
+ *  (the marker's style; `[None]` = the empty string, which clears the
+ *  override). One composition leaf, so it reads/writes through the
+ *  same binding seam as every other field. */
+function charStylePicker(
+  path: "paragraphBulletsCharacterStyle" | "paragraphNumberingCharacterStyle",
+): CompositionNode {
+  return {
+    catalogId: PAGED_INPUT_COLLECTION_SELECT,
+    props: { collectionName: "characterStyles" },
+    bindings: {
+      value: { kind: "selectionProperty", scope: "content", path },
+    },
+  };
+}
+
+const BULLET_CHAR_STYLE = charStylePicker("paragraphBulletsCharacterStyle");
+const NUMBER_CHAR_STYLE = charStylePicker("paragraphNumberingCharacterStyle");
+
+/** `paragraphNumberingContinue` is three-state on the wire: `Bool`
+ *  sets it, `Text("")` is "inherit" — and inherit is NOT `true` (an
+ *  inheriting paragraph restarts after a non-list paragraph, an
+ *  explicitly continuing one resumes). So the mode select keeps all
+ *  three. */
+type NumberingMode = "" | "continue" | "restart";
+
+function unwrapMode(v: Value | null): NumberingMode | null {
+  if (!v) return null;
+  if (v.type === "bool") return v.value ? "continue" : "restart";
+  if (v.type === "text" && v.value === "") return "";
+  return null;
+}
+
+function modeValue(mode: NumberingMode): Value {
+  return mode === ""
+    ? ({ type: "text", value: "" } as Value)
+    : ({ type: "bool", value: mode === "continue" } as Value);
+}
+
+function unwrapCount(v: Value | null): number | null {
+  if (!v || v.type !== "length") return null;
+  return v.value;
+}
 
 /** Unwrap a `Value::Text` to its string (empty = cleared override). */
 function unwrapText(v: Value | null): string {
@@ -379,13 +466,17 @@ export function BulletsPanel() {
   const text = useBindings(TEXT_BINDINGS);
   const bullet = unwrapText(text.bullet.value);
   const format = unwrapText(text.format.value);
+  const expression = unwrapText(text.expression.value);
+  const textAfter = unwrapText(text.textAfter.value);
+  const startAt = unwrapCount(text.startAt.value);
+  const mode = unwrapMode(text.continue.value);
 
   return (
     <CatalogRegistryProvider registry={appCatalogRegistry()}>
       <ConceptShell
         testId="bullets-panel"
         live
-        target="List type, bullet glyph, numbering format and named list definitions (create / rename / continuity / assign) are live; level / numbering-style picker / restart scope / position land with a per-paragraph list-level model."
+        target="List type, bullet glyph and text after, numbering style, number expression, start at / continue, marker character styles and named list definitions (create / rename / continuity / assign) are live; level / restart scope / position land with a per-paragraph list-level model."
       >
         {/* W2.10 — named list-definition management. */}
         <ListDefinitions />
@@ -399,24 +490,91 @@ export function BulletsPanel() {
         </Row>
 
         <Kicker>Numbering style</Kicker>
-        {/* Format picker (1,2,3 vs i,ii,iii…) needs the list-level
-            model; the raw expression below is live. */}
         <Row label="Style">
-          <SeamSelect value="1, 2, 3, 4…" />
+          {/* LIVE — paragraphNumberingFormat, the counter style
+              ("1, 2, 3, 4…" / "i, ii, iii, iv…"). */}
+          <KitSelect
+            data-bullets-field="numbering-format"
+            aria-label="numbering-format"
+            value={format}
+            disabled={text.format.onCommit == null}
+            onChange={(e) =>
+              text.format.onCommit?.({
+                type: "text",
+                value: e.target.value,
+              } as Value)
+            }
+          >
+            <option value="">[Style default]</option>
+            {NUMBERING_FORMATS.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+            {format !== "" && !NUMBERING_FORMATS.includes(format) ? (
+              <option value={format}>{format}</option>
+            ) : null}
+          </KitSelect>
         </Row>
         <Row label="Number">
-          {/* LIVE — paragraphNumberingFormat (e.g. "^#.^t"). */}
+          {/* LIVE (v64) — paragraphNumberingExpression, the marker
+              template ("^#.^t", "(^#)"). */}
           <TextField
-            testId="numbering-format"
-            value={format}
+            testId="numbering-expression"
+            value={expression}
             placeholder="^#.^t"
             mono
-            disabled={text.format.onCommit == null}
-            onCommit={text.format.onCommit}
+            disabled={text.expression.onCommit == null}
+            onCommit={text.expression.onCommit}
           />
         </Row>
         <Row label="Char style">
-          <SeamSelect value="[None]" />
+          {/* LIVE (v64) — paragraphNumberingCharacterStyle. */}
+          <div data-bullets-field="numbering-char-style" className="min-w-0">
+            <CompositionRenderer composition={NUMBER_CHAR_STYLE} />
+          </div>
+        </Row>
+        <Row label="Mode">
+          {/* LIVE (v64) — paragraphNumberingContinue (three-state). */}
+          <KitSelect
+            data-bullets-field="numbering-mode"
+            aria-label="numbering-mode"
+            value={mode ?? "__mixed__"}
+            soft={mode === null}
+            disabled={text.continue.onCommit == null}
+            onChange={(e) => {
+              const next = e.target.value;
+              if (next === "__mixed__") return;
+              text.continue.onCommit?.(modeValue(next as NumberingMode));
+            }}
+          >
+            {mode === null && (
+              <option value="__mixed__" disabled>
+                —
+              </option>
+            )}
+            <option value="">[Style default]</option>
+            <option value="continue">Continue from previous number</option>
+            <option value="restart">Start at</option>
+          </KitSelect>
+        </Row>
+        <Row label="Start at">
+          {/* LIVE (v64) — paragraphNumberingStartAt, a whole number
+              >= 1. Read when the count restarts (Mode = Start at). */}
+          <NumberInput
+            value={startAt}
+            min={1}
+            precision={0}
+            disabled={text.startAt.onCommit == null}
+            onChange={() => {}}
+            onCommit={(next) =>
+              text.startAt.onCommit?.({
+                type: "length",
+                value: Math.max(1, Math.round(next)),
+              } as Value)
+            }
+            aria-label="numbering-start-at"
+          />
         </Row>
         <Row label="Restart">
           <SeamSelect value="At this level" />
@@ -432,6 +590,24 @@ export function BulletsPanel() {
             disabled={text.bullet.onCommit == null}
             onCommit={text.bullet.onCommit}
           />
+        </Row>
+        <Row label="Text after">
+          {/* LIVE (v64) — paragraphBulletsTextAfter, IDML spelling
+              ("^t" is a tab). */}
+          <TextField
+            testId="bullets-text-after"
+            value={textAfter}
+            placeholder="^t"
+            mono
+            disabled={text.textAfter.onCommit == null}
+            onCommit={text.textAfter.onCommit}
+          />
+        </Row>
+        <Row label="Char style">
+          {/* LIVE (v64) — paragraphBulletsCharacterStyle. */}
+          <div data-bullets-field="bullets-char-style" className="min-w-0">
+            <CompositionRenderer composition={BULLET_CHAR_STYLE} />
+          </div>
         </Row>
 
         <Kicker>Position</Kicker>

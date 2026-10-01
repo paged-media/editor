@@ -218,11 +218,28 @@ Live (protocol v28, gap 12 closed): Align glyph segments →
 `paragraphLeftIndent/RightIndent/FirstLineIndent`; Space before/after →
 `paragraphSpaceBefore/After`; Drop cap (chars/lines) →
 `paragraphDropCapCharacters/Lines`; Hyphenate → `paragraphHyphenation`;
-Keep lines together / Keep with next →
-`paragraphKeepLinesTogether/KeepWithNext`; Paragraph rules disclosure
+Paragraph rules disclosure
 (bespoke whole-struct `Value::ParagraphRule`) → `paragraphRuleAbove/Below`
 (pill on/off, null clears). Seam: Align to baseline grid (no matching
 PropertyPath on the v28 wire).
+**Protocol 64 (2026-10-01)** — two collapsible sections, InDesign's Keep
+Options and Span Columns dialogs inline. **Keep options**: Keep with next
+N lines → `paragraphKeepWithNext` (a line COUNT, `Value::Length` — it was
+a toggle committing `Value::Bool`, which the engine refuses); Keep lines
+together → `paragraphKeepLinesTogether`; All lines in paragraph →
+`paragraphKeepAllLinesTogether`; Start / End lines →
+`paragraphKeepFirstLines/KeepLastLines`; Start paragraph (Anywhere / In
+next column / frame / On next page / odd / even, or `[Style default]` =
+"" = inherit) → `paragraphStartParagraph`. **Span columns**: Paragraph
+layout (single / span / split) → `paragraphSpanColumnType`; Columns (All
+or n) → `paragraphSpanSplitColumnCount`; Space before/after →
+`paragraphSpanColumnMinSpaceBefore/After`; Inside/Outside gutter →
+`paragraphSplitColumnInsideGutter/OutsideGutter`. Proven through the
+panel, with layout and undo, in `e2e/paragraph-flow-ops.spec.ts`.
+**Paragraph-style level**: the same paths are settable on a paragraph
+style (`setStyleProperty`), but the editor has no style-options editor
+and the wire has no style-property READ, so style-level editing waits on
+both (Paragraph Styles panel → style options).
 **End state** — baseline-grid path; tabs in the Tabs panel.
 
 ### Character / Paragraph / Object Styles ✓ (shared **ApplyList** archetype)
@@ -556,6 +573,13 @@ that name the missing wire read: **frame chain / threading topology**
 frame), **word count** (no word-count or story-text read), **first-
 paragraph preview** (no story-text read). The inspector is read-only by
 design — a story carries no rename Operation on the wire.
+**Protocol 64 (2026-10-01)** — the inspector gains **Smart text reflow**
+for the inspected story: Add pages while overset (pill) + Max added pages
+→ `setFlowGrowRule` (generated pages are derived at layout; undo drops
+them). WRITE-FORWARD: `StorySummary` carries no grow rule and nothing
+reads it back, so the controls show this session's last write and go
+"unknown" (mixed pill) after undo/redo. The engine scopes the rule per
+story where InDesign keeps a document preference, hence its home here.
 **End state** — kit Content mode inspector (words, language-expansion
 risk, comments, approval). Needs, on the wire: a `frameChain` accessor
 keyed by story id, a `wordCount` (or story-text read), a story-text /
@@ -692,7 +716,16 @@ List type segments (None/Bullet/Number → `paragraphListType` IDML enum
 (`paragraphBulletCharacter`) and the numbering-format expression
 (`paragraphNumberingFormat`, e.g. `^#.^t`) are **live** over the v28
 list-authoring text paths (content-scope, paragraph-rounded; one mutate
-per commit). **W2.10 (protocol v35, engine gap 22)** adds the named
+per commit). **Protocol 64 (2026-10-01)** fixes and extends the marker
+rows: Number now writes `paragraphNumberingExpression` (the template,
+`^#.^t`) — it used to write `paragraphNumberingFormat`, which is the
+COUNTER STYLE; Style is a picker over `paragraphNumberingFormat`'s IDML
+sample strings (`1, 2, 3, 4...`, `i, ii, iii, iv...`, …); Mode
+(`[Style default]` / Continue / Start at) → `paragraphNumberingContinue`
+(three-state: `Bool`, or `Text("")` = inherit); Start at →
+`paragraphNumberingStartAt`; bullet Text after →
+`paragraphBulletsTextAfter`; both Char style rows →
+`paragraphBulletsCharacterStyle` / `paragraphNumberingCharacterStyle` over the `characterStyles` collection. **W2.10 (protocol v35, engine gap 22)** adds the named
 **list-definitions manager** on the W1.22 `NumberingList` surface: the
 document's `<NumberingList>` resources read from the `numberingLists`
 collection (one row each); **create** (`createNumberingList`) / inline

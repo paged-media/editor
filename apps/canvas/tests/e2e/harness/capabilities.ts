@@ -248,7 +248,7 @@ export const CAPABILITIES: Capability[] = [
   // batch handle binding (v34)
   { op: "bindCreated", status: "supported", note: "only meaningful inside a batch — binds the batch's most recent createdId for $h:<handle> refs; probed as insert→bind→write" },
   // flow grow rule (v64, plugin-doc ADR 026/029)
-  { op: "setFlowGrowRule", status: "supported", note: "proto 64; generated pages after the story's last frame while it oversets (InDesign Smart Text Reflow)" },
+  { op: "setFlowGrowRule", status: "supported", note: "proto 64; generated pages after the story's last frame while it oversets (InDesign Smart Text Reflow); UI = the Stories inspector's Smart text reflow, layout proof in e2e/paragraph-flow-ops.spec.ts AC-E2E-FLOW-smartReflow" },
 ];
 
 export function expectedStatus(op: string): Capability | undefined {
