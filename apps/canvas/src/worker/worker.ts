@@ -368,8 +368,10 @@ async function pump() {
         // Surface the failure but keep draining — a hung pump strands
         // every subsequent message (e.g. a failing attachCanvas would
         // block every requestSnapshot behind it).
+        // Carry the failed request's seq (channel messages have one), so
+        // the client rejects THAT caller instead of leaving it pending.
         postBack({
-          seq: null,
+          seq: data.kind === "channel" ? data.msg.seq : null,
           protocol: PROTOCOL_VERSION,
           kind: "warning",
           payload: {

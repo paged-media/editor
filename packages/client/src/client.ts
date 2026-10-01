@@ -87,7 +87,13 @@ export interface JournalDrain {
   epochWallMs: number;
 }
 
-type PendingReply = (msg: WorkerToMain) => void;
+/** A `send(...)` awaiting its reply. Holds `reject` too, so a worker that
+ *  dies, fails to boot or fails one dispatch settles the caller instead of
+ *  leaving the promise hanging forever (ADR 031). */
+type PendingReply = {
+  resolve: (msg: WorkerToMain) => void;
+  reject: (err: Error) => void;
+};
 
 /**
  * Construction options for `CanvasClient`. The consumer supplies the
@@ -181,6 +187,10 @@ export class CanvasClient {
   private readonly defaultFontProvider?: () => Promise<Uint8Array | undefined>;
   /** See {@link setActivePage}. Host-supplied, never engine-derived. */
   private activePageHint: string | null = null;
+  /** Set once the worker can no longer answer (boot failed, protocol or SAB
+   *  layout mismatch, worker error, disposed). Every pending request was
+   *  rejected with it, and every later request rejects with it at once. */
+  private fatal: Error | null = null;
 
   constructor(options: CanvasClientOptions) {
     this.defaultFontProvider = options.defaultFontProvider;
@@ -194,6 +204,8 @@ export class CanvasClient {
       );
     }
     this.worker.addEventListener("message", this.onMessage);
+    this.worker.addEventListener("error", this.onWorkerError);
+    this.worker.addEventListener("messageerror", this.onMessageError);
     this.camera = CameraBuffer.allocate();
     this.worker.postMessage({ kind: "cameraSab", buffer: this.camera.buffer });
     this.gestureSab = GestureBuffer.allocate();
@@ -209,14 +221,15 @@ export class CanvasClient {
    * notifications and flow through `subscribe(...)` instead.
    */
   async send(kind: MainToWorkerKind): Promise<WorkerToMain> {
+    if (this.fatal) throw this.fatal;
     const seq = this.nextSeq++;
     const envelope: MainToWorker = {
       seq,
       protocol: PROTOCOL_VERSION,
       ...kind,
     };
-    const promise = new Promise<WorkerToMain>((resolve) => {
-      this.pending.set(seq, resolve);
+    const promise = new Promise<WorkerToMain>((resolve, reject) => {
+      this.pending.set(seq, { resolve, reject });
     });
     this.worker.postMessage({ kind: "channel", msg: envelope });
     return promise;
@@ -249,6 +262,7 @@ export class CanvasClient {
     // unresolvable document fonts. The result rides the binary
     // side-channel exactly like caller-passed bytes.
     const fontBytes = font ?? (await this.resolveDefaultFont());
+    if (this.fatal) throw this.fatal;
     const seq = this.nextSeq++;
     const promise = new Promise<DocumentHandle>((resolve, reject) => {
       this.loadDocPending.set(seq, { resolve, reject });
@@ -1451,7 +1465,78 @@ export class CanvasClient {
    */
   dispose(): void {
     this.worker.removeEventListener("message", this.onMessage);
+    this.worker.removeEventListener("error", this.onWorkerError);
+    this.worker.removeEventListener("messageerror", this.onMessageError);
     this.worker.terminate();
+    this.failAll(new Error("CanvasClient disposed"), true);
+  }
+
+  /**
+   * Settle everything still waiting: `send` and `loadDocument` callers are
+   * rejected; journal and Vello readbacks resolve `null`, which is their
+   * documented failure value. With `fatal`, later requests reject at once.
+   */
+  private failAll(err: Error, fatal: boolean): void {
+    if (fatal && !this.fatal) this.fatal = err;
+    const sends = [...this.pending.values()];
+    const loads = [...this.loadDocPending.values()];
+    const journals = [...this.journalPending.values()];
+    const vellos = [...this.velloPending.values()];
+    this.pending.clear();
+    this.loadDocPending.clear();
+    this.journalPending.clear();
+    this.velloPending.clear();
+    for (const p of sends) p.reject(err);
+    for (const p of loads) p.reject(err);
+    for (const cb of journals) cb(null);
+    for (const cb of vellos) cb(null);
+  }
+
+  /** An uncaught error in the worker scope, or the worker script failing to
+   *  load. The worker catches every dispatch itself, so reaching here means
+   *  it cannot be trusted to answer anything still pending. */
+  private readonly onWorkerError = (event: ErrorEvent) => {
+    this.failAll(
+      new Error(`canvas worker failed: ${event.message || "unknown error"}`),
+      true,
+    );
+  };
+
+  /** A reply that could not be deserialised. We cannot tell which request it
+   *  answered, so reject what is pending; the worker itself is still alive. */
+  private readonly onMessageError = () => {
+    this.failAll(new Error("canvas worker reply could not be deserialised"), false);
+  };
+
+  /** The worker's lifecycle warnings that mean a request will never be
+   *  answered: settle the callers they strand. */
+  private settleFromWarning(msg: WorkerToMain): void {
+    if (msg.kind !== "warning") return;
+    const w = msg.payload as { kind?: string; details?: string };
+    const details = w.details ?? "";
+    switch (w.kind) {
+      // The wasm never loaded: nothing will ever answer.
+      case "initFailed":
+        this.failAll(new Error(`canvas engine failed to start: ${details}`), true);
+        return;
+      // Engine and bundle disagree on the wire or on the shared-memory
+      // layout. Carrying on would read wrong bytes as camera/selection
+      // state, so refuse every request (ADR 031).
+      case "protocolMismatch":
+        this.failAll(new Error(`canvas engine/bundle mismatch: ${details}`), true);
+        return;
+      // One request's dispatch threw; the worker reports it with that
+      // request's seq. Only that caller is rejected.
+      case "dispatchError":
+        if (msg.seq !== null) {
+          const p = this.pending.get(msg.seq);
+          if (p) {
+            this.pending.delete(msg.seq);
+            p.reject(new Error(`canvas worker dispatch failed: ${details}`));
+          }
+        }
+        return;
+    }
   }
 
   private readonly onMessage = (event: MessageEvent) => {
@@ -1534,13 +1619,16 @@ export class CanvasClient {
       return;
     }
     const msg = event.data as WorkerToMain;
-    // Resolve the matching `send(...)` promise first so the
-    // request-reply path stays the lowest-latency one.
+    // Settle callers a lifecycle warning strands; the warning still fans
+    // out below (the shell journals it).
+    if (msg.kind === "warning") this.settleFromWarning(msg);
     if (msg.seq !== null) {
-      const cb = this.pending.get(msg.seq);
-      if (cb) {
+      // Resolve the matching `send(...)` promise first so the
+      // request-reply path stays the lowest-latency one.
+      const p = this.pending.get(msg.seq);
+      if (p) {
         this.pending.delete(msg.seq);
-        cb(msg);
+        p.resolve(msg);
       }
     }
     // Fan out to subscribers regardless of seq. Lets multiple parts
