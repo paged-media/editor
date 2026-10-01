@@ -47,6 +47,7 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import process from "node:process";
 
@@ -333,14 +334,33 @@ if (origins.has("*./protocol")) {
     if (byKey.protocol.members.some((m) => m.name === id)) continue;
     byKey.protocol.members.push({
       name: id,
-      kind: id === "PROTOCOL_VERSION" ? "value" : "type",
+      kind: id === "PROTOCOL_VERSION" || id === "protocolFromVersion" ? "value" : "type",
       signature: id,
       summary: null,
     });
   }
 }
 
-const protocolVersion = Number(protocolSrc.match(/PROTOCOL_VERSION\s*=\s*(\d+)/)?.[1] ?? 0);
+// `src/protocol.ts` READS PROTOCOL_VERSION from the installed engine
+// package (432c999) instead of carrying a literal, so the catalog reads
+// it the same way: the minor of `@paged-media/canvas-wasm`'s version
+// (`0.<protocol>.<patch>`, ADR 006), resolved from packages/client.
+// Fails closed (0 -> "no protocol" problem) if the package or the
+// convention is missing.
+function engineProtocol() {
+  if (!/PROTOCOL_VERSION[^=]*=\s*protocolFromVersion\(canvasWasmPackage\.version\)/.test(protocolSrc)) {
+    return Number(protocolSrc.match(/PROTOCOL_VERSION\s*=\s*(\d+)/)?.[1] ?? 0);
+  }
+  try {
+    const req = createRequire(resolve(PKG_DIR, "package.json"));
+    const { version } = req("@paged-media/canvas-wasm/package.json");
+    const minor = Number(String(version).split(".")[1]);
+    return Number.isInteger(minor) ? minor : 0;
+  } catch {
+    return 0;
+  }
+}
+const protocolVersion = engineProtocol();
 
 const catalog = {
   $comment:
@@ -382,7 +402,7 @@ for (const [what, floor] of Object.entries(FLOORS)) {
     );
   }
 }
-if (!catalog.protocol) problems.push("no PROTOCOL_VERSION found in src/protocol.ts");
+if (!catalog.protocol) problems.push("no PROTOCOL_VERSION: src/protocol.ts has no literal and @paged-media/canvas-wasm (0.<protocol>.<patch>) did not resolve from packages/client");
 
 if (problems.length) {
   for (const p of problems) console.error(`client-api-catalog: ${p}`);
