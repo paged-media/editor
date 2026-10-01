@@ -311,14 +311,12 @@ test.describe("plugin-doc — Word's line breaks and blank lines", () => {
     expect(documentXml(Buffer.from(out!.bytes))).toBe(documentXml(readFileSync(FIXTURE)));
   });
 
-  // KNOWN RED on core-p64 (df63a5f): the caret styles the blank lines (their
-  // paragraphStyle reads back as Word's), but the engine lays an empty
-  // paragraph that has NO runs at auto leading, 1.2 × its style's point
-  // size (12 pt default → 14.4 pt), never at its paragraph style's leading
-  // (paged-renderer build_engine.rs, the empty-paragraph branch, reads the
-  // leading from the first run only). So B01 is 14.4 pt instead of 12 and
-  // B02/B03 14.4 instead of 24: L07 sits at 13.2 and L08 at 16.6 lines
-  // instead of Word's 13 and 18. Left failing on purpose (a core gap).
+  // A blank line has NO run, so its leading must come from its paragraph
+  // style. The engine used auto leading (1.2 × size) for it until core
+  // e951762 (B01 14.4 pt instead of 12, B02/B03 14.4 instead of 24, so L07
+  // landed at 13.2 and L08 at 16.6 lines). Green on a protocol-64 engine
+  // that includes e951762 (verified 2026-10-01, core-p64 7e2d556); skips
+  // below protocol 64 like the rest of this file.
   test("AC-DOCLB-2 — blank lines take their paragraph style's pitch, so every line lands on Word's 12 pt line @feat:plugin-doc.file-entry @level:gesture", async ({
     page,
   }) => {
