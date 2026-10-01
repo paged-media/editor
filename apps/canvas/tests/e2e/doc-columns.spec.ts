@@ -37,8 +37,9 @@
 // columns.rs / continuous.rs hold them against Word's maps line by line:
 // continuous_docx() is Word's map exactly (but Word page 7, where Word
 // applies a new top margin the native story's grown page does not have);
-// columns_docx() is Word's but for three column changes into another
-// column count (a page each) and unequal columns (laid out equal).
+// columns_docx() is Word's on all 13 pages but for unequal columns (laid
+// out equal) and two sections in a row with the same columns (one column
+// flow to the engine: the same lines on the same page, other column breaks).
 //
 // Each line is "label x row": the left edge of its first glyph in pt from
 // the page's left, and its row on the 12 pt grid below the top margin.
@@ -85,11 +86,13 @@ const CONTINUOUS: string[] = [
   "G1-01 36 0|G1-02 36 1|G1-03 36 2",
 ];
 
-/** columns_docx(): Word's 11 pages and three more (H3, N3, P3 each open a
- *  page: two multi-column sections in a row would be one split block). */
+/** columns_docx(): Word's 13 pages. A column change straight into another
+ *  count or gap is a second split block, balanced on its own (H, N, P);
+ *  two sections in a row with the SAME columns share one column flow (the
+ *  engine has no block boundary there; Word balances each: Q 3 / 2 + 3 / 2,
+ *  ours 5 / 5; R 3 / 2 then column 1, ours column 1). */
 const COLUMNS: string[] = [
-  "H1-01 36 0|H1-02 36 1|H2-01 36 2|H2-02 36 3|H2-03 36 4|H2-04 198 2|H2-05 198 3|H2-06 198 4",
-  "H3-01 36 0|H3-02 36 1|H3-03 36 2|H3-04 144 0|H3-05 144 1|H3-06 144 2|H3-07 252 0|H4-01 36 3|H4-02 36 4",
+  "H1-01 36 0|H1-02 36 1|H2-01 36 2|H2-02 36 3|H2-03 36 4|H2-04 198 2|H2-05 198 3|H2-06 198 4|H3-01 36 5|H3-02 36 6|H3-03 36 7|H3-04 144 5|H3-05 144 6|H3-06 144 7|H3-07 252 5|H4-01 36 8|H4-02 36 9",
   "I1-01 36 0|I1-02 36 1|I1-03 36 2|I1-04 36 3|I1-05 198 0|I1-06 198 1|I1-07 198 2|I2-01 36 4|I2-02 36 5|I3-01 36 6|I3-02 36 7|I3-03 36 8|I3-04 36 9|I3-05 36 10",
   "J1-01 36 0|J1-02 36 1|J2-01 36 2|J2-02 36 3|J2-03 36 4|J2-04 189 2|J2-05 189 3|J2-06 189 4|J3-01 36 5|J3-02 36 6",
   "K1-01 36 0|K1-02 36 1|K2-01 36 2|K2-02 36 3|K2-03 36 4|K2-04 189 2|K2-05 189 3|K2-06 189 4|K3-01 36 5|K3-02 36 6",
@@ -97,10 +100,10 @@ const COLUMNS: string[] = [
   "L2-35 36 0|L2-36 36 1|L2-37 36 2|L2-38 36 3|L2-39 36 4|L2-40 36 5|L2-41 36 6|L2-42 36 7|L2-43 198 0|L2-44 198 1|L2-45 198 2|L2-46 198 3|L2-47 198 4|L2-48 198 5|L2-49 198 6|L2-50 198 7|L3-01 36 8|L3-02 36 9",
   "M1-01 36 0|M1-02 36 1|M1-03 36 2|M2-01 36 3|M2-02 36 4|M2-03 36 5|M2-04 36 6|M2-05 36 7|M2-06 36 8|M2-07 36 9|M2-08 36 10|M2-09 36 11|M2-10 36 12|M2-11 36 13|M2-12 36 14|M2-13 36 15|M2-14 36 16|M2-15 36 17|M2-16 36 18|M2-17 36 19|M2-18 198 3|M2-19 198 4|M2-20 198 5|M2-21 198 6|M2-22 198 7|M2-23 198 8|M2-24 198 9|M2-25 198 10|M2-26 198 11|M2-27 198 12|M2-28 198 13|M2-29 198 14|M2-30 198 15|M2-31 198 16|M2-32 198 17|M2-33 198 18|M2-34 198 19",
   "M2-35 36 0|M2-36 36 1|M2-37 36 2|M2-38 36 3|M2-39 36 4|M2-40 36 5",
-  "N1-01 36 0|N1-02 36 1|N2-01 36 2|N2-02 36 3|N2-03 36 4|N2-04 144 2|N2-05 144 3|N2-06 144 4|N2-07 252 2",
-  "N3-01 36 0|N3-02 36 1|N3-03 36 2|N3-04 198 0|N3-05 198 1|N4-01 36 3",
-  "P1-01 36 0|P1-02 36 1|P2-01 36 2|P2-02 36 3|P2-03 198 2|P2-04 198 3",
-  "P3-01 36 0|P3-02 36 1|P3-03 189 0|P3-04 189 1|P4-01 36 2",
+  "N1-01 36 0|N1-02 36 1|N2-01 36 2|N2-02 36 3|N2-03 36 4|N2-04 144 2|N2-05 144 3|N2-06 144 4|N2-07 252 2|N3-01 36 5|N3-02 36 6|N3-03 36 7|N3-04 198 5|N3-05 198 6|N4-01 36 8",
+  "P1-01 36 0|P1-02 36 1|P2-01 36 2|P2-02 36 3|P2-03 198 2|P2-04 198 3|P3-01 36 4|P3-02 36 5|P3-03 189 4|P3-04 189 5|P4-01 36 6",
+  "Q1-01 36 0|Q1-02 36 1|Q2-01 36 2|Q2-02 36 3|Q2-03 36 4|Q2-04 36 5|Q2-05 36 6|Q3-01 198 2|Q3-02 198 3|Q3-03 198 4|Q3-04 198 5|Q3-05 198 6|Q4-01 36 7",
+  "R1-01 36 0|R1-02 36 1|R2-01 36 2|R2-02 36 3|R2-03 36 4|R2-04 36 5|R2-05 36 6|R3-01 36 7|R3-02 36 8|R3-03 36 9|R3-04 36 10|R3-05 36 11",
   "O1-01 36 0|O1-02 36 1|O2-01 36 2|O2-02 36 3|O2-03 36 4|O2-04 36 5|O2-05 36 6",
 ];
 
@@ -264,6 +267,15 @@ test.describe("plugin-doc — Word's mid-page column changes (ADR 029)", () => {
     page,
   }) => {
     test.skip(engineProtocol() < 64, "span/split columns need wire protocol 64");
-    await openAndCompare(page, "doc-columns.docx", parse(COLUMNS), "AC-DOCCOL-2");
+    const want = parse(COLUMNS);
+    // Word's page count (columns.word.json): no column change opens a page.
+    expect(want).toHaveLength(13);
+    // Word page 1: H3 (3 / 3 / 1) directly below H2 (3 / 3), H4 below it.
+    const h = want[0];
+    expect(h.filter((l) => l.label.startsWith("H3")).map((l) => `${l.x} ${l.row}`)).toEqual([
+      "36 5", "36 6", "36 7", "144 5", "144 6", "144 7", "252 5",
+    ]);
+    expect(h.filter((l) => l.label.startsWith("H4")).map((l) => l.row)).toEqual([8, 9]);
+    await openAndCompare(page, "doc-columns.docx", want, "AC-DOCCOL-2");
   });
 });
