@@ -146,7 +146,9 @@ import {
 import {
   arrangeSelection,
   buildObjectCommands,
+  deleteSelection,
   groupSelection,
+  nudgeSelection,
   OBJECT_DIAGNOSTIC_SOURCE,
   OBJECT_KEYBINDINGS,
   OBJECT_MENU_ITEMS,
@@ -1672,11 +1674,12 @@ function CanvasAppIntegration() {
         animateCamera(fitCamera(vw, vh, documentBounds(rects)));
       },
     });
-    // `paged.object.*` — the structural verbs (Arrange ×4, Group,
-    // Ungroup, Select parent group). The deps bag is the ONLY place the
-    // module touches the app: the live selection through the ref, the
-    // worker-first selection write the overlays key on, and a report
-    // channel that lands in the Problems panel rather than the console.
+    // `paged.object.*` — the object verbs (Arrange ×4, Group, Ungroup,
+    // Select parent group, Delete, Nudge ×8). The deps bag is the ONLY
+    // place the module touches the app: the live selection through the
+    // ref, the worker-first selection write the overlays key on, and a
+    // report channel that lands in the Problems panel rather than the
+    // console.
     const objectDeps: ObjectCommandDeps = {
       client,
       getSelection: () => selectionRef.current.elementSelection,
@@ -1693,6 +1696,22 @@ function CanvasAppIntegration() {
         } catch {
           /* geometry is selection CHROME — its absence never blocks the edit. */
         }
+      },
+      // A nudge moves what is selected without changing WHAT is
+      // selected, so it re-reads the ids the chrome is already drawn
+      // from — for a selected group those are its leaves, which the
+      // group id itself could not be asked for.
+      refreshSelectionGeometry: async () => {
+        const selected = selectionRef.current.elementSelection;
+        const shown = selectionRef.current.elementGeometry.map((g) => g.id);
+        const ids = shown.length > 0 ? shown : selected;
+        if (ids.length === 0) return;
+        const items = await client.elementGeometry(ids);
+        // The selection moved on while the engine answered: the path
+        // that changed it fetched its own geometry, and this answer is
+        // for something no longer on screen.
+        if (selectionRef.current.elementSelection !== selected) return;
+        selectionRef.current.setElementGeometry(items);
       },
       report: (severity, message) =>
         problemsSink.publish(OBJECT_DIAGNOSTIC_SOURCE, "object", [
@@ -1713,6 +1732,9 @@ function CanvasAppIntegration() {
       group: fresh(() => groupSelection(objectDeps)),
       ungroup: fresh(() => ungroupSelection(objectDeps)),
       selectParentGroup: fresh(() => selectParentGroup(objectDeps)),
+      delete: fresh(() => deleteSelection(objectDeps)),
+      nudge: (direction, large) =>
+        fresh(() => nudgeSelection(objectDeps, direction, large))(),
     });
     // `paged.insert.*` — the object-authoring verbs (U7). Unlike the
     // object layer's deps bag, every runner reads its state (camera,

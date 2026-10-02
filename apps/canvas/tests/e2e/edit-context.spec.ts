@@ -339,4 +339,62 @@ test.describe("E2E edit-context (W3.2 — B-02 + W-03)", () => {
       page.locator('[data-properties-panel][data-inspector-kind="frame"]'),
     ).toBeVisible();
   });
+
+  test("AC-EDITCTX-4 — inside a context, Backspace and the arrows do not delete or nudge the frame you entered @feat:editor-tools.object-commands @feat:frames-paths.frame.delete @feat:editor-tools.move.translate @feat:editor-shell.keyboard-shortcuts @level:edge", async ({
+    page,
+  }) => {
+    // `paged.object.delete` / `.nudge*` act on the host element
+    // selection — which, inside an edit context, IS the frame the user
+    // entered. Without a guard the first Backspace meant for the
+    // content would take the whole frame.
+    const breadcrumb = page.locator("[data-edit-context-breadcrumb]");
+    const path = await firstOfKind(page, "rectangle");
+    expect(path, "geometry fixture has a path element").not.toBeNull();
+    const at = await elementScreenCenter(page, path!);
+    expect(at).not.toBeNull();
+
+    const geometry = () =>
+      page.evaluate(async (id) => {
+        const c = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                elementGeometry: (ids: unknown[]) => Promise<
+                  Array<{ bounds: number[]; itemTransform?: number[] | null }>
+                >;
+              };
+            };
+          }
+        ).__canvas;
+        const [item] = await c.client.elementGeometry([id]);
+        return item
+          ? { bounds: item.bounds, transform: item.itemTransform ?? null }
+          : null;
+      }, path!);
+
+    await page.mouse.dblclick(at!.x, at!.y);
+    await expect(breadcrumb).toBeVisible({ timeout: 5_000 });
+    const inside = await geometry();
+    expect(inside, "the entered frame resolves").not.toBeNull();
+
+    await page.keyboard.press("Backspace");
+    await page.keyboard.press("Delete");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Shift+ArrowDown");
+    await page.waitForTimeout(250);
+    // Still there, and exactly where it was; the context is still open.
+    expect(await geometry()).toEqual(inside);
+    await expect(breadcrumb).toBeVisible();
+    // The commands are gated at the registry too, not only the keys.
+    await invokeCommand(page, "paged.object.delete");
+    await invokeCommand(page, "paged.object.nudgeRight");
+    expect(await geometry()).toEqual(inside);
+
+    // Leave the context: the same key now acts on the frame.
+    await page.keyboard.press("Escape");
+    await expect(breadcrumb).toHaveCount(0, { timeout: 5_000 });
+    await expect.poll(() => selectedElement(page)).toEqual(path);
+    await page.keyboard.press("Backspace");
+    await expect.poll(geometry).toBeNull();
+  });
 });

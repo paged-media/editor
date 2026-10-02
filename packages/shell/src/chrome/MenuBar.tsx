@@ -108,6 +108,18 @@ export function MenuBar() {
   );
 }
 
+/** Named keys that read as a glyph. Without this `arrowleft` renders
+ *  as "Arrowleft" — the generic capitalise-the-first-letter fallback
+ *  was written when every binding ended in a letter or a bracket. */
+const KEY_GLYPHS: Record<string, string> = {
+  arrowleft: "\u2190",
+  arrowright: "\u2192",
+  arrowup: "\u2191",
+  arrowdown: "\u2193",
+  backspace: "\u232b",
+  delete: "\u2326",
+};
+
 /** `cmd+shift+s` -> `\u2318\u21e7S`. Mirrors the command palette's
  *  formatter exactly; both read `KeybindingRegistry.list()`. */
 function prettyKey(combo: string): string {
@@ -126,6 +138,8 @@ function prettyKey(combo: string): string {
               : m,
     )
     .join("");
+  const glyph = KEY_GLYPHS[key];
+  if (glyph) return `${mods}${glyph}`;
   return `${mods}${key.length === 1 ? key.toUpperCase() : key.charAt(0).toUpperCase() + key.slice(1)}`;
 }
 

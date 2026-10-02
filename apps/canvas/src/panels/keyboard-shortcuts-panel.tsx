@@ -53,6 +53,17 @@ import {
 
 export const KEYBOARD_SHORTCUTS_PANEL_ID = "paged.keyboard-shortcuts";
 
+/** Named keys that read as a glyph — the same table the menus and the
+ *  palette carry, so "Nudge left" shows ← here too, not "Arrowleft". */
+const KEY_GLYPHS: Record<string, string> = {
+  arrowleft: "←",
+  arrowright: "→",
+  arrowup: "↑",
+  arrowdown: "↓",
+  backspace: "⌫",
+  delete: "⌦",
+};
+
 /** `cmd+shift+s` → `⌘⇧S`. Same formatting as the menus and the palette. */
 function prettyKey(combo: string): string {
   const parts = combo.split("+");
@@ -70,6 +81,8 @@ function prettyKey(combo: string): string {
               : m,
     )
     .join("");
+  const glyph = KEY_GLYPHS[key];
+  if (glyph) return `${mods}${glyph}`;
   return `${mods}${key.length === 1 ? key.toUpperCase() : key.charAt(0).toUpperCase() + key.slice(1)}`;
 }
 

@@ -260,6 +260,176 @@ ops pass where a stroked rectangle exists and skip where none does.
 paths correctly. Cost of the lesson: a harness target fact wearing an
 engine finding's clothes for one afternoon.
 
+## 10. deleteFrame does not renumber group member tables (OPEN)
+
+Discovered 2026-10-02 building `paged.object.delete`, at the
+`canvas-wasm` 0.64.0 pin (core `main` @ `9f933f1` carries the same
+code).
+
+**Symptom.** Removing a page item silently re-seats the members of
+every group on the spread that holds a LATER-created item of the same
+kind. The engine reports `mutationApplied`. On a blank document, four
+rectangles `u1..u4`, `createGroup [u2,u3]` → `u5`:
+
+```
+before            rectangle:u1, group:u5[rectangle:u2,rectangle:u3], rectangle:u4
+deleteFrame u1    group:u5[rectangle:u3,rectangle:u4], rectangle:u4
+```
+
+`u2` has fallen out of the group (and out of the scene tree), and the
+unrelated `u4` is now a member and is listed twice. Deleting `u4`
+(created after the members) is clean, and so is deleting an item of a
+different kind (a text frame beside a group of rectangles).
+
+The same op on a MEMBER (`deleteFrame u2` above) corrupts the same way
+— and there undo does not repair it: the member comes back as a second
+top-level entry (`group:u4[u1,u2], u3, u1`).
+
+**Cause.** A `Group` holds `members: Vec<FrameRef>`, indices into the
+spread's per-kind vecs. `remove_and_capture` removes the item from its
+vec and calls `unregister_frame_ref`
+(`paged-mutate/src/apply/insert_node.rs`), which shifts the later
+indices in `frames_in_order` and in `nested_children` — but never
+touches `spread.groups[..].members`. Every group ref of that kind past
+the removed slot now points one item along. `register_frame_ref` has the
+mirror gap on re-insert, which is why undo of a NON-member delete lands
+exactly right (the indices shift back) and undo of a member delete does
+not.
+
+Every `RemoveNode` shares this, not only the wire's `deleteFrame` — the
+pathfinder verbs remove their inputs through the same path.
+
+**Likely fix.** Shift `Group::members` in `unregister_frame_ref` /
+`register_frame_ref` the way `nested_children` is shifted, and drop the
+removed item's own ref from any group that holds it (capturing the
+group + slot in the inverse, as `z_slot` is captured).
+
+**What the editor does meanwhile** (`apps/canvas/src/object-commands.ts`):
+a selected item inside a group that is staying is refused before the
+wire; for everything else the member tables of the surviving groups are
+read back after the delete and, on a difference, the delete is undone
+and the user is told. So Delete is SAFE but not always AVAILABLE: on a
+real document, deleting an early rectangle from a spread that groups
+later ones is refused until this is fixed.
+
+**Suite anchor.** `e2e/object-commands.spec.ts` AC-OBJ-ENGINE-1
+(`test.fail`); AC-OBJ-17 / AC-OBJ-18 pin the editor's two guards.
+
+## 11. Undo of deleteFrame restores a bare frame (OPEN — the residue of #4)
+
+**Symptom.** Delete → undo brings a frame back with its geometry, fill,
+stroke colour and stroke weight, and nothing else. Measured on a
+rectangle at 0.64.0:
+
+```
+frameOpacity              40    → null
+frameNonprinting          true  → false
+frameCornerRadiusTopLeft  12    → null
+placed image (hasImage)   true  → false
+```
+
+A text frame keeps its story (`parent_story` is captured); an untouched
+fresh frame of every kind round-trips with no difference at all, which
+is why the suite's delete sandwiches are green.
+
+**Cause.** Documented in the engine: `NodeSpec` "carries the minimal
+Stage-1 supported field set plus `item_transform` … Remaining
+non-essential fields (drop_shadow, opacity, effects, …) still default
+on re-insertion" (`paged-mutate/src/operation.rs`). The inverse of
+`RemoveNode` is an `InsertNode` of that spec, so everything outside it
+is rebuilt from defaults. A dissolved group's inverse (`GroupSpec`) has
+the same shape: id, members, parent and transform, without the group's
+transparency block or corner attributes.
+
+**Likely fix.** Capture the removed item itself (the whole
+`Rectangle` / `TextFrame` / … value) in the inverse rather than a
+re-derivable subset, as the transform was added for #4.
+
+**What the editor does meanwhile.** Nothing can be done host-side for
+formatting — the loss happens inside undo. The one loss the host can
+detect exactly, a placed image, is announced when the frame is deleted
+(an `info` line in the Problems panel).
+
+**Suite anchor.** AC-OBJ-ENGINE-2 (`test.fail`); AC-OBJ-19 pins the
+notice.
+
+## 12. Deleting a container releases what was pasted into it (OPEN)
+
+**Symptom.** `pasteInto { container: u1, child: u2 }`, then
+`deleteFrame u1`: the tree goes from `rectangle:u1` (the child is not
+listed while nested) to `rectangle:u2` — the child reappears as a free
+top-level item instead of going with its container. Undo then yields
+`rectangle:u1, rectangle:u2`: both top-level, the nesting gone.
+
+Deleting the CHILD is refused, correctly and legibly: `frame mutation
+failed: invalid value for FrameTransform on Rectangle("u2"): B-18: the
+item is pasted into a container — release it before removing`.
+
+**Likely fix.** `apply_remove_node` on a container either removes its
+nested children with it (capturing them in the inverse) or refuses the
+way the child's delete does.
+
+**Suite anchor.** AC-OBJ-ENGINE-3 (`test.fail`). The editor has no
+guard for this one: the scene tree does not report nested children, so
+a container cannot be told from a plain frame before the delete.
+
+## 13. Two writes the engine accepts and should not (OPEN, minor)
+
+Found by the same probes; neither is on `paged.object.*`'s path.
+
+- **`setElementProperty { frameTransform }` on a GROUP id applies and
+  moves nothing.** It rewrites the group's stored matrix and leaves
+  every member where it was, so the group's own transform and its
+  members' positions disagree from then on. `setGroupTransform` is the
+  op that rebases the members; `moveFrame` on a group id is refused
+  (`Mutation::MoveFrame`). The generic write should refuse too, or
+  route to the group op.
+- **`elementLocked` is not enforced on the wire.** `moveFrame` and
+  `deleteFrame` both apply to a frame whose `elementLocked` is `true`.
+  The hit-tester keeps locked items out of a click selection, so this
+  only bites a selection made from a panel — but nothing below the
+  editor would stop a script or a plugin.
+
+## 14. The translate gesture does not move an un-rotated line or path (OPEN)
+
+Found 2026-10-02 while choosing the op for `paged.object.nudge*`, by
+rendering what the engine's own drag commits against what a transform
+write commits (blank document, one item, `beginGesture translate` →
+`updateGesture [40, 20]` with snap off → `commitGesture`; page rendered
+at 1 px/pt):
+
+```
+              drag (gesture)        moveFrame (transform)   drag vs transform
+rectangle     14400 px changed      14400 px changed        0 px   (identical)
+line              0 px changed        800 px changed        800 px
+pen path          0 px changed       1026 px changed       1026 px
+```
+
+**Symptom.** Dragging an un-rotated line or pen path commits, repaints
+nothing, and leaves the object where it was; the model's bounds have
+moved (`[450,50,490,150]` → `[455,60,495,160]`) while its anchors have
+not (`[[50,450],[150,490]]` before and after), so the selection box and
+the drawn path part company.
+
+**Cause.** `compute_node_mutation` sends every un-rotated item down the
+BOUNDS path (`NodeMutation::Bounds(translate_bounds(..))` →
+`SetProperty { FrameBounds }`). For a rectangle, an ellipse and a text
+frame the bounds ARE the geometry. A line and a polygon are drawn from
+their anchors, which that write does not touch. A rotated item, or any
+item in a gesture that includes a group, takes the transform path and
+moves correctly.
+
+**Likely fix.** Send path-bearing kinds (non-empty `path_anchors`) down
+the transform path, or translate the anchors with the box.
+
+**Why it matters here.** It is the reason nudge writes the transform
+for every kind rather than copying what the gesture commits: the same
+`frameBounds` write is reachable from the wire and from the Transform
+panel's X/Y fields, and has the same effect on a line.
+
+**Suite anchor.** AC-OBJ-ENGINE-4 (`test.fail`); AC-OBJ-30 proves the
+transform write does repaint a line and a pen path.
+
 ---
 
 ### What works (verified byte-clean)

@@ -113,6 +113,17 @@ function looksLikePrompt(query: string): boolean {
  * <Mode>" group from the active ModeContribution, and the AI-prompt
  * affordance.
  */
+/** Named keys that read as a glyph — kept identical to MenuBar's
+ *  table, as the two formatters are. */
+const KEY_GLYPHS: Record<string, string> = {
+  arrowleft: "\u2190",
+  arrowright: "\u2192",
+  arrowup: "\u2191",
+  arrowdown: "\u2193",
+  backspace: "\u232b",
+  delete: "\u2326",
+};
+
 /** `cmd+shift+s` -> `\u2318\u21e7S`. Mac glyphs because the app is
  *  Chromium-only and the tool rail already spells its hints this way. */
 function prettyKey(combo: string): string {
@@ -131,6 +142,8 @@ function prettyKey(combo: string): string {
               : m,
     )
     .join("");
+  const glyph = KEY_GLYPHS[key];
+  if (glyph) return `${mods}${glyph}`;
   return `${mods}${key.length === 1 ? key.toUpperCase() : key.charAt(0).toUpperCase() + key.slice(1)}`;
 }
 
