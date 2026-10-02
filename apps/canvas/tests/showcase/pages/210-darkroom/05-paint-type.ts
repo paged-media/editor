@@ -52,6 +52,7 @@ import {
   openAdjustments,
   panelStatus,
   photo,
+  pickBrushColour,
   pointOnPage,
   replaceBytesFromFile,
   resetAdjustments,
@@ -189,9 +190,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       // (the retouch page's heal taught this).
       await doc.runCommand(CMD.deselect);
       await setSlider(ctx, "Size (px)", 64);
-      await ctx.page
-        .locator("[data-image-brush-color]")
-        .selectOption({ label: "Magenta" });
+      await pickBrushColour(ctx, "Magenta");
       const preTwo = await panelStatus(ctx);
       await strokeOnPage(ctx, page, [
         [90, 260],
@@ -206,9 +205,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       await doc.runCommand(CMD.deselect);
       await armTool(ctx, TOOL.pencil);
       await setSlider(ctx, "Size (px)", 26);
-      await ctx.page
-        .locator("[data-image-brush-color]")
-        .selectOption({ label: "Cyan" });
+      await pickBrushColour(ctx, "Cyan");
       const preThree = await panelStatus(ctx);
       await strokeOnPage(ctx, page, [
         [85, 230],
@@ -239,9 +236,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
         .locator("[data-image-type-family]")
         .fill("Space Grotesk");
       await setSlider(ctx, "Size (px)", 190, 1); // type section — second; image px
-      await ctx.page
-        .locator("[data-image-brush-color]")
-        .selectOption({ label: "White" }); // type paints the brush colour
+      await pickBrushColour(ctx, "White"); // type paints the brush colour
       await armTool(ctx, TOOL.type);
       const baselinePt = await pointOnPage(ctx, page, 92, 322);
       await ctx.page.mouse.move(baselinePt.x, baselinePt.y);

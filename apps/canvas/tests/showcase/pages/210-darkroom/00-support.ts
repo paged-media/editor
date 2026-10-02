@@ -498,6 +498,29 @@ export async function strokeOnPage(
 /** Arm a plugin tool through its contributed activation command — the
  *  door the rail's own shortcut uses (`designer.activate` only reaches
  *  the built-in slots; the image journeys carry the same note). */
+/**
+ * Pick a brush colour, failing in seconds when the control is disabled.
+ * The panel disables its whole brush section once the image session has
+ * no source (Source "none", Engine "idle"), and an unbounded
+ * selectOption then waits out the 40-minute chapter timeout — which is
+ * how one intermittent lost session cost a full build 40 minutes.
+ */
+export async function pickBrushColour(
+  ctx: PageContext,
+  label: string,
+): Promise<void> {
+  await ctx.page
+    .locator("[data-image-brush-color]")
+    .selectOption({ label }, { timeout: 30_000 })
+    .catch((err: unknown) => {
+      throw new Error(
+        `brush colour "${label}" could not be picked within 30 s — the brush ` +
+          `section is disabled, so the image session has most likely lost its ` +
+          `source between strokes: ${String(err).split("\n")[0]}`,
+      );
+    });
+}
+
 export async function armTool(ctx: PageContext, toolId: string): Promise<void> {
   await ctx.doc.runCommand(`paged.tool.activate.${toolId}`).catch(() => {});
 }

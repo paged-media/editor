@@ -30,17 +30,18 @@
 // fixture from silently producing a wrong-looking document — so the
 // throw is asserted, not just the hit.
 
-import { dirname, resolve as pathResolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve as pathResolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
 import { openCanvas } from "../fidelity/canvas-driver";
+import { CORE } from "./chapter";
 import { ShowcaseDoc } from "./driver";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const REPO_ROOT = pathResolve(__dirname, "..", "..", "..", "..");
-const FIXTURE = `${REPO_ROOT}/corpus/idml/generated/text.idml`;
+// core's own paged-gen output, the same place the chapters take the base
+// fixture from: the nightly checks out core beside the editor and runs
+// regen-fixtures, but has no corpus checkout (the old `<editor>/corpus`
+// path only resolved through a local symlink).
+const FIXTURE = pathResolve(CORE, "corpus", "generated", "text.idml");
 
 test.describe("ShowcaseDoc", () => {
   test.setTimeout(120_000);

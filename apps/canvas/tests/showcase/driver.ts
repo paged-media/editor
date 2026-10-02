@@ -227,9 +227,44 @@ export class ShowcaseDoc {
             return position === "story" ? (hit.storyId ?? hit.id) : hit.id;
           });
         }
-        return raw(args[0], ...rest);
+        // Time spent here outside a wire write is a read, a script, or a
+        // plugin call; {@link sendMutation} times its own sends.
+        if (this.sending > 0) return raw(args[0], ...rest);
+        const t0 = Date.now();
+        try {
+          return await raw(args[0], ...rest);
+        } finally {
+          this.stats.pageCalls += 1;
+          this.stats.pageMs += Date.now() - t0;
+        }
       };
     }
+  }
+
+  /**
+   * Where the authoring time went since the last {@link takeStats}:
+   * wire writes (each one a whole-document rebuild in the engine), the
+   * worker's OWN rebuild clock for them, and every other page call
+   * (reads, scripts, plugin calls). A spread that is slow because it
+   * flushes often shows many writes; one slow because each rebuild is
+   * expensive shows a high rebuild share.
+   */
+  readonly stats = { writes: 0, writeMs: 0, rebuildMs: 0, pageCalls: 0, pageMs: 0 };
+  private sending = 0;
+
+  takeStats(): ShowcaseDoc["stats"] {
+    const out = { ...this.stats };
+    Object.assign(this.stats, { writes: 0, writeMs: 0, rebuildMs: 0, pageCalls: 0, pageMs: 0 });
+    return out;
+  }
+
+  private noteWrite(t0: number, reply: unknown): void {
+    this.stats.writes += 1;
+    this.stats.writeMs += Date.now() - t0;
+    const s = (reply as { payload?: { cacheStats?: Record<string, unknown> } })
+      ?.payload?.cacheStats;
+    const ms = s?.rebuild_ms ?? s?.rebuildMs;
+    if (typeof ms === "number") this.stats.rebuildMs += ms;
   }
 
   constructor(readonly page: Page) {
@@ -471,12 +506,17 @@ export class ShowcaseDoc {
       // eslint-disable-next-line no-console
       console.log(`[trace-race] arming ${stallMs}ms for ${op}`);
     }
+    const tSend = Date.now();
+    this.sending += 1;
     const raced = await Promise.race([
       rawMutate(this.page, { op, args }).then((r) => ({ kind: "reply" as const, r })),
       new Promise<{ kind: "stall" }>((resolve) =>
         setTimeout(() => resolve({ kind: "stall" }), stallMs),
       ),
-    ]);
+    ]).finally(() => {
+      this.sending -= 1;
+    });
+    if (raced.kind === "reply") this.noteWrite(tSend, raced.r);
     if (process.env.ANNUAL_TRACE) {
       // eslint-disable-next-line no-console
       console.log(`[trace-race] settled ${raced.kind} for ${op}`);

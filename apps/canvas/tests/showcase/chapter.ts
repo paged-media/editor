@@ -303,9 +303,11 @@ export async function runChapter(
       allowBatching && process.env.ANNUAL_BATCH !== "0" && !spread.unbatched;
     const build = () =>
       spread.build({ page, doc, pageIndexes: spread.pages, pageIds });
+    doc.takeStats();
     const t0 = Date.now();
     const report = batched ? await doc.defer(build) : await build();
     const authorMs = Date.now() - t0;
+    const cost = doc.takeStats();
 
     claims.push({
       module: spread.id,
@@ -336,7 +338,10 @@ export async function runChapter(
     console.log(
       `[${spec.id}] ${spread.id} — ${report.title} ` +
         `(${report.elements.length} elements, ${report.covers.length} rows, ` +
-        `${(authorMs / 1000).toFixed(1)}s${batched ? " batched" : ""})`,
+        `${(authorMs / 1000).toFixed(1)}s${batched ? " batched" : ""}; ` +
+        `${cost.writes} writes ${(cost.writeMs / 1000).toFixed(1)}s, ` +
+        `rebuild ${(cost.rebuildMs / 1000).toFixed(1)}s, ` +
+        `${cost.pageCalls} other calls ${(cost.pageMs / 1000).toFixed(1)}s)`,
     );
   }
 

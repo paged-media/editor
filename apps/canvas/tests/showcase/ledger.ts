@@ -76,12 +76,26 @@ export function propertyPathUniverse(coreCheckout: string): string[] {
     );
   }
   const text = readFileSync(catalog, "utf8");
-  const start = text.indexOf("pub const PROPERTY_PATHS");
-  if (start < 0) throw new Error("PROPERTY_PATHS table not found in catalog.rs");
-  const block = text.slice(start, text.indexOf("];", start));
-  const names = [...block.matchAll(/\(\s*"([A-Za-z0-9]+)"\s*,\s*P::/g)].map(
-    (m) => m[1],
-  );
+  // Since core 8dcab35 the table is generated: `property_paths! {
+  // advertised { FrameBounds => "frameBounds", … } hidden { … } }`, and
+  // only the ADVERTISED block feeds `PROPERTY_PATHS`. The hand-written
+  // `("frameBounds", P::FrameBounds)` array is the older shape.
+  const invocation = text.search(/^property_paths!\s*\{/m);
+  let names: string[];
+  if (invocation >= 0) {
+    const open = text.indexOf("advertised", invocation);
+    const block = text.slice(open, text.indexOf("}", open));
+    names = [...block.matchAll(/\b[A-Z][A-Za-z0-9]*\s*=>\s*"([A-Za-z0-9]+)"/g)].map(
+      (m) => m[1],
+    );
+  } else {
+    const start = text.indexOf("pub const PROPERTY_PATHS");
+    if (start < 0) throw new Error("PROPERTY_PATHS table not found in catalog.rs");
+    const block = text.slice(start, text.indexOf("];", start));
+    names = [...block.matchAll(/\(\s*"([A-Za-z0-9]+)"\s*,\s*P::/g)].map(
+      (m) => m[1],
+    );
+  }
   if (names.length === 0) {
     throw new Error("PROPERTY_PATHS parsed to zero names — format changed?");
   }
