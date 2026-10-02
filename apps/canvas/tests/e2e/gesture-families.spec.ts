@@ -18,7 +18,7 @@
  */
 
 // E2E gesture suite — the composite family scenarios from the
-// gesture test plan (thoughts/docs/paged/tests/gestures.md §4.6):
+// gesture test plan (docs/reference/gestures.md §4.6):
 //
 //   E2E-01  create rect → Shift-move → Alt-resize → Shift-rotate →
 //           undo ×4 → redo ×4 (undo/redo through the REAL Cmd+Z

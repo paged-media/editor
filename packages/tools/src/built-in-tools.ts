@@ -18,7 +18,7 @@
  */
 
 // Concept 1 — the built-in InDesign tool catalog, transcribed from
-// `thoughts/docs/paged/editor/media/toolbar.png`. DATA only here:
+// a reference screenshot (not published). DATA only here:
 // id / title / icon / shortcut / flyout group / section / default.
 //
 // EVERY entry in this list must be one of exactly two things:

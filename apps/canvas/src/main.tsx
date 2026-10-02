@@ -708,7 +708,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
   {
     // SDK Phase 5 (v1 sweep) — Color editor. Fill swatch picker
     // + fill tint scrub. Complements Swatches (the palette
-    // browser) per `panel-catalog-and-sdk-extension.md` §6
+    // browser) per `docs/design/panel-catalog.md` §6
     // Tier 2b. CMYK/RGB sliders are v2.
     id: "paged.color",
     title: "Color",
@@ -815,7 +815,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
   {
     // SDK Phase 5 (v1 sweep) — read-only document info. Expert
     // leaf wrapping `useDocumentMeta()`. Per the
-    // `panel-catalog-and-sdk-extension.md` §6 Tier 5 + §5.6.
+    // `docs/design/panel-catalog.md` §6 Tier 5 + §5.6.
     id: "paged.info",
     title: "Info",
     component: InfoPanel,
@@ -834,7 +834,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
   },
   {
     // SDK Phase 5 (v1 sweep) — Properties context router. Per
-    // `panel-catalog-and-sdk-extension.md` §6 Tier 6 — the
+    // `docs/design/panel-catalog.md` §6 Tier 6 — the
     // "Properties" idiom. Composes Object Transform + Stroke
     // (element scope) and Character + Paragraph (content scope)
     // conditionally on selection state.
@@ -847,7 +847,7 @@ const BUILT_IN_PANELS: PanelContribution[] = [
   {
     // SDK Phase 5 (v1 sweep) — Control bar. Horizontal-strip
     // variant of Properties (same compositions, scrollable row
-    // layout). Per `panel-catalog-and-sdk-extension.md` §6
+    // layout). Per `docs/design/panel-catalog.md` §6
     // Tier 6.
     id: "paged.control",
     title: "Control",

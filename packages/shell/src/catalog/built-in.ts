@@ -131,7 +131,7 @@ const ENTRIES: CatalogEntry[] = [
   {
     // SDK Phase 5 (D7) — apply-an-entity selector. Reads its row
     // list from any named document collection per
-    // `panel-catalog-and-sdk-extension.md` §9 + §11.5. The
+    // `docs/design/panel-catalog.md` §9 + §11.5. The
     // composition node parameterises `collectionName`; the leaf's
     // bindings declaration is a generic
     // `documentCollection:swatches` placeholder for audit purposes
@@ -153,7 +153,7 @@ const ENTRIES: CatalogEntry[] = [
     // SDK Phase 5 (v1 sweep) — segmented multi-state toggle.
     // Reads a `Value::Text` enum string; commits the picked
     // option's `value` as a Text payload. Per
-    // `panel-catalog-and-sdk-extension.md` §9. First users in
+    // `docs/design/panel-catalog.md` §9. First users in
     // v1: Paragraph alignment (justification) + Stroke end-cap
     // (≥2 panels rule).
     id: PAGED_INPUT_TOGGLE_GROUP,

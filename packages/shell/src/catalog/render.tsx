@@ -24,7 +24,7 @@
 // renders the corresponding leaf or descends into a composition
 // sub-tree. The renderer is the single React entry point a
 // declarative-panel registration uses — see
-// docs/paged/sdk-implementation-plan.md §3a.
+// the client-SDK implementation plan §3a (not published).
 
 import { createContext, useContext, type ReactElement } from "react";
 import type {

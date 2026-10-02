@@ -18,7 +18,7 @@
  */
 
 // E2E gesture suite — modifier semantics, from the gesture test plan
-// (thoughts/docs/paged/tests/gestures.md): TR-01 (Shift dominant-axis
+// (docs/reference/gestures.md): TR-01 (Shift dominant-axis
 // translate, axis can flip mid-drag), INV-5/GSM-08 (constraints are a
 // pure function of the CURRENT sample's modifiers — a released Shift
 // drops the constraint on the same gesture), TR-02+TR-03 combined

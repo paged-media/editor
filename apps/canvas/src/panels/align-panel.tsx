@@ -25,7 +25,7 @@
 // coordinate per kind (selection AABB edges or center), and
 // dispatches a sequence of SetElementProperty(FrameBounds)
 // mutations through the existing wire. Per
-// `panel-catalog-and-sdk-extension.md` §6 Tier 3 + §10 audit
+// `docs/design/panel-catalog.md` §6 Tier 3 + §10 audit
 // register: declares `writes: ["geometry"]` since the commit set
 // is a multi-target rewrite of frame bounds.
 //

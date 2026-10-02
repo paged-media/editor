@@ -16,7 +16,7 @@
  *  @copyright  Copyright (c) And The Next GmbH
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
-// thoughts ADR 028 / 029 — every way a Word document says "start over"
+// ADR 028 / 029 — every way a Word document says "start over"
 // paginates like WORD after a standalone open.
 //
 // The fixture is plugin-doc's docx_conformance::breaks_docx(), whose page

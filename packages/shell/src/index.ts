@@ -20,7 +20,7 @@
 // @paged-media/shell — application-shell scaffolding for the canvas
 // editor. Owns the React state contexts, registries, docking
 // substrate, and command palette per
-// `docs/paged/editor-architecture.md` §17.
+// the original architecture spec §17 (not published; see `docs/architecture.md`).
 
 // ── State contexts ─────────────────────────────────────────────
 export {

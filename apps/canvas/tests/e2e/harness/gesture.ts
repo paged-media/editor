@@ -19,7 +19,7 @@
 
 // E2E gesture suite — shared channel drivers for the specs derived
 // from the gesture & interaction test plan
-// (thoughts/docs/paged/tests/gestures.md). Wraps the worker gesture
+// (docs/reference/gestures.md). Wraps the worker gesture
 // channel (begin/update/commit/cancel), page-PNG byte snapshots, and
 // a worker-notification recorder that — unlike op-sandwich's — also
 // captures `gestureCancelled` / `gestureFailed`, because the cancel

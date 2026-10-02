@@ -22,7 +22,7 @@
 // The panel is now a declarative composition over
 // `PAGED_INPUT_COLLECTION_SELECT` + a content-scope binding to
 // `appliedParagraphStyle`. Per
-// `docs/paged/panel-catalog-and-sdk-extension.md` §5.3 + §5.5.
+// `docs/design/panel-catalog.md` §5.3 + §5.5.
 //
 // AC-PSTYLE-3 is the end-to-end proof that the D1 + D7 wiring
 // (Task B / Task D of the panel-catalog plan) works: clicking a

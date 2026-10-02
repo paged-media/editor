@@ -417,7 +417,7 @@ interface GrowRuleState {
 
 /**
  * Protocol 64 — Smart Text Reflow for ONE story (`setFlowGrowRule`,
- * thoughts ADR 026). With the rule on, the renderer adds generated
+ * ADR 026). With the rule on, the renderer adds generated
  * pages after the chain's last frame while the story oversets and drops
  * them when they empty — derived at layout, so the op carries only the
  * rule. InDesign keeps this as a document preference; the engine scopes

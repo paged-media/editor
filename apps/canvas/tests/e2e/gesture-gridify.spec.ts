@@ -24,7 +24,7 @@
 // drag is still active — tap the arrow keys to split the pending frame
 // into an N×M grid, and release to commit.
 //
-// Plan IDs (thoughts/docs/paged/tests/gestures.md §4.1.5 + §4.6):
+// Plan IDs (docs/reference/gestures.md §4.1.5 + §4.6):
 //   DR-05  arrow keys mid-drag: Right/Left = ±columns, Up/Down = ±rows,
 //          min 1×1, standard gutter; the N frames land in the SINGLE
 //          committed Operation (a `batch` → one undo step, INV-1).
@@ -137,7 +137,7 @@ test.describe("gestures.md DR-05/DR-07 — gridify (Rectangle tool)", () => {
     await loadViaReactPath(page, "geometry");
   });
 
-  // ENGINE BUG (docs/engine-findings.md #6) FIXED in core 27f7d0a
+  // ENGINE BUG (docs/reference/engine-findings.md #6) FIXED in core 27f7d0a
   // ("batch id minting"): a `batch` of N `insertFrame` ops used to fail
   // because core minted the SAME self_id for every frame in the batch
   // ("duplicate self_id … — IDML node IDs must be unique"), rejecting the

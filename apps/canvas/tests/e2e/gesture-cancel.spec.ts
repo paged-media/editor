@@ -18,7 +18,7 @@
  */
 
 // E2E gesture suite — Esc/cancel rollback, from the gesture test plan
-// (thoughts/docs/paged/tests/gestures.md): E2E-07 "Esc-cancel each
+// (docs/reference/gestures.md): E2E-07 "Esc-cancel each
 // gesture family", INV-1 (a session emits 0 Operations on abort),
 // INV-2 (post-abort state byte-identical to pre-begin), INV-8 (no
 // path leaves the machine dragging). Channel tests cancel every

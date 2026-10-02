@@ -16,7 +16,7 @@
  *  @copyright  Copyright (c) And The Next GmbH
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
-// thoughts ADR 029 — a Word document opens as the WHOLE document and
+// ADR 029 — a Word document opens as the WHOLE document and
 // paginates like WORD.
 //
 // The fixture is plugin-doc's docx_conformance::pagination_docx(), whose

@@ -18,7 +18,7 @@
  */
 
 // E2E gesture suite — W2.10 content rotate / scale gestures, from the
-// gesture & interaction test plan (thoughts/docs/paged/tests/gestures.md
+// gesture & interaction test plan (docs/reference/gestures.md
 // §6 "Content scale" row + §4.6 E2E happy-path-per-family). These ride
 // the SAME content grabber the Phase F `translateContent` uses: the
 // engine's `RotateContent` / `ScaleContent` arms rotate/scale the

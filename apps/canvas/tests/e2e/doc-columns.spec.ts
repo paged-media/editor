@@ -16,7 +16,7 @@
  *  @copyright  Copyright (c) And The Next GmbH
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
-// thoughts ADR 029 — a Word section that CHANGES THE COLUMNS mid-page stays
+// ADR 029 — a Word section that CHANGES THE COLUMNS mid-page stays
 // on Word's page after a standalone open.
 //
 // The fixtures are plugin-doc's docx_conformance::continuous_docx() and

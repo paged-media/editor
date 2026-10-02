@@ -21,7 +21,7 @@
 // composition.
 //
 // v1 ships fill picking + fill-tint scrub. Per
-// `panel-catalog-and-sdk-extension.md` §6 Tier 2b. Future v2:
+// `docs/design/panel-catalog.md` §6 Tier 2b. Future v2:
 // CMYK / RGB channel sliders (would land as a new
 // `paged.input.color-channel-sliders` primitive once we have a
 // resolved-rgb side channel and a matching apply path).

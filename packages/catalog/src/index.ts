@@ -19,7 +19,7 @@
 
 // @paged-media/catalog — declarative-component catalog + binding model.
 //
-// Per docs/paged/sdk-implementation-plan.md §Phase 3a. The catalog
+// Per the client-SDK implementation plan (not published). The catalog
 // is the finite, curated registry that declarative panel
 // compositions reference, what an external producer (A2UI etc.)
 // would be constrained to, and what a future third-party bundle
