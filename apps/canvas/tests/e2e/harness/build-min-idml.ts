@@ -190,15 +190,15 @@ const SPREAD_BODY =
   `<PathPointType Anchor="300 400" LeftDirection="300 400" RightDirection="300 400"/>` +
   `</PathPointArray></GeometryPathType></PathGeometry></Properties></Polygon>`;
 
-/** Build the minimal rectangle + open-polygon IDML. Returns the raw
- *  bytes; callers base64 them across the page.evaluate boundary. */
-export function buildRectAndPolygonIdml(): Uint8Array {
+/** Package ONE spread (a single 612 × 792 page, id `usp`) carrying
+ *  `body` — the page items — as a complete minimal IDML. */
+function packageWithBody(body: string): Uint8Array {
   const spread =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
     `<idPkg:Spread xmlns:idPkg="http://ns.adobe.com/AdobeInDesign/idml/1.0/packaging" DOMVersion="20.0">\n` +
     `<Spread Self="us" PageCount="1" ItemTransform="1 0 0 1 0 0">\n` +
     `<Page Self="usp" Name="1" GeometricBounds="0 0 792 612" ItemTransform="1 0 0 1 0 0" AppliedMaster="um"/>\n` +
-    SPREAD_BODY +
+    body +
     `\n</Spread>\n</idPkg:Spread>`;
   return buildZip([
     { name: "mimetype", data: MIME, store: true },
@@ -214,7 +214,125 @@ export function buildRectAndPolygonIdml(): Uint8Array {
   ]);
 }
 
+/** Build the minimal rectangle + open-polygon IDML. Returns the raw
+ *  bytes; callers base64 them across the page.evaluate boundary. */
+export function buildRectAndPolygonIdml(): Uint8Array {
+  return packageWithBody(SPREAD_BODY);
+}
+
 /** Base64 of the minimal IDML — the page.evaluate-friendly form. */
 export function buildRectAndPolygonIdmlBase64(): string {
   return Buffer.from(buildRectAndPolygonIdml()).toString("base64");
+}
+
+// ───────────────────────────────────────────── path-editing fixture
+//
+// What the path-editing specs (Direct Selection, the Pen on existing
+// paths) need and no generated fixture has all of: a closed corner
+// path, a SMOOTH anchor with asymmetric handles, a path under a
+// NON-AXIS-ALIGNED item transform, two open paths sharing a transform
+// (a join's precondition) and an element with NO anchor table. Every
+// inner coordinate is an integer, so the engine's f32 storage holds it
+// exactly and an untouched anchor can be compared byte for byte.
+
+type Pt = [number, number];
+
+interface PathPointSpec {
+  a: Pt;
+  l?: Pt;
+  r?: Pt;
+}
+
+/** A stroked, UNFILLED `<Polygon>` / `<GraphicLine>` with one contour.
+ *  Unfilled so a path edit changes the pixels of an outline, not of an
+ *  area that swallows the neighbours. */
+function strokedPath(
+  tag: "Polygon" | "GraphicLine",
+  self: string,
+  bounds: string,
+  open: boolean,
+  points: PathPointSpec[],
+  transform = "1 0 0 1 0 0",
+): string {
+  const pts = points
+    .map((p) => {
+      const l = p.l ?? p.a;
+      const r = p.r ?? p.a;
+      return (
+        `<PathPointType Anchor="${p.a[0]} ${p.a[1]}" ` +
+        `LeftDirection="${l[0]} ${l[1]}" RightDirection="${r[0]} ${r[1]}"/>`
+      );
+    })
+    .join("");
+  return (
+    `<${tag} Self="${self}" GeometricBounds="${bounds}" ItemTransform="${transform}" ` +
+    `FillColor="Swatch/None" StrokeWeight="2" StrokeColor="Color/Black">` +
+    `<Properties><PathGeometry><GeometryPathType PathOpen="${open}"><PathPointArray>` +
+    pts +
+    `</PathPointArray></GeometryPathType></PathGeometry></Properties></${tag}>`
+  );
+}
+
+/** cos 30° / sin 30°, as the fixture's rotated path spells them. */
+const COS30 = 0.8660254;
+const SIN30 = 0.5;
+
+/** The ids, the page and the geometry the path-editing specs address.
+ *  Positions are PAGE-local pt unless they say "inner". */
+export const PATH_EDIT_FIXTURE = {
+  pageId: "usp",
+  /** Closed square, corners only: (100,100) (300,100) (300,300) (100,300). */
+  quad: { kind: "polygon", id: "uquad" },
+  /** Open arch whose MIDDLE anchor is smooth and asymmetric: handles
+   *  collinear through (450, 200), 40 and 80 long. */
+  arch: { kind: "polygon", id: "uarch" },
+  /** Open three-anchor path in its own space — inner (0,0) (100,0)
+   *  (100,60) — shown rotated 30° about its origin and moved to
+   *  (150, 400). */
+  rotated: { kind: "polygon", id: "urot" },
+  rotatedTransform: [COS30, SIN30, -SIN30, COS30, 150, 400] as const,
+  /** Open three-anchor path: (100,600) (200,700) (300,600). */
+  openA: { kind: "polygon", id: "upa" },
+  /** Open two-anchor line: (380,620) (520,700). */
+  openB: { kind: "graphicLine", id: "upb" },
+  /** An ellipse — declared by bounds, NO anchor table. Filled, so a
+   *  click anywhere inside it hits. Bounds: x 400–560, y 60–160. */
+  oval: { kind: "oval", id: "uoval" },
+} as const;
+
+const PATH_EDIT_BODY =
+  strokedPath("Polygon", "uquad", "100 100 300 300", false, [
+    { a: [100, 100] },
+    { a: [300, 100] },
+    { a: [300, 300] },
+    { a: [100, 300] },
+  ]) +
+  strokedPath("Polygon", "uarch", "200 350 300 550", true, [
+    { a: [350, 300] },
+    { a: [450, 200], l: [410, 200], r: [530, 200] },
+    { a: [550, 300] },
+  ]) +
+  strokedPath(
+    "Polygon",
+    "urot",
+    "0 0 60 100",
+    true,
+    [{ a: [0, 0] }, { a: [100, 0] }, { a: [100, 60] }],
+    `${COS30} ${SIN30} ${-SIN30} ${COS30} 150 400`,
+  ) +
+  strokedPath("Polygon", "upa", "600 100 700 300", true, [
+    { a: [100, 600] },
+    { a: [200, 700] },
+    { a: [300, 600] },
+  ]) +
+  strokedPath("GraphicLine", "upb", "620 380 700 520", true, [
+    { a: [380, 620] },
+    { a: [520, 700] },
+  ]) +
+  `<Oval Self="uoval" GeometricBounds="60 400 160 560" ItemTransform="1 0 0 1 0 0" ` +
+  `FillColor="Color/Black" StrokeWeight="0" StrokeColor="Swatch/None"/>`;
+
+/** The path-editing fixture — see {@link PATH_EDIT_FIXTURE}. */
+export function buildPathEditIdml(): Uint8Array {
+  return packageWithBody(PATH_EDIT_BODY);
 }

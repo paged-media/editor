@@ -105,6 +105,8 @@ const AD_HOC: { key: string; what: string; where: string }[] = [
   { key: "⌘Space (hold)", what: "Zoom — spring-loaded", where: "use-spring-loaded-tools" },
   { key: "⌘ (hold)", what: "Direct Selection — spring-loaded", where: "use-spring-loaded-tools" },
   { key: "Enter", what: "Enter path-edit mode", where: "usePathEditMode" },
+  { key: "← → ↑ ↓", what: "Nudge the selected anchors, in path-edit mode (⇧ ×10)", where: "usePathEditMode" },
+  { key: "⌫ / Delete", what: "Remove the selected anchors, in path-edit mode", where: "usePathEditMode" },
   { key: "Esc", what: "Leave an edit context, or cancel a gesture", where: "edit-context-controller" },
   { key: "← → ↑ ↓", what: "Move the caret (with ⇧ to extend)", where: "useTextEditing" },
 ];
