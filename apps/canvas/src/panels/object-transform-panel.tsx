@@ -19,9 +19,18 @@
 
 // SDK Phase 3 / gallery pixel-parity — Object/Transform panel,
 // composed to the deep1 card (gallery-deep1.jsx `ObjectT`). Bespoke:
-// the X/Y + W/H metrics are DERIVED projections over the one
-// `frameBounds` value (a projection the §11.5 composition ceiling
-// can't express).
+// the X/Y + W/H metrics are DERIVED projections (a projection the §11.5
+// composition ceiling can't express).
+//
+// X / Y are WHERE THE OBJECT IS: its bounds through its item transform,
+// the footprint the selection chrome draws (`page-position.ts`). They
+// used to be `frameBounds`' top-left — the item's INNER box — and stood
+// still after a nudge, a rotation or any move that writes the transform.
+// Typing a value moves the selection by the difference through the
+// nudge's own write (`translationPlan`), so read and write cannot
+// disagree, for a rotated frame, a line, a pen path or a group alike.
+// W / H stay the inner box's size: that is the frame's own width,
+// rotated or not, as InDesign shows it.
 //
 //   [ref grid] Reference point         LIVE  (W2.4, client-side anchor)
 //   [X …  | Y … ]   2-up prefixes      LIVE (translate)
@@ -51,6 +60,8 @@ import { Icon, ReferencePointGrid, useBindings } from "@paged-media/shell";
 import { LengthInput, NumberInput, SmartDialMicro } from "@paged-media/ui";
 import { useState } from "react";
 import type { Value } from "@paged-media/client";
+
+import { usePagePosition } from "./page-position";
 
 const BINDINGS = {
   bounds: {
@@ -113,6 +124,7 @@ function anchorFractions(index: number): { fx: number; fy: number } {
 
 export function ObjectTransformPanel() {
   const resolved = useBindings(BINDINGS);
+  const position = usePagePosition();
   const bounds = unwrapBounds(resolved.bounds.value);
   const opacity = unwrapLength(resolved.opacity.value);
   const canWrite = resolved.bounds.onCommit != null;
@@ -131,9 +143,14 @@ export function ObjectTransformPanel() {
   const canScaleY = resolved.scaleY.onCommit != null;
   const canFlipH = resolved.flipH.onCommit != null;
 
-  // Derived projection: IDML bounds are [top, left, bottom, right].
-  const x = bounds ? bounds[1] : null;
-  const y = bounds ? bounds[0] : null;
+  // X / Y: the selection's footprint on the page (see the header).
+  const x = position.box ? position.box.left : null;
+  const y = position.box ? position.box.top : null;
+  const canMove = position.box != null;
+  // W / H and the reference-point resize: the INNER box, which is what
+  // `frameBounds` writes. IDML bounds are [top, left, bottom, right].
+  const innerX = bounds ? bounds[1] : null;
+  const innerY = bounds ? bounds[0] : null;
   const w = bounds ? bounds[3] - bounds[1] : null;
   const h = bounds ? bounds[2] - bounds[0] : null;
 
@@ -147,18 +164,18 @@ export function ObjectTransformPanel() {
   // anchor = top-left (default) this collapses to the legacy
   // grow-right / grow-down behaviour.
   const commitWidth = (nw: number) => {
-    if (x === null || y === null || w === null || h === null) return;
+    if (innerX === null || innerY === null || w === null || h === null) return;
     const { fx } = anchorFractions(anchorIdx);
-    const anchorX = x + fx * w;
+    const anchorX = innerX + fx * w;
     const left = anchorX - fx * nw;
-    commitBounds([y, left, y + h, left + nw]);
+    commitBounds([innerY, left, innerY + h, left + nw]);
   };
   const commitHeight = (nh: number) => {
-    if (x === null || y === null || w === null || h === null) return;
+    if (innerX === null || innerY === null || w === null || h === null) return;
     const { fy } = anchorFractions(anchorIdx);
-    const anchorY = y + fy * h;
+    const anchorY = innerY + fy * h;
     const top = anchorY - fy * nh;
-    commitBounds([top, x, top + nh, x + w]);
+    commitBounds([top, innerX, top + nh, innerX + w]);
   };
 
   return (
@@ -191,22 +208,22 @@ export function ObjectTransformPanel() {
           <LengthInput
             prefix="X"
             valuePt={x}
-            disabled={!canWrite}
+            disabled={!canMove}
             onChangePt={() => {}}
             onCommitPt={(nx) => {
-              if (x === null || y === null || w === null || h === null) return;
-              commitBounds([y, nx, y + h, nx + w]);
+              if (x === null) return;
+              void position.moveBy(nx - x, 0);
             }}
             aria-label="x"
           />
           <LengthInput
             prefix="Y"
             valuePt={y}
-            disabled={!canWrite}
+            disabled={!canMove}
             onChangePt={() => {}}
             onCommitPt={(ny) => {
-              if (x === null || y === null || w === null || h === null) return;
-              commitBounds([ny, x, ny + h, x + w]);
+              if (y === null) return;
+              void position.moveBy(0, ny - y);
             }}
             aria-label="y"
           />

@@ -26,7 +26,12 @@
 // keeps the registration cost a one-time event.
 
 import { createCatalogRegistry, type CatalogRegistry } from "@paged-media/catalog";
-import { registerBuiltInCatalogEntries } from "@paged-media/shell";
+import {
+  PAGED_INPUT_BOUNDS,
+  registerBuiltInCatalogEntries,
+} from "@paged-media/shell";
+
+import { pageBoundsEntry } from "./page-bounds-leaf";
 
 let singleton: CatalogRegistry | null = null;
 
@@ -34,6 +39,11 @@ export function appCatalogRegistry(): CatalogRegistry {
   if (!singleton) {
     singleton = createCatalogRegistry();
     registerBuiltInCatalogEntries(singleton);
+    // The app's own leaves. `paged.input.pageBounds` renders THROUGH the
+    // built-in Bounds leaf, which the shell does not export by name — it
+    // is reached here, through the registry that owns it.
+    const boundsLeaf = singleton.get(PAGED_INPUT_BOUNDS)?.leaf;
+    if (boundsLeaf) singleton.register(pageBoundsEntry(boundsLeaf));
   }
   return singleton;
 }

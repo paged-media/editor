@@ -514,6 +514,58 @@ host-side.
 
 **Suite anchor.** AC-OBJ-ENGINE-6 (`test.fail`).
 
+## 17. Element geometry is in SPREAD space, and no read says where the page is (OPEN)
+
+Found 2026-10-02 making Transform ▸ X / Y read where the object is.
+
+**Symptom.** `elementGeometry` answers `bounds` + `itemTransform` that
+compose into SPREAD coordinates, while everything the host draws or
+types is page-relative — and nothing on the wire carries a page's origin
+inside its spread. On a document made here (File ▸ New) and on the
+`paged-gen` fixtures the two coincide (the page sits at the spread
+origin), which is why the suite never saw it. On an InDesign-authored
+document they do not: InDesign centres the spread's coordinate system,
+so a page's origin is `(0, -h/2)` (a right-hand page) or `(-w, -h/2)` (a
+left-hand one). `corpus/idml/samples/sample.idml`, text frame `u29a2f`
+on page 1 (612 × 792):
+
+```
+elementGeometry           bounds [-18, -92.21, 50.44, 166.43], itemTransform [1,0,0,1, 306.73, -302.35]
+  composed top-left       (214.51, -320.35)          spread space
+hitTest at (343, 110)     frameBounds top-left (214.51, 75.65)   page space
+difference                (0, -396) = the page's origin in its spread
+```
+
+The selection chrome (`selection-chrome.tsx`, and the resize / rotate
+handles) composes exactly this and adds the page's layout rect, so on
+that document the selection outline is drawn 396 pt ABOVE the frame —
+measured at 79 % zoom: outline top at y = -66 px, the frame at 245 px.
+What a user sees on the frame there is the hit marker, which reads the
+hit's own page-local `frameBounds`. The wire's own doc comment on
+`ElementGeometryItem::page_id` implies the opposite convention ("`None`
+… bounds + item_transform compose against the SPREAD origin rather than
+a page origin").
+
+**Cause.** `element_geometry` returns the spread item's `bounds` and
+`item_transform` untouched (it uses them only to find the host page);
+the hit-tester converts with `BuiltPage::spread_origin`, which is not on
+any reply (`PageSummary` carries size and margins only).
+
+**Likely fix.** For a page-owned item, compose against the page: either
+subtract `spread_origin` in `element_geometry` / `path_anchors` (and
+accept page-local input on the matching writes), or carry the origin on
+the item (`pageOrigin`) or on `PageSummary` so a host can do it once.
+
+**What the editor does meanwhile.** Transform ▸ X / Y and Properties ▸
+Bounds read `elementGeometry` composed — the same space the selection
+chrome draws in, and the space every move writes — so read, write and
+chrome agree with each other. On an InDesign document all three are
+offset from the page by the page's spread origin; that cannot be
+corrected host-side without a read of the origin.
+
+**Suite anchor.** `e2e/transform-readout.spec.ts` AC-XY-ENGINE-1
+(`test.fail`).
+
 ---
 
 ### What works (verified byte-clean)

@@ -19,19 +19,16 @@
 
 // SDK Phase 3 — Object/Transform panel as a declarative composition.
 //
-// Element-scope bindings — bounds + opacity, both existing
-// frame-level paths. The full Object/Transform panel will eventually
-// also expose explicit rotation + scale (decomposed from
-// FrameTransform via a future `paged.input.rotation` /
-// `paged.input.scale` primitive); for v1 only bounds + opacity are
-// catalog-bindable, which keeps this commit scope-minimal.
+// Bounds is `paged.input.pageBounds`: WHERE the selection is (its bounds
+// through its item transform — `page-position.ts`), not its inner
+// `frameBounds`, which stood still under a nudge or a rotation. Opacity
+// is the plain element-scope binding. Rotation + scale live in the
+// bespoke Transform panel (`object-transform-panel.tsx`).
 
 import type { CompositionNode } from "@paged-media/catalog";
-import {
-  PAGED_INPUT_BOUNDS,
-  PAGED_INPUT_LENGTH,
-  PAGED_LAYOUT_SECTION,
-} from "@paged-media/shell";
+import { PAGED_INPUT_LENGTH, PAGED_LAYOUT_SECTION } from "@paged-media/shell";
+
+import { PAGED_INPUT_PAGE_BOUNDS } from "./page-bounds-leaf";
 
 export const objectTransformComposition: CompositionNode = {
   catalogId: PAGED_LAYOUT_SECTION,
@@ -39,15 +36,11 @@ export const objectTransformComposition: CompositionNode = {
   bindings: {},
   children: [
     {
-      catalogId: PAGED_INPUT_BOUNDS,
+      catalogId: PAGED_INPUT_PAGE_BOUNDS,
       props: { label: "Bounds" },
-      bindings: {
-        value: {
-          kind: "selectionProperty",
-          scope: "element",
-          path: "frameBounds",
-        },
-      },
+      // The leaf reads the selection's geometry itself: a footprint is
+      // two paths composed, which a single binding cannot express.
+      bindings: {},
     },
     {
       catalogId: PAGED_INPUT_LENGTH,

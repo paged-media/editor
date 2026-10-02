@@ -104,11 +104,9 @@
 //     dragged line snaps back (engine-findings §14). For a plain
 //     rectangle the two writes paint the same pixels.
 //
-//     The cost of choosing the transform: readouts that project
-//     `frameBounds` (Properties ▸ Bounds, Transform ▸ X/Y) do not move
-//     with a nudge, exactly as they do not for a rotated frame's drag.
-//     They show the frame's inner box, and the fix for that belongs in
-//     the readout (compose the transform), not in a second move path.
+//     The readouts follow it: Properties ▸ Bounds and Transform ▸ X/Y
+//     compose the transform (`panels/page-position.ts`), and a typed
+//     X/Y moves through `translationPlan` below — this same write.
 //
 //  8. A GROUP MOVES ONLY THROUGH `setGroupTransform`. Its members hold
 //     ABSOLUTE transforms, and that op is the one that rebases them.
@@ -1079,7 +1077,7 @@ export function refusalOf(reply: WorkerToMain): string | null {
  *  in the engine (a failing child rolls back the ones before it) and
  *  costs ONE undo step — so a five-object Bring to front is one Cmd+Z,
  *  which is what a DTP user means by it. */
-function asOneMutation(ops: Mutation[]): Mutation {
+export function asOneMutation(ops: Mutation[]): Mutation {
   return ops.length === 1 ? ops[0] : { op: "batch", args: { ops } };
 }
 
@@ -1276,7 +1274,7 @@ export async function deleteSelection(deps: ObjectCommandDeps): Promise<void> {
   if (clipPaths.length > 0) {
     let index: Map<string, PageItemId[]>;
     try {
-      index = await clipContentIndex(deps, clipPaths, roots);
+      index = await clipContentIndex(deps.client, clipPaths, roots);
     } catch {
       deps.report(
         "error",
@@ -1485,22 +1483,48 @@ async function drainNudges(queue: NudgeQueue): Promise<void> {
   }
 }
 
-/** One batch: read each target's transform, write it back moved. */
-async function applyNudge(nudge: PendingNudge): Promise<void> {
-  const { deps, selection, dx, dy } = nudge;
+/** The reads a translation needs — a subset of `CanvasClient`, so a
+ *  panel can plan one from the client it already holds. */
+export type TranslationClient = Pick<
+  CanvasClient,
+  "sceneTree" | "elementGeometry" | "elementProperties"
+>;
+
+/** What `translationPlan` hands its caller: the ops, or why not. */
+export type TranslationPlan =
+  | { ok: true; ops: Mutation[] }
+  | { ok: false; reason: string };
+
+/**
+ * The ops that move `selection` by `(dx, dy)` in spread space, rigidly,
+ * for every kind (facts 7, 8 and 13): a leaf rides `moveFrame` (its
+ * whole transform, translated), a group `setGroupTransform`, a group's
+ * own selected members are not moved twice, and whatever the object
+ * layer clipped inside a moving clipping path moves by the same step.
+ *
+ * Shared by the nudge and by the Transform panel's X / Y, so a typed
+ * position and an arrow press are one write path. Reads only; the
+ * caller sends the ops (as ONE batch) and reports a refusal.
+ */
+export async function translationPlan(
+  client: TranslationClient,
+  selection: readonly ElementId[],
+  dx: number,
+  dy: number,
+): Promise<TranslationPlan> {
   const holdsGroup = selection.some((id) => id.kind === "group");
 
   let roots: SceneTreeNode[] | null = null;
   if (holdsGroup && selection.length > 1) {
     try {
-      roots = await deps.client.sceneTree();
+      roots = await client.sceneTree();
     } catch {
-      deps.report(
-        "error",
-        "Nudge refused: the document structure could not be read, so a " +
-          "group and its own members could not be told apart.",
-      );
-      return;
+      return {
+        ok: false,
+        reason:
+          "the document structure could not be read, so a group and its " +
+          "own members could not be told apart.",
+      };
     }
   }
   const targets = nudgeTargets(selection, roots);
@@ -1510,7 +1534,7 @@ async function applyNudge(nudge: PendingNudge): Promise<void> {
   const ops: Mutation[] = [];
   try {
     if (leaves.length > 0) {
-      const geometry = await deps.client.elementGeometry(leaves);
+      const geometry = await client.elementGeometry(leaves);
       const byKey = new Map(geometry.map((g) => [elementKey(g.id), g]));
       for (const leaf of leaves) {
         const item = byKey.get(elementKey(leaf));
@@ -1518,12 +1542,12 @@ async function applyNudge(nudge: PendingNudge): Promise<void> {
           // No geometry is the engine saying this is not a free page
           // item — an anchored frame rides its text, a stale id is
           // gone. There is no transform to write back.
-          deps.report(
-            "error",
-            `Nudge refused: the engine reports no geometry for ` +
-              `${describeElement(leaf)}, so there is no position to move.`,
-          );
-          return;
+          return {
+            ok: false,
+            reason:
+              `the engine reports no geometry for ${describeElement(leaf)}, ` +
+              "so there is no position to move.",
+          };
         }
         ops.push({
           op: "moveFrame",
@@ -1535,13 +1559,12 @@ async function applyNudge(nudge: PendingNudge): Promise<void> {
       }
     }
     for (const group of groups) {
-      const own = ownTransformOf(await deps.client.elementProperties(group));
+      const own = ownTransformOf(await client.elementProperties(group));
       if (own === undefined) {
-        deps.report(
-          "error",
-          `Nudge refused: ${describeElement(group)} is not in the document.`,
-        );
-        return;
+        return {
+          ok: false,
+          reason: `${describeElement(group)} is not in the document.`,
+        };
       }
       ops.push({
         op: "setGroupTransform",
@@ -1552,19 +1575,19 @@ async function applyNudge(nudge: PendingNudge): Promise<void> {
     // the same step, or the mask would slide over content that stayed.
     // A group's `setGroupTransform` rebases its MEMBERS, and nested
     // content is no member, so clipping paths inside a group count too.
-    if (groups.length > 0) roots ??= await deps.client.sceneTree();
+    if (groups.length > 0) roots ??= await client.sceneTree();
     const containers = [
       ...leaves.filter(canClipBy),
       ...clipPathsInside(groups, roots),
     ];
     if (containers.length > 0) {
-      const index = await clipContentIndex(deps, containers, roots);
+      const index = await clipContentIndex(client, containers, roots);
       const moving = new Set(leaves.map(elementKey));
       const content = clippedContent(index, containers).filter(
         (id) => !moving.has(elementKey(id)),
       );
       if (content.length > 0) {
-        for (const item of await deps.client.elementGeometry(content)) {
+        for (const item of await client.elementGeometry(content)) {
           if (!isPageItem(item.id)) continue;
           ops.push({
             op: "moveFrame",
@@ -1577,16 +1600,27 @@ async function applyNudge(nudge: PendingNudge): Promise<void> {
       }
     }
   } catch (err) {
-    deps.report(
-      "error",
-      `Nudge refused: the selection's position could not be read ` +
+    return {
+      ok: false,
+      reason:
+        "the selection's position could not be read " +
         `(${err instanceof Error ? err.message : String(err)}).`,
-    );
+    };
+  }
+  return { ok: true, ops };
+}
+
+/** One batch: read each target's transform, write it back moved. */
+async function applyNudge(nudge: PendingNudge): Promise<void> {
+  const { deps, selection, dx, dy } = nudge;
+  const plan = await translationPlan(deps.client, selection, dx, dy);
+  if (!plan.ok) {
+    deps.report("error", `Nudge refused: ${plan.reason}`);
     return;
   }
-  if (ops.length === 0) return;
+  if (plan.ops.length === 0) return;
 
-  const refusal = refusalOf(await deps.client.mutate(asOneMutation(ops)));
+  const refusal = refusalOf(await deps.client.mutate(asOneMutation(plan.ops)));
   if (refusal) {
     deps.report("error", `Nudge refused: ${refusal}`);
     return;
@@ -1658,7 +1692,7 @@ export function clippedContent(
  * Throws when a read fails; each caller decides what that means.
  */
 async function clipContentIndex(
-  deps: ObjectCommandDeps,
+  client: TranslationClient,
   candidates: readonly PageItemId[],
   roots: readonly SceneTreeNode[] | null,
 ): Promise<Map<string, PageItemId[]>> {
@@ -1670,13 +1704,13 @@ async function clipContentIndex(
     const key = elementKey(container);
     if (visited.has(key)) continue;
     visited.add(key);
-    const listed = clipContentOf(await deps.client.elementProperties(container));
+    const listed = clipContentOf(await client.elementProperties(container));
     if (listed.length === 0) continue;
-    inTree ??= new Set(treePlaces(await deps.client.sceneTree()).keys());
+    inTree ??= new Set(treePlaces(await client.sceneTree()).keys());
     const hidden = listed.filter((id) => !inTree!.has(elementKey(id)));
     if (hidden.length === 0) continue;
     const exists = new Set(
-      (await deps.client.elementGeometry(hidden)).map((g) => elementKey(g.id)),
+      (await client.elementGeometry(hidden)).map((g) => elementKey(g.id)),
     );
     const nested = hidden.filter((id) => exists.has(elementKey(id)));
     if (nested.length === 0) continue;
@@ -1752,7 +1786,7 @@ export async function makeClippingMask(deps: ObjectCommandDeps): Promise<void> {
   let existing: PageItemId[];
   try {
     existing =
-      (await clipContentIndex(deps, [clip], roots)).get(elementKey(clip)) ??
+      (await clipContentIndex(deps.client, [clip], roots)).get(elementKey(clip)) ??
       [];
   } catch {
     deps.report(
@@ -1817,7 +1851,7 @@ export async function releaseClippingMask(
   let index: Map<string, PageItemId[]>;
   try {
     roots = await deps.client.sceneTree();
-    index = await clipContentIndex(deps, containers, roots);
+    index = await clipContentIndex(deps.client, containers, roots);
   } catch {
     deps.report(
       "error",
