@@ -369,9 +369,14 @@ item is pasted into a container — release it before removing`.
 nested children with it (capturing them in the inverse) or refuses the
 way the child's delete does.
 
-**Suite anchor.** AC-OBJ-ENGINE-3 (`test.fail`). The editor has no
-guard for this one: the scene tree does not report nested children, so
-a container cannot be told from a plain frame before the delete.
+**Suite anchor.** AC-OBJ-ENGINE-3 (`test.fail`). The scene tree does
+not report nested children (§15), so a container cannot be told from a
+plain frame before the delete — EXCEPT for the clipping masks the editor
+made itself: `paged.object.makeClippingMask` keeps an index of the
+content on the container, and `paged.object.delete` releases and removes
+that content before the container, in the same batch, so the content
+goes with it and one undo re-nests it (AC-OBJ-35). Content nested by
+anything else still pops out.
 
 ## 13. Two writes the engine accepts and should not (OPEN, minor)
 
@@ -429,6 +434,85 @@ panel's X/Y fields, and has the same effect on a line.
 
 **Suite anchor.** AC-OBJ-ENGINE-4 (`test.fail`); AC-OBJ-30 proves the
 transform write does repaint a line and a pen path.
+
+## 15. Nothing on the wire lists what is pasted into a frame (OPEN)
+
+Found 2026-10-02 building `paged.object.releaseClippingMask`, at the
+`canvas-wasm` 0.64.0 pin (core `9f933f1`).
+
+**Symptom.** A pasted-in child disappears from every read that
+ENUMERATES, while every read and write BY ID still answers for it.
+Blank document, four rectangles `u1..u4`, then `pasteInto { containerId:
+u4, childId: u1 }` and the same for `u2` (both apply — one container
+takes several children, painted in paste order):
+
+```
+sceneTree()                      rectangle:u3, rectangle:u4    (u4 has no children)
+requestGroupLeaves { u4 }        []
+elementProperties(u4)            no entry naming its content
+hitTest at (50, 50) — over u1    element: null
+elementGeometry([u1, u2])        both answer, bounds and transform intact
+releaseFrom / moveFrame on u1    both apply
+```
+
+So a host that did not do the nesting itself cannot find the content —
+an InDesign paste-into, a script's, paged.draw's clipped repeats.
+
+**Cause.** `scene_tree` builds each frame node with `children:
+Vec::new()` and walks only `frames_in_order`; `group_leaves` walks only
+`Spread::groups`; the hit-tester's `collect_candidates` walks only
+`frames_in_order`. None of them reads `Spread::nested_children`.
+
+**Likely fix.** List a container's nested children as the children of
+its scene-tree node (the shape the tree already has for a group), or add
+a `requestNestedContent { containerId }` door.
+
+**What the editor does meanwhile.** `paged.object.makeClippingMask`
+stamps the content's ids on the container as plugin metadata
+(`x-paged:paged.object`) in the same batch as the `pasteInto`s, so undo
+and redo keep index and nesting in step; Release, Delete and Nudge read
+it, and keep only entries that are still nested (absent from the tree,
+answering `elementGeometry`). Release on a container with no index is
+refused with the reason ("holds no content this editor clipped …").
+
+**Suite anchor.** AC-OBJ-ENGINE-5 (`test.fail`); AC-OBJ-36 pins the
+refusal.
+
+## 16. Moving a container leaves its pasted-in content behind (OPEN)
+
+Found the same day, nudging a clipping path.
+
+**Symptom.** Blank document; `insertFrame u1 [100,100,200,300]`,
+`insertOval u2 [120,120,180,220]`, `pasteInto { u2 ← u1 }`:
+
+```
+moveFrame u2 [1,0,0,1,10,0]          u2 moves; u1 itemTransform stays null
+drag u2 (translate gesture, [40,20]) u2 bounds → [140,160,200,260]; u1 unchanged
+```
+
+The mask slides over content that stayed put, so a different part of
+the content shows. InDesign's Selection tool and Illustrator move a
+frame and its content together; moving only the frame is what Direct
+Selection is for.
+
+**Cause.** Documented in the engine: B-18 "the child's spread-space
+`item_transform` is untouched in BOTH directions"
+(`paged-mutate/src/apply/nested.rs`). Children hold ABSOLUTE spread
+transforms, and the frame-transform / frame-bounds writes and the
+gesture commit touch the container only — unlike `SetGroupTransform`,
+which rebases a group's members.
+
+**Likely fix.** Rebase nested children by the container's transform
+delta in the container's `FrameTransform` / `FrameBounds` writes and in
+the translate gesture's commit, capturing the children's previous
+transforms in the inverse — what `SetGroupTransform` does for members.
+
+**What the editor does meanwhile.** `paged.object.nudge*` moves the
+content its own index lists by the same step, in the same batch
+(AC-OBJ-34). The drag is the engine's gesture and cannot be corrected
+host-side.
+
+**Suite anchor.** AC-OBJ-ENGINE-6 (`test.fail`).
 
 ---
 

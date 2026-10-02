@@ -155,10 +155,12 @@ import {
   buildObjectCommands,
   deleteSelection,
   groupSelection,
+  makeClippingMask,
   nudgeSelection,
   OBJECT_DIAGNOSTIC_SOURCE,
   OBJECT_KEYBINDINGS,
   OBJECT_MENU_ITEMS,
+  releaseClippingMask,
   selectParentGroup,
   ungroupSelection,
   type ObjectCommandDeps,
@@ -1685,7 +1687,8 @@ function CanvasAppIntegration() {
       },
     });
     // `paged.object.*` — the object verbs (Arrange ×4, Group, Ungroup,
-    // Select parent group, Delete, Nudge ×8). The deps bag is the ONLY
+    // Select parent group, Delete, Nudge ×8, Make / Release clipping
+    // mask). The deps bag is the ONLY
     // place the module touches the app: the live selection through the
     // ref, the worker-first selection write the overlays key on, and a
     // report channel that lands in the Problems panel rather than the
@@ -1745,6 +1748,8 @@ function CanvasAppIntegration() {
       delete: fresh(() => deleteSelection(objectDeps)),
       nudge: (direction, large) =>
         fresh(() => nudgeSelection(objectDeps, direction, large))(),
+      makeClippingMask: fresh(() => makeClippingMask(objectDeps)),
+      releaseClippingMask: fresh(() => releaseClippingMask(objectDeps)),
     });
     // `paged.insert.*` — the object-authoring verbs (U7). Unlike the
     // object layer's deps bag, every runner reads its state (camera,

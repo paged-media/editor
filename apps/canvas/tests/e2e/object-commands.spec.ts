@@ -35,9 +35,14 @@
 // DELETE and NUDGE follow the same split. The plan (which op for which
 // kind, what is refused before the wire, how presses queue) is proven
 // for every shape of selection in the Node tier; here each verb is
-// proven against the real engine — and so are the four engine
-// behaviours the verbs are built around, as `test.fail` anchors that turn
-// red the day core fixes them (docs/engine-findings.md §10–§12, §14).
+// proven against the real engine — and so are the engine behaviours the
+// verbs are built around, as `test.fail` anchors that turn red the day
+// core fixes them (docs/engine-findings.md §10–§12, §14–§16).
+//
+// MAKE / RELEASE CLIPPING MASK ride B-18's `pasteInto` / `releaseFrom`.
+// Their pixel tests read four probe points at one pixel per point: what
+// was painted outside the clipping path must be paper once clipped, what
+// is inside must still be painted, in the same stacking order.
 
 import { expect, test, type Page } from "@playwright/test";
 import { PNG } from "pngjs";
@@ -62,6 +67,8 @@ const NUDGE_LEFT_LARGE = "paged.object.nudgeLeftLarge";
 const NUDGE_RIGHT_LARGE = "paged.object.nudgeRightLarge";
 const NUDGE_UP_LARGE = "paged.object.nudgeUpLarge";
 const NUDGE_DOWN_LARGE = "paged.object.nudgeDownLarge";
+const MAKE_CLIP = "paged.object.makeClippingMask";
+const RELEASE_CLIP = "paged.object.releaseClippingMask";
 
 interface ElementRef {
   kind: string;
@@ -315,6 +322,32 @@ function corners(g: Geometry): Array<[number, number]> {
   ).map(([x, y]) => [a * x + c * y + tx, b * x + d * y + ty]);
 }
 
+/** `transform` with `(dx, dy)` added to its translation — what a nudge
+ *  writes. `null` is identity. */
+function translatedBy(
+  transform: number[] | null,
+  dx: number,
+  dy: number,
+): number[] {
+  const [a, b, c, d, tx, ty] = transform ?? [1, 0, 0, 1, 0, 0];
+  return [a, b, c, d, tx + dx, ty + dy];
+}
+
+/** Painted (non-paper) pixels per column — where the ink is, left to
+ *  right. */
+function inkCols(png: Buffer): number[] {
+  const img = PNG.sync.read(png);
+  const cols: number[] = [];
+  for (let x = 0; x < img.width; x += 1) {
+    let painted = 0;
+    for (let y = 0; y < img.height; y += 1) {
+      if (img.data[(y * img.width + x) * 4] < 230) painted += 1;
+    }
+    cols.push(painted);
+  }
+  return cols;
+}
+
 /** Assert `after` is `before` moved by exactly `(dx, dy)` — every
  *  corner, to f32 precision — and that NOTHING else about the element
  *  changed: same bounds, same linear part. That second half is what
@@ -533,6 +566,8 @@ test.describe("E2E paged.object — the structural command layer", () => {
         NUDGE_RIGHT_LARGE,
         NUDGE_UP_LARGE,
         NUDGE_DOWN_LARGE,
+        MAKE_CLIP,
+        RELEASE_CLIP,
       ].sort(),
     );
     // ONE category, and it is the editor's — not a plugin namespace.
@@ -553,6 +588,8 @@ test.describe("E2E paged.object — the structural command layer", () => {
         "Object/Nudge up",
         "Object/Nudge down",
         "Object/Delete",
+        "Object/Make clipping mask",
+        "Object/Release clipping mask",
       ].sort(),
     );
     // Both platform variants, plus the shifted-glyph alternates the
@@ -1837,6 +1874,306 @@ test.describe("E2E paged.object — the keys belong to whoever is being edited",
 // wire directly: the host verb would refuse or revert before the
 // defect could show.
 
+// ──────────────────────────────────────────────────── clipping masks
+
+test.describe("E2E paged.object — clipping masks against the real engine", () => {
+  test.beforeEach(async ({ page }) => {
+    await newBlankDocument(page);
+  });
+
+  /** The page at one pixel per point, so page coordinates ARE pixels. */
+  async function pageShot(page: Page): Promise<Buffer> {
+    const { pageId, widthPt } = await page.evaluate(() => {
+      const h = (
+        globalThis as unknown as {
+          __canvas: { handle: { pageIds: string[]; pageSizesPt: number[][] } };
+        }
+      ).__canvas.handle;
+      return { pageId: h.pageIds[0], widthPt: h.pageSizesPt[0][0] };
+    });
+    expect(Number.isInteger(widthPt), "a whole-point page width").toBe(true);
+    return pagePng(page, pageId, widthPt, widthPt);
+  }
+
+  /** What is painted at page point (x, y): ink, grey tint, or paper. */
+  function paintAt(png: Buffer, x: number, y: number): "ink" | "tint" | "paper" {
+    const img = PNG.sync.read(png);
+    const v = img.data[(y * img.width + x) * 4];
+    return v < 80 ? "ink" : v > 230 ? "paper" : "tint";
+  }
+
+  async function fill(page: Page, ref: ElementRef, tint?: number): Promise<void> {
+    const reply = await mutate(page, {
+      op: "setElementProperty",
+      args: {
+        elementId: ref,
+        path: "frameFillColor",
+        value: { type: "colorRef", value: "Color/Black" },
+      },
+    });
+    expect(reply.kind, "the fill should apply").toBe("mutationApplied");
+    if (tint === undefined) return;
+    const tinted = await mutate(page, {
+      op: "setElementProperty",
+      args: {
+        elementId: ref,
+        path: "frameFillTint",
+        value: { type: "length", value: tint },
+      },
+    });
+    expect(tinted.kind, "the tint should apply").toBe("mutationApplied");
+  }
+
+  /**
+   * Back to front: a black rectangle A, a 40 % tint rectangle B
+   * overlapping its right end, and an unfilled ellipse K over both — K
+   * is the topmost, so K is the clipping path. Four probe points:
+   *
+   *   aOutside  (110,110)  in A, outside K   ink  → paper once clipped
+   *   aInside   (180,150)  in A, inside K    ink  → stays ink
+   *   overlap   (270,170)  in A AND B, in K  tint → stays tint (B stays
+   *                                               above A INSIDE the mask)
+   *   bOutside  (330,230)  in B, outside K   tint → paper once clipped
+   */
+  async function stage(page: Page) {
+    const pageId = await firstPageId(page);
+    const make = async (m: unknown) => {
+      const reply = await mutate(page, m);
+      expect(reply.kind).toBe("mutationApplied");
+      return reply.payload.createdId!;
+    };
+    const a = await make({
+      op: "insertFrame",
+      args: { pageId, bounds: [100, 100, 200, 300] },
+    });
+    await fill(page, a);
+    const b = await make({
+      op: "insertFrame",
+      args: { pageId, bounds: [140, 240, 240, 340] },
+    });
+    await fill(page, b, 40);
+    const k = await make({
+      op: "insertOval",
+      args: { pageId, bounds: [120, 120, 220, 320] },
+    });
+    return { a, b, k };
+  }
+
+  const PROBES = {
+    aOutside: [110, 110],
+    aInside: [180, 150],
+    overlap: [270, 170],
+    bOutside: [330, 230],
+  } as const;
+
+  function probe(png: Buffer): Record<keyof typeof PROBES, string> {
+    const out = {} as Record<keyof typeof PROBES, string>;
+    for (const [name, [x, y]] of Object.entries(PROBES)) {
+      out[name as keyof typeof PROBES] = paintAt(png, x, y);
+    }
+    return out;
+  }
+
+  const UNCLIPPED = { aOutside: "ink", aInside: "ink", overlap: "tint", bOutside: "tint" };
+  const CLIPPED = { aOutside: "paper", aInside: "ink", overlap: "tint", bOutside: "paper" };
+
+  test("AC-OBJ-32 — Make clipping mask, from the Object menu, really clips; ONE undo restores the page @feat:frames-paths.nested-content @feat:frames-paths.path-clipping @feat:editor-shell.menus @feat:round-tripping.undo-redo @level:happy", async ({
+    page,
+  }) => {
+    const { a, b, k } = await stage(page);
+    const before = await pageShot(page);
+    expect(probe(before)).toEqual(UNCLIPPED);
+
+    await select(page, [b, k, a]);
+    await page.locator('[data-menu-trigger="Object"]').click();
+    const menu = page.locator('[role="menu"]');
+    await menu.getByRole("menuitem", { name: /^Make clipping mask/ }).click();
+
+    // What was painted outside the ellipse is gone; what is inside it is
+    // still there, B still above A.
+    await expect.poll(async () => probe(await pageShot(page))).toEqual(CLIPPED);
+    const clipped = await pageShot(page);
+    // The content left the stacking list (it is nested), and the
+    // clipping path is what is selected.
+    expect(await structure(page)).toBe(key(k));
+    await expect.poll(() => selection(page)).toEqual([k]);
+
+    await undo(page);
+    await expect
+      .poll(async () => diffPngPixels(before, await pageShot(page)).changed)
+      .toBe(0);
+    expect(await structure(page)).toBe([a, b, k].map(key).join(","));
+
+    expect((await redo(page)).kind).toBe("redoApplied");
+    await expect
+      .poll(async () => diffPngPixels(clipped, await pageShot(page)).changed)
+      .toBe(0);
+  });
+
+  test("AC-OBJ-33 — Release pops the content back out, beneath the clipping path and in order; one undo re-clips @feat:frames-paths.nested-content @feat:layers.z-ordering @feat:round-tripping.undo-redo @level:happy", async ({
+    page,
+  }) => {
+    const { a, b, k } = await stage(page);
+    // A bystander ABOVE the clipping path, so "beneath the clipping path"
+    // is a different place from "the front of the spread", where the
+    // engine's own release would put the content.
+    const [top] = await insertStack(page, 1);
+    const before = await pageShot(page);
+    await select(page, [a, b, k]);
+    await invokeCommand(page, MAKE_CLIP);
+    await expect.poll(async () => probe(await pageShot(page))).toEqual(CLIPPED);
+    const clipped = await pageShot(page);
+
+    await select(page, [k]);
+    await invokeCommand(page, RELEASE_CLIP);
+    await expect
+      .poll(async () => diffPngPixels(before, await pageShot(page)).changed)
+      .toBe(0);
+    expect(await structure(page)).toBe([a, b, k, top].map(key).join(","));
+    await expect
+      .poll(async () => (await selection(page)).map(key).sort())
+      .toEqual([a, b, k].map(key).sort());
+
+    await undo(page);
+    await expect
+      .poll(async () => diffPngPixels(clipped, await pageShot(page)).changed)
+      .toBe(0);
+    expect(await structure(page)).toBe([k, top].map(key).join(","));
+    await undo(page);
+    await expect
+      .poll(async () => diffPngPixels(before, await pageShot(page)).changed)
+      .toBe(0);
+  });
+
+  test("AC-OBJ-34 — a nudged clipping path carries its content, and undo is pixel-identical @feat:frames-paths.nested-content @feat:editor-tools.move.translate @feat:round-tripping.undo-redo @level:happy", async ({
+    page,
+  }) => {
+    const { a, b, k } = await stage(page);
+    await select(page, [a, b, k]);
+    await invokeCommand(page, MAKE_CLIP);
+    await expect.poll(async () => probe(await pageShot(page))).toEqual(CLIPPED);
+    const clipped = await pageShot(page);
+    const start = await geometry(page, [a, b, k]);
+
+    await invokeCommand(page, NUDGE_RIGHT_LARGE);
+    // Every one of the three moved by exactly 10 pt — the content too,
+    // although the scene tree does not list it.
+    await expect
+      .poll(async () => (await geometry(page, [a, b, k])).map((g) => g.transform))
+      .toEqual(start.map((g) => translatedBy(g.transform, 10, 0)));
+    const moved = await pageShot(page);
+    // The same picture, ten pixels along: column profiles shift.
+    const cols = inkCols(moved);
+    expect(cols.slice(10)).toEqual(inkCols(clipped).slice(0, cols.length - 10));
+
+    await undo(page);
+    await expect
+      .poll(async () => diffPngPixels(clipped, await pageShot(page)).changed)
+      .toBe(0);
+  });
+
+  test("AC-OBJ-35 — a deleted clipping path takes its content; undo brings both back, still clipped @feat:frames-paths.nested-content @feat:frames-paths.frame.delete @feat:round-tripping.undo-redo @level:happy", async ({
+    page,
+  }) => {
+    const empty = await pageShot(page);
+    const { a, b, k } = await stage(page);
+    await select(page, [a, b, k]);
+    await invokeCommand(page, MAKE_CLIP);
+    await expect.poll(async () => probe(await pageShot(page))).toEqual(CLIPPED);
+
+    await select(page, [k]);
+    await invokeCommand(page, DELETE);
+    // Nothing left behind — without the content in the batch the engine
+    // pops it back out as free objects (engine-findings §12).
+    await expect
+      .poll(async () => diffPngPixels(empty, await pageShot(page)).changed)
+      .toBe(0);
+    expect(await structure(page)).toBe("");
+    expect(await geometry(page, [a, b, k])).toEqual([]);
+
+    // Undo brings all three back CLIPPED: nothing paints outside the
+    // ellipse, A paints inside it. Not pixel-identical, and not because
+    // of the clip: an undone delete rebuilds each frame from the
+    // engine's minimal record, which keeps the fill colour and drops the
+    // TINT (engine-findings §11), so B returns solid. The overlap probe
+    // is the one that reads B's tint and is left out for that reason.
+    await undo(page);
+    await expect
+      .poll(async () => {
+        const { aOutside, aInside, bOutside } = probe(await pageShot(page));
+        return { aOutside, aInside, bOutside };
+      })
+      .toEqual({ aOutside: "paper", aInside: "ink", bOutside: "paper" });
+    expect(await structure(page)).toBe(key(k));
+    // …and re-nested with its index: Release still finds the content.
+    await select(page, [k]);
+    await invokeCommand(page, RELEASE_CLIP);
+    await expect.poll(() => structure(page)).toBe([a, b, k].map(key).join(","));
+  });
+
+  test("AC-OBJ-36 — every refusal reaches the Problems panel, and nothing changes @feat:frames-paths.nested-content @feat:editor-shell.panels.problems @level:edge", async ({
+    page,
+  }) => {
+    await openPanel(page, "paged.problems");
+    const pageId = await firstPageId(page);
+    const problem = objectProblem(page);
+    const expectProblem = async (text: string) => {
+      await expect(problem).toHaveCount(1);
+      await expect(problem).toHaveAttribute("data-problem-severity", "error");
+      await expect(problem.locator("[data-problem-message]")).toContainText(text);
+    };
+
+    // A line on top cannot clip.
+    const [r1, r2] = await insertStack(page, 2);
+    const line = (
+      await mutate(page, {
+        op: "insertLine",
+        args: { pageId, start: [40, 40], end: [140, 90] },
+      })
+    ).payload.createdId!;
+    const shape = await structure(page);
+    await select(page, [r1, line]);
+    await invokeCommand(page, MAKE_CLIP);
+    await expectProblem(`the topmost object, line ${line.id}, cannot be a clipping path`);
+    expect(await structure(page)).toBe(shape);
+
+    // One object is not a mask.
+    await select(page, [r1]);
+    await invokeCommand(page, MAKE_CLIP);
+    await expectProblem("a clipping mask needs two or more objects");
+
+    // A group cannot be content.
+    await select(page, [r1, r2]);
+    await invokeCommand(page, GROUP);
+    const grouped = (await selection(page))[0];
+    expect(grouped.kind).toBe("group");
+    const [over] = await insertStack(page, 1);
+    const grouped0 = await structure(page);
+    await select(page, [grouped, over]);
+    await invokeCommand(page, MAKE_CLIP);
+    await expectProblem(`group ${grouped.id} cannot be clipped`);
+    expect(await structure(page)).toBe(grouped0);
+
+    // Content nested by anything else carries no index: Release says so.
+    const [host, guest] = await insertStack(page, 2);
+    const nested = await mutate(page, {
+      op: "pasteInto",
+      args: { containerId: host, childId: guest },
+    });
+    expect(nested.kind).toBe("mutationApplied");
+    const raw = await structure(page);
+    await select(page, [host]);
+    await invokeCommand(page, RELEASE_CLIP);
+    await expectProblem(
+      `rectangle ${host.id} holds no content this editor clipped`,
+    );
+    await expect(problem.locator("[data-problem-message]")).toContainText(
+      "the engine has no read that lists what is inside a frame",
+    );
+    expect(await structure(page)).toBe(raw);
+  });
+});
+
 test.describe("E2E engine anchors — what paged.object.* works around", () => {
   test.beforeEach(async ({ page }) => {
     await newBlankDocument(page);
@@ -1961,5 +2298,67 @@ test.describe("E2E engine anchors — what paged.object.* works around", () => {
     await mutate(page, { op: "deleteFrame", args: { frameId: container.id } });
     // Today the child reappears as a free top-level item.
     expect(await structure(page)).toBe("");
+  });
+
+  test("AC-OBJ-ENGINE-5 — some read lists what is pasted into a frame @feat:frames-paths.nested-content @level:edge", async ({
+    page,
+  }) => {
+    test.fail(
+      true,
+      "engine-findings §15: nested content is in no scene tree, group-leaves or property read",
+    );
+    const [container, child] = await insertStack(page, 2);
+    await mutate(page, {
+      op: "pasteInto",
+      args: { containerId: container, childId: child },
+    });
+    // The natural answer: the container's tree node lists its content.
+    // Today it is `rectangle:<container>` with no children.
+    expect(await structure(page)).toBe(`${key(container)}[${key(child)}]`);
+  });
+
+  test("AC-OBJ-ENGINE-6 — dragging a clipping path moves what it clips @feat:frames-paths.nested-content @feat:editor-tools.move.translate @level:edge", async ({
+    page,
+  }) => {
+    test.fail(
+      true,
+      "engine-findings §16: the translate gesture moves the container and leaves its content",
+    );
+    const [child, container] = await insertStack(page, 2);
+    await mutate(page, {
+      op: "pasteInto",
+      args: { containerId: container, childId: child },
+    });
+    const [start] = await geometry(page, [child]);
+    await page.evaluate(async (id) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              beginGesture: (
+                ids: unknown[],
+                spec: unknown,
+                anchor: unknown,
+              ) => Promise<number>;
+              updateGesture: (h: number, d: [number, number], m: unknown) => Promise<unknown>;
+              commitGesture: (h: number) => Promise<unknown>;
+            };
+          };
+        }
+      ).__canvas.client;
+      const handle = await c.beginGesture([id], { kind: "translate" }, null);
+      await c.updateGesture(handle, [40, 20], {
+        shift: false,
+        alt: false,
+        disableSnap: true,
+      });
+      await c.commitGesture(handle);
+    }, container);
+    // WHERE the content is (its corners on the spread), whichever write
+    // a fix uses to get it there.
+    const [after] = await geometry(page, [child]);
+    const [x0, y0] = corners(start)[0];
+    const [x1, y1] = corners(after)[0];
+    expect([x1 - x0, y1 - y0]).toEqual([40, 20]);
   });
 });
