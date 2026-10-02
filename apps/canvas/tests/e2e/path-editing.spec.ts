@@ -210,12 +210,36 @@ async function loadPathEditFixture(page: Page): Promise<void> {
     mimeType: "application/vnd.adobe.indesign-idml-package",
     buffer: Buffer.from(buildPathEditIdml()),
   });
+  // Loaded THREE times over, and each is a different fact: the worker
+  // holds the fixture; React's document handle is the fixture (it lands
+  // a beat after the worker's reply); and the viewport that handle
+  // mounts has a measured canvas. Fitting — or mapping a point — before
+  // the last one races the mount.
   await expect
     .poll(async () => (await tableOf(page, FX.quad))?.anchors.length ?? 0, {
       timeout: 30_000,
     })
     .toBe(4);
+  await expect
+    .poll(
+      () =>
+        page.evaluate((pageId) => {
+          const c = (
+            globalThis as unknown as {
+              __canvas: { ready: boolean; handle?: { pageIds: string[] } | null };
+            }
+          ).__canvas;
+          if (!c.ready || c.handle?.pageIds[0] !== pageId) return 0;
+          const cv = document.querySelector("[data-paged-canvas]");
+          if (!cv) return 0;
+          const r = cv.getBoundingClientRect();
+          return Math.min(r.width, r.height);
+        }, FX.pageId),
+      { timeout: 30_000 },
+    )
+    .toBeGreaterThan(10);
   await fitFirstPage(page);
+  await expect.poll(() => cameraScale(page)).toBeGreaterThan(0);
 }
 
 /** Select programmatically — worker, React mirror and the geometry the
@@ -279,6 +303,55 @@ async function penClick(page: Page, at: Pt): Promise<void> {
   await page.waitForTimeout(30);
   await page.mouse.up();
   await page.waitForTimeout(30);
+}
+
+async function cameraScale(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      (
+        globalThis as unknown as {
+          __canvas: { client: { camera: { read: () => { scale: number } } } };
+        }
+      ).__canvas.client.camera.read().scale,
+  );
+}
+
+/** View ▸ Zoom In about the viewport centre, repeated until the page
+ *  shows at `atLeast` or more, and waited to REST each time: the
+ *  command animates, and a pointer mapped mid-flight misses. Asserts
+ *  the end state, not the step — how far one invocation zooms is the
+ *  command's business. */
+async function zoomInTo(page: Page, atLeast: number): Promise<number> {
+  for (let i = 0; i < 8 && (await cameraScale(page)) < atLeast; i++) {
+    await page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            registries: {
+              commands: { invoke: (id: string) => Promise<unknown> };
+            };
+          };
+        }
+      ).__canvas;
+      await c.registries.commands.invoke("paged.view.zoomIn");
+    });
+    // At rest: two reads a beat apart agree.
+    let last = -1;
+    await expect
+      .poll(
+        async () => {
+          const now = await cameraScale(page);
+          const settled = now === last;
+          last = now;
+          return settled;
+        },
+        { timeout: 5_000, intervals: [120] },
+      )
+      .toBe(true);
+  }
+  const scale = await cameraScale(page);
+  expect(scale, "zoomed in").toBeGreaterThanOrEqual(atLeast);
+  return scale;
 }
 
 /** Point on a cubic at `t`. */
@@ -645,6 +718,47 @@ test.describe("E2E path editing — anchors, handles and segments", () => {
     await expect(page.locator('[data-path-anchor$=":anchor"]')).toHaveCount(5);
     await expectOneUndoRestores(page, FX.quad, before);
   });
+
+  test("AC-PATHEDIT-13 — the grab size and the click slop are screen distances: both follow the zoom @feat:editor-tools.path.direct-edit @feat:editor-tools.nav.zoom @feat:round-tripping.undo-redo @level:edge", async ({
+    page,
+  }) => {
+    const before = await mustTable(page, FX.quad);
+    await enterPathEdit(page, FX.quad);
+    // One drag at the fitted zoom first, so the session is tuned to it.
+    await drag(page, [300, 300], [330, 290]);
+    await expect
+      .poll(async () => (await mustTable(page, FX.quad)).anchors[2].anchor[0])
+      .toBeGreaterThan(329);
+    await expectOneUndoRestores(page, FX.quad, before);
+    const fitted = await cameraScale(page);
+    // The numbers below need the fitted page to show a point as less
+    // than a pixel and a third; a 1600 × 1000 viewport gives ~0.79.
+    expect(fitted).toBeLessThan(1.3);
+
+    await zoomInTo(page, 2);
+
+    // GRAB SIZE. 4 pt off the corner, diagonally: at the fitted zoom
+    // that is ~3 px — inside the dot's 5.5 px half-side, a press ON the
+    // anchor. Zoomed in it is > 8 px away: a press on nothing. So this
+    // little drag is a marquee that encloses no anchor, and the click
+    // that selected the corner a moment ago is undone by it.
+    await click(page, [300, 300]);
+    await expect.poll(() => selectedAnchors(page)).toEqual([2]);
+    await drag(page, [304, 304], [306, 307]);
+    await expect.poll(() => selectedAnchors(page)).toEqual([]);
+    expect(await mustTable(page, FX.quad)).toEqual(before);
+
+    // CLICK SLOP. 2 pt of travel: under 2 px at the fitted zoom — a
+    // click, nothing moves. Zoomed in it is > 4 px: a drag.
+    await drag(page, [300, 300], [302, 300]);
+    await expect
+      .poll(async () => (await mustTable(page, FX.quad)).anchors[2].anchor[0])
+      .toBeGreaterThan(301.5);
+    const after = await mustTable(page, FX.quad);
+    expectPoint(after.anchors[2].anchor, [302, 300], "anchor 2");
+    expectUntouched(after, before, [0, 1, 3]);
+    await expectOneUndoRestores(page, FX.quad, before);
+  });
 });
 
 test.describe("E2E path editing — a rotated path", () => {
@@ -845,9 +959,31 @@ test.describe("E2E path editing — the Direct Selection tool", () => {
     await activateTool(page, "select");
     await expect(page.locator("[data-path-edit]")).toHaveCount(0);
     expect(await selection(page)).toEqual([FX.quad]);
+    // Holding Cmd spring-loads Direct Selection over every Cmd chord.
+    // That is modifier posture, not the tool being picked: no anchors.
+    await page.keyboard.down("Meta");
+    await expect(
+      page.locator('[data-tool-slot="directSelect"][data-active="true"]'),
+    ).toBeVisible();
+    await expect(page.locator("[data-path-edit]")).toHaveCount(0);
+    await page.keyboard.up("Meta");
+
     // And picking Direct Selection up again, with the path still
     // selected, shows them without a click.
     await activateTool(page, "directSelect");
+    await expect(
+      page.locator(`[data-path-edit="polygon:${FX.quad.id}"]`),
+    ).toHaveCount(1);
+
+    // Escape puts the anchors away for THIS selection — and they stay
+    // away, although the tool would otherwise bring them straight back.
+    await page.keyboard.press("Escape");
+    await expect(page.locator("[data-path-edit]")).toHaveCount(0);
+    await page.waitForTimeout(250);
+    await expect(page.locator("[data-path-edit]")).toHaveCount(0);
+    expect(await selection(page)).toEqual([FX.quad]);
+    // Clicking the path again is asking again.
+    await click(page, [200, 200]);
     await expect(
       page.locator(`[data-path-edit="polygon:${FX.quad.id}"]`),
     ).toHaveCount(1);
