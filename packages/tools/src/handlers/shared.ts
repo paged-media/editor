@@ -224,8 +224,16 @@ export function mutateAndSelect(
  * Pixel tolerance converted to document pt at the current zoom, so
  * hit radii feel constant on screen. Falls back to 1:1 when the
  * camera hasn't initialised (scale 0).
+ *
+ * Reads the LIVE camera — the shared buffer the worker renders from —
+ * not `paged.camera`. A handler keeps the `PagedEditor` it was
+ * activated with, and that object is one render's snapshot: its camera
+ * is the zoom at the moment the tool was picked, so a tolerance taken
+ * from it stops tracking the first time the user zooms with the tool
+ * in hand.
  */
 export function pxToPt(paged: PagedEditor, px: number): number {
-  const scale = paged.camera.camera.scale;
+  const live = paged.client.camera.read().scale;
+  const scale = live > 0 ? live : paged.camera.camera.scale;
   return px / (scale > 0 ? scale : 1);
 }
