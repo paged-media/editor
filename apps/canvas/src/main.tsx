@@ -106,6 +106,13 @@ import { createEditorWorkerBackend } from "./plugin-worker";
 // this URL; the bundle can spawn only what the editor knows it ships.
 // @ts-ignore — `?worker&url` is a Vite affordance (string URL).
 import imageDecodeWorkerUrl from "@paged-media/image/decode-worker?worker&url";
+// The paged.draw Image Trace worker, the same way. The bundle asks
+// `host.workers` for "workers/trace.js" (`TRACE_WORKER_MODULE`); without
+// a resolver for ITS plugin id the spawn is refused by name and the
+// trace falls back to the calling thread — the UI thread, for anything
+// from a third of a second to most of a minute on a noisy photograph.
+// @ts-ignore — `?worker&url` is a Vite affordance (string URL).
+import drawTraceWorkerUrl from "@paged-media/draw/trace-worker?worker&url";
 import { createEditorConsentBackend } from "./plugin-consent";
 import { ConsentDialog } from "./ConsentDialog";
 import { createEditorSecretStore } from "./plugin-secret-store";
@@ -1169,7 +1176,8 @@ function PluginBundles() {
         textCaret;
     }
     // K-3 / S-07 / I-02: the worker backend behind host.workers — lets a
-    // bundle (paged.image's decode pool) spawn an off-main-thread worker.
+    // bundle (paged.image's decode pool, paged.draw's Image Trace kernel)
+    // spawn an off-main-thread worker.
     // The SDK door owns the capability gate, the count cap, the SAB byte
     // budget (gated on crossOriginIsolated — live here via COOP/COEP), and
     // teardown; this backend resolves a bundle's DECLARED module path to a
@@ -1179,6 +1187,8 @@ function PluginBundles() {
     const workers = createEditorWorkerBackend({
       "media.paged.image": (module) =>
         module === "workers/decode.js" ? imageDecodeWorkerUrl : null,
+      "media.paged.draw": (module) =>
+        module === "workers/trace.js" ? drawTraceWorkerUrl : null,
     });
     // D-09 (paged.data §7.1): ONE shared cross-plugin data-provider registry,
     // injected into every bundle host so a provider plugin (paged.data publishing
