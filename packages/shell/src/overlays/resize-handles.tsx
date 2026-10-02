@@ -42,7 +42,11 @@ import { groupByPage, unionAabb } from "./selection-chrome";
  * pointerdown reads the dataset to begin the correct resize gesture.
  */
 function ResizeHandlesRender(props: OverlayProps) {
-  const { elementGeometry } = useSelection();
+  const { elementGeometry, pathEditMode } = useSelection();
+  // Path-edit mode edits the element's POINTS, and every press on the
+  // canvas is the path's there — a frame handle would be drawn and
+  // dead. The outline stays; the handles come back with the mode off.
+  if (pathEditMode) return null;
   if (elementGeometry.length === 0) return null;
   if (elementGeometry.length === 1) {
     return renderSingle(elementGeometry[0], props);

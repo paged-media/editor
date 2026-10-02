@@ -17,7 +17,7 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// Step 5c — path-edit mode entry / exit.
+// Step 5c — path-edit mode: entry, exit, and the session that edits.
 //
 // Lives next to the rest of apps/canvas's UI hooks (mirrors
 // useKeyboardShortcuts.ts) so it can be mounted by the canvas
@@ -26,7 +26,8 @@
 //
 //   Enter (on a single path-bearing selection) → enter path-edit
 //                                                mode.
-//   Escape (while in path-edit mode)           → exit.
+//   Escape (while in path-edit mode)           → cancel the drag in
+//                                                flight, else exit.
 //   Selection clears or shrinks past a single  → exit.
 //   element                                       (so a marquee
 //                                                drag doesn't
@@ -36,15 +37,43 @@
 //                                                conflicts with
 //                                                path editing).
 //
-// Track J adds:
-//   Backspace / Delete (path-edit, anchor selected) → dispatch
-//                                                     PathPointRemove
-//   selectedAnchorIndex is also cleared on path-edit exit and on
-//   selection change.
+// THE DIRECT SELECTION TOOL is this same mode with the entry step
+// removed. With it in hand, the mode follows the selection: a single
+// path-bearing element is in path-edit mode the moment it is selected
+// (click it, or pick the tool with it already selected), and anything
+// else — an oval, a group, two elements, nothing — simply is not. There
+// is no second mode and no second pointer path: the tool is the
+// Selection tool's click plus this hook.
+//
+// WHILE THE MODE IS ON a `DirectSelectSession` (@paged-media/tools — the
+// shim over paged.draw's Direct Selection machine) is mounted for the
+// target and published on the selection context, where the path-edit
+// overlay draws it and the canvas routes pointer input to it. This hook
+// feeds it the keys:
+//
+//   Arrow keys          → nudge the selected anchors (Shift ×10)
+//   Backspace / Delete  → remove the selected anchors
+//
+// Those keys are the anchors' for as long as the mode is on, selected
+// anchor or not — `paged.object.delete` / `.nudge*` yield them through
+// their `when` (`objectVerbApplies`), and this listener prevents the
+// default so the keybinding registry's widget-key guard agrees.
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
-import { elementSupportsPathEdit, useCanvasClient, useSelection } from "@paged-media/shell";
+import {
+  DIRECT_SELECT_TOOL_ID,
+  elementSupportsPathEdit,
+  useCanvasClient,
+  useOptionalTool,
+  useSelection,
+} from "@paged-media/shell";
+import { DirectSelectSession, isPathEditKey } from "@paged-media/tools";
+
+import { problemsSink } from "../panels/problems-store";
+
+/** Diagnostics source for path-edit refusals in the Problems panel. */
+export const PATH_EDIT_DIAGNOSTIC_SOURCE = "paged.pathEdit";
 
 export function usePathEditMode() {
   const {
@@ -52,14 +81,83 @@ export function usePathEditMode() {
     elementSelection,
     pathEditMode,
     setPathEditMode,
-    selectedAnchorIndex,
-    setSelectedAnchorIndex,
+    pathEditSession,
+    setPathEditSession,
+    setSelectedAnchors,
+    setElementGeometry,
   } = useSelection();
   const client = useCanvasClient();
+  // The tool the user PICKED, not the effective one: holding Cmd
+  // spring-loads Direct Selection over every Cmd chord, and that is
+  // modifier posture, not a request to edit points.
+  const baseTool = useOptionalTool()?.toolState.base ?? null;
+  const directSelect = baseTool === DIRECT_SELECT_TOOL_ID;
 
-  // Enter / Escape bindings — skip when an editable element has
-  // focus so typing in the command palette / inspector doesn't
-  // toggle path-edit mode by accident.
+  const target =
+    pathEditMode &&
+    elementSelection.length === 1 &&
+    elementSupportsPathEdit(elementSelection[0])
+      ? elementSelection[0]
+      : null;
+  const targetKind = target?.kind;
+  const targetId = target ? JSON.stringify(target.id) : null;
+
+  // A refusal stays in the Problems panel until the next key the
+  // anchors take, so the panel shows the LAST edit's outcome and never
+  // a stale one (the `paged.object.*` discipline).
+  const reportedRef = useRef(false);
+
+  // The session — one per target, for as long as it is the target.
+  const targetRef = useRef(target);
+  targetRef.current = target;
+  useEffect(() => {
+    const element = targetRef.current;
+    if (!element) return;
+    const session = new DirectSelectSession({
+      client,
+      target: element,
+      onSelectionChange: setSelectedAnchors,
+      // An anchor edit moves the element's bounds; the selection outline
+      // is drawn from cached geometry, so it is re-read with the path.
+      onPathChanged: () => {
+        void client
+          .elementGeometry([element])
+          .then((items) => {
+            if (targetRef.current === element) setElementGeometry(items);
+          })
+          .catch(() => {
+            /* geometry is chrome — its absence never blocks the edit */
+          });
+      },
+      report: (severity, message) => {
+        reportedRef.current = true;
+        problemsSink.publish(PATH_EDIT_DIAGNOSTIC_SOURCE, "path-edit", [
+          { severity, message, source: "path-edit" },
+        ]);
+      },
+    });
+    setPathEditSession(session);
+    return () => {
+      session.dispose();
+      setPathEditSession(null);
+      // A stale index pointing into a different path's anchor table
+      // would mis-address the next edit.
+      setSelectedAnchors([]);
+    };
+    // Keyed on the target's IDENTITY: a re-selection of the same element
+    // hands back a new array and must not tear the session down.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client, targetKind, targetId]);
+
+  // Escape with Direct Selection in hand leaves the mode for THIS
+  // selection only; the same selection array must not re-enter it on
+  // the next render. A new selection (even of the same element — a
+  // click hands back a new array) is a new request.
+  const dismissedRef = useRef<unknown>(null);
+
+  // Enter / Escape and the anchors' keys — skip when an editable
+  // element has focus so typing in the command palette / inspector
+  // doesn't toggle path-edit mode by accident.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (isEditableTarget(e.target)) return;
@@ -71,56 +169,28 @@ export function usePathEditMode() {
         setPathEditMode(true);
         return;
       }
-      if (e.key === "Escape" && pathEditMode) {
+      if (!pathEditMode) return;
+      if (e.key === "Escape") {
         e.preventDefault();
+        // Mid-gesture, Escape is the gesture's: the drag is undone and
+        // the mode stays.
+        if (pathEditSession?.key(e)) return;
+        dismissedRef.current = elementSelection;
         setPathEditMode(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [pathEditMode, elementSelection, setPathEditMode]);
-
-  // Track J — Backspace / Delete removes the selected anchor.
-  useEffect(() => {
-    if (!pathEditMode) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (isEditableTarget(e.target)) return;
-      if (e.key !== "Backspace" && e.key !== "Delete") return;
-      if (selectedAnchorIndex === null) return;
-      const sel = elementSelection[0];
-      // Track J fan-out — Polygon, TextFrame, Rectangle, GraphicLine
-      // all carry path anchors. Oval / Group don't.
-      if (
-        !sel ||
-        (sel.kind !== "polygon" &&
-          sel.kind !== "textFrame" &&
-          sel.kind !== "rectangle" &&
-          sel.kind !== "graphicLine")
-      ) {
         return;
       }
+      // Chords are somebody else's (Cmd+Backspace, Ctrl+Arrow).
+      if (e.metaKey || e.ctrlKey || !isPathEditKey(e.key)) return;
       e.preventDefault();
-      const index = selectedAnchorIndex;
-      // Clear the selection ahead of the round-trip so the
-      // overlay doesn't briefly highlight a deleted anchor.
-      setSelectedAnchorIndex(null);
-      void client
-        .mutate({ op: "pathPointRemove", args: { elementId: sel, index } })
-        .catch(() => {
-          // Mutation failed (probably stale index after a concurrent
-          // edit). Re-instate the selection so the user can retry.
-          setSelectedAnchorIndex(index);
-        });
+      if (reportedRef.current) {
+        reportedRef.current = false;
+        problemsSink.clear(PATH_EDIT_DIAGNOSTIC_SOURCE);
+      }
+      pathEditSession?.key(e);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [
-    pathEditMode,
-    selectedAnchorIndex,
-    elementSelection,
-    client,
-    setSelectedAnchorIndex,
-  ]);
+  }, [pathEditMode, pathEditSession, elementSelection, setPathEditMode]);
 
   // Auto-exit when the selection isn't a single path-bearing
   // element any more (cleared, or grew to a multi-select).
@@ -141,15 +211,28 @@ export function usePathEditMode() {
     }
   }, [pathEditMode, activeTool, setPathEditMode]);
 
-  // Clear the selected-anchor sub-state whenever path-edit mode
-  // leaves OR the targeted element changes. A stale index pointing
-  // into a different polygon's anchor table would mis-address the
-  // next Backspace dispatch.
+  // Direct Selection: the mode follows the selection.
   useEffect(() => {
-    if (!pathEditMode || elementSelection.length !== 1) {
-      setSelectedAnchorIndex(null);
+    if (!directSelect || pathEditMode) return;
+    if (
+      elementSelection.length !== 1 ||
+      !elementSupportsPathEdit(elementSelection[0])
+    ) {
+      return;
     }
-  }, [pathEditMode, elementSelection, setSelectedAnchorIndex]);
+    if (dismissedRef.current === elementSelection) return;
+    setPathEditMode(true);
+  }, [directSelect, pathEditMode, elementSelection, setPathEditMode]);
+
+  // Putting Direct Selection down leaves the mode it holds open. Keyed
+  // on the tool alone: this must fire on the CHANGE away from it, not
+  // whenever the mode is on under another tool (Selection + Enter).
+  const wasDirectSelect = useRef(directSelect);
+  useEffect(() => {
+    const was = wasDirectSelect.current;
+    wasDirectSelect.current = directSelect;
+    if (was && !directSelect) setPathEditMode(false);
+  }, [directSelect, setPathEditMode]);
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {

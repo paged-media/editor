@@ -38,6 +38,7 @@ import {
   TEXT_TOOL_ID,
 } from "./tool-context";
 import type { ToolId } from "../registries/tool";
+import type { PathEditSession } from "./path-edit-session";
 
 export type ActiveTool = "select" | "text";
 
@@ -47,6 +48,12 @@ export type ActiveTool = "select" | "text";
 // between it and the richer `ToolId`. Only the two built-in tools map;
 // any other effective tool reports "select" until those consumers
 // migrate to `ToolId`.
+//
+// Direct Selection reports "select" ON PURPOSE, not by fallthrough: it
+// is the Selection tool's pointer path (a click selects what is under
+// it) plus path-edit mode, which `usePathEditMode` keeps on while the
+// tool is in hand. Everything it adds hangs off `pathEditMode`, so the
+// canvas needs no third scalar for it.
 function legacyToolFor(id: ToolId): ActiveTool {
   return id === TEXT_TOOL_ID ? "text" : "select";
 }
@@ -78,14 +85,27 @@ interface SelectionContextValue {
   pathEditMode: boolean;
   setPathEditMode: (enabled: boolean) => void;
 
-  /** Track J — flat anchor index inside the path-edit target's
-   * anchor table that the user has clicked. `null` when no anchor
-   * is selected. Backspace/Delete uses this to address the
-   * `PathPointRemove` mutation; double-click uses it to address the
-   * `PathPointCurveType` toggle. Cleared on path-edit exit, on
-   * selection change, and on Escape. */
+  /** The anchors selected inside the path-edit target, as flat indices
+   * into its anchor table, ascending. Empty when none is. A drag moves
+   * all of them, the arrow keys nudge them, Delete / Backspace removes
+   * them. Written by the path-edit session (the machine owns WHICH
+   * anchors a press or a marquee selects); cleared on path-edit exit
+   * and when the target changes. */
+  selectedAnchors: readonly number[];
+  setSelectedAnchors: (indices: readonly number[]) => void;
+
+  /** Track J — the single-anchor view of `selectedAnchors`, kept for
+   * readers written when one anchor was all there was: the selected
+   * anchor's flat index when EXACTLY one is selected, else `null`.
+   * The setter replaces the whole set with that one anchor (or none). */
   selectedAnchorIndex: number | null;
   setSelectedAnchorIndex: (index: number | null) => void;
+
+  /** The live direct-editing session for the path-edit target, or
+   * `null` outside path-edit mode. The overlay draws its view and the
+   * canvas routes pointer + key input to it; see `path-edit-session`. */
+  pathEditSession: PathEditSession | null;
+  setPathEditSession: (session: PathEditSession | null) => void;
 
   /** Track L — the group the user has "entered" via double-click.
    * `null` when no group is active (default — single-click selects
@@ -100,6 +120,12 @@ interface SelectionContextValue {
 }
 
 const Context = createContext<SelectionContextValue | null>(null);
+
+const NO_ANCHORS: readonly number[] = [];
+
+function sameIndices(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
 
 export function SelectionProvider({ children }: PropsWithChildren) {
   const [elementSelection, setElementSelection] = useState<ElementId[]>([]);
@@ -121,9 +147,30 @@ export function SelectionProvider({ children }: PropsWithChildren) {
     [tool],
   );
   const [pathEditMode, setPathEditMode] = useState<boolean>(false);
-  const [selectedAnchorIndex, setSelectedAnchorIndex] = useState<number | null>(
-    null,
+  const [selectedAnchors, setSelectedAnchorsState] = useState<
+    readonly number[]
+  >(NO_ANCHORS);
+  // Keep the array IDENTITY when its contents did not change: this
+  // value sits in a context half the panels read, and a marquee writes
+  // the selection on every pointer sample.
+  const setSelectedAnchors = useCallback((indices: readonly number[]) => {
+    setSelectedAnchorsState((prev) =>
+      sameIndices(prev, indices)
+        ? prev
+        : indices.length === 0
+          ? NO_ANCHORS
+          : [...indices],
+    );
+  }, []);
+  const selectedAnchorIndex =
+    selectedAnchors.length === 1 ? selectedAnchors[0] : null;
+  const setSelectedAnchorIndex = useCallback(
+    (index: number | null) =>
+      setSelectedAnchors(index === null ? NO_ANCHORS : [index]),
+    [setSelectedAnchors],
   );
+  const [pathEditSession, setPathEditSession] =
+    useState<PathEditSession | null>(null);
   const [activeGroup, setActiveGroup] = useState<string | null>(null);
 
   const value = useMemo<SelectionContextValue>(
@@ -136,8 +183,12 @@ export function SelectionProvider({ children }: PropsWithChildren) {
       setActiveTool,
       pathEditMode,
       setPathEditMode,
+      selectedAnchors,
+      setSelectedAnchors,
       selectedAnchorIndex,
       setSelectedAnchorIndex,
+      pathEditSession,
+      setPathEditSession,
       activeGroup,
       setActiveGroup,
     }),
@@ -146,7 +197,11 @@ export function SelectionProvider({ children }: PropsWithChildren) {
       elementGeometry,
       activeTool,
       pathEditMode,
+      selectedAnchors,
+      setSelectedAnchors,
       selectedAnchorIndex,
+      setSelectedAnchorIndex,
+      pathEditSession,
       activeGroup,
     ],
   );

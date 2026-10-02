@@ -38,6 +38,15 @@ export { createLineHandler } from "./handlers/line-tool";
 export { createPageHandler } from "./handlers/page-tool";
 export { createPencilHandler } from "./handlers/pencil-tool";
 export { createPenHandler } from "./handlers/pen-tool";
+// Direct path editing — the session the canvas mounts while path-edit
+// mode is on (the shim over paged.draw's Direct Selection machine).
+export {
+  DirectSelectSession,
+  isPathEditKey,
+  type DirectSelectSessionOptions,
+  type PathEditClient,
+  type PathEditReport,
+} from "./path-edit/direct-select-session";
 export { createPolygonHandler } from "./handlers/polygon-tool";
 export { createRectangleHandler } from "./handlers/rectangle-tool";
 export { createScissorsHandler } from "./handlers/scissors-tool";

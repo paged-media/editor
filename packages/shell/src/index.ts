@@ -46,6 +46,15 @@ export {
   useSelection,
   type ActiveTool,
 } from "./state/selection-context";
+export type {
+  PathEditAnchor,
+  PathEditHit,
+  PathEditMarquee,
+  PathEditPointer,
+  PathEditRelease,
+  PathEditSession,
+  PathEditView,
+} from "./state/path-edit-session";
 
 export {
   ContentSelectionProvider,

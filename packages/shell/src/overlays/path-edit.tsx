@@ -17,365 +17,176 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-import { useEffect, useState, type MouseEvent } from "react";
+import { useSyncExternalStore } from "react";
 
 // eslint-disable-next-line import/no-relative-parent-imports
-import type {
-  ElementId,
-  PathAnchorsResult,
-} from "@paged-media/client";
+import type { ElementId } from "@paged-media/client";
 
 import type { OverlayContribution, OverlayProps } from "../registries/overlay";
-import { useCanvasClient } from "../state/canvas-client-context";
+import type {
+  PathEditAnchor,
+  PathEditView,
+} from "../state/path-edit-session";
 import { useSelection } from "../state/selection-context";
 
-import { applyAffine, inverseApplyAffine } from "./affine";
-import {
-  closestTOnCubic,
-  splitSegmentDeCasteljau,
-  type Pt,
-} from "./path-math";
-
 /**
- * Step 5c — path-edit chrome.
+ * Path-edit chrome — the anchors, handles and segments of the path
+ * being edited, drawn while `useSelection().pathEditMode` is on.
  *
- * Renders one square dot per anchor and a round dot pair (left /
- * right Bezier handles) on a single-selected path-bearing element
- * when `useSelection().pathEditMode` is on. Handles tag themselves
- * with `data-path-anchor="<index>:<role>"` so ViewportCanvas's
- * pointer router can begin a `PathEdit { address }` gesture once
- * the routing is wired up (5c follow-up).
+ * THIS OVERLAY DRAWS; IT DOES NOT DECIDE. What it draws is the view of
+ * the live `PathEditSession` (`useSelection().pathEditSession`): the
+ * path as edited so far — so a drag previews on every pointer sample,
+ * before anything is sent — the selected-anchor set, and the anchor
+ * marquee. What a press does (drag an anchor, swing a handle, bend a
+ * segment, start a marquee) is the session's machine; the press itself
+ * arrives through ViewportCanvas's pointer router, the one place that
+ * already owns pointer capture, cancel and blur for every other drag.
  *
- * Data source: `client.pathAnchors(id)` over the canvas channel.
- * The fetch fires once per selection change and once when path-
- * edit mode toggles on; the result lives in component-local state
- * so the host doesn't need to subscribe to anchor updates between
- * fetches.
+ * The session's view is in PAGE-LOCAL pt — the element's item
+ * transform is already applied — so a rotated or scaled path's dots sit
+ * on its rendered outline with no matrix math here.
+ *
+ * Every dot keeps a hit shape (`pointer-events: all`) although nothing
+ * listens on it: the shape gives the cursor, marks the dot for tests
+ * (`data-path-anchor="<index>:<role>"`, `data-path-segment="<start>"`),
+ * and the event bubbles to the canvas like any other. The sizes are the
+ * session's grab sizes (`PATH_HIT_PX` in @paged-media/tools) — keep the
+ * two in step, or the cursor promises a grab the press does not get.
  */
 function PathEditRender(props: OverlayProps) {
-  const {
-    elementSelection,
-    pathEditMode,
-    selectedAnchorIndex,
-    setSelectedAnchorIndex,
-  } = useSelection();
-  const client = useCanvasClient();
-  const [anchors, setAnchors] = useState<PathAnchorsResult | null>(null);
-  const target = pathEditMode && elementSelection.length === 1
-    ? elementSelection[0]
-    : null;
-
-  useEffect(() => {
-    if (!target) {
-      setAnchors(null);
-      return;
-    }
-    let cancelled = false;
-    void client
-      .pathAnchors(target)
-      .then((result) => {
-        if (!cancelled) setAnchors(result);
-      })
-      .catch(() => {
-        if (!cancelled) setAnchors(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, target?.kind, target?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Subscribe to mutation-applied notifications so the overlay
-  // refreshes its anchor table after a Track-J insert/remove/
-  // curve-type mutation lands. Without this, the chrome would
-  // show stale anchor positions until the next selection change.
-  useEffect(() => {
-    if (!target) return;
-    const off = client.subscribe((msg) => {
-      if (
-        msg.kind !== "mutationApplied" &&
-        msg.kind !== "undoApplied" &&
-        msg.kind !== "redoApplied"
-      ) {
-        return;
-      }
-      void client.pathAnchors(target).then((result) => setAnchors(result));
-    });
-    return off;
-  }, [client, target?.kind, target?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (!target || !anchors || anchors.anchors.length === 0) return null;
-  // C-23 — pageless ⇒ no page-local space to draw in.
-  const pr = anchors.pageId ? props.pageRects.get(anchors.pageId) : undefined;
+  const { pathEditMode, pathEditSession } = useSelection();
+  const session = pathEditMode ? pathEditSession : null;
+  const view = useSyncExternalStore(
+    session ? session.subscribe : subscribeToNothing,
+    session ? session.getView : getNoView,
+  );
+  if (!view || view.anchors.length === 0) return null;
+  const pr = props.pageRects.get(view.pageId);
   if (!pr) return null;
 
   const inv = 1 / props.camera.scale;
-  const matrix = anchors.itemTransform ?? null;
-
-  // Track J fan-out — path-topology mutations accept Polygon,
-  // TextFrame, Rectangle, GraphicLine (all four carry the same
-  // `anchors` table). Oval / Group don't and stay read-only.
-  const editTarget: ElementId | null =
-    target.kind === "polygon" ||
-    target.kind === "textFrame" ||
-    target.kind === "rectangle" ||
-    target.kind === "graphicLine"
-      ? target
-      : null;
-
-  const onAnchorDown = (i: number) => () => {
-    if (editTarget === null) return;
-    setSelectedAnchorIndex(i);
-  };
-
-  const onAnchorDoubleClick = (i: number) => (e: MouseEvent<SVGElement>) => {
-    if (editTarget === null) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const a = anchors.anchors[i];
-    if (!a) return;
-    // "Currently corner" iff both handles coincide with the
-    // anchor (IDML's zero-handle convention for sharp corners).
-    const isCorner =
-      Math.hypot(a.left[0] - a.anchor[0], a.left[1] - a.anchor[1]) < 1e-3 &&
-      Math.hypot(a.right[0] - a.anchor[0], a.right[1] - a.anchor[1]) < 1e-3;
-    void client.mutate({
-      op: "pathPointCurveType",
-      args: { elementId: editTarget, index: i, smooth: isCorner },
-    });
-  };
-
-  // Track J — segment click → curve-preserving insert. The
-  // handler maps the click into the path's local coords (inverse
-  // itemTransform), finds the closest parametric `t` on the
-  // segment's cubic via the de-Casteljau-friendly closest-point
-  // search, runs the split to get the new anchor + adjusted
-  // neighbour handles, and dispatches a Batch of three
-  // mutations so the whole insert lands as one undo entry.
-  //
-  // `closingSubEnd != null` flags the wraparound (last → first)
-  // segment of a closed subpath. The new anchor lands at flat
-  // index `closingSubEnd`, becoming the new last anchor of that
-  // subpath; the apply layer's default strictly-greater starts
-  // rule would assign it to the NEXT subpath instead, so we
-  // pass an explicit `prevSubpathStarts` override that bumps the
-  // boundary entry. For the last subpath's closing edge (where
-  // `closingSubEnd === anchors.length`) no entry needs bumping
-  // and the override is omitted.
-  const onSegmentDown =
-    (segStart: number, segEnd: number, closingSubEnd: number | null) =>
-    (e: MouseEvent<SVGPathElement>) => {
-      if (editTarget === null) return;
-      e.preventDefault();
-      e.stopPropagation();
-      // The hit zone is an SVG element inside the overlay's root
-      // <svg>. `currentTarget.ownerSVGElement` gives us the root;
-      // its bounding rect lets us translate clientX/Y → doc-space.
-      const svg = e.currentTarget.ownerSVGElement;
-      if (!svg) return;
-      const pt = svg.createSVGPoint();
-      pt.x = e.clientX;
-      pt.y = e.clientY;
-      const ctm = svg.getScreenCTM();
-      if (!ctm) return;
-      const docPt = pt.matrixTransform(ctm.inverse());
-      // doc-space → page-local → path-local (inverse itemTransform).
-      const pageLocal: Pt = [docPt.x - pr.x, docPt.y - pr.y];
-      const pathLocal = inverseApplyAffine(matrix, pageLocal[0], pageLocal[1]);
-      if (!pathLocal) return;
-      const sA = anchors.anchors[segStart];
-      const eA = anchors.anchors[segEnd];
-      if (!sA || !eA) return;
-      const start: Pt = sA.anchor;
-      const startRight: Pt = sA.right;
-      const endLeft: Pt = eA.left;
-      const end: Pt = eA.anchor;
-      const t = closestTOnCubic(start, startRight, endLeft, end, pathLocal);
-      const split = splitSegmentDeCasteljau(
-        start,
-        startRight,
-        endLeft,
-        end,
-        t,
-      );
-      // Dispatch order matters: update both endpoint handles AT
-      // their OLD flat indices first, then insert the new anchor.
-      // For internal segments the insert index is segStart + 1.
-      // For closing edges (wraparound segments) the new anchor
-      // lands at the subpath's END (`closingSubEnd`) — anchor
-      // indices segStart and segEnd refer to positions that
-      // straddle a subpath boundary, so neither would adjust if
-      // we used segStart + 1.
-      const insertIdx =
-        closingSubEnd !== null ? closingSubEnd : segStart + 1;
-      // For closing-edge inserts at a subpath boundary the apply
-      // layer's default rule (strictly-greater) doesn't bump the
-      // boundary entry; supply explicit post-Insert starts so the
-      // new anchor stays inside the prior subpath.
-      let prevSubpathStarts: number[] | undefined;
-      if (
-        closingSubEnd !== null &&
-        closingSubEnd < anchors.anchors.length
-      ) {
-        prevSubpathStarts = Array.from(anchors.subpathStarts, (s) =>
-          s >= closingSubEnd ? s + 1 : s,
-        );
-      }
-      const ops = [
-        {
-          op: "pathPointSet" as const,
-          args: {
-            elementId: editTarget,
-            index: segStart,
-            role: "right" as const,
-            position: split.startRight as [number, number],
-          },
-        },
-        {
-          op: "pathPointSet" as const,
-          args: {
-            elementId: editTarget,
-            index: segEnd,
-            role: "left" as const,
-            position: split.endLeft as [number, number],
-          },
-        },
-        {
-          op: "pathPointInsert" as const,
-          args: {
-            elementId: editTarget,
-            index: insertIdx,
-            anchor: {
-              anchor: split.midAnchor as [number, number],
-              left: split.midLeft as [number, number],
-              right: split.midRight as [number, number],
-            },
-            ...(prevSubpathStarts !== undefined
-              ? { prevSubpathStarts }
-              : {}),
-          },
-        },
-      ];
-      void client.mutate({ op: "batch", args: { ops } });
+  const selected = new Set(view.selected);
+  const segments = segmentPairs(view).map(([start, end]) => {
+    const s = view.anchors[start];
+    const e = view.anchors[end];
+    return {
+      start,
+      d:
+        `M ${pr.x + s.anchor[0]} ${pr.y + s.anchor[1]} ` +
+        `C ${pr.x + s.right[0]} ${pr.y + s.right[1]}, ` +
+        `${pr.x + e.left[0]} ${pr.y + e.left[1]}, ` +
+        `${pr.x + e.anchor[0]} ${pr.y + e.anchor[1]}`,
     };
-
-  // Track J — segment pairs for insert hit zones. One entry per
-  // adjacent (start, end) pair WITHIN a subpath. Closed subpaths
-  // also get a wraparound (last → first) entry; its third tuple
-  // slot carries the subpath's `subEnd` so `onSegmentDown` can
-  // route the insert to the boundary instead of `segStart + 1`.
-  // Track J fan-out: hit zones surface for any path-bearing
-  // element (Polygon / TextFrame / Rectangle / GraphicLine).
-  type SegPair = readonly [number, number, number | null];
-  const segmentPairs: SegPair[] = [];
-  if (editTarget !== null) {
-    const n = anchors.anchors.length;
-    const starts = anchors.subpathStarts.length > 0 ? anchors.subpathStarts : [0];
-    for (let si = 0; si < starts.length; si++) {
-      const subStart = starts[si];
-      const subEnd = si + 1 < starts.length ? starts[si + 1] : n;
-      for (let i = subStart; i + 1 < subEnd; i++) {
-        segmentPairs.push([i, i + 1, null]);
-      }
-      // Closed-subpath wraparound. `subpathOpen` is parallel to
-      // ranges built from `subpathStarts`; missing entries default
-      // to closed (matches the renderer's `unwrap_or(false)`).
-      const isOpen = anchors.subpathOpen?.[si] ?? false;
-      if (!isOpen && subEnd - subStart >= 2) {
-        segmentPairs.push([subEnd - 1, subStart, subEnd]);
-      }
-    }
-  }
+  });
 
   return (
-    <g>
-      {segmentPairs.map(([s, t, closing], idx) => {
-        const sA = anchors.anchors[s];
-        const eA = anchors.anchors[t];
-        if (!sA || !eA) return null;
-        const [sx, sy] = applyAffine(matrix, sA.anchor[0], sA.anchor[1]);
-        const [srx, sry] = applyAffine(matrix, sA.right[0], sA.right[1]);
-        const [elx, ely] = applyAffine(matrix, eA.left[0], eA.left[1]);
-        const [ex, ey] = applyAffine(matrix, eA.anchor[0], eA.anchor[1]);
-        const d =
-          `M ${pr.x + sx} ${pr.y + sy} ` +
-          `C ${pr.x + srx} ${pr.y + sry}, ` +
-          `${pr.x + elx} ${pr.y + ely}, ` +
-          `${pr.x + ex} ${pr.y + ey}`;
-        // Inverse-scaled stroke width keeps the hit zone constant
-        // in CSS px. 8px is generous enough that off-curve clicks
-        // still land — the closest-t solver projects to the
-        // nearest on-curve point regardless of where the click
-        // lands inside the stroke.
-        return (
-          <path
-            key={`seg:${idx}`}
-            d={d}
-            fill="none"
-            stroke="transparent"
-            strokeWidth={8 * inv}
-            onPointerDown={onSegmentDown(s, t, closing)}
-            style={{ cursor: "copy", pointerEvents: "stroke" }}
-          />
-        );
-      })}
-      {anchors.anchors.map((a, i) => {
-        const [ax, ay] = applyAffine(matrix, a.anchor[0], a.anchor[1]);
-        const [lx, ly] = applyAffine(matrix, a.left[0], a.left[1]);
-        const [rx, ry] = applyAffine(matrix, a.right[0], a.right[1]);
-        const a_x = pr.x + ax;
-        const a_y = pr.y + ay;
-        const l_x = pr.x + lx;
-        const l_y = pr.y + ly;
-        const r_x = pr.x + rx;
-        const r_y = pr.y + ry;
-        // Skip handle visuals when a handle coincides with the
-        // anchor (corner-point with no Bezier — IDML zero-length
-        // handles). Keeps the chrome tidy on sharp corners.
-        const hasLeft = Math.hypot(lx - ax, ly - ay) > 1e-3;
-        const hasRight = Math.hypot(rx - ax, ry - ay) > 1e-3;
-        const isSelected = selectedAnchorIndex === i;
+    <g data-path-edit={`${view.target.kind}:${String(view.target.id)}`}>
+      {/* The path itself, as edited so far. The engine repaints the
+          element only when an edit is committed, so during a drag this
+          hairline IS the preview of the shape being pulled. */}
+      <path
+        data-path-outline=""
+        d={segments.map((seg) => seg.d).join(" ")}
+        fill="none"
+        stroke="var(--overlay-selection)"
+        strokeWidth={1}
+        vectorEffect="non-scaling-stroke"
+        pointerEvents="none"
+      />
+      {segments.map((seg) => (
+        // The segment's grab band: 8 px wide whatever the zoom. A click
+        // inserts an anchor, a drag bends the segment.
+        <path
+          key={`seg:${seg.start}`}
+          d={seg.d}
+          fill="none"
+          stroke="transparent"
+          strokeWidth={8 * inv}
+          data-path-segment={seg.start}
+          style={{ cursor: "copy", pointerEvents: "stroke" }}
+        />
+      ))}
+      {view.anchors.map((a, i) => {
+        const ax = pr.x + a.anchor[0];
+        const ay = pr.y + a.anchor[1];
+        const lx = pr.x + a.left[0];
+        const ly = pr.y + a.left[1];
+        const rx = pr.x + a.right[0];
+        const ry = pr.y + a.right[1];
+        // A handle on its anchor is a corner's collapsed handle (IDML's
+        // zero-length convention): no dot, nothing to grab.
+        const hasLeft = isExtended(a, "left");
+        const hasRight = isExtended(a, "right");
         return (
           <g key={i}>
-            {hasLeft && (
-              <line
-                x1={a_x}
-                y1={a_y}
-                x2={l_x}
-                y2={l_y}
-                stroke="var(--overlay-selection)"
-                strokeWidth={1}
-                vectorEffect="non-scaling-stroke"
-                pointerEvents="none"
-              />
-            )}
-            {hasRight && (
-              <line
-                x1={a_x}
-                y1={a_y}
-                x2={r_x}
-                y2={r_y}
-                stroke="var(--overlay-selection)"
-                strokeWidth={1}
-                vectorEffect="non-scaling-stroke"
-                pointerEvents="none"
-              />
-            )}
-            {hasLeft && renderHandleDot(l_x, l_y, inv, `${i}:left`)}
-            {hasRight && renderHandleDot(r_x, r_y, inv, `${i}:right`)}
-            {renderAnchorDot(
-              a_x,
-              a_y,
-              inv,
-              `${i}:anchor`,
-              isSelected,
-              onAnchorDown(i),
-              onAnchorDoubleClick(i),
-            )}
+            {hasLeft && renderHandleLine(ax, ay, lx, ly)}
+            {hasRight && renderHandleLine(ax, ay, rx, ry)}
+            {hasLeft && renderHandleDot(lx, ly, inv, `${i}:left`)}
+            {hasRight && renderHandleDot(rx, ry, inv, `${i}:right`)}
+            {renderAnchorDot(ax, ay, inv, `${i}:anchor`, selected.has(i))}
           </g>
         );
       })}
-      {renderSubpathMarkers(anchors, pr, matrix, inv)}
+      {renderSubpathMarkers(view, pr, inv)}
+      {view.marquee && (
+        <rect
+          data-path-marquee=""
+          x={pr.x + view.marquee.x}
+          y={pr.y + view.marquee.y}
+          width={view.marquee.width}
+          height={view.marquee.height}
+          fill="var(--overlay-selection)"
+          fillOpacity={0.08}
+          stroke="var(--overlay-selection)"
+          strokeWidth={1}
+          strokeDasharray="4 2"
+          vectorEffect="non-scaling-stroke"
+          pointerEvents="none"
+        />
+      )}
     </g>
+  );
+}
+
+const subscribeToNothing = () => () => {};
+const getNoView = (): PathEditView | null => null;
+
+function isExtended(a: PathEditAnchor, side: "left" | "right"): boolean {
+  return (
+    Math.hypot(a[side][0] - a.anchor[0], a[side][1] - a.anchor[1]) > 1e-3
+  );
+}
+
+/** One `[start, end]` per segment: adjacent anchors within a contour,
+ *  plus the closing (last → first) edge of a closed one. Contours with
+ *  no explicit starts are a single contour; a missing `subpathOpen`
+ *  entry is closed (the renderer's `unwrap_or(false)`). */
+function segmentPairs(view: PathEditView): Array<readonly [number, number]> {
+  const pairs: Array<readonly [number, number]> = [];
+  const n = view.anchors.length;
+  const starts = view.subpathStarts.length > 0 ? view.subpathStarts : [0];
+  for (let si = 0; si < starts.length; si++) {
+    const from = starts[si];
+    const to = si + 1 < starts.length ? starts[si + 1] : n;
+    for (let i = from; i + 1 < to; i++) pairs.push([i, i + 1]);
+    const open = view.subpathOpen?.[si] ?? false;
+    if (!open && to - from >= 2) pairs.push([to - 1, from]);
+  }
+  return pairs;
+}
+
+function renderHandleLine(x1: number, y1: number, x2: number, y2: number) {
+  return (
+    <line
+      x1={x1}
+      y1={y1}
+      x2={x2}
+      y2={y2}
+      stroke="var(--overlay-selection)"
+      strokeWidth={1}
+      vectorEffect="non-scaling-stroke"
+      pointerEvents="none"
+    />
   );
 }
 
@@ -385,13 +196,11 @@ function renderAnchorDot(
   inv: number,
   address: string,
   selected: boolean,
-  onPointerDown?: () => void,
-  onDoubleClick?: (e: MouseEvent<SVGElement>) => void,
 ) {
   const visiblePx = 7;
   const hitPx = 11;
-  // Track J — selected anchor fills blue + thicker stroke so the
-  // Backspace target is unambiguous.
+  // A selected anchor fills, with a heavier stroke, so what a drag, a
+  // nudge or Delete will act on is unambiguous.
   const fill = selected ? "var(--overlay-selection)" : "white";
   const strokeWidth = selected ? 2 : 1;
   return (
@@ -403,8 +212,7 @@ function renderAnchorDot(
         height={hitPx}
         fill="transparent"
         data-path-anchor={address}
-        onPointerDown={onPointerDown}
-        onDoubleClick={onDoubleClick}
+        data-selected={selected}
         style={{ cursor: "pointer", pointerEvents: "all" }}
       />
       <rect
@@ -415,10 +223,7 @@ function renderAnchorDot(
         fill={fill}
         stroke="var(--overlay-selection)"
         strokeWidth={strokeWidth}
-        data-path-anchor={address}
-        onPointerDown={onPointerDown}
-        onDoubleClick={onDoubleClick}
-        style={{ cursor: "pointer", pointerEvents: "all" }}
+        pointerEvents="none"
       />
     </g>
   );
@@ -444,33 +249,30 @@ function renderHandleDot(x: number, y: number, inv: number, address: string) {
         fill="var(--overlay-selection)"
         stroke="white"
         strokeWidth={1}
-        data-path-anchor={address}
-        style={{ cursor: "pointer", pointerEvents: "all" }}
+        pointerEvents="none"
       />
     </g>
   );
 }
 
 function renderSubpathMarkers(
-  anchors: PathAnchorsResult,
+  view: PathEditView,
   pr: { x: number; y: number },
-  matrix: readonly [number, number, number, number, number, number] | null,
   inv: number,
 ) {
   // Ring each subpath's first anchor so compound paths (a square
   // with a hole) make their contour boundaries visible.
-  if (anchors.subpathStarts.length === 0) return null;
+  if (view.subpathStarts.length === 0) return null;
   return (
     <>
-      {anchors.subpathStarts.map((startIdx, i) => {
-        const a = anchors.anchors[startIdx];
+      {view.subpathStarts.map((startIdx, i) => {
+        const a = view.anchors[startIdx];
         if (!a) return null;
-        const [ax, ay] = applyAffine(matrix, a.anchor[0], a.anchor[1]);
         return (
           <circle
             key={`subpath:${i}`}
-            cx={pr.x + ax}
-            cy={pr.y + ay}
+            cx={pr.x + a.anchor[0]}
+            cy={pr.y + a.anchor[1]}
             r={10 * inv}
             fill="none"
             stroke="var(--overlay-selection)"

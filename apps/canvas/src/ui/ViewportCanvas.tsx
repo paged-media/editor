@@ -51,6 +51,8 @@ import { viewportToDoc, type Camera } from "@paged-media/client";
 import type {
   CanvasPointerEvent,
   ContentPointerEvent,
+  PathEditPointer,
+  PathEditSession,
 } from "@paged-media/shell";
 import type {
   ElementGeometryItem,
@@ -153,6 +155,12 @@ export interface ViewportCanvasProps {
   /** Phase 3 — CSS cursor for the active tool. Overrides the default
    * pan affordance when set. */
   cursor?: string;
+  /** Path-edit mode's live session, or null outside it. While set,
+   * every primary-button press on the canvas is the path's: the session
+   * decides what it landed on (an anchor, a handle, a segment, nothing)
+   * and what the drag does. Only a CLICK on nothing comes back, to run
+   * the ordinary select-what-is-here path. */
+  pathEdit?: PathEditSession | null;
   /** Concept 1 — the Hand tool (incl. the Space spring-load): every
    * primary-button drag pans, reusing the proven pan machinery. */
   forcePan?: boolean;
@@ -250,6 +258,15 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
     startPointer: [number, number];
     maxDelta: number;
   } | null>(null);
+
+  // Path-edit mode — true between a press the session took and its
+  // release. The session owns the semantics; this only remembers that
+  // the pointer is its, so move / up / cancel reach it too.
+  const pathEditDragRef = useRef(false);
+  // Whether the session CONSUMED the last release. A double-click on an
+  // anchor is two of those, and must not also run the canvas's
+  // double-click (enter an edit context / a group) underneath it.
+  const pathEditConsumedRef = useRef(false);
 
   // Phase A / E — marquee + snap guides live on OverlaySignalsContext.
   // ViewportCanvas writes (pointer plumbing); the marquee + snap-lines
@@ -434,6 +451,33 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
     [props.camera, props.pageIds, rects],
   );
 
+  // Resolve a DOM pointer event for the path-edit session: page-local
+  // pt on the page the PATH sits on — not the page under the pointer,
+  // which a drag is free to leave — plus the zoom its pixel tolerances
+  // are measured at. Null when the session has no path on a page yet.
+  const buildPathEditPointer = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>): PathEditPointer | null => {
+      const view = props.pathEdit?.getView();
+      if (!view) return null;
+      const pageRect = rects[props.pageIds.indexOf(view.pageId)];
+      if (!pageRect) return null;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const [docX, docY] = viewportToDoc(
+        props.camera,
+        e.clientX - rect.left,
+        e.clientY - rect.top,
+      );
+      const scale = props.camera.scale;
+      return {
+        point: [docX - pageRect.x, docY - pageRect.y],
+        modifiers: { shift: e.shiftKey, alt: e.altKey },
+        ptPerPx: 1 / (scale > 0 ? scale : 1),
+        timeStamp: e.timeStamp,
+      };
+    },
+    [props.camera, props.pageIds, props.pathEdit, rects],
+  );
+
   // K-1 — deliver a pointer to the ACTIVE edit context in FRAME-CONTENT
   // coordinates. Returns true when the pointer was over the active frame
   // (consumed); false when there is no active context or the pointer is
@@ -554,7 +598,26 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       let gestureState:
         | NonNullable<typeof dragStateRef.current>["gestureState"]
         | undefined;
-      if (e.button === 1) {
+      // Path-edit mode — a primary press is the path's. The session
+      // takes it whatever it landed on (an empty press starts its
+      // anchor marquee), so none of the element gestures below is even
+      // considered: no frame translate, no element marquee, no pan. The
+      // drag state is still armed, as a no-op "pan" that never receives
+      // a move, because ONE outcome comes back to the code below — a
+      // click on nothing falls through to the ordinary hit-test click
+      // on release (the Type tool's dual-dispatch rule).
+      const pathEditPointer =
+        props.pathEdit &&
+        e.button === 0 &&
+        tool === "select" &&
+        !props.forcePan &&
+        !props.zoomClick
+          ? buildPathEditPointer(e)
+          : null;
+      if (props.pathEdit && pathEditPointer) {
+        pathEditDragRef.current = true;
+        props.pathEdit.pointerDown(pathEditPointer);
+      } else if (e.button === 1) {
         mode = "pan";
       } else if (props.forcePan || props.zoomClick) {
         // Concept 1 — Hand (or a Space spring-load) pans on any drag;
@@ -744,6 +807,10 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       // — the Rectangle/Line/Pen tools never draw until some other
       // dep (a pan, a selection) happens to rebuild the callback.
       props.toolGesture,
+      props.pathEdit,
+      props.forcePan,
+      props.zoomClick,
+      buildPathEditPointer,
       rects,
     ],
   );
@@ -765,6 +832,12 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         );
         if (d > toolDrag.maxDelta) toolDrag.maxDelta = d;
         props.toolGesture.onMove(buildToolPointer(e, toolDrag.maxDelta));
+        return;
+      }
+      // Path-edit mode — the session owns this drag.
+      if (pathEditDragRef.current) {
+        const pointer = buildPathEditPointer(e);
+        if (pointer) props.pathEdit?.pointerMove(pointer);
         return;
       }
       const drag = dragStateRef.current;
@@ -858,7 +931,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         });
       }
     },
-    [props, rects],
+    [props, rects, buildPathEditPointer],
   );
 
   const onPointerUp = useCallback(
@@ -886,6 +959,28 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
           e.currentTarget.releasePointerCapture(e.pointerId);
           return;
         }
+      }
+      // Path-edit mode — hand the release to the session. Whatever it
+      // did with the gesture (moved anchors, selected some, inserted
+      // one) ends here; only a click on NOTHING is not its business,
+      // and that one runs the ordinary click below.
+      if (pathEditDragRef.current) {
+        pathEditDragRef.current = false;
+        const pointer = buildPathEditPointer(e);
+        const release =
+          pointer && props.pathEdit
+            ? props.pathEdit.pointerUp(pointer)
+            : "consumed";
+        pathEditConsumedRef.current = release === "consumed";
+        if (release === "consumed") {
+          if (dragStateRef.current) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+            dragStateRef.current = null;
+          }
+          return;
+        }
+      } else {
+        pathEditConsumedRef.current = false;
       }
       const drag = dragStateRef.current;
       if (!drag) return;
@@ -1021,7 +1116,14 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         }
       }
     },
-    [props, rects, marqueeRect, setContentSelection, tryEnterOwnedContent],
+    [
+      props,
+      rects,
+      marqueeRect,
+      setContentSelection,
+      tryEnterOwnedContent,
+      buildPathEditPointer,
+    ],
   );
 
   // GSM-07 / INV-8 — abort the in-flight drag WITHOUT committing.
@@ -1038,6 +1140,11 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
     if (toolDragRef.current && props.toolGesture) {
       toolDragRef.current = null;
       props.toolGesture.onCancel();
+    }
+    // Path-edit drag: the session drops the gesture, nothing is sent.
+    if (pathEditDragRef.current) {
+      pathEditDragRef.current = false;
+      props.pathEdit?.cancel();
     }
     const drag = dragStateRef.current;
     if (!drag) return;
@@ -1248,6 +1355,10 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       // granularity (handled in onPointerUp's click branch); skip the
       // group-descent path so the two don't fight over the same click.
       if ((props.activeTool ?? "select") === "text") return;
+      // Path-edit mode — a double-click whose second click the session
+      // took (on an anchor it converts corner ↔ smooth) is not ALSO a
+      // request to enter whatever lies under that anchor.
+      if (props.pathEdit && pathEditConsumedRef.current) return;
       const rect = e.currentTarget.getBoundingClientRect();
       const cx = e.clientX - rect.left;
       const cy = e.clientY - rect.top;

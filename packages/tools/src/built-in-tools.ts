@@ -73,6 +73,15 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     isGroupDefault: true,
     legacyKey: "select",
   },
+  // Direct Selection edits a path's POINTS. It carries no `gesture` on
+  // purpose: it is the Selection tool's pointer path (the `legacyKey`
+  // bridge — a click selects what is under it, path or not) plus
+  // path-edit mode, which `usePathEditMode` keeps on for as long as this
+  // tool is in hand and the selection is a single path-bearing element.
+  // So clicking a path with it shows its anchors and edits them, with no
+  // Enter / double-click step in between; the dragging, the marquee, the
+  // nudge and the delete are the path-edit session's
+  // (`path-edit/direct-select-session.ts`, over paged.draw's machine).
   {
     id: "paged.tool.directSelect",
     title: "Direct Selection",
@@ -81,6 +90,7 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     group: "directSelect",
     section: "selection",
     isGroupDefault: true,
+    legacyKey: "select",
   },
   {
     id: "paged.tool.page",

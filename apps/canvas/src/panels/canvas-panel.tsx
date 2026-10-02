@@ -80,6 +80,8 @@ export function CanvasPanel(_props: PanelProps) {
     activeTool,
     activeGroup,
     setActiveGroup,
+    pathEditMode,
+    pathEditSession,
   } = useSelection();
   const { setContentSelection } = useContentSelection();
   const tableSelection = useOptionalTableSelection();
@@ -419,6 +421,11 @@ export function CanvasPanel(_props: PanelProps) {
         cursor={toolCursor}
         forcePan={forcePan}
         zoomClick={zoomClick}
+        // Path-edit mode hands the canvas pointer to the session — but
+        // only while the legacy select path is the one in charge: a tool
+        // with its own gesture (the Pen, with the mode still on) keeps
+        // its pointer.
+        pathEdit={pathEditMode && !toolGesture ? pathEditSession : null}
         elementSelection={elementSelection}
         elementGeometry={elementGeometry}
         onHit={onHit}
