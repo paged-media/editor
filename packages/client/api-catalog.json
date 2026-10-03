@@ -171,13 +171,13 @@
           "name": "CanvasClient.collection",
           "kind": "method",
           "signature": "async collection<T>(name: CollectionName): Promise<readonly T[]>",
-          "summary": "SDK Phase 5 (D1) — typed read of any document collection per `docs/paged/panel-catalog-and-sdk-extension.md` §5.1."
+          "summary": "SDK Phase 5 (D1) — typed read of any document collection per `docs/design/panel-catalog.md` §5.1."
         },
         {
           "name": "CanvasClient.documentMeta",
           "kind": "method",
           "signature": "async documentMeta(): Promise<DocumentMeta>",
-          "summary": "SDK Phase 5 (D1) — singleton document-meta snapshot per `docs/paged/panel-catalog-and-sdk-extension.md` §5.6."
+          "summary": "SDK Phase 5 (D1) — singleton document-meta snapshot per `docs/design/panel-catalog.md` §5.6."
         },
         {
           "name": "CanvasClient.setActivePage",
