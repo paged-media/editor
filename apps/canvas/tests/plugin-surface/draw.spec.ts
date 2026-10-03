@@ -37,9 +37,11 @@
 //   the highest-value commands the journeys never touched.
 //
 // WHAT THE MANIFEST DECLARES (the resolved bundle the app loads:
-// `apps/canvas/node_modules/@paged-media/draw/manifest.json`, v0.5.0):
-//   19 tools · 10 panels · 92 commands · 1 importer · 1 exporter ·
-//   7 partTypes · 1 editContext  =  131 contributions.
+// `apps/canvas/node_modules/@paged-media/draw/manifest.json`, v0.5.0;
+// grown by canary.12's path-options panel, its eight "…Options" verbs and
+// Reverse path direction):
+//   19 tools · 11 panels · 101 commands · 1 importer · 1 exporter ·
+//   7 partTypes · 1 editContext  =  141 contributions.
 //
 // THE ID LISTS BELOW ARE TRANSCRIBED FROM THAT MANIFEST ON PURPOSE.
 //   Reading the manifest at runtime would name zero ids in this file, and
@@ -89,6 +91,7 @@ const PANELS = [
   "media.paged.draw.panel.repeat",
   "media.paged.draw.panel.blend",
   "media.paged.draw.panel.objectsOnPath",
+  "media.paged.draw.panel.pathOptions",
 ] as const;
 
 const COMMANDS = [
@@ -184,6 +187,17 @@ const COMMANDS = [
   "media.paged.draw.command.expandObjectsOnPath",
   "media.paged.draw.command.releaseObjectsOnPath",
   "media.paged.draw.command.imageTrace",
+  // canary.12 — the parameter surfaces for verbs that used to run on
+  // defaults only: each opens the path-options panel at its section.
+  "media.paged.draw.command.offsetPathOptions",
+  "media.paged.draw.command.simplifyPathOptions",
+  "media.paged.draw.command.outlineStrokeOptions",
+  "media.paged.draw.command.insertArcOptions",
+  "media.paged.draw.command.insertSpiralOptions",
+  "media.paged.draw.command.insertRectGridOptions",
+  "media.paged.draw.command.insertPolarGridOptions",
+  "media.paged.draw.command.selectSameStrokeWeightOptions",
+  "media.paged.draw.command.reversePathDirection",
 ] as const;
 
 const IMPORTER = "media.paged.draw.importer.svg";
@@ -231,7 +245,7 @@ const TOOL_SLOT: Record<string, string> = {
 };
 
 /** Root DOM marker each panel renders. The two SCHEMA panels come from
- *  the host catalog renderer; the eight React panels stamp their own. */
+ *  the host catalog renderer; the nine React panels stamp their own. */
 const PANEL_MARKER: Record<string, string> = {
   "media.paged.draw.panel.stroke": '[data-schema-panel="media.paged.draw.panel.stroke"]',
   "media.paged.draw.panel.fill": '[data-schema-panel="media.paged.draw.panel.fill"]',
@@ -243,6 +257,7 @@ const PANEL_MARKER: Record<string, string> = {
   "media.paged.draw.panel.repeat": "[data-draw-repeat-panel]",
   "media.paged.draw.panel.blend": "[data-draw-blend-panel]",
   "media.paged.draw.panel.objectsOnPath": "[data-draw-onpath-panel]",
+  "media.paged.draw.panel.pathOptions": "[data-draw-pathopts-panel]",
 };
 
 // ── helpers ─────────────────────────────────────────────────────────
@@ -469,11 +484,11 @@ test.describe("plugin surface · paged.draw", () => {
     const missingTools = TOOLS.filter((id) => !reg.tools.includes(id));
     expect(missingTools, "every declared tool is in the tool registry").toEqual([]);
 
-    // PANELS — all 10 registered.
+    // PANELS — all 11 registered.
     const missingPanels = PANELS.filter((id) => !reg.panels.includes(id));
     expect(missingPanels, "every declared panel is in the panel registry").toEqual([]);
 
-    // COMMANDS — all 92 registered.
+    // COMMANDS — all 101 registered.
     const missingCommands = COMMANDS.filter((id) => !reg.commands.includes(id));
     expect(missingCommands, "every declared command is in the command registry").toEqual(
       [],
@@ -510,8 +525,8 @@ test.describe("plugin surface · paged.draw", () => {
 
     // And the totals the campaign quotes, so a silent shrink is loud.
     expect(TOOLS).toHaveLength(19);
-    expect(PANELS).toHaveLength(10);
-    expect(COMMANDS).toHaveLength(92);
+    expect(PANELS).toHaveLength(11);
+    expect(COMMANDS).toHaveLength(101);
   });
 
   // ── 2. the rail ───────────────────────────────────────────────────
@@ -559,7 +574,7 @@ test.describe("plugin surface · paged.draw", () => {
 
   // ── 3. the panels ─────────────────────────────────────────────────
 
-  test("all 10 panels open as dock tabs and mount their body @feat:plugin-platform.panel-registration @feat:plugin-platform.bundle-lifecycle @level:happy", async ({
+  test("all 11 panels open as dock tabs and mount their body @feat:plugin-platform.panel-registration @feat:plugin-platform.bundle-lifecycle @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -1136,7 +1151,7 @@ test.describe("plugin surface · paged.draw", () => {
   test("no declared command throws when invoked from the palette @feat:plugin-platform.command-registration @level:edge", async ({
     page,
   }) => {
-    // Nine of the 92 can only ever be a no-op from the palette because
+    // Nine of the 101 can only ever be a no-op from the palette because
     // they take an id the palette cannot supply (a style id, a symbol
     // id, a Live Paint face). They are REACHABLE from Cmd+K — they are
     // listed, searchable, selectable — and INERT there, which is the
