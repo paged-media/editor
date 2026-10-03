@@ -20,7 +20,7 @@
 // SDK Phase 5 (v1 sweep) — Control bar.
 //
 // Horizontal-strip variant of the Properties panel. Per
-// `panel-catalog-and-sdk-extension.md` §6 Tier 6 — the
+// `docs/design/panel-catalog.md` §6 Tier 6 — the
 // "Control" idiom InDesign uses for the top context bar.
 // Renders the same compositions Properties does (Object
 // Transform + Stroke + Character + Paragraph) but in a

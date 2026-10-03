@@ -22,7 +22,7 @@
 // edits through the generic `SetElementProperty` mutation, and
 // re-fetches on every `mutationApplied` / `undoApplied` /
 // `redoApplied` so the displayed values stay live (A1 from
-// `docs/old/inspector.md` §A1-A4).
+// the original inspector concept §A1-A4 (not published)).
 //
 // v1 covers frame-level properties only — bounds, transform, fill,
 // stroke colour, stroke weight, opacity. Story / paragraph /

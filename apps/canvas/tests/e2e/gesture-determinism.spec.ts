@@ -18,7 +18,7 @@
  */
 
 // E2E gesture suite — replay determinism, from the gesture test plan
-// (thoughts/docs/paged/tests/gestures.md): INV-3 / GSM-11. The same
+// (docs/reference/gestures.md): INV-3 / GSM-11. The same
 // input "tape" (a fixed begin→update×N→commit sequence with mixed
 // modifiers, snap pass INCLUDED) replayed against a fresh document
 // load must produce a byte-identical model dump and a byte-identical

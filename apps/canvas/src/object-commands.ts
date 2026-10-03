@@ -84,7 +84,7 @@
 //     falls out and an unrelated C is pulled in. The engine reports
 //     success. See `deletePlan` (the member case is refused before the
 //     wire) and `deleteSelection` (the bystander case is detected and
-//     undone); docs/engine-findings.md §10 has the reproduction.
+//     undone); docs/reference/engine-findings.md §10 has the reproduction.
 //
 //  7. NUDGE IS A TRANSFORM WRITE, NEVER A BOUNDS WRITE. A page item's
 //     `ItemTransform` is the last step into spread space, so adding the

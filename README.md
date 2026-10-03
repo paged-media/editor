@@ -23,6 +23,18 @@ and the revenue live. It consumes the engine strictly as a published
 dependency (wasm + SDK packages), **never** as a Rust path dependency,
 and never reaches into the engine's source tree.
 
+## Documentation
+
+How the editor is designed and built is in [`docs/`](./docs/README.md):
+
+- [`docs/concept.md`](./docs/concept.md): what the editor is for and what it will never do.
+- [`docs/architecture.md`](./docs/architecture.md): packages and their layering, the worker and canvas path, the shell, plugin hosting, documents, test tiers.
+- [`docs/status.md`](./docs/status.md): what ships today and what does not.
+- [`docs/adr/`](./docs/adr/README.md): the architecture decisions, one per file.
+- [`docs/design/`](./docs/design/) and [`docs/reference/`](./docs/reference/): the toolbar, panel-catalogue and client-SDK designs, the panel reference, the testing guide, the gesture ids, the engine findings log.
+
+`docs/architecture.md` is current where the sections below are older (they still mention a docking library that was removed; see ADR 002).
+
 ## Architecture
 
 A **pnpm workspace** (`pnpm-workspace.yaml` → `apps/*`, `packages/*`),

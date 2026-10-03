@@ -18,7 +18,7 @@
  */
 
 // E2E gesture suite — the four cross-cutting scenarios from the
-// gesture & interaction test plan (thoughts/docs/paged/tests/gestures.md
+// gesture & interaction test plan (docs/reference/gestures.md
 // §4.6), formerly deferred in gesture-plan-deferred.spec.ts:
 //
 //   E2E-08  pan/zoom DURING an in-flight tool gesture (PZ-04) — the

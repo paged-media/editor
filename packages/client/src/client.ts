@@ -501,7 +501,7 @@ export class CanvasClient {
 
   /**
    * SDK Phase 5 (D1) — typed read of any document collection per
-   * `docs/paged/panel-catalog-and-sdk-extension.md` §5.1. Generic
+   * `docs/design/panel-catalog.md` §5.1. Generic
    * over the consumer's expected summary shape — e.g.
    * `client.collection<SwatchSummary>("swatches")` or
    * `client.collection<ParagraphStyleSummary>("paragraphStyles")`.
@@ -531,7 +531,7 @@ export class CanvasClient {
 
   /**
    * SDK Phase 5 (D1) — singleton document-meta snapshot per
-   * `docs/paged/panel-catalog-and-sdk-extension.md` §5.6. The
+   * `docs/design/panel-catalog.md` §5.6. The
    * `documentMeta:<key>` ReadSpec form binds against fields of
    * this object. Re-fetch on `mutationApplied` / `undoApplied` /
    * `redoApplied` to keep the panel reactive — same snapshot-

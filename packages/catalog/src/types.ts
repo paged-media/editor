@@ -25,7 +25,7 @@
 // bindings — declarative, no code) or a **leaf** (a hand-written
 // React component that still declares its bindings).
 //
-// See docs/paged/sdk-implementation-plan.md §3a + sdk.md §6 for
+// See the client-SDK implementation plan §3a (not published) + sdk.md §6 (now docs/design/client-sdk.md) for
 // the full rationale; this file is the type-level translation.
 
 import type { PropertyPath, Value } from "@paged-media/client";
@@ -76,7 +76,7 @@ export interface BindingDeclaration {
 
 /**
  * SDK Phase 5 — finite, curated enumeration of every document
- * collection a panel may read. Per `panel-catalog-and-sdk-extension.md`
+ * collection a panel may read. Per `docs/design/panel-catalog.md`
  * §5.1 (Decision D1). The set is closed: a `documentCollection:`
  * read referencing a name not in this union is a tsc error, and
  * the future A2UI adapter rejects external compositions referencing
@@ -137,7 +137,7 @@ export type DocumentMetaKey =
 /**
  * SDK Phase 5 — read declaration in `BindingDeclaration.reads`. The
  * typed string-template-literal form per
- * `panel-catalog-and-sdk-extension.md` §5.7. Comprises:
+ * `docs/design/panel-catalog.md` §5.7. Comprises:
  *   - `selectionProperty:<path>` — the existing element/content
  *     property reads; `<path>` is a `PropertyPath` discriminant or
  *     the wildcard `"*"` (audit declaration for primitive leaves

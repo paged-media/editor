@@ -37,7 +37,7 @@
 // for every shape of selection in the Node tier; here each verb is
 // proven against the real engine — and so are the engine behaviours the
 // verbs are built around, as `test.fail` anchors that turn red the day
-// core fixes them (docs/engine-findings.md §10–§12, §14–§16).
+// core fixes them (docs/reference/engine-findings.md §10–§12, §14–§16).
 //
 // MAKE / RELEASE CLIPPING MASK ride B-18's `pasteInto` / `releaseFrom`.
 // Their pixel tests read four probe points at one pixel per point: what
@@ -1870,7 +1870,7 @@ test.describe("E2E paged.object — the keys belong to whoever is being edited",
 // are built around. Each test asserts the behaviour a user would expect and is
 // marked `test.fail`, so it is green while the defect stands and turns
 // RED the day core fixes it — which is the signal to delete the
-// matching workaround (docs/engine-findings.md §10–§12, §14). They drive the
+// matching workaround (docs/reference/engine-findings.md §10–§12, §14). They drive the
 // wire directly: the host verb would refuse or revert before the
 // defect could show.
 

@@ -130,7 +130,7 @@ export interface ResolvedBinding {
  * the text content selection (constructed as
  * `ElementId::StoryRange` for the apply boundary). Both subscribe
  * to mutationApplied so the displayed values stay live (A1
- * invariant from docs/old/inspector.md §A1-A4).
+ * invariant from the original inspector concept §A1-A4 (not published)).
  *
  * The returned map is keyed by the binding name in the composition
  * node — usually `"value"` for the leaf's primary binding, but a
@@ -409,7 +409,7 @@ function buildResolved(
     const sb = binding as SelectionPropertyBinding;
     if (addr.kind === "element") {
       // Multi-element resolution + the "mixed" sentinel
-      // (panel-catalog-and-sdk-extension.md §5.6): fetch each id's
+      // (docs/design/panel-catalog.md §5.6): fetch each id's
       // snapshot, collect the values for this binding's path,
       // collapse via uniformity. Any disagreement → null (the
       // catalog leaves render this as em-dash). Empty → null.

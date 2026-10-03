@@ -20,7 +20,7 @@
 // page run, and none of the DTP furniture.
 //
 // WHAT THIS IS NOT. It is not a new document model. The 2026-08-25
-// scoping (thoughts/docs/paged/plugin-platform/solo-mode-scoping.md)
+// scoping (an internal scoping note; the decision is docs/adr/213-solo-mode.md)
 // reversed the assumption that it would be: `newBlankDocument(2000,
 // 2000)` already yields one page at that size, an insert lands on it,
 // `elementGeometry` echoes the right bounds, and it renders. A one-page

@@ -18,7 +18,7 @@
  */
 
 // Scripting Stage 1.b — text-to-Mutation grammar. Per
-// docs/paged/scripting-layer.md §269 the v1 commands are
+// the original scripting-layer design (not published) the v1 commands are
 // `set / insert / remove / move / undo / redo / inspect`. v1
 // covers element-property writes, layer-level structural ops,
 // undo/redo, and inspect. Scene-graph-level insert/remove/move

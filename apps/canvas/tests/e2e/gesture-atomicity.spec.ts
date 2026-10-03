@@ -18,7 +18,7 @@
  */
 
 // E2E gesture suite — transactional integrity of the gesture channel,
-// from the gesture test plan (thoughts/docs/paged/tests/gestures.md):
+// from the gesture test plan (docs/reference/gestures.md):
 // INV-1 (a session commits as EXACTLY one Operation), INV-4 (undo
 // symmetry), GSM-01 (begin→update×N→commit emits one op), GSM-03
 // (zero-update commit never lands an empty Operation), GSM-05/IT-08

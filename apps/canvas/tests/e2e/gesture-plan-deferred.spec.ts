@@ -18,7 +18,7 @@
  */
 
 // E2E gesture suite — deferred plan items. The gesture test plan
-// (thoughts/docs/paged/tests/gestures.md §4.6) specifies twelve E2E
+// (docs/reference/gestures.md §4.6) specifies twelve E2E
 // scenarios; the implemented ones live in the gesture-*.spec.ts
 // siblings. The rest target features the editor does not ship yet —
 // each is a test.fixme carrying its plan ID so the suite documents
