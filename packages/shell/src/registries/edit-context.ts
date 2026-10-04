@@ -81,8 +81,28 @@ export interface EditContextContribution {
   onContentPointerMove?(e: ContentPointerEvent): void;
   onContentPointerUp?(e: ContentPointerEvent): void;
   /** K-1 — a key while active (Esc→onCancel, Enter→onCommit owned by the
-   *  shell; the rest forward here). */
+   *  shell; the rest forward here). Declaring this hook IS the opt-in to
+   *  the context's keys, as plugin-api documents it ("every other key
+   *  forwards here"):
+   *    · mid sub-edit (`isDirty()`) the context owns every key;
+   *    · a printable key, Backspace or Delete is always consumed;
+   *    · any other key — arrows, Tab, Enter (no `onCommit`), F2, Home,
+   *      PageUp/Down, Cmd/Ctrl chords — is OFFERED: the context takes it
+   *      by calling `e.preventDefault()`, and only then does the shell
+   *      stop it reaching its own keybindings (Tab's chrome toggle,
+   *      Cmd+D Place, …). A key the context leaves alone falls through,
+   *      so Cmd+S still saves inside a sheet. */
   onContentKey?(e: KeyboardEvent): void;
+  /** A wheel over the ACTIVE context's frame, in frame-content points.
+   *  Return `true` when the context scrolled its content (the canvas then
+   *  does not pan); `false` (or absent) keeps the host's pan. Cmd/Ctrl
+   *  wheel is always the host's zoom and never reaches here.
+   *
+   *  EDITOR-SIDE AHEAD OF THE CONTRACT: plugin-api's
+   *  `EditContextContribution` does not name this hook yet. The SDK
+   *  adapter spreads the contribution into the registry, so a bundle that
+   *  declares it is honoured today; the contract field is the follow-up. */
+  onContentWheel?(e: ContentWheelEvent): boolean;
   /** K-1 — unsaved-edit probe (gates the discard prompt + §8.0 undo
    *  boundary). */
   isDirty?(): boolean;
@@ -113,6 +133,17 @@ export interface ContentPointerEvent {
   elementId: string;
   modifiers: { shift: boolean; alt: boolean; cmd: boolean; ctrl: boolean };
   button: number;
+}
+
+/** A wheel delivered to the ACTIVE edit context. `delta` is the scroll
+ *  in frame-content points (the screen delta divided by the camera scale,
+ *  line/page modes normalised to pixels first), x right / y down — the
+ *  same axes as `contentPoint`. */
+export interface ContentWheelEvent {
+  contentPoint: [number, number];
+  elementId: string;
+  delta: [number, number];
+  modifiers: { shift: boolean; alt: boolean; cmd: boolean; ctrl: boolean };
 }
 
 /** A plugin-defined OBJECT TYPE. Mirrors plugin-api `ObjectTypeContribution`. */

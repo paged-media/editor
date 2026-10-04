@@ -51,6 +51,16 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return target.isContentEditable;
 }
 
+const MODIFIER_KEYS = new Set([
+  "Shift",
+  "Control",
+  "Alt",
+  "Meta",
+  "CapsLock",
+  "Fn",
+  "OS",
+]);
+
 export function EditContextController() {
   const { active, activeContribution, commit, cancel, isActiveDirty, exitAll } =
     useEditContextStack();
@@ -73,8 +83,9 @@ export function EditContextController() {
   //     it but only when it opts in (onCommit — sheet has none at the
   //     context level, so Enter falls through to start/forward below);
   //   · a printable / editing key (no Cmd/Ctrl) is FORWARDED to
-  //     `onContentKey` (e.g. typing begins a cell edit). Shortcuts pass
-  //     through untouched.
+  //     `onContentKey` (e.g. typing begins a cell edit);
+  //   · any other key is OFFERED to `onContentKey` and kept from the
+  //     host's bindings only when the context claims it (preventDefault).
   const activeRef = useRef(active);
   activeRef.current = active;
   const contributionRef = useRef(activeContribution);
@@ -129,10 +140,10 @@ export function EditContextController() {
         commit();
         return;
       }
+      if (!onContentKey) return;
       // Forward a printable / editing key (no modifier combo) to the
       // context — e.g. typing into a selected cell begins an edit.
       if (
-        onContentKey &&
         !e.metaKey &&
         !e.ctrlKey &&
         (e.key.length === 1 || e.key === "Backspace" || e.key === "Delete")
@@ -140,7 +151,18 @@ export function EditContextController() {
         e.preventDefault();
         e.stopPropagation();
         onContentKey(e);
+        return;
       }
+      // Every other key is OFFERED (plugin-api: "every other key forwards
+      // here") — arrows, Tab, Enter, F2, Home, PageUp/Down, Cmd chords.
+      // The context claims it with preventDefault; only a claimed key is
+      // kept from the host's keybindings. Without the offer a sheet could
+      // not move its cell cursor, and Tab / Cmd+D reached the chrome
+      // toggle and Place instead of the grid. Modifier-only presses are
+      // never a command, so they are not offered.
+      if (MODIFIER_KEYS.has(e.key)) return;
+      onContentKey(e);
+      if (e.defaultPrevented) e.stopPropagation();
     };
     // Capture so we win these keys while a context is active.
     window.addEventListener("keydown", onKey, true);

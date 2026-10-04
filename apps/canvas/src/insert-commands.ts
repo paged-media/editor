@@ -962,9 +962,11 @@ export const INSERT_MENU_ITEMS: MenuItemContribution[] = [
   })),
 ];
 
-/** Cmd+D — InDesign's Place. Verified unbound across the live
- *  keybinding registry (built-ins + bundles); both platform variants
- *  register, each a distinct key→command signature (INV-REG-3). */
+/** Cmd+D — InDesign's Place. Both platform variants register, each a
+ *  distinct key→command signature (INV-REG-3). Unguarded on purpose: a
+ *  bundle binding the same chord under a `when` (paged.sheet's Fill down
+ *  while a sheet frame is entered) wins while its guard holds — see
+ *  `resolveBinding` — so Place is the chord's meaning everywhere else. */
 export const INSERT_KEYBINDINGS: KeybindingContribution[] = [
   { key: "cmd+d", command: PAGED_INSERT_PLACE_IMAGE },
   { key: "ctrl+d", command: PAGED_INSERT_PLACE_IMAGE },
