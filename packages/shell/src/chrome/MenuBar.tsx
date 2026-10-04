@@ -160,6 +160,19 @@ interface GroupedItem {
    *  menu item could declare itself inapplicable and still render live
    *  and still run. */
   when?: VisibilityPredicate;
+  /** v66 — see `MenuItemContribution.labelFor`. */
+  labelFor?: (state: unknown) => string | null;
+}
+
+/** The label to show for `item` in `state` — the computed one when it
+ *  answers, the path's own otherwise. */
+function displayLabel(item: GroupedItem, state: unknown): string {
+  if (!item.labelFor) return item.label;
+  try {
+    return item.labelFor(state) ?? item.label;
+  } catch {
+    return item.label;
+  }
 }
 
 function groupByTopLevel(
@@ -178,6 +191,7 @@ function groupByTopLevel(
       groupLabel: item.groupLabel,
       disabled: item.disabled,
       when: item.when,
+      labelFor: item.labelFor,
     };
     const bucket = groups.get(top);
     if (bucket) bucket.push(grouped);
@@ -257,7 +271,7 @@ function renderItems(
           if (!greyed) invoke(item.command);
         }}
       >
-        {item.label}
+        {displayLabel(item, state)}
         {/* E2 — the accelerator column. The menus rendered a label and,
             for seams, a `soon` pill, and nothing else — so Cmd+Z, Cmd+D,
             Cmd+G, Cmd+] and the rest were undiscoverable from the one

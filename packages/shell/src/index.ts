@@ -178,6 +178,8 @@ export {
   usePaged,
   useOptionalPaged,
   type PagedEditor,
+  type SceneImageInput,
+  type SceneImageTileInput,
 } from "./state/paged-editor";
 
 export {

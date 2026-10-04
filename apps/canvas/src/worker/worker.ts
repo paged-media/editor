@@ -134,6 +134,39 @@ interface CanvasWorkerInstance {
     font?: Uint8Array,
     cmykIccProfile?: Uint8Array,
   ): string;
+  // v66 binary doors (protocol 66). Optional so an older wasm still
+  // satisfies the interface; a missing one answers the caller with a
+  // `dispatchError` instead of a TypeError in the pump.
+  submitSceneImageDirect?(
+    seq: number,
+    elementId: string,
+    caller: string | undefined,
+    rgba: Uint8Array,
+    width: number,
+    height: number,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): string;
+  submitSceneImageTilesDirect?(
+    seq: number,
+    elementId: string,
+    caller: string | undefined,
+    rects: Uint32Array,
+    rgba: Uint8Array,
+  ): string;
+  writePagedPartDirect?(
+    seq: number,
+    path: string,
+    caller: string | undefined,
+    bytes: Uint8Array,
+  ): string;
+  readPagedPartDirect?(path: string): Uint8Array | undefined;
+  placedAssetBytesDirect?(elementId: string):
+    | { uri: string; width: number; height: number; encoded: Uint8Array }
+    | undefined;
+  mutateWithBytesDirect?(seq: number, mutationJson: string, bytes: Uint8Array): string;
 }
 
 interface CanvasWasmModule {
@@ -348,10 +381,230 @@ type IncomingMessage =
   // Demo capture only (CI): tap rendered document frames for rrweb replay.
   | { kind: "startFrameTap"; fps: number }
   | { kind: "stopFrameTap" }
+  // v66 — the binary doors: pixels and part bytes as transferred
+  // Uint8Arrays, never `number[]` through the JSON envelope. Replies that
+  // are `WorkerToMain` envelopes go back through `postBack` (the client
+  // settles them by seq); byte READS answer on `directBytesReply`.
+  | DirectMessage
   // ADR 025 — hand the worker's journal ring to the main thread. A TS-ONLY
   // side-channel: it never touches `channel.rs`, so the whole worker->main
   // journal path costs zero engine wire surface and no protocol bump.
   | { kind: "journalDrain"; seq: number };
+
+type DirectMessage =
+  | {
+      kind: "direct";
+      op: "submitSceneImage";
+      seq: number;
+      elementId: string;
+      caller: string | null;
+      rgba: Uint8Array;
+      width: number;
+      height: number;
+      dest: [number, number, number, number];
+    }
+  | {
+      kind: "direct";
+      op: "submitSceneImageTiles";
+      seq: number;
+      elementId: string;
+      caller: string | null;
+      tiles: Array<{
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        rgba: Uint8Array;
+      }>;
+    }
+  | {
+      kind: "direct";
+      op: "writePagedPart";
+      seq: number;
+      path: string;
+      caller: string | null;
+      bytes: Uint8Array;
+    }
+  | { kind: "direct"; op: "readPagedPart"; seq: number; path: string }
+  | { kind: "direct"; op: "placedAssetBytes"; seq: number; elementId: string }
+  | {
+      kind: "direct";
+      op: "mutateWithBytes";
+      seq: number;
+      mutationJson: string;
+      bytes: Uint8Array;
+    };
+
+/** v66 — pack tiles for `submitSceneImageTilesDirect`: one `x, y, w, h`
+ *  quad per tile and the pixels back to back. Done here, off the main
+ *  thread; one tile passes its buffer through untouched. */
+function packSceneTiles(
+  tiles: ReadonlyArray<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rgba: Uint8Array;
+  }>,
+): { rects: Uint32Array; rgba: Uint8Array } {
+  const rects = new Uint32Array(tiles.length * 4);
+  let total = 0;
+  tiles.forEach((t, i) => {
+    rects.set([t.x, t.y, t.width, t.height], i * 4);
+    total += t.rgba.byteLength;
+  });
+  if (tiles.length === 1) return { rects, rgba: tiles[0].rgba };
+  const rgba = new Uint8Array(total);
+  let at = 0;
+  for (const t of tiles) {
+    rgba.set(t.rgba, at);
+    at += t.rgba.byteLength;
+  }
+  return { rects, rgba };
+}
+
+/** The reply effects shared by the JSON channel and the binary doors:
+ *  a fresh document re-lays the renderer; a change repaints the pages it
+ *  names (all of them when it names none). */
+function applyReplyEffects(reply: WorkerToMain): void {
+  if (reply.kind === "documentLoaded") {
+    if (renderer) {
+      renderer.refreshLayout();
+    }
+    const resolutionJson = worker?.runResolveJson();
+    if (resolutionJson) {
+      try {
+        const payload = JSON.parse(resolutionJson);
+        postBack({
+          seq: null,
+          protocol: PROTOCOL_VERSION,
+          kind: "resolutionDone",
+          payload,
+        });
+      } catch (e) {
+        console.warn("resolution JSON parse failed:", e);
+      }
+    }
+  } else if (
+    reply.kind === "mutationApplied" ||
+    reply.kind === "undoApplied" ||
+    reply.kind === "redoApplied"
+  ) {
+    // Model has changed — invalidate cached tiles for the
+    // affected pages and let the render loop redraw on the next
+    // tick. On the GPU path the worker already cleared its
+    // scene_cache so presentFrame rebuilds.
+    if (renderer) {
+      renderer.markDirty(reply.payload?.pageIds ?? []);
+    }
+  } else if (reply.kind === "scriptResult") {
+    // A paged.* run may have mutated the model. Its reply carries no
+    // pageIds (a script can touch any page), so markDirty([]) clears all
+    // tiles + flags dirty — without this a pure paged.* mutation lands in
+    // the model but the canvas never repaints.
+    if (renderer) {
+      renderer.markDirty([]);
+    }
+  } else if (reply.kind === "sceneLayerApplied") {
+    // v66 — a scene layer changes what a page draws, and nothing used to
+    // flag the render loop: the GPU cache was dropped in the engine, but
+    // the loop only redrew on the next camera move. The binary doors
+    // name the pages (an empty list: the frame draws nowhere, so nothing
+    // to repaint); the JSON doors do not, so every page repaints.
+    if (renderer && reply.payload.applied) {
+      const pageIds = (reply.payload as { pageIds?: string[] | null }).pageIds;
+      if (pageIds == null) renderer.markDirty([]);
+      else if (pageIds.length > 0) renderer.markDirty(pageIds as never);
+    }
+  }
+}
+
+function dispatchError(seq: number, details: string): void {
+  postBack({
+    seq,
+    protocol: PROTOCOL_VERSION,
+    kind: "warning",
+    payload: { kind: "dispatchError", details },
+  });
+}
+
+/** v66 — run one binary door. */
+function dispatchDirect(w: CanvasWorkerInstance, m: DirectMessage): void {
+  const missing = () =>
+    dispatchError(
+      m.seq,
+      `direct ${m.op}: this canvas-wasm has no binary door (protocol < 66)`,
+    );
+  const settle = (replyJson: string) => {
+    const reply = JSON.parse(replyJson) as WorkerToMain;
+    postBack(reply);
+    applyReplyEffects(reply);
+  };
+  const scope = self as unknown as DedicatedWorkerGlobalScope;
+  switch (m.op) {
+    case "submitSceneImage": {
+      if (!w.submitSceneImageDirect) return missing();
+      const [x, y, dw, dh] = m.dest;
+      settle(
+        w.submitSceneImageDirect(
+          m.seq,
+          m.elementId,
+          m.caller ?? undefined,
+          m.rgba,
+          m.width,
+          m.height,
+          x,
+          y,
+          dw,
+          dh,
+        ),
+      );
+      return;
+    }
+    case "submitSceneImageTiles": {
+      if (!w.submitSceneImageTilesDirect) return missing();
+      const { rects, rgba } = packSceneTiles(m.tiles);
+      settle(
+        w.submitSceneImageTilesDirect(
+          m.seq,
+          m.elementId,
+          m.caller ?? undefined,
+          rects,
+          rgba,
+        ),
+      );
+      return;
+    }
+    case "writePagedPart": {
+      if (!w.writePagedPartDirect) return missing();
+      settle(w.writePagedPartDirect(m.seq, m.path, m.caller ?? undefined, m.bytes));
+      return;
+    }
+    case "mutateWithBytes": {
+      if (!w.mutateWithBytesDirect) return missing();
+      settle(w.mutateWithBytesDirect(m.seq, m.mutationJson, m.bytes));
+      return;
+    }
+    case "readPagedPart": {
+      if (!w.readPagedPartDirect) return missing();
+      const bytes = w.readPagedPartDirect(m.path) ?? null;
+      scope.postMessage(
+        { kind: "directBytesReply", seq: m.seq, bytes },
+        bytes ? [bytes.buffer] : [],
+      );
+      return;
+    }
+    case "placedAssetBytes": {
+      if (!w.placedAssetBytesDirect) return missing();
+      const asset = w.placedAssetBytesDirect(m.elementId) ?? null;
+      scope.postMessage(
+        { kind: "directBytesReply", seq: m.seq, asset },
+        asset ? [asset.encoded.buffer] : [],
+      );
+      return;
+    }
+  }
+}
 
 const messageQueue: IncomingMessage[] = [];
 let pumping = false;
@@ -371,7 +624,12 @@ async function pump() {
         // Carry the failed request's seq (channel messages have one), so
         // the client rejects THAT caller instead of leaving it pending.
         postBack({
-          seq: data.kind === "channel" ? data.msg.seq : null,
+          seq:
+            data.kind === "channel"
+              ? data.msg.seq
+              : data.kind === "direct"
+                ? data.seq
+                : null,
           protocol: PROTOCOL_VERSION,
           kind: "warning",
           payload: {
@@ -434,6 +692,15 @@ async function dispatch(data: IncomingMessage): Promise<void> {
       return;
     }
     await attachRenderer(data.canvas, data.dpr, data.cssWidth, data.cssHeight);
+    return;
+  }
+  if (data.kind === "direct") {
+    await initPromise;
+    if (!worker) {
+      dispatchError(data.seq, `direct ${data.op}: worker not initialised`);
+      return;
+    }
+    dispatchDirect(worker, data);
     return;
   }
   if (data.kind === "loadDocumentBinary") {
@@ -546,49 +813,7 @@ async function dispatch(data: IncomingMessage): Promise<void> {
   if (replyJson) {
     const reply = JSON.parse(replyJson) as WorkerToMain;
     postBack(reply);
-    // A successful DocumentLoaded means our model is fresh; the
-    // renderer needs its page layout rebuilt, and the Tier 3
-    // resolver should run once so the UI can show anchor + page-
-    // number facts.
-    if (reply.kind === "documentLoaded") {
-      if (renderer) {
-        renderer.refreshLayout();
-      }
-      const resolutionJson = worker.runResolveJson();
-      if (resolutionJson) {
-        try {
-          const payload = JSON.parse(resolutionJson);
-          postBack({
-            seq: null,
-            protocol: PROTOCOL_VERSION,
-            kind: "resolutionDone",
-            payload,
-          });
-        } catch (e) {
-          console.warn("resolution JSON parse failed:", e);
-        }
-      }
-    } else if (
-      reply.kind === "mutationApplied" ||
-      reply.kind === "undoApplied" ||
-      reply.kind === "redoApplied"
-    ) {
-      // Model has changed — invalidate cached tiles for the
-      // affected pages and let the render loop redraw on the next
-      // tick. On the GPU path the worker already cleared its
-      // scene_cache so presentFrame rebuilds.
-      if (renderer) {
-        renderer.markDirty(reply.payload?.pageIds ?? []);
-      }
-    } else if (reply.kind === "scriptResult") {
-      // A paged.* run may have mutated the model. Its reply carries no
-      // pageIds (a script can touch any page), so markDirty([]) clears all
-      // tiles + flags dirty — without this a pure paged.* mutation lands in
-      // the model but the canvas never repaints.
-      if (renderer) {
-        renderer.markDirty([]);
-      }
-    }
+    applyReplyEffects(reply);
   }
 }
 

@@ -40,6 +40,9 @@ interface ToolSettingsValue {
   get: (toolId: string) => ToolSettings;
   getValue: (toolId: string, key: string) => ToolSettingValue | undefined;
   set: (toolId: string, key: string, value: ToolSettingValue) => void;
+  /** v66 — be told when `toolId`'s settings change (the plugin door
+   *  `host.tools.onDidChangeSettings`). Returns the unsubscribe. */
+  subscribe: (toolId: string, listener: () => void) => () => void;
 }
 
 const Context = createContext<ToolSettingsValue | null>(null);
@@ -63,19 +66,40 @@ export function ToolSettingsProvider({ children }: PropsWithChildren) {
     (toolId: string, key: string) => storeRef.current[toolId]?.[key],
     [],
   );
+  const listenersRef = useRef(new Map<string, Set<() => void>>());
   const set = useCallback(
     (toolId: string, key: string, value: ToolSettingValue) => {
-      setStore((prev) => ({
-        ...prev,
-        [toolId]: { ...(prev[toolId] ?? {}), [key]: value },
-      }));
+      // The ref moves with the write, not the next render, so a listener
+      // reading `get(toolId)` sees the value it is being told about.
+      const next = {
+        ...storeRef.current,
+        [toolId]: { ...(storeRef.current[toolId] ?? {}), [key]: value },
+      };
+      storeRef.current = next;
+      setStore(next);
+      for (const l of listenersRef.current.get(toolId) ?? []) {
+        try {
+          l();
+        } catch {
+          /* a listener must not break the write */
+        }
+      }
     },
     [],
   );
+  const subscribe = useCallback((toolId: string, listener: () => void) => {
+    const map = listenersRef.current;
+    let set = map.get(toolId);
+    if (!set) map.set(toolId, (set = new Set()));
+    set.add(listener);
+    return () => {
+      set!.delete(listener);
+    };
+  }, []);
 
   const value = useMemo<ToolSettingsValue>(
-    () => ({ get, getValue, set }),
-    [get, getValue, set],
+    () => ({ get, getValue, set, subscribe }),
+    [get, getValue, set, subscribe],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

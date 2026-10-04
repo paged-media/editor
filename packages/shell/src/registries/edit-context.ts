@@ -99,6 +99,11 @@ export interface EditContextContribution {
   onRedo?(): boolean;
   onCanUndo?(): boolean;
   onCanRedo?(): boolean;
+  /** v66 — what the next un/redo step is called ("Brush stroke"), for
+   *  the Edit menu's "Undo Brush stroke" while the context owns undo.
+   *  `null` / absent ⇒ the plain "Undo" / "Redo". */
+  undoLabel?(): string | null;
+  redoLabel?(): string | null;
   /** HOST-STAMPED `x-paged:<plugin id>` key — the host resolves a
    *  candidate's `metadata` from this envelope before calling `matches`
    *  (so a plugin only ever sees its OWN namespace). The SDK adapter

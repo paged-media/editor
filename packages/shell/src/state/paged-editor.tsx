@@ -59,6 +59,24 @@ import type {
  * renders is NOT guaranteed — consumers should destructure and
  * pin sub-slices via context hooks for re-render isolation.
  */
+/** v66 — one RGBA8 image for the binary scene-layer lane: `width*height*4`
+ *  bytes drawn at `dest` (`[x, y, w, h]`, frame-content points). */
+export interface SceneImageInput {
+  rgba: Uint8Array;
+  width: number;
+  height: number;
+  dest: [number, number, number, number];
+}
+
+/** v66 — one tile patched into that image, origin in IMAGE pixels. */
+export interface SceneImageTileInput {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rgba: Uint8Array;
+}
+
 export interface PagedEditor {
   /** The worker client. Stable for the shell's lifetime. */
   client: CanvasClient;
@@ -122,6 +140,38 @@ export interface PagedEditor {
       caller?: string,
     ): Promise<void>;
     clear(elementId: string): Promise<void>;
+    /** v66 — the binary scene-image lane (`client.submitSceneImageBinary`):
+     *  the frame's scene layer becomes one RGBA8 image, sent as bytes. With
+     *  `transfer` the buffer moves to the worker. Satisfies the optional
+     *  `Api.PagedEditor.sceneLayers.submitImage` the plugin-sdk host routes
+     *  `contribute.sceneLayer().submitImage` to
+     *  (`rendering.sceneLayer.binary@1`). */
+    submitImage(
+      elementId: string,
+      image: SceneImageInput,
+      caller?: string,
+      transfer?: boolean,
+    ): Promise<void>;
+    /** v66 — patch tiles of that image in place
+     *  (`client.submitSceneImageTilesBinary`); only the pages showing the
+     *  frame repaint. */
+    submitImageTiles(
+      elementId: string,
+      tiles: readonly SceneImageTileInput[],
+      caller?: string,
+      transfer?: boolean,
+    ): Promise<void>;
+  };
+
+  /**
+   * v66 — the `.paged` parts doors as bytes (FULL `paged/…` paths). The
+   * plugin-sdk host prefers these over the JSON `writePagedPart` /
+   * `readPagedPart` messages, and routes `host.parts.delete` here.
+   */
+  parts: {
+    write(path: string, bytes: Uint8Array, caller?: string): Promise<void>;
+    read(path: string): Promise<Uint8Array | null>;
+    delete(path: string, caller?: string): Promise<boolean>;
   };
 
   /**
@@ -260,6 +310,23 @@ function PagedEditorBinder({
         submit: (elementId, layer, caller) =>
           client.submitSceneLayer(elementId, layer, caller),
         clear: (elementId) => client.clearSceneLayer(elementId),
+        submitImage: async (elementId, image, caller, transfer) => {
+          await client.submitSceneImageBinary(elementId, image, caller, transfer);
+        },
+        submitImageTiles: async (elementId, tiles, caller, transfer) => {
+          await client.submitSceneImageTilesBinary(
+            elementId,
+            tiles,
+            caller,
+            transfer,
+          );
+        },
+      },
+      parts: {
+        write: (path, bytes, caller) =>
+          client.writePagedPartBinary(path, bytes, caller),
+        read: (path) => client.readPagedPartBinary(path),
+        delete: (path, caller) => client.deletePagedPart(path, caller),
       },
       images: {
         claim: (claim) => client.claimImageResource(claim),

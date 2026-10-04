@@ -48,6 +48,7 @@ import {
   useRegistries,
   useSelection,
   useEditContextStack,
+  useEditContextEntry,
   SchemaPanelRenderer,
   CatalogRegistryProvider,
   type OverlayContribution,
@@ -143,6 +144,8 @@ type _AssertSchemaRenderer =
 const _schemaRendererCompat: _AssertSchemaRenderer = true;
 void _schemaRendererCompat;
 import { CodeEditor } from "@paged-media/ui";
+import { HostColorPicker } from "./plugin-color-picker";
+import { createWillSaveRegistry } from "./plugin-will-save";
 import { cockpitActions } from "@paged-media/shell";
 import { assertCrossOriginIsolated } from "./boot/cross-origin-isolation-check";
 import {
@@ -1052,6 +1055,9 @@ const editorSecrets = createEditorSecretStore();
 //     there is exactly one notion of "who is active");
 //   · `<PagedShell bindingProviders>`, so host panels can read it.
 const bindingProviders = createBindingProviderRegistry();
+// v66 — `host.document.onWillSave`: ONE registry for every bundle; Save
+// (.paged) runs it and waits (bounded) before it exports the container.
+const willSave = createWillSaveRegistry();
 if (!import.meta.env.PROD) {
   // Test affordance (the `__shellDoors` / `__consent` pattern): an e2e
   // spec can observe the ACTIVE provider stack — the thing the retarget
@@ -1094,6 +1100,12 @@ function PluginBundles() {
   const doc = useDocument();
   const docRef = useRef(doc);
   docRef.current = doc;
+  // v66 — `host.shell.enterEditContext`: the same entry the double-click
+  // takes, by type. Through a ref so the mount-once effect sees the live
+  // hook (its closure tracks the registries and client).
+  const { enterContextByType } = useEditContextEntry();
+  const enterContextRef = useRef(enterContextByType);
+  enterContextRef.current = enterContextByType;
   useEffect(() => {
     // Shell actions the host APP owns (the cockpit's panel
     // placement) — injected so the SDK's adapter stays a pure
@@ -1121,6 +1133,11 @@ function PluginBundles() {
         bytes: Uint8Array;
         mimeType?: string;
       }) => saveFileBytes(options),
+      // v66 — enter a bundle's own edit context without a double-click
+      // (an "Adjust image" command, an importer that just placed one).
+      // The SDK refuses a type the calling bundle did not register.
+      enterEditContext: (type: string, elementId: Parameters<typeof enterContextByType>[1]) =>
+        enterContextRef.current(type, elementId),
     };
     // W-04: the host owns the code-editor widget (one editor across
     // every scripting-adjacent plugin). W-05: diagnostics fan out to
@@ -1129,7 +1146,18 @@ function PluginBundles() {
     // catalog with visibility/enablement driven by the bundle's
     // published bindings — closes plugin-draw B-01; the renderer
     // satisfies plugin-api's `SchemaPanelRenderer` — asserted below).
-    const widgets = { CodeEditor };
+    // v66 — the colour picker (`widgets.colorPicker@1`) is the shared
+    // mixer, so a plugin colour and a document swatch are chosen the
+    // same way.
+    const widgets = { CodeEditor, ColorPicker: HostColorPicker };
+    // v66 — tool options a bundle declared are written by the host's
+    // tool-options popover; `host.tools.settings` reads them back.
+    const toolSettings = {
+      get: (toolId: string) => pagedRef.current?.toolSettings.get(toolId) ?? {},
+      subscribe: (toolId: string, listener: () => void) =>
+        pagedRef.current?.toolSettings.subscribe(toolId, listener) ??
+        (() => {}),
+    };
     // W-06: the host injects the ASSET SOURCE that backs
     // `host.assets.getFontFace`. Served for REAL since protocol v43:
     // the provider reads the engine's font registry over the
@@ -1265,6 +1293,8 @@ function PluginBundles() {
     const sharedHostOptions = {
       shell,
       widgets,
+      toolSettings,
+      willSave,
       assetSource,
       blobStore,
       clipboard,
@@ -1312,6 +1342,9 @@ function PluginBundles() {
     if (!isProd) {
       (globalThis as unknown as { __shellDoors?: unknown }).__shellDoors =
         shell;
+      // v66 — the will-save registry, so a spec can register a listener
+      // as a bundle would and see Save wait for it.
+      (globalThis as unknown as { __willSave?: unknown }).__willSave = willSave;
     }
     // Solo loads ONE bundle. Filtering here (rather than after
     // registration) means the other seven never activate at all, so
@@ -1614,6 +1647,17 @@ function CanvasAppIntegration() {
       savePaged: async () => {
         if (!handle || handle.pageCount === 0) return;
         try {
+          // v66 — plugins with an edit session outside the document
+          // commit it first (bounded; a stuck one is reported, not
+          // waited on forever), so the file holds what is on screen.
+          const prepared = await willSave.run({ format: "paged" });
+          for (const id of [...prepared.failed, ...prepared.timedOut]) {
+            console.warn(
+              `Save (.paged): ${id} did not finish preparing (` +
+                `${prepared.failed.includes(id) ? "threw" : "timed out"}); ` +
+                `saving its last committed state`,
+            );
+          }
           const bytes = await client.exportPaged();
           let baseName = sourceName || "document";
           try {
