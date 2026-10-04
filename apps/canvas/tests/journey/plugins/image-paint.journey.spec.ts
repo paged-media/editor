@@ -279,6 +279,90 @@ test.describe("journey · paged.image paint", () => {
       .toBeGreaterThan(64);
   });
 
+  // Protocol 66: the stroke preview sends the whole image ONCE and then
+  // only each sample's dirty rectangle (`submitImageTiles`), instead of
+  // re-sending every pixel per sample over the JSON lane. Counted at the
+  // editor's client — the object `PagedEditor.sceneLayers` closes over —
+  // because the PagedEditor itself is rebuilt when its inputs change, and
+  // a patch on a superseded instance would count nothing.
+  test("a stroke on a protocol-66 host sends dirty-rect tiles, not whole images @feat:image.editor.paint @feat:plugin-platform.scene-layer @level:edge", async ({
+    page,
+  }) => {
+    const designer = new Designer(page);
+    await ingest(designer, page, "tiles-sample.png");
+
+    if (!(await designer.gpuActive())) {
+      test.skip(
+        true,
+        "a stroke needs GPU dabs to produce a preview at all (no CPU paint path); run `pnpm --filter paged-canvas test:journeys:gpu`",
+      );
+    }
+
+    await designer
+      .runCommand(`paged.tool.activate.${TOOL.brush}`)
+      .catch(() => {});
+    const path = await Promise.all(
+      [
+        [150, 180],
+        [190, 210],
+        [230, 190],
+        [270, 220],
+        [300, 200],
+      ].map(([x, y]) => screenPoint(page, x, y)),
+    );
+    await page.mouse.move(path[0].x, path[0].y);
+    await page.waitForTimeout(750);
+
+    await page.evaluate(() => {
+      type Fn = (...a: unknown[]) => Promise<unknown>;
+      const g = globalThis as unknown as {
+        __paged: { client: Record<string, Fn> };
+        __strokeSpy: { images: number; tiles: number; json: number };
+      };
+      g.__strokeSpy = { images: 0, tiles: 0, json: 0 };
+      const c = g.__paged.client;
+      const wrap = (name: string, count: (args: unknown[]) => void) => {
+        const orig = c[name].bind(c);
+        c[name] = (...args: unknown[]) => {
+          count(args);
+          return orig(...args);
+        };
+      };
+      wrap("submitSceneImageBinary", () => g.__strokeSpy.images++);
+      wrap("submitSceneImageTilesBinary", (a) => {
+        g.__strokeSpy.tiles += (a[1] as unknown[]).length;
+      });
+      wrap("submitSceneLayer", () => g.__strokeSpy.json++);
+    });
+
+    const before = await designer.renderBytes();
+    await page.mouse.down();
+    for (const pt of path.slice(1)) {
+      await page.mouse.move(pt.x, pt.y);
+      await page.waitForTimeout(60);
+    }
+    await page.mouse.up();
+    await designer.expectRenderChangesFrom(before, { timeout: 20_000 });
+
+    const spy = await page.evaluate(
+      () =>
+        (globalThis as unknown as { __strokeSpy: { images: number; tiles: number; json: number } })
+          .__strokeSpy,
+    );
+    // eslint-disable-next-line no-console
+    console.log(`[journey] stroke crossings: ${JSON.stringify(spy)}`);
+    expect(spy.json, "nothing crossed as a JSON scene layer").toBe(0);
+    expect(spy.tiles, "the samples crossed as dirty-rect tiles").toBeGreaterThan(0);
+    expect(
+      spy.tiles,
+      "more tile patches than whole images — the image is not resent per sample",
+    ).toBeGreaterThan(spy.images);
+    expect(
+      spy.images,
+      "whole images only at the stroke's start and its committed end",
+    ).toBeLessThanOrEqual(2);
+  });
+
   test("the save-back exporters re-encode the source, and PSD declines a non-PSD source @feat:image.io.save-back @feat:editor-shell.plugin-bundles @level:gesture", async ({
     page,
   }) => {

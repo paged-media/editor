@@ -118,3 +118,15 @@ jobs:
           name: annual-traces-${{ github.run_number }}
           path: editor/apps/canvas/test-results/
           retention-days: 7
+
+      # paged.image's performance trend lane: a 200-sample stroke, an Apply
+      # and a 20-step opacity drag on a 4000x3000 image, printed to this log
+      # and written to test-results/image-perf.json. REPORTED, NOT GATED
+      # (continue-on-error), and on this runner because its kernels need
+      # Metal. Last on purpose: a Playwright run clears test-results/, where
+      # the showcase's failure traces were just uploaded from.
+      - name: paged.image perf trend (reported, not gated)
+        if: always()
+        continue-on-error: true
+        run: npx playwright test --project=journeys-gpu tests/journey/plugins/image-perf.journey.spec.ts --retries=0
+        working-directory: editor/apps/canvas
