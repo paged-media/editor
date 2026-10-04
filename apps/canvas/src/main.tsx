@@ -1485,6 +1485,8 @@ function CanvasAppIntegration() {
     client,
     selection: contentSelection,
     setSelection: setContentSelection,
+    undoOwnedByContext: () =>
+      !!editContextRef.current?.activeContribution?.onUndo,
   });
   usePathEditMode();
 

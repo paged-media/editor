@@ -30,6 +30,8 @@
 //              (Cmd+K opens the palette inside the sheet);
 //   AC-KEYS-4  the dispatch rule itself: an enabled GUARDED binding beats an
 //              unguarded one on the same combo, whatever the order;
+//   AC-UNDO-1  Cmd-Z inside the sheet goes to the sheet's journal ONLY — the
+//              document under it (the placed table) is not undone too;
 //   AC-WHEEL-1 a wheel over the active frame goes to the context's
 //              onContentWheel in content points; the canvas pans only when
 //              the context declines, and Cmd-wheel stays zoom.
@@ -45,6 +47,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { resolveBinding } from "../../../../packages/shell/src/registries/keybinding";
 import { fitFirstPage, openCanvas, openPanel } from "../fidelity/canvas-driver";
 import { fixturePath } from "./harness/fixtures";
+import { placedValues } from "../journey/plugins/sheet-kit";
 
 // sheet-02-formulas.xlsx: A1=2, B1="Sum", A2=3, B2="Product",
 // A3=SUM(A1:A2)=5, B3=B1&B2="SumProduct".
@@ -275,6 +278,35 @@ test.describe("sheet frame — keys and wheel reach the active edit context", ()
       await expect(palette).toBeHidden();
       await page.keyboard.press(`${MOD}+k`);
       await expect(palette).toBeVisible();
+    });
+
+    test("AC-UNDO-1 — Cmd-Z inside the sheet undoes the cell edit and leaves the document's placed table alone @feat:plugin-platform.modal-edit-session @feat:sheet.lower.page @level:edge", async ({
+      page,
+    }) => {
+      const frame = await importAndLower(page, "A1:B3");
+      const original = [
+        ["2", "Sum"],
+        ["3", "Product"],
+        ["5", "SumProduct"],
+      ];
+      expect(await placedValues(page)).toEqual(original);
+      await enterSheet(page, frame);
+      await page.keyboard.press(`${MOD}+Home`);
+      await page.keyboard.type("4321");
+      await page.keyboard.press("Enter");
+      await expect(formula(page)).not.toHaveValue("4321");
+      await page.keyboard.press(`${MOD}+z`);
+      // The session's journal took the step: A1 is back to 2 …
+      await page.keyboard.press(`${MOD}+Home`);
+      await expect(formula(page)).toHaveValue("2");
+      // … and the document was not undone underneath it. A second
+      // listener used to run client.undo() on the same chord, which
+      // reverted the table's cell pour and emptied every placed cell.
+      expect(await placedValues(page)).toEqual(original);
+      await page.keyboard.press("Escape");
+      await expect(page.locator("[data-edit-context-breadcrumb]")).toHaveCount(0);
+      await page.waitForTimeout(500);
+      expect(await placedValues(page)).toEqual(original);
     });
 
     test("AC-WHEEL-1 — a wheel over the active frame goes to onContentWheel; the canvas pans only when it declines @feat:plugin-platform.modal-edit-session @feat:sheet.grid.inframe @level:gesture", async ({
