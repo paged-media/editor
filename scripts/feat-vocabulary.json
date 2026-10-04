@@ -5,7 +5,7 @@
     "by": "scripts/sync-feat-vocabulary.mjs",
     "commit": "4ae824bffeb29846f5c83d5e1c972b667a30f501"
   },
-  "count": 580,
+  "count": 583,
   "ids": [
     "anchored-inline-objects.anchor-alignment",
     "anchored-inline-objects.anchored-frames",
@@ -225,6 +225,7 @@
     "image.editor.auto-enhance",
     "image.editor.brush-presets",
     "image.editor.clone-stamp",
+    "image.editor.color-fg-bg",
     "image.editor.content-aware-fill",
     "image.editor.crop",
     "image.editor.crop-straighten",
@@ -242,6 +243,7 @@
     "image.editor.undo-journal",
     "image.graph.engine-b",
     "image.io.depth-16bit-ingest",
+    "image.io.persistence",
     "image.io.save-back",
     "image.kernel.breadth-2026-08",
     "image.kernel.family-t0",
@@ -256,6 +258,7 @@
     "image.layers.groups",
     "image.paths.path-to-selection",
     "image.paths.selection-to-path",
+    "image.perf.budgets",
     "image.pipeline.async-sink",
     "image.pipeline.engine-a-skeleton",
     "image.plugin.bundle-manifest",
