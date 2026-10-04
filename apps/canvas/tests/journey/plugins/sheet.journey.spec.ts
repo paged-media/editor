@@ -46,6 +46,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { openPanel } from "../../fidelity/canvas-driver";
 import { Designer } from "../driver/designer";
+import { FORMULAS_A1_B3, placedValues } from "./sheet-kit";
 
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -253,6 +254,14 @@ test.describe("journey · paged.sheet plugin", () => {
     //    be exitable (the breadcrumb disappears). ──
     await page.keyboard.press("Escape");
     await expect(breadcrumb).toHaveCount(0);
+
+    // ── 6. THE PLACED TABLE (HARD, value) — the session's net change is
+    //    nothing (the edit was journal-undone), so the refreshed table
+    //    leaving the session must hold exactly the engine's original
+    //    values: no 4321 anywhere, SUM still 5. ──
+    await expect
+      .poll(() => placedValues(page), { timeout: 10_000 })
+      .toEqual(FORMULAS_A1_B3);
 
     // One run, the K-1 loop reported. The import, lower, session entry,
     // and exit above are HARD assertions (they gate the test); the

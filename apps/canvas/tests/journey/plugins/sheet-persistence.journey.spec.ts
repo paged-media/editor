@@ -35,6 +35,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { openPanel } from "../../fidelity/canvas-driver";
 import { Designer } from "../driver/designer";
+import { FORMULAS_A1_B3, placedValues } from "./sheet-kit";
 
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -127,5 +128,8 @@ test.describe("journey · paged.sheet persistence", () => {
       framesAfter,
       "the lowered sheet frame survives the export → reload round-trip",
     ).toBeGreaterThanOrEqual(framesBefore);
+    // And its CONTENT survives — the reloaded table holds the engine's
+    // values, not just a frame of the right kind.
+    expect(await placedValues(page)).toEqual(FORMULAS_A1_B3);
   });
 });
