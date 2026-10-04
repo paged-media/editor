@@ -59,6 +59,7 @@ export const PAGED_VIEW_ZOOM_FIT = "paged.view.zoomFit";
  *  canvas, which is immediate and unambiguous; a real checkmark wants a
  *  registry + MenuBar change and is not smuggled in here. */
 export const PAGED_VIEW_TOGGLE_TEXT_THREADS = "paged.view.toggleTextThreads";
+export const PAGED_VIEW_TOGGLE_SNAP_TO_POINTS = "paged.view.toggleSnapToPoints";
 
 export interface AppCommandHandlers {
   undo: () => void | Promise<void>;
@@ -152,6 +153,14 @@ export function buildAppCommands(
         toggleViewToggle("textThreads");
       },
     },
+    {
+      id: PAGED_VIEW_TOGGLE_SNAP_TO_POINTS,
+      title: "Snap to points",
+      category: "View",
+      handler: () => {
+        toggleViewToggle("snapToPoints");
+      },
+    },
   ];
 }
 
@@ -230,6 +239,12 @@ export const APP_MENU_ITEMS: Array<{
     // Its own group so a separator divides "how big is the page" from
     // "what extra structure is drawn on it" — InDesign splits Zoom from
     // Extras for the same reason.
+    group: "extras",
+  },
+  {
+    path: "View/Snap to points",
+    command: PAGED_VIEW_TOGGLE_SNAP_TO_POINTS,
+    order: 70,
     group: "extras",
   },
 ];

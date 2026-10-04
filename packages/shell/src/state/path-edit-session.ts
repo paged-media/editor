@@ -87,7 +87,8 @@ export interface PathEditPointer {
   /** Page-local pt on the view's page (it may lie outside the page
    *  rect — a drag does not stop at the paper's edge). */
   point: readonly [number, number];
-  modifiers: { shift: boolean; alt: boolean };
+  /** `cmd` (Cmd/Ctrl held) turns snapping off for this event. */
+  modifiers: { shift: boolean; alt: boolean; cmd?: boolean };
   /** Document pt per CSS px at the current zoom — what turns a pixel
    *  tolerance (the click slop, a dot's grab radius) into pt. */
   ptPerPx: number;
