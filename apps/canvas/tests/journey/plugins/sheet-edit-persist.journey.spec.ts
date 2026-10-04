@@ -30,14 +30,14 @@
 //      its part (paged/media.paged.sheet/workbook.xlsx), and re-entering the
 //      frame should show A1 = 10 in the grid.
 //
-// DEFECT (2): the reopened editor does not restore the workbook — entering
-// the frame logs "showGridInFrame: no workbook / sheet" and the grid panel
-// asks for an import, although the part is in the file. paged.sheet reads
-// its part only when the bundle ACTIVATES (session.restore() in activate),
-// which happens at app boot, before any document is opened. Plugin-only
-// fix: restore lazily on entering a bound frame (or on a host document-open
-// signal). Pinned with test.fail(): the day it is fixed this test turns
-// red and the pin comes off.
+// (2) was a DEFECT until paged.sheet 0.1.0-canary.12: the bundle read its
+// part only when it ACTIVATED (app boot, before any document was open), so
+// entering the reopened frame logged "showGridInFrame: no workbook / sheet".
+// The bundle now restores the workbook on every `documentLoaded` and lazily
+// on entering a sheet frame.
+//
+// A reopened document re-mints its element ids, so the frame is found
+// again by its geometry (the only text frame at the placed bounds).
 
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
@@ -60,6 +60,49 @@ const EDITED = [
   ["3", "Product"],
   ["13", "SumProduct"],
 ];
+
+type Bounds = [number, number, number, number];
+
+/** The frame's bounds (top, left, bottom, right) in page points. */
+async function boundsOf(page: Page, frame: ElementRef): Promise<Bounds> {
+  return page.evaluate(async (id) => {
+    const c = (globalThis as unknown as {
+      __canvas: { client: { elementGeometry: (ids: unknown[]) => Promise<Array<{ bounds: Bounds }>> } };
+    }).__canvas;
+    return (await c.client.elementGeometry([id]))[0]!.bounds;
+  }, frame);
+}
+
+/** The text frame at `bounds` in the open document (ids differ after a
+ *  reopen; the geometry does not). */
+async function frameAt(page: Page, bounds: Bounds): Promise<ElementRef | null> {
+  return page.evaluate(async (want) => {
+    type Node = { id?: { kind: string; id: unknown }; children?: Node[] };
+    const c = (globalThis as unknown as {
+      __canvas: {
+        client: {
+          sceneTree: () => Promise<Node[]>;
+          elementGeometry: (ids: unknown[]) => Promise<Array<{ bounds: Bounds }>>;
+        };
+      };
+    }).__canvas;
+    const frames: { kind: string; id: string }[] = [];
+    const walk = (nodes: Node[]) => {
+      for (const n of nodes) {
+        if (n.id?.kind === "textFrame" && typeof n.id.id === "string") {
+          frames.push({ kind: "textFrame", id: n.id.id });
+        }
+        if (n.children) walk(n.children);
+      }
+    };
+    walk(await c.client.sceneTree());
+    const geom = await c.client.elementGeometry(frames);
+    const hit = frames.filter((_, i) =>
+      geom[i]?.bounds.every((v, k) => Math.abs(v - want[k]!) < 0.01),
+    );
+    return hit.length === 1 ? hit[0]! : null;
+  }, bounds);
+}
 
 /** Place, edit A1 → 10 in-frame, leave; returns the saved .paged bytes. */
 async function editAndSave(page: Page): Promise<{ paged: Buffer; frame: ElementRef }> {
@@ -113,18 +156,13 @@ test.describe("journey · paged.sheet edit persistence", () => {
     page,
     browser,
   }) => {
-    test.info().annotations.push({
-      type: "defect",
-      description:
-        "DEFECT: a reopened .paged does not restore the sheet workbook — paged.sheet " +
-        "reads its container part only on bundle activation (app boot), before the " +
-        "document is opened; entering the frame logs 'showGridInFrame: no workbook / sheet'",
-    });
-    test.fail();
     const { paged, frame } = await editAndSave(page);
+    const bounds = await boundsOf(page, frame);
     const reopened = await reopenFresh(browser, paged);
     try {
-      await enterSheet(reopened, frame, { withGrid: true });
+      const again = await frameAt(reopened, bounds);
+      expect(again, "the placed frame is in the reopened document").not.toBeNull();
+      await enterSheet(reopened, again!, { withGrid: true });
       await openPanel(reopened, GRID_PANEL);
       await reopened.keyboard.press(`${MOD}+Home`);
       await expect(reopened.locator("[data-formula-cellref]")).toHaveText("A1", {
