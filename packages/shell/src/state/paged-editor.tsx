@@ -47,6 +47,7 @@ import {
 // eslint-disable-next-line import/no-relative-parent-imports
 import type {
   CanvasClient,
+  Mutation,
   ProviderTileWire,
   ResourceTilesNeededWire,
   SceneLayer,
@@ -173,6 +174,21 @@ export interface PagedEditor {
     read(path: string): Promise<Uint8Array | null>;
     delete(path: string, caller?: string): Promise<boolean>;
   };
+
+  /**
+   * v66 — the binary commit lane (`client.mutateWithBytes`): apply
+   * `mutation` (a `batch` included) after handing `bytes` to its first
+   * `replaceImageBytes` whose `bytes` is `[]`. With `transfer` the buffer
+   * moves to the worker. Resolves with the reply `client.mutate` does.
+   * Satisfies the optional `Api.PagedEditor.mutateWithBytes` the
+   * plugin-sdk host routes `host.document.mutateWithBytes` to
+   * (`document.mutateBinary@1`).
+   */
+  mutateWithBytes(
+    mutation: Mutation,
+    bytes: Uint8Array,
+    transfer?: boolean,
+  ): ReturnType<CanvasClient["mutateWithBytes"]>;
 
   /**
    * C-6 (I-06) — the renderer RESOURCE-PROVIDER channel. Routes to the
@@ -328,6 +344,8 @@ function PagedEditorBinder({
         read: (path) => client.readPagedPartBinary(path),
         delete: (path, caller) => client.deletePagedPart(path, caller),
       },
+      mutateWithBytes: (mutation, bytes, transfer) =>
+        client.mutateWithBytes(mutation, bytes, transfer),
       images: {
         claim: (claim) => client.claimImageResource(claim),
         release: (imageId) => client.releaseImageResource(imageId),
