@@ -362,13 +362,9 @@ test.describe("journey · paged.image retouch tools", () => {
   });
 });
 
-// NOTE — the spot healing brush on noise. The first version of the spot-heal
-// step dragged a long scribble across a NOISE image. The stroke was
-// journaled (undo depth +1) and the status line said "Painted 15 dabs into
-// layer “Background” — undoable", yet the page did not change by a single
-// pixel. That is what the engine's `brush_stroke_commit` does when
-// `resolve_spot_heal` returns `false` ("the search finds no source that
-// clears the hole"): the result is ignored, so a heal that found nothing
-// still spends an undo step and the session reports a paint. The
-// step above uses the tool's real case (a short stroke over one blemish);
-// the silent no-op is reported to the plugin rather than encoded here.
+// NOTE — the spot healing brush on noise. A long scribble across a NOISE
+// image can leave the exemplar search without a source that clears the
+// stroke. The plugin used to commit that stroke anyway (an undo step and a
+// "Painted N dabs" status with no pixel changed); since plugin-image
+// 2d26ea6 it commits nothing and says the brush found no source. The step
+// above uses the tool's real case (a short stroke over one blemish).
