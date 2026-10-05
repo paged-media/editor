@@ -36,7 +36,9 @@
 // CLICK order, not stacking order, so the panel reads the real z from
 // the scene tree — whose leaves come back in paint order, back to front
 // — and reverses it. A selection made bottom-up would otherwise invert
-// Crop's cookie cutter and Minus back's survivor silently.
+// Crop's cookie cutter and Minus back's survivor silently. (Minus back
+// is Illustrator's verb since engine 0.65: the FRONT object minus what is
+// behind it, in the front object's paint; 0.64 kept the back one.)
 //
 // REFUSALS ARE SHOWN. The engine caps the arrangement at 12 inputs and
 // 256 faces and REFUSES past either — it never truncates. The panel puts
@@ -151,7 +153,7 @@ const REGION_BUTTONS: RegionDef[] = [
     verb: "pathfinderMinusBack",
     icon: "tool-marquee-rect",
     label: "Minus back",
-    hint: "The backmost object minus everything in front of it (Minus back)",
+    hint: "The frontmost object minus everything behind it (Minus back)",
   },
 ];
 

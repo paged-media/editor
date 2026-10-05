@@ -568,7 +568,7 @@ test.describe("B-22 — the region Pathfinder row", () => {
     const before = (await leafIds(page)).length;
     // Select BOTTOM-UP on purpose: click order says `back` is first.
     // A panel that trusted click order would treat it as the topmost and
-    // keep `front` instead.
+    // keep `back` instead.
     await select(page, [back, front]);
 
     await page
@@ -576,17 +576,21 @@ test.describe("B-22 — the region Pathfinder row", () => {
       .click();
     await page.waitForTimeout(400);
 
+    // Illustrator's Minus Back (engine 0.65, core 8efa636): the FRONT
+    // object survives, minus everything behind it. (0.64 kept the back
+    // one — Illustrator's Minus Front.)
     const after = await leafIds(page);
     expect(after.length).toBe(before - 1);
-    expect(after.some((e) => e.id === back.id)).toBe(true);
-    expect(after.some((e) => e.id === front.id)).toBe(false);
-    // The survivor is the BACK square minus the front one — the
+    expect(after.some((e) => e.id === front.id)).toBe(true);
+    expect(after.some((e) => e.id === back.id)).toBe(false);
+    // The survivor is the FRONT square minus the back one — the
     // six-vertex L, not the untouched four-vertex square.
-    expect(await anchorCount(page, back)).toBe(6);
+    expect(await anchorCount(page, front)).toBe(6);
     await expect(page.locator("[data-pathfinder-error]")).toHaveCount(0);
 
     await undo(page);
     expect((await leafIds(page)).length).toBe(before);
+    expect(await anchorCount(page, front)).toBe(4);
     expect(await anchorCount(page, back)).toBe(4);
   });
 
