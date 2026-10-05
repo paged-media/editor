@@ -25,7 +25,7 @@
     "showcase:indesign-render:capture": "SHOWCASE_RENDER_MODE=capture playwright test --project=showcase --grep \"InDesign render\""
   },
   "dependencies": {
-    "@paged-media/canvas-wasm": "0.64.0",
+    "@paged-media/canvas-wasm": "0.66.0",
     "@paged-media/catalog": "workspace:*",
     "@paged-media/client": "workspace:*",
     "@paged-media/data": "0.1.0-canary.9",
@@ -33,10 +33,10 @@
     "@paged-media/draw": "0.1.0-canary.12",
     "@paged-media/image": "0.1.0-canary.16",
     "@paged-media/pdf": "0.2.5-canary.0",
-    "@paged-media/plugin-api": "0.2.37-canary.0",
-    "@paged-media/plugin-sdk": "0.2.37-canary.0",
+    "@paged-media/plugin-api": "0.2.38-canary.3",
+    "@paged-media/plugin-sdk": "0.2.38-canary.3",
     "@paged-media/publish": "0.1.0-canary.0",
-    "@paged-media/sheet": "0.1.0-canary.8",
+    "@paged-media/sheet": "0.1.0-canary.13",
     "@paged-media/shell": "workspace:*",
     "@paged-media/tools": "workspace:*",
     "@paged-media/ui": "workspace:*",
