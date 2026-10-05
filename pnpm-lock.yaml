@@ -46,8 +46,8 @@ importers:
         specifier: 0.1.0-canary.14
         version: 0.1.0-canary.14(@paged-media/plugin-api@0.2.38-canary.3)(@paged-media/plugin-sdk@0.2.38-canary.3(react@18.3.1))(react@18.3.1)
       '@paged-media/image':
-        specifier: 0.1.0-canary.16
-        version: 0.1.0-canary.16(@paged-media/plugin-api@0.2.38-canary.3)(@paged-media/plugin-sdk@0.2.38-canary.3(react@18.3.1))(react@18.3.1)
+        specifier: 0.1.0-canary.17
+        version: 0.1.0-canary.17(@paged-media/plugin-api@0.2.38-canary.3)(@paged-media/plugin-sdk@0.2.38-canary.3(react@18.3.1))(react@18.3.1)
       '@paged-media/pdf':
         specifier: 0.2.5-canary.0
         version: 0.2.5-canary.0(@paged-media/plugin-api@0.2.38-canary.3)(@paged-media/plugin-sdk@0.2.38-canary.3(react@18.3.1))
@@ -932,11 +932,11 @@ packages:
       '@paged-media/plugin-sdk': '>=0.2.29-canary.0'
       react: ^18.3.0
 
-  '@paged-media/image@0.1.0-canary.16':
-    resolution: {integrity: sha512-BRl7igjCaQKcLE4JD8464JnZZUma3GpwDcaCgghW1+y3FWptCFLr5yd6JkyVJZVIu21/adDZ8wmXJpYora88HA==}
+  '@paged-media/image@0.1.0-canary.17':
+    resolution: {integrity: sha512-6RF6qp6IQBXIPRmsAy9i5TGBxvmVYnxPbLAfVqMdvTN1V2f7F7LZ0RkLe7ut+1AfZkJpp+SNbuPixVZTqLGPVg==}
     peerDependencies:
-      '@paged-media/plugin-api': '>=0.2.29-canary.0'
-      '@paged-media/plugin-sdk': '>=0.2.29-canary.0'
+      '@paged-media/plugin-api': '>=0.2.38-canary.3'
+      '@paged-media/plugin-sdk': '>=0.2.38-canary.3'
       react: ^18.3.0
 
   '@paged-media/introspect-wasm@0.66.0':
@@ -3045,7 +3045,7 @@ snapshots:
       '@paged-media/plugin-sdk': 0.2.38-canary.3(react@18.3.1)
       react: 18.3.1
 
-  '@paged-media/image@0.1.0-canary.16(@paged-media/plugin-api@0.2.38-canary.3)(@paged-media/plugin-sdk@0.2.38-canary.3(react@18.3.1))(react@18.3.1)':
+  '@paged-media/image@0.1.0-canary.17(@paged-media/plugin-api@0.2.38-canary.3)(@paged-media/plugin-sdk@0.2.38-canary.3(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@paged-media/plugin-api': 0.2.38-canary.3
       '@paged-media/plugin-sdk': 0.2.38-canary.3(react@18.3.1)
