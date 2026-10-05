@@ -18,16 +18,21 @@
  */
 
 // Snapping for the host's point-placing tools (RFI C-68) — the Pen and
-// Direct Selection. The geometry is draw-geometry's `snapPoint`; this is
-// the host half, the editor's twin of paged.draw's `handlers/snapping.ts`:
-// it reads the page's size ONCE per page (its edges, centre lines and
-// corners become targets), adds whatever points the tool contributes
-// (the Pen's placed anchors, the other anchors of the path being
-// edited), converts the screen tolerance at the current zoom, and is
-// bypassed while Cmd is held (Illustrator's "snap off while held") and
-// while Shift constrains — a constrained angle wins over a snap that
-// would pull the point off it. View ▸ Snap to points turns it off.
-// No engine read per move.
+// Direct Selection.
+//
+// Since engine protocol 67 the ENGINE resolves a point: `requestSnapPoint`
+// snaps it against every visible element's anchors, centres and outlines,
+// the page, ruler guides, the grid and the x / y lines through all of
+// them — the same resolver the engine's own move, resize and path-edit
+// gestures use, with the session's tolerance. `engineSnapPoint` asks it;
+// `HostSnapper.snapAsync` uses it and falls back to the plugin-side
+// geometry (draw-geometry's `snapPoint` over the page and the tool's own
+// points) when the engine does not answer — an engine before v67.
+//
+// Both are bypassed while Cmd is held (Illustrator's "snap off while
+// held") and while Shift constrains — a constrained angle wins over a
+// snap that would pull the point off it. View ▸ Snap to points turns it
+// off.
 
 import { getViewToggle, type CanvasPointerEvent, type PagedEditor } from "@paged-media/shell";
 import {
@@ -39,8 +44,46 @@ import {
   type Vec2,
 } from "@paged-media/draw/geometry";
 
-/** Screen pixels within which a point snaps. */
+/** Screen pixels within which a point snaps on the FALLBACK path (the
+ *  engine path uses the session's tolerance). */
 export const SNAP_TOLERANCE_PX = 6;
+
+/** The v67 `requestSnapPoint` query, declared here so this file compiles
+ *  against an engine package from before v67 (the wire union has no such
+ *  kind there; the engine path then simply never answers). */
+export interface EngineSnapQuery {
+  pageId: string;
+  point: [number, number];
+  /** CSS px per pt at the current zoom. */
+  cameraScale: number;
+  exclude?: { id: unknown; anchors?: number[] | null }[];
+  extraPoints?: [number, number][];
+}
+
+/** The part of the v67 `SnapPointResult` the tools read. */
+export interface EngineSnapResult {
+  point: [number, number];
+  snapped: boolean;
+  tolerancePt: number;
+}
+
+type Send = (msg: never) => Promise<{ kind: string; payload?: unknown }>;
+
+/** Ask the engine to snap `query`. `null` when it does not answer — an
+ *  engine before v67, or no document. Never throws. */
+export async function engineSnapPoint(
+  send: Send,
+  query: EngineSnapQuery,
+): Promise<EngineSnapResult | null> {
+  try {
+    const reply = await send({ kind: "requestSnapPoint", payload: { query } } as never);
+    if (reply.kind !== "snapPoint") return null;
+    const r = (reply.payload as { result?: EngineSnapResult } | undefined)?.result;
+    return r && r.tolerancePt > 0 ? r : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Is snapping on for a sample with these modifiers? */
 export function snappingOn(modifiers: { cmd?: boolean; shift?: boolean }): boolean {
@@ -52,6 +95,14 @@ export interface HostSnapper {
   prepare(pageId: string): Promise<void>;
   /** Snap `point` (page-local pt). `extra` are the tool's own points. */
   snap(point: Vec2, e: CanvasPointerEvent, ptPerPx: number, extra?: readonly Vec2[]): Vec2;
+  /** Snap through the engine (v67), else as `snap` does. */
+  snapAsync(
+    pageId: string,
+    point: Vec2,
+    e: CanvasPointerEvent,
+    ptPerPx: number,
+    extra?: readonly Vec2[],
+  ): Promise<Vec2>;
   /** The last snap, for a host that draws smart guides. */
   last(): SnapResult | null;
   reset(): void;
@@ -61,6 +112,15 @@ export function createHostSnapper(paged: () => PagedEditor | null): HostSnapper 
   let page: string | null = null;
   let pageT: SnapTarget[] = [];
   let lastResult: SnapResult | null = null;
+  const snap = (point: Vec2, e: CanvasPointerEvent, ptPerPx: number, extra: readonly Vec2[] = []): Vec2 => {
+    if (!snappingOn(e.modifiers)) {
+      lastResult = null;
+      return point;
+    }
+    const targets = extra.length > 0 ? [...pageT, ...anchorTargets(extra, "own")] : pageT;
+    lastResult = snapPoint(point, targets, SNAP_TOLERANCE_PX * ptPerPx);
+    return lastResult.point;
+  };
   return {
     async prepare(pageId) {
       if (page === pageId) return;
@@ -76,14 +136,26 @@ export function createHostSnapper(paged: () => PagedEditor | null): HostSnapper 
         /* no page list → snap to the tool's own points only */
       }
     },
-    snap(point, e, ptPerPx, extra = []) {
+    snap,
+    async snapAsync(pageId, point, e, ptPerPx, extra = []) {
       if (!snappingOn(e.modifiers)) {
         lastResult = null;
         return point;
       }
-      const targets = extra.length > 0 ? [...pageT, ...anchorTargets(extra, "own")] : pageT;
-      lastResult = snapPoint(point, targets, SNAP_TOLERANCE_PX * ptPerPx);
-      return lastResult.point;
+      const p = paged();
+      if (p) {
+        const r = await engineSnapPoint(p.client.send.bind(p.client) as unknown as Send, {
+          pageId,
+          point: [point[0], point[1]],
+          cameraScale: 1 / ptPerPx,
+          extraPoints: extra.map((q) => [q[0], q[1]] as [number, number]),
+        });
+        if (r) {
+          lastResult = null;
+          return [r.point[0], r.point[1]];
+        }
+      }
+      return snap(point, e, ptPerPx, extra);
     },
     last: () => lastResult,
     reset() {

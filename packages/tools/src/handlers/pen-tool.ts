@@ -193,9 +193,14 @@ export function createPenHandler(): GestureHandler {
   // path (continue / join / add / delete) is never moved by a snap — the
   // machine decides those on the raw pointer.
   const snapper = createHostSnapper(() => paged);
-  const snapIfEmpty = (point: Vec2, hit: PenHit, e: CanvasPointerEvent): Vec2 =>
+  const snapIfEmpty = async (
+    pageId: string,
+    point: Vec2,
+    hit: PenHit,
+    e: CanvasPointerEvent,
+  ): Promise<Vec2> =>
     hit.kind === "empty"
-      ? snapper.snap(point, e, ptPerPx(), snapshot?.anchors.map((a) => a.anchor) ?? [])
+      ? snapper.snapAsync(pageId, point, e, ptPerPx(), snapshot?.anchors.map((a) => a.anchor) ?? [])
       : point;
 
   const enqueue = (task: () => void | Promise<void>) => {
@@ -413,7 +418,7 @@ export function createPenHandler(): GestureHandler {
     const raw = endLocalFor(page, e);
     const hit = await resolveHit(page.pageId, raw);
     await snapper.prepare(page.pageId);
-    const point = snapIfEmpty(raw, hit, e);
+    const point = await snapIfEmpty(page.pageId, raw, hit, e);
     feed({
       type: "down",
       point,
@@ -449,7 +454,8 @@ export function createPenHandler(): GestureHandler {
     }
     const hit = await resolveHit(at.pageId, at.point);
     await snapper.prepare(at.pageId);
-    feed({ type: "move", point: snapIfEmpty(at.point, hit, e), modifiers: modifiers(e), hit });
+    const point = await snapIfEmpty(at.pageId, at.point, hit, e);
+    feed({ type: "move", point, modifiers: modifiers(e), hit });
     repaint();
   };
 

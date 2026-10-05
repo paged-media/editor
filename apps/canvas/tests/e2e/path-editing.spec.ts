@@ -1186,6 +1186,33 @@ test.describe("E2E path editing — snapping", () => {
     expect((await mustTable(page, FX.quad)).anchors[0].anchor[1]).not.toBe(300);
   });
 
+  test("AC-SNAP-3 — protocol 67: a dragged anchor lands on ANOTHER path's anchor @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:plugin-draw.snapping @level:gesture", async ({
+    page,
+  }) => {
+    // The engine resolves the snap since v67; before it, the session only
+    // knows this path's own anchors, and (200, 700) is openA's. Skips on
+    // an older engine; PAGED_REQUIRE_V67=1 makes that a failure.
+    const v67 = await page.evaluate(async (pageId) => {
+      const c = (globalThis as unknown as { __canvas: { client: { send: (m: unknown) => Promise<{ kind: string }> } } }).__canvas;
+      const r = await c.client
+        .send({ kind: "requestSnapPoint", payload: { query: { pageId, point: [1, 1], cameraScale: 1 } } })
+        .catch(() => ({ kind: "none" }));
+      return r.kind === "snapPoint";
+    }, FX.pageId);
+    if (!v67) {
+      if (process.env.PAGED_REQUIRE_V67 === "1") throw new Error("PAGED_REQUIRE_V67=1 but the engine does not answer requestSnapPoint");
+      test.skip();
+    }
+    const before = await mustTable(page, FX.quad);
+    await enterPathEdit(page, FX.quad);
+    // Anchor 0 (100,100) dragged to a fraction of a point off openA's
+    // middle anchor (200,700): no line of the quad's own runs there.
+    await drag(page, [100, 100], [200.4, 699.6]);
+    await expect.poll(async () => (await mustTable(page, FX.quad)).anchors[0].anchor).toEqual([200, 700]);
+    expectUntouched(await mustTable(page, FX.quad), before, [1, 2, 3]);
+    await expectOneUndoRestores(page, FX.quad, before);
+  });
+
   test("AC-SNAP-2 — the Pen places on the page edge and on its own anchor's line @feat:editor-tools.draw.pen @feat:plugin-draw.pen-machine @level:gesture", async ({
     page,
   }) => {

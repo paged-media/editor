@@ -5,7 +5,7 @@
     "by": "scripts/sync-feat-vocabulary.mjs",
     "commit": "4ae824bffeb29846f5c83d5e1c972b667a30f501"
   },
-  "count": 602,
+  "count": 603,
   "ids": [
     "anchored-inline-objects.anchor-alignment",
     "anchored-inline-objects.anchored-frames",
@@ -374,6 +374,7 @@
     "plugin-draw.repeats",
     "plugin-draw.select-same",
     "plugin-draw.shape-builder",
+    "plugin-draw.snapping",
     "plugin-draw.stroke-dash-commands",
     "plugin-draw.stroke-schema-panel",
     "plugin-draw.svg-io",

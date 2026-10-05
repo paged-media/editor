@@ -68,7 +68,7 @@ import {
   useOptionalTool,
   useSelection,
 } from "@paged-media/shell";
-import { DirectSelectSession, isPathEditKey } from "@paged-media/tools";
+import { DirectSelectSession, engineSnapPoint, isPathEditKey } from "@paged-media/tools";
 
 import { problemsSink } from "../panels/problems-store";
 
@@ -117,6 +117,11 @@ export function usePathEditMode() {
       client,
       target: element,
       onSelectionChange: setSelectedAnchors,
+      // v67 (RFI C-68) — the engine snaps a dragged anchor to everything
+      // on the page; an older engine answers nothing and the session
+      // keeps its local snap to this path's own anchors.
+      snapEngine: (query) =>
+        engineSnapPoint(client.send.bind(client) as never, query),
       // An anchor edit moves the element's bounds; the selection outline
       // is drawn from cached geometry, so it is re-read with the path.
       onPathChanged: () => {
