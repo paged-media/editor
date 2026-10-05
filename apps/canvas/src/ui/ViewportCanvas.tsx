@@ -189,6 +189,10 @@ const CLICK_DRAG_THRESHOLD_PX = 4;
  * ins_top)`; threading the inset through `ElementGeometryItem` is the
  * documented residual (it is not exposed on the geometry read today).
  */
+/** One wheel "line" (DOM_DELTA_LINE) in CSS pixels — Firefox's mouse
+ *  wheel reports lines; the others report pixels. */
+const WHEEL_LINE_PX = 16;
+
 function pageToContentPoint(
   geom: ElementGeometryItem,
   pageLocal: [number, number],
@@ -482,19 +486,25 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
   // coordinates. Returns true when the pointer was over the active frame
   // (consumed); false when there is no active context or the pointer is
   // outside its content box.
-  const dispatchContentPointer = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>, phase: "down" | "move" | "up"): boolean => {
+  // The active context's frame-content point under a client position, or
+  // null when there is no active context or the point is outside its
+  // content box. Shared by the pointer and wheel lanes.
+  const activeContentPointAt = useCallback(
+    (
+      target: HTMLDivElement,
+      clientX: number,
+      clientY: number,
+    ): { content: [number, number]; elementId: string } | null => {
       const active = editContextStack?.active;
-      const contribution = editContextStack?.activeContribution;
-      if (!active || !contribution) return false;
-      const rect = e.currentTarget.getBoundingClientRect();
+      if (!active) return null;
+      const rect = target.getBoundingClientRect();
       const [docX, docY] = viewportToDoc(
         props.camera,
-        e.clientX - rect.left,
-        e.clientY - rect.top,
+        clientX - rect.left,
+        clientY - rect.top,
       );
       const containing = findContainingPage(rects, props.pageIds, docX, docY);
-      if (!containing) return false;
+      if (!containing) return null;
       const [pageId, pageRect] = containing;
       const pageLocal: [number, number] = [docX - pageRect.x, docY - pageRect.y];
       // The active frame's geometry (bounds + itemTransform) carries the
@@ -503,14 +513,28 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       const geom = (props.elementGeometry ?? []).find(
         (g) => g.pageId === pageId && `${g.id.kind}:${g.id.id}` === rootKey,
       );
-      if (!geom) return false;
+      if (!geom) return null;
       const content = pageToContentPoint(geom, pageLocal);
-      if (!content) return false; // outside the content box
-      const ev: ContentPointerEvent = {
-        contentPoint: content,
+      if (!content) return null; // outside the content box
+      return {
+        content,
         // Frame-like ElementIds carry a string `id` (the union also covers
         // story-range / table-cell addresses, which never enter a context).
         elementId: typeof active.scopeRoot.id === "string" ? active.scopeRoot.id : "",
+      };
+    },
+    [editContextStack, props.camera, props.pageIds, props.elementGeometry, rects],
+  );
+
+  const dispatchContentPointer = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>, phase: "down" | "move" | "up"): boolean => {
+      const contribution = editContextStack?.activeContribution;
+      if (!contribution) return false;
+      const at = activeContentPointAt(e.currentTarget, e.clientX, e.clientY);
+      if (!at) return false;
+      const ev: ContentPointerEvent = {
+        contentPoint: at.content,
+        elementId: at.elementId,
         modifiers: {
           shift: e.shiftKey,
           alt: e.altKey,
@@ -524,7 +548,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       else contribution.onContentPointerUp?.(ev);
       return true;
     },
-    [editContextStack, props.camera, props.pageIds, props.elementGeometry, rects],
+    [editContextStack, activeContentPointAt],
   );
 
   const onPointerDown = useCallback(
@@ -1332,6 +1356,30 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       const rect = e.currentTarget.getBoundingClientRect();
       const cx = e.clientX - rect.left;
       const cy = e.clientY - rect.top;
+      // An active edit context that scrolls its own content (a sheet's
+      // in-frame grid window) takes a plain wheel over its frame; the
+      // canvas pans only when it declines. Cmd/Ctrl wheel stays zoom.
+      const onContentWheel = editContextStack?.activeContribution?.onContentWheel;
+      if (onContentWheel && !e.ctrlKey && !e.metaKey) {
+        const at = activeContentPointAt(e.currentTarget, e.clientX, e.clientY);
+        if (at) {
+          const toPx =
+            e.deltaMode === 1 ? WHEEL_LINE_PX : e.deltaMode === 2 ? rect.height : 1;
+          const scale = props.camera.scale > 0 ? props.camera.scale : 1;
+          const taken = onContentWheel({
+            contentPoint: at.content,
+            elementId: at.elementId,
+            delta: [(e.deltaX * toPx) / scale, (e.deltaY * toPx) / scale],
+            modifiers: {
+              shift: e.shiftKey,
+              alt: e.altKey,
+              cmd: e.metaKey,
+              ctrl: e.ctrlKey,
+            },
+          });
+          if (taken) return;
+        }
+      }
       if (e.ctrlKey || e.metaKey) {
         const factor = Math.exp(-e.deltaY * 0.005);
         props.onCameraChange(zoomAt(props.camera, cx, cy, factor));
@@ -1343,7 +1391,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         });
       }
     },
-    [props],
+    [props, editContextStack, activeContentPointAt],
   );
 
   const onDoubleClick = useCallback(

@@ -102,6 +102,7 @@ const WORKBOOK_PANEL = "media.paged.sheet.panel.workbook";
 const GRID_PANEL = "media.paged.sheet.panel.grid";
 const DATASETS_PANEL = "media.paged.sheet.panel.datasets";
 const IMPORTER = "media.paged.sheet.importer.xlsx";
+const CSV_IMPORTER = "media.paged.sheet.importer.csv";
 const EXPORTER = "media.paged.sheet.exporter.xlsx";
 
 /** THE TWENTY IDS, SPELLED OUT.
@@ -127,8 +128,22 @@ const DECLARED = {
     "media.paged.sheet.command.copySelection",
     "media.paged.sheet.command.pasteSelection",
     "media.paged.sheet.command.styleFromCell",
+    // 0.1.0-canary.9 (Waves 4-5): pagination, a blank workbook, structural
+    // edits, sheets, and the grid's own verbs.
+    "media.paged.sheet.command.paginateToChain",
+    "media.paged.sheet.command.newWorkbook",
+    "media.paged.sheet.command.insertRows",
+    "media.paged.sheet.command.deleteRows",
+    "media.paged.sheet.command.insertColumns",
+    "media.paged.sheet.command.deleteColumns",
+    "media.paged.sheet.command.addSheet",
+    "media.paged.sheet.command.fillDown",
+    "media.paged.sheet.command.fillRight",
+    "media.paged.sheet.command.clearCells",
+    "media.paged.sheet.command.findInSheet",
+    "media.paged.sheet.command.findNext",
   ],
-  importers: [IMPORTER],
+  importers: [IMPORTER, CSV_IMPORTER],
   exporters: [EXPORTER],
   editContexts: ["sheet"],
   objectTypes: ["sheetFrame"],
@@ -406,7 +421,7 @@ test.describe("plugin surface · paged.sheet", () => {
 
   // ── 3. COMMANDS ──────────────────────────────────────────────────
 
-  test("all twelve declared commands are registered, titled, and actually run", async ({
+  test("all twenty-four declared commands are registered, titled, and actually run", async ({
     page,
   }) => {
     const registered = await page.evaluate(() => {
@@ -452,12 +467,15 @@ test.describe("plugin surface · paged.sheet", () => {
     expect(result.threw, "no sheet command throws out of invoke()").toEqual([]);
     expect(result.failed, "no sheet command settles with an error").toEqual([]);
 
-    // With no workbook open the two clipboard commands DECLINE (their
-    // `when` is `workbookIsOpen`) — the ADR-024 gate, working. Everything
-    // else ran.
+    // With no workbook open the two clipboard commands and pagination
+    // DECLINE (their `when` is `workbookIsOpen`) — the ADR-024 gate,
+    // working. Everything else ran: `newWorkbook` needs no workbook and
+    // OPENS one, so the commands listed after it (fill, clear, find,
+    // structural edits) find a workbook and run.
     const declined = ids.filter((id) => !result.started.includes(id));
     expect(declined.sort()).toEqual([
       "media.paged.sheet.command.copySelection",
+      "media.paged.sheet.command.paginateToChain",
       "media.paged.sheet.command.pasteSelection",
     ]);
 
@@ -782,7 +800,7 @@ test.describe("plugin surface · paged.sheet", () => {
 
   // ── 6. AUDIT — is any of this REACHABLE? ─────────────────────────
 
-  test("AUDIT — paged.sheet contributes no tool, no menu item and no keybinding: creation is Cmd+K-only", async ({
+  test("AUDIT — paged.sheet contributes no tool and no rail panel; its menu entries and grid keybindings are its only front doors", async ({
     page,
   }) => {
     const reach = await page.evaluate(() => {
@@ -838,7 +856,17 @@ test.describe("plugin surface · paged.sheet", () => {
       reach.menuItems.some((p) => p === "Sheet/Place selection on page"),
       "and `lowerToFrame` is findable under words a designer would use",
     ).toBe(true);
-    expect(reach.keybindings, "paged.sheet contributes no keybinding").toEqual([]);
+    // UPDATED (paged.sheet 0.1.0-canary.9). This read `.toEqual([])`. The
+    // grid's own chords arrived with Wave 5, each guarded to "a sheet frame
+    // is entered": copy, paste, fill down/right and find. Cmd+D shares its
+    // chord with the host's Place and wins only inside the sheet (a
+    // satisfied guard beats an unguarded binding — keybinding.ts).
+    expect(
+      [...reach.keybindings].sort(),
+      "paged.sheet binds its grid chords",
+    ).toEqual(
+      ["cmd+c", "ctrl+c", "cmd+v", "ctrl+v", "cmd+d", "cmd+r", "ctrl+r", "cmd+f", "ctrl+f"].sort(),
+    );
     expect(reach.railPanels, "no panel opted into the K-8 rail launcher").toEqual([]);
 
     // The rail slot machinery exists and is populated by other plugins —
@@ -851,8 +879,9 @@ test.describe("plugin surface · paged.sheet", () => {
     test.info().annotations.push({
       type: "surface-finding",
       description:
-        "DEFECT (exposure): paged.sheet injects 12 commands, 3 panels, an importer and an " +
-        "exporter and reaches the user through NO tool, NO menu item and NO keybinding. " +
+        "DEFECT (exposure, partly closed): paged.sheet injects 24 commands, 3 panels, two importers " +
+        "and an exporter; it now files its own menu entries and binds its grid chords, but " +
+        "still offers NO tool. Originally recorded as: NO tool, NO menu item and NO keybinding. " +
         "Every verb is Cmd+K-only. The contract has a `tool` door (draw/image use it) and a " +
         "`rail: true` panel door (nobody uses it); it has no `menu` door at all, so the host " +
         "would have to curate an Insert/Sheet menu the way it already hand-curates " +

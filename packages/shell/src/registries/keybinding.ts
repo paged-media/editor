@@ -115,7 +115,12 @@ function parseCombo(key: string): KeyCombo {
   return combo;
 }
 
-function eventMatches(combo: KeyCombo, event: KeyboardEvent): boolean {
+type KeyEventLike = Pick<
+  KeyboardEvent,
+  "key" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey"
+>;
+
+function eventMatches(combo: KeyCombo, event: KeyEventLike): boolean {
   const eventKey = event.key.toLowerCase();
   if (eventKey !== combo.key) return false;
   if (combo.cmd !== event.metaKey) return false;
@@ -229,6 +234,55 @@ export function targetOwnsKey(
   );
 }
 
+/**
+ * Which binding a key press fires. A disabled binding yields to any
+ * other binding on the same combo. Among the enabled ones, a GUARDED
+ * binding (a `when` that holds right now) beats an unguarded one, and
+ * registration order breaks ties within each class.
+ *
+ * Why guarded first: an unguarded binding is global by declaration,
+ * while a guard narrows its binding to a situation — and when that
+ * situation holds, the narrower claim is the one the user is in. The
+ * case that forced it: Place (Cmd+D, unguarded, a built-in registered
+ * first) shadowed a sheet's Fill down (Cmd+D, guarded to "a sheet frame
+ * is entered") for as long as both existed, so a context's keybinding
+ * could never win inside its own context.
+ *
+ * `resolveBinding` is the testable form (no window needed).
+ */
+function resolveParsed(
+  bindings: readonly ParsedBinding[],
+  event: KeyEventLike,
+  getState?: () => unknown,
+): KeybindingContribution | null {
+  let unguarded: KeybindingContribution | null = null;
+  for (const b of bindings) {
+    if (!eventMatches(b.combo, event)) continue;
+    const when = b.contribution.when;
+    if (!isEnabled(when, getState)) continue;
+    if (when !== undefined) return b.contribution;
+    unguarded ??= b.contribution;
+  }
+  return unguarded;
+}
+
+/** The binding a key press would fire among `contributions` (in
+ *  registration order) — the dispatch rule above, without a window. */
+export function resolveBinding(
+  contributions: readonly KeybindingContribution[],
+  event: KeyEventLike,
+  getState?: () => unknown,
+): KeybindingContribution | null {
+  return resolveParsed(
+    contributions.map((contribution) => ({
+      contribution,
+      combo: parseCombo(contribution.key),
+    })),
+    event,
+    getState,
+  );
+}
+
 /** Evaluate a keybinding's `when` predicate. Undefined → enabled. The
  *  function form is called with the state snapshot; the string DSL
  *  form is inert (treated as disabled) until an evaluator lands —
@@ -252,17 +306,10 @@ export function createKeybindingRegistry(
     // canvas's content-selection model lives on its own layer and isn't
     // an editable element — bindings guard that through `when`.
     if (targetOwnsKey(event)) return;
-    for (const b of bindings) {
-      if (eventMatches(b.combo, event)) {
-        // A disabled binding yields to any lower-priority binding that
-        // also matches this combo (e.g. a guarded tool shortcut vs. a
-        // future unguarded one).
-        if (!isEnabled(b.contribution.when, getState)) continue;
-        event.preventDefault();
-        void commands.invoke(b.contribution.command);
-        return;
-      }
-    }
+    const winner = resolveParsed(bindings, event, getState);
+    if (!winner) return;
+    event.preventDefault();
+    void commands.invoke(winner.command);
   };
 
   let listening = false;

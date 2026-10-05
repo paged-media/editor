@@ -247,6 +247,7 @@ export {
   resolveDoubleClick,
   type EditContextContribution,
   type ContentPointerEvent,
+  type ContentWheelEvent,
   type ObjectTypeContribution,
   type EditContextCandidate,
   type EnteredEditContext,

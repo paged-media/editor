@@ -48,6 +48,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { openPanel } from "../../fidelity/canvas-driver";
 import { Designer } from "../driver/designer";
+import { placedValues } from "./sheet-kit";
 
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -240,6 +241,22 @@ test.describe("journey · paged.sheet calc + functions through the grid", () => 
     // the computed uppercase string renders in the grid.
     await enterFormula(page, 1, 2, '=UPPER("paged")');
     await expect(svg).toContainText("PAGED", { timeout: 8_000 });
+
+    // The PLACED table follows the engine (HARD, value): the lowered A1:C6
+    // refreshes after the edits, so column C carries the computed results,
+    // not the formulas and not the empty cells it was lowered with. (The
+    // second click lands a row lower than its index on this panel layout,
+    // so the UPPER result is looked for anywhere in column C.)
+    await expect
+      .poll(
+        async () => {
+          const rows = await placedValues(page);
+          const colC = rows.map((r) => r[2]);
+          return [rows[0]?.[0], colC[0], colC.includes("PAGED")];
+        },
+        { timeout: 10_000 },
+      )
+      .toEqual(["2", "10", true]);
 
     // ── 3. IN-FRAME RENDER (HARD, pixels) — enter the K-1 modal session; the
     //    C-1 sceneLayer paints the recomputed grid (carrying the computed

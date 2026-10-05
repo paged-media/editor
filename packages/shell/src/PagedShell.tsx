@@ -631,7 +631,10 @@ function ShellChrome({
 
   useEffect(() => {
     // Tab must keep its focus-move role inside DOM editables; the
-    // canvas caret is covered by the contentSelection guard.
+    // canvas caret is covered by the contentSelection guard. Inside an
+    // active edit context that claims Tab (a sheet's grid moves its cell
+    // cursor) the toggle never sees the key: EditContextController offers
+    // it to the context in the capture phase and stops a claimed key.
     const chromeKeyGuard = (state: unknown) => {
       const el = document.activeElement as HTMLElement | null;
       if (

@@ -60,6 +60,10 @@ export interface TextEditingContext {
   client: CanvasClient | null;
   selection: ContentSelection | null;
   setSelection: (s: ContentSelection | null) => void;
+  /** ADR-012 — true while an active edit context owns undo (it declares
+   *  `onUndo`). The edit-context controller routes Cmd-Z to that context;
+   *  this hook must then leave the document stack alone. */
+  undoOwnedByContext?: () => boolean;
 }
 
 export function useTextEditing(ctx: TextEditingContext) {
@@ -84,6 +88,13 @@ export function useTextEditing(ctx: TextEditingContext) {
       // Cmd+Z / Cmd+Shift+Z. Always handled when client exists,
       // regardless of selection state.
       if (cmd && (e.key === "z" || e.key === "Z")) {
+        // Both this hook and the edit-context controller listen on
+        // `window` in the capture phase, so stopPropagation in one never
+        // stops the other and their order is registration order. While a
+        // context owns undo, a document undo here as well would unwind
+        // the document under the context's own step — inside a sheet it
+        // undid the placed table's cell pour and emptied every cell.
+        if (e.defaultPrevented || ctx.undoOwnedByContext?.()) return;
         e.preventDefault();
         if (e.shiftKey) {
           void client.redo();
