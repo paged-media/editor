@@ -43,8 +43,8 @@ importers:
         specifier: link:../../../plugins/plugin-doc/packages/doc-bundle
         version: link:../../../plugins/plugin-doc/packages/doc-bundle
       '@paged-media/draw':
-        specifier: 0.1.0-canary.12
-        version: 0.1.0-canary.12(@paged-media/plugin-api@0.2.38-canary.3)(@paged-media/plugin-sdk@0.2.38-canary.3(react@18.3.1))(react@18.3.1)
+        specifier: 0.1.0-canary.14
+        version: 0.1.0-canary.14(@paged-media/plugin-api@0.2.38-canary.3)(@paged-media/plugin-sdk@0.2.38-canary.3(react@18.3.1))(react@18.3.1)
       '@paged-media/image':
         specifier: 0.1.0-canary.16
         version: 0.1.0-canary.16(@paged-media/plugin-api@0.2.38-canary.3)(@paged-media/plugin-sdk@0.2.38-canary.3(react@18.3.1))(react@18.3.1)
@@ -339,8 +339,8 @@ importers:
         specifier: workspace:*
         version: link:../client
       '@paged-media/draw':
-        specifier: 0.1.0-canary.12
-        version: 0.1.0-canary.12(@paged-media/plugin-api@0.2.38-canary.3)(@paged-media/plugin-sdk@0.2.38-canary.3(react@18.3.1))(react@18.3.1)
+        specifier: 0.1.0-canary.14
+        version: 0.1.0-canary.14(@paged-media/plugin-api@0.2.38-canary.3)(@paged-media/plugin-sdk@0.2.38-canary.3(react@18.3.1))(react@18.3.1)
       '@paged-media/plugin-api':
         specifier: 0.2.38-canary.3
         version: 0.2.38-canary.3
@@ -925,8 +925,8 @@ packages:
       '@paged-media/plugin-sdk': '>=0.2.29-canary.0'
       react: ^18.3.0
 
-  '@paged-media/draw@0.1.0-canary.12':
-    resolution: {integrity: sha512-PufsS1Ol/J7CmxCgBPQXuEE9h61vLQoSm/SNStq9lQqBhoGtAipSMxYAy5zWK2qolRzUbdAPqTod0PLY2cVHew==}
+  '@paged-media/draw@0.1.0-canary.14':
+    resolution: {integrity: sha512-BOL0drQNU4kgf60Ec2Cq1fuMUWhuGpuM6GGapfSBx3u+oGVUag7tR2XQcJrRpk02Qp5mctB43PTi0b2FZC7R+w==}
     peerDependencies:
       '@paged-media/plugin-api': '>=0.2.29-canary.0'
       '@paged-media/plugin-sdk': '>=0.2.29-canary.0'
@@ -3039,7 +3039,7 @@ snapshots:
       '@paged-media/plugin-sdk': 0.2.38-canary.3(react@18.3.1)
       react: 18.3.1
 
-  '@paged-media/draw@0.1.0-canary.12(@paged-media/plugin-api@0.2.38-canary.3)(@paged-media/plugin-sdk@0.2.38-canary.3(react@18.3.1))(react@18.3.1)':
+  '@paged-media/draw@0.1.0-canary.14(@paged-media/plugin-api@0.2.38-canary.3)(@paged-media/plugin-sdk@0.2.38-canary.3(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@paged-media/plugin-api': 0.2.38-canary.3
       '@paged-media/plugin-sdk': 0.2.38-canary.3(react@18.3.1)
