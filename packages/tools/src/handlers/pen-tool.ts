@@ -72,6 +72,7 @@ import {
   type PenPlan,
   type PenSnapshot,
 } from "@paged-media/draw/machines";
+import { createHostSnapper } from "./snapper";
 
 import {
   hitPathTable,
@@ -187,6 +188,15 @@ export function createPenHandler(): GestureHandler {
   let unsubscribe: (() => void) | null = null;
 
   const ptPerPx = () => (paged ? pxToPt(paged, 1) : 1);
+  // Snapping (RFI C-68): a press or hover over EMPTY space snaps to the
+  // page's edges and centre and to this run's own anchors. A hit on a
+  // path (continue / join / add / delete) is never moved by a snap — the
+  // machine decides those on the raw pointer.
+  const snapper = createHostSnapper(() => paged);
+  const snapIfEmpty = (point: Vec2, hit: PenHit, e: CanvasPointerEvent): Vec2 =>
+    hit.kind === "empty"
+      ? snapper.snap(point, e, ptPerPx(), snapshot?.anchors.map((a) => a.anchor) ?? [])
+      : point;
 
   const enqueue = (task: () => void | Promise<void>) => {
     const run = async () => {
@@ -231,6 +241,7 @@ export function createPenHandler(): GestureHandler {
   };
 
   const reset = () => {
+    snapper.reset();
     paged?.overlaySignals.setToolPreview(null);
     page = null;
     machine = null;
@@ -399,8 +410,10 @@ export function createPenHandler(): GestureHandler {
       if (!start) return;
       page = start;
     }
-    const point = endLocalFor(page, e);
-    const hit = await resolveHit(page.pageId, point);
+    const raw = endLocalFor(page, e);
+    const hit = await resolveHit(page.pageId, raw);
+    await snapper.prepare(page.pageId);
+    const point = snapIfEmpty(raw, hit, e);
     feed({
       type: "down",
       point,
@@ -435,7 +448,8 @@ export function createPenHandler(): GestureHandler {
       return;
     }
     const hit = await resolveHit(at.pageId, at.point);
-    feed({ type: "move", point: at.point, modifiers: modifiers(e), hit });
+    await snapper.prepare(at.pageId);
+    feed({ type: "move", point: snapIfEmpty(at.point, hit, e), modifiers: modifiers(e), hit });
     repaint();
   };
 

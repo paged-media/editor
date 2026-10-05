@@ -26,12 +26,18 @@
 // through the SAB hot path; pointer-up commits (one undo step). Shift
 // snaps engine-side (15° tangents for Shear, 15° steps for Rotate).
 //
-// PIVOT — the engine derives it from the union centroid of the
-// gesture's snapshots (`begin_gesture` → `pivot_spread`), and treats
-// the anchor as "where the pointer was when the drag started". So a
-// drag anywhere on the canvas rotates/scales the SELECTION about its
-// own centre; the tools do not (yet) support InDesign's click-to-move
-// pivot, which would need a pivot argument on the wire.
+// PIVOT — by default the engine derives it from the union centroid of
+// the gesture's snapshots (`begin_gesture` → `pivot_spread`), and treats
+// the anchor as "where the pointer was when the drag started", so a
+// drag anywhere rotates/scales the SELECTION about its own centre.
+// A CLICK (no drag) moves the pivot there instead — InDesign's and
+// Illustrator's click-to-set reference point — and the next drag sends
+// it as the anchor's `pivotInPage` (protocol 66, RFI C-67). The pivot is
+// forgotten when the selection changes, on Escape and when the tool is
+// switched away (not on a spring-load suspend). An engine older than 66
+// ignores the field and pivots about the centroid as before — the
+// marker then promises more than the engine does, which is why the
+// field is only sent, never assumed.
 //
 // Rotate / Scale were reachable before this only through the selection
 // chrome (the rotate handle, Cmd+drag on a resize handle) and the
@@ -65,6 +71,20 @@ const GESTURE_SPEC = {
   shear: { kind: "shear" },
 } as const;
 
+/** A click-set pivot: the page it was set on, the point in that
+ *  page's space, and the selection it was set for. */
+interface Pivot {
+  pageId: string;
+  point: [number, number];
+  selectionKey: string;
+}
+
+/** Half-size of the pivot marker, page pt. */
+const PIVOT_MARKER_PT = 4;
+
+const selectionKeyOf = (ids: readonly { kind: string; id: unknown }[]): string =>
+  ids.map((id) => `${id.kind}:${String(id.id)}`).join("|");
+
 interface TransformDrag {
   handle: number | null;
   pendingDelta: [number, number];
@@ -81,6 +101,46 @@ export function createTransformGestureHandler(
 ): GestureHandler {
   let paged: PagedEditor | null = null;
   let drag: TransformDrag | null = null;
+  let pivot: Pivot | null = null;
+  /** The page + point of the pointer-down, for a click to set the pivot. */
+  let down: { pageId: string; point: [number, number] } | null = null;
+
+  const showPivot = () => {
+    if (!paged) return;
+    if (!pivot) {
+      paged.overlaySignals.setToolPreview(null);
+      return;
+    }
+    const [x, y] = pivot.point;
+    const r = PIVOT_MARKER_PT;
+    paged.overlaySignals.setToolPreview({
+      pageId: pivot.pageId,
+      points: [
+        [x, y - r],
+        [x + r, y],
+        [x, y + r],
+        [x - r, y],
+      ],
+      close: true,
+    });
+  };
+
+  const clearPivot = () => {
+    if (!pivot) return;
+    pivot = null;
+    showPivot();
+  };
+
+  /** The pivot for a drag starting now, or null when there is none for
+   *  this page and this selection. */
+  const livePivot = (pageId: string): Pivot | null => {
+    if (!pivot || !paged) return null;
+    if (pivot.selectionKey !== selectionKeyOf(paged.selection.elementSelection)) {
+      clearPivot();
+      return null;
+    }
+    return pivot.pageId === pageId ? pivot : null;
+  };
 
   const refreshSelectionChrome = () => {
     if (!paged) return;
@@ -117,11 +177,15 @@ export function createTransformGestureHandler(
       // resumes when the override releases. A real switch cancels.
       if (reason === "suspend") return;
       cancel();
+      clearPivot();
+      down = null;
     },
     onPointerDown(e: CanvasPointerEvent) {
       if (!paged || e.button !== 0) return;
       const targets = paged.selection.elementSelection;
       if (targets.length === 0 || !e.pageId || !e.pagePoint) return;
+      down = { pageId: e.pageId, point: [e.pagePoint[0], e.pagePoint[1]] };
+      const set = livePivot(e.pageId);
       const state: TransformDrag = {
         handle: null,
         pendingDelta: [0, 0],
@@ -135,6 +199,8 @@ export function createTransformGestureHandler(
         .beginGesture(targets.slice(), GESTURE_SPEC[kind], {
           pageId: e.pageId,
           pointInPage: e.pagePoint,
+          // Protocol 66 — ahead of the pinned wire type, hence the spread.
+          ...(set ? { pivotInPage: set.point } : {}),
         })
         .then((handle) => {
           if (state.abandoned) {
@@ -188,8 +254,18 @@ export function createTransformGestureHandler(
         .catch(() => {});
     },
     onPointerUp(e: CanvasPointerEvent) {
-      if (!drag) return;
       const wasDrag = e.maxDelta > CLICK_DRAG_THRESHOLD_PX;
+      // A click sets the pivot where it landed, for this selection.
+      if (!wasDrag && down && paged) {
+        pivot = {
+          pageId: down.pageId,
+          point: down.point,
+          selectionKey: selectionKeyOf(paged.selection.elementSelection),
+        };
+        showPivot();
+      }
+      down = null;
+      if (!drag) return;
       if (drag.handle === null) {
         // Begin hasn't resolved. A click (no real drag) abandons; a
         // drag records the final delta and commits once the handle
@@ -211,7 +287,10 @@ export function createTransformGestureHandler(
       finish(handle, wasDrag);
     },
     onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") cancel();
+      if (e.key === "Escape") {
+        cancel();
+        clearPivot();
+      }
     },
   };
 }

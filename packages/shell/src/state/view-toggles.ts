@@ -35,7 +35,7 @@
 // grow. A subscription that the store itself notifies cannot drift that
 // way.
 
-export type ViewToggle = "textThreads";
+export type ViewToggle = "textThreads" | "snapToPoints";
 
 type Listener = () => void;
 
@@ -44,7 +44,13 @@ const state: Record<ViewToggle, boolean> = {
   // the document always wears — InDesign hides them behind
   // View ▸ Extras ▸ Show Text Threads for the same reason.
   textThreads: false,
+  // ON by default, as Illustrator's Snap to Point and Smart Guides are:
+  // the Pen and Direct Selection snap to the page's edges and centre and
+  // to anchors (RFI C-68). Read by the tools, not an overlay.
+  snapToPoints: true,
 };
+
+const DEFAULTS: Readonly<Record<ViewToggle, boolean>> = { ...state };
 
 const listeners = new Set<Listener>();
 
@@ -70,14 +76,14 @@ export function subscribeViewToggles(listener: Listener): () => void {
   };
 }
 
-/** Reset — tests only, so one spec's toggle cannot leak into the next.
- *  (The specs share a page instance per file; a leaked `true` would
- *  make the next test pass for the wrong reason.) */
+/** Reset to the defaults — tests only, so one spec's toggle cannot leak
+ *  into the next. (The specs share a page instance per file; a leaked
+ *  value would make the next test pass for the wrong reason.) */
 export function resetViewToggles(): void {
   let changed = false;
   for (const k of Object.keys(state) as ViewToggle[]) {
-    if (state[k]) {
-      state[k] = false;
+    if (state[k] !== DEFAULTS[k]) {
+      state[k] = DEFAULTS[k];
       changed = true;
     }
   }

@@ -474,7 +474,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       const scale = props.camera.scale;
       return {
         point: [docX - pageRect.x, docY - pageRect.y],
-        modifiers: { shift: e.shiftKey, alt: e.altKey },
+        modifiers: { shift: e.shiftKey, alt: e.altKey, cmd: e.metaKey || e.ctrlKey },
         ptPerPx: 1 / (scale > 0 ? scale : 1),
         timeStamp: e.timeStamp,
       };

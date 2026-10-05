@@ -202,6 +202,21 @@ async function expectOneUndoRestores(
 
 // --------------------------------------------------------------- driving
 
+/** View ▸ Snap to points OFF. The specs that pin the pointer → geometry
+ *  mapping drag to arbitrary points a few pt off other anchors' lines;
+ *  with snapping on (the default) those land ON the lines, which is
+ *  snapping working, not the mapping. Snapping has its own specs
+ *  (AC-SNAP-*), with the default left on. */
+async function snapOff(page: Page): Promise<void> {
+  await page.evaluate(() =>
+    (
+      globalThis as unknown as {
+        __canvas: { registries: { commands: { invoke: (c: string) => Promise<unknown> } } };
+      }
+    ).__canvas.registries.commands.invoke("paged.view.toggleSnapToPoints"),
+  );
+}
+
 async function loadPathEditFixture(page: Page): Promise<void> {
   await openCanvas(page);
   // Through the React file-input path, so the viewport mounts.
@@ -369,6 +384,7 @@ function evalCubic(p0: Pt, p1: Pt, p2: Pt, p3: Pt, t: number): Pt {
 test.describe("E2E path editing — anchors, handles and segments", () => {
   test.beforeEach(async ({ page }) => {
     await loadPathEditFixture(page);
+    await snapOff(page);
   });
 
   test("AC-PATHEDIT-1 — dragging an anchor moves it and ONLY it; the overlay previews, the page repaints, one undo restores @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:geometry-coordinates.path-topology-ops @feat:round-tripping.undo-redo @level:gesture", async ({
@@ -993,6 +1009,7 @@ test.describe("E2E path editing — the Direct Selection tool", () => {
 test.describe("E2E path editing — the Pen on existing paths", () => {
   test.beforeEach(async ({ page }) => {
     await loadPathEditFixture(page);
+    await snapOff(page);
     await activateTool(page, "pen");
   });
 
@@ -1132,5 +1149,59 @@ test.describe("E2E path editing — the Pen on existing paths", () => {
     expect(await mustTable(page, FX.quad)).toEqual(before);
     await undo(page);
     await expect.poll(() => elementKeys(page)).toEqual(elements);
+  });
+});
+
+// SNAPPING (RFI C-68) — the host half of draw-geometry's `snapPoint`. The
+// tolerance is 6 SCREEN px, so every offset below is a fraction of a
+// point at the fitted zoom: inside it, and still a visible miss without
+// snapping. Cmd turns it off for the gesture's samples.
+test.describe("E2E path editing — snapping", () => {
+  test.beforeEach(async ({ page }) => {
+    await loadPathEditFixture(page);
+  });
+
+  test("AC-SNAP-1 — a dragged anchor lands on another anchor's alignment line; Cmd lets it miss @feat:editor-tools.path.direct-edit @level:gesture", async ({
+    page,
+  }) => {
+    const before = await mustTable(page, FX.quad);
+    await enterPathEdit(page, FX.quad);
+    // Anchor 0 (100,100) dragged to just above the bottom edge's y = 300
+    // (anchors 2 and 3): it lands ON the line, and x is the pointer's.
+    await drag(page, [100, 100], [150, 299.4]);
+    await expect.poll(async () => (await mustTable(page, FX.quad)).anchors[0].anchor[1]).toBe(300);
+    const snapped = await mustTable(page, FX.quad);
+    expect(Math.abs(snapped.anchors[0].anchor[0] - 150)).toBeLessThan(0.75);
+    expectUntouched(snapped, before, [1, 2, 3]);
+    await expectOneUndoRestores(page, FX.quad, before);
+
+    // The same drag with Cmd held from the press: no snap.
+    await enterPathEdit(page, FX.quad);
+    await page.keyboard.down("Meta");
+    await drag(page, [100, 100], [150, 299.4]);
+    await page.keyboard.up("Meta");
+    await expect
+      .poll(async () => (await mustTable(page, FX.quad)).anchors[0].anchor[1])
+      .not.toBe(100);
+    expect((await mustTable(page, FX.quad)).anchors[0].anchor[1]).not.toBe(300);
+  });
+
+  test("AC-SNAP-2 — the Pen places on the page edge and on its own anchor's line @feat:editor-tools.draw.pen @feat:plugin-draw.pen-machine @level:gesture", async ({
+    page,
+  }) => {
+    await activateTool(page, "pen");
+    const elements = await elementKeys(page);
+    // 0.4 pt in from the page's left edge, then level with the first
+    // anchor give or take 0.4 pt — both well inside 6 px.
+    await penClick(page, [0.4, 480]);
+    await penClick(page, [250, 480.4]);
+    await page.keyboard.press("Enter");
+    await expect.poll(async () => (await elementKeys(page)).length).toBe(elements.length + 1);
+    const added = (await elementKeys(page)).find((k) => !elements.includes(k))!;
+    const [kind, id] = added.split(":");
+    const table = await mustTable(page, { kind, id });
+    expect(table.anchors).toHaveLength(2);
+    expect(table.anchors[0].anchor[0]).toBe(0);
+    expect(table.anchors[1].anchor[1]).toBe(table.anchors[0].anchor[1]);
   });
 });

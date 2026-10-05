@@ -58,7 +58,12 @@ import type {
   PathEditView,
 } from "@paged-media/shell";
 
-import { isCornerAnchor } from "@paged-media/draw/geometry";
+import {
+  anchorTargets,
+  isCornerAnchor,
+  snapPoint,
+  type SnapTarget,
+} from "@paged-media/draw/geometry";
 import {
   DirectSelectMachine,
   anchorEditOps,
@@ -72,6 +77,7 @@ import {
 } from "@paged-media/draw/machines";
 
 import { hitPathTable, pathHitRadii } from "./path-hit";
+import { SNAP_TOLERANCE_PX, snappingOn } from "../handlers/snapper";
 
 /** Pointer travel under which a press and release is a click — the
  *  canvas's own click-vs-drag threshold, so a click means the same
@@ -187,6 +193,13 @@ export class DirectSelectSession implements PathEditSession {
    *  in, its indices are not the engine's: input waits. */
   private pendingActions = 0;
   private lastAnchorClick: { index: number; at: number } | null = null;
+  /** An anchor drag in progress (RFI C-68): the grabbed anchor's start,
+   *  where the press landed, and the other anchors it may snap to. */
+  private grab: {
+    start: readonly [number, number];
+    down: readonly [number, number];
+    targets: SnapTarget[];
+  } | null = null;
   private disposed = false;
 
   constructor(options: DirectSelectSessionOptions) {
@@ -227,20 +240,56 @@ export class DirectSelectSession implements PathEditSession {
   pointerDown(pointer: PathEditPointer): void {
     this.retune(pointer.ptPerPx);
     if (!this.machine || this.pendingActions > 0) return;
+    const hit = this.hitAt(pointer);
+    this.grab = null;
+    if (hit.kind === "anchor") {
+      const anchors = this.machine.snapshot().table.anchors;
+      const start = anchors[hit.index]?.anchor;
+      if (start) {
+        this.grab = {
+          start: [start[0], start[1]],
+          down: [pointer.point[0], pointer.point[1]],
+          targets: anchorTargets(
+            // Not itself, and not the other SELECTED anchors — they move
+            // with it, so snapping to one would be snapping to nothing.
+            anchors
+              .filter((_, i) => i !== hit.index && !this.selected.includes(i))
+              .map((a) => [a.anchor[0], a.anchor[1]]),
+          ),
+        };
+      }
+    }
     this.machine.handle({
       type: "down",
       point: pointer.point,
-      hit: this.hitAt(pointer),
+      hit,
       modifiers: pointer.modifiers,
     });
     this.publish();
+  }
+
+  /** The pointer moved so that the GRABBED anchor — not the pointer —
+   *  lands on a snap target: the anchor follows the pointer by the drag
+   *  delta, that position is snapped against the path's other anchors
+   *  (points, then their x / y alignment lines), and the pointer is
+   *  shifted by the same correction. Cmd, Shift (constrain) and View ▸
+   *  Snap to points off all bypass it. */
+  private snapped(pointer: PathEditPointer): readonly [number, number] {
+    const g = this.grab;
+    if (!g || !snappingOn(pointer.modifiers)) return pointer.point;
+    const at: [number, number] = [
+      g.start[0] + pointer.point[0] - g.down[0],
+      g.start[1] + pointer.point[1] - g.down[1],
+    ];
+    const to = snapPoint(at, g.targets, SNAP_TOLERANCE_PX * pointer.ptPerPx).point;
+    return [pointer.point[0] + to[0] - at[0], pointer.point[1] + to[1] - at[1]];
   }
 
   pointerMove(pointer: PathEditPointer): void {
     if (!this.machine) return;
     this.machine.handle({
       type: "move",
-      point: pointer.point,
+      point: this.snapped(pointer),
       modifiers: pointer.modifiers,
     });
     this.publish();
@@ -252,9 +301,10 @@ export class DirectSelectSession implements PathEditSession {
     if (!this.machine) return "emptyClick";
     const snap = this.machine.handle({
       type: "up",
-      point: pointer.point,
+      point: this.snapped(pointer),
       modifiers: pointer.modifiers,
     });
+    this.grab = null;
     let release: PathEditRelease = "consumed";
     if (snap.commit) {
       this.commit(snap.commit);
