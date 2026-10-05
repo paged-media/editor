@@ -694,11 +694,21 @@ test.describe("plugin surface · paged.web", () => {
       .poll(() => selectedElement(page), { timeout: 10_000 })
       .not.toBeNull()
       .then(() => selectedElement(page));
-    const at = await elementScreenCenter(page, frame!);
-    await page.mouse.dblclick(at!.x, at!.y);
-    await expect(page.locator("[data-edit-context-breadcrumb]")).toBeVisible({
-      timeout: 15_000,
+    // The insert also docks the frame's source panel, which re-lays the
+    // canvas out — a screen point read before that settles can land
+    // beside the frame (the likely cause of this test's intermittent
+    // failures; not reproduced locally). Wait for the panel, then re-read
+    // the point on every attempt until the double-click enters the context.
+    await expect(page.locator("[data-web-html] [data-code-input]")).toBeVisible({
+      timeout: 10_000,
     });
+    const breadcrumb = page.locator("[data-edit-context-breadcrumb]");
+    await expect(async () => {
+      const at = await elementScreenCenter(page, frame!);
+      expect(at, "the inserted web frame has on-screen geometry").not.toBeNull();
+      await page.mouse.dblclick(at!.x, at!.y);
+      await expect(breadcrumb).toBeVisible({ timeout: 3_000 });
+    }).toPass({ timeout: 20_000 });
 
     await openWindowMenu();
     await expect(
