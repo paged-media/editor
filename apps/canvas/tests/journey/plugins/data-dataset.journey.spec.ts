@@ -156,10 +156,12 @@ test.describe("journey · paged.data dataset panel", () => {
     // ── 6. PUBLISH PROVIDER (§7.1 / D-09, data.provider.contract) — the engine
     //    produces the publication (id + revision etag). The panel renders the
     //    provider id + revision in user language (canary.6 / U12 dropped the
-    //    RFI-speak); the engine still returned a real publication either way. ──
+    //    RFI-speak). The editor injects the data-provider registry, so since
+    //    canary.10 the panel says the provider IS shared (the "can't share
+    //    yet" note is only for a host without the registry). ──
     await page.getByRole("button", { name: /publish provider/i }).click();
     await expect(
-      page.getByText(/provider ".*-dataset" \(revision .*\) is ready/i),
+      page.getByText(/provider ".*-dataset" \(revision .*\) is shared with other plugins/i),
     ).toBeVisible({
       timeout: 10_000,
     });
