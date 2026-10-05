@@ -99,6 +99,12 @@ test.describe("journey · paged.web render output", () => {
     if (await css.isVisible().catch(() => false)) {
       await css.fill("html,body{margin:0;background:#101820}");
     }
+    // The baseline is taken BEFORE the save: a bundle that renders on
+    // save (plugin-web's auto render) has already painted by the time
+    // renderWebFrame runs, and a re-render of the same layer changes
+    // nothing — the oracle is "the web frame painted", not "this command
+    // was the first to paint it".
+    const before = await designer.renderBytes();
     const save = page.locator("[data-web-commit]");
     if (await save.isEnabled().catch(() => false)) {
       await save.click();
@@ -106,7 +112,6 @@ test.describe("journey · paged.web render output", () => {
     }
 
     // ── 2. RENDER — renderWebFrame loads Blitz + submits a C-1 sceneLayer. ──
-    const before = await designer.renderBytes();
     await invoke(page, RENDER);
     await expect
       .poll(() => sawSubmitted() || sawNotLoaded(), { timeout: 15_000 })
@@ -161,5 +166,131 @@ test.describe("journey · paged.web render output", () => {
     const settled = await designer.renderBytes();
     const again = await designer.renderBytes();
     await designer.expectRenderStable(settled, again);
+  });
+
+  // Protocol 68 — the web text reaches the engine as VALUES, not just
+  // pixels: each run names its family (the bundle's vendored Inter) and,
+  // from the face-carrying bundle on, its CSS weight; with Inter registered
+  // by name the host's report (`fontFallbacks`, returned to the bundle
+  // from `SceneLayerSurface.submit`) is empty — nothing drew in a face the
+  // run did not ask for. Read at the editor's client, the object the
+  // PagedEditor's `sceneLayers.submit` closes over.
+  test("a web frame's rendered text carries its face on the wire and nothing falls back when the document registers Inter @feat:plugin-web.engine-rendering @feat:plugin-platform.scene-layer @level:edge", async ({
+    page,
+  }) => {
+    const designer = new Designer(page);
+    await designer.open();
+    await designer.newDocument();
+
+    // Inter BY NAME: the editor's default Inter is the document default
+    // font, which the engine counts as a fallback for a run naming it.
+    await page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              registerFont(f: string, b: Uint8Array, s?: string | null): Promise<void>;
+            };
+          };
+        }
+      ).__canvas;
+      const resp = await fetch("/fonts/Inter.ttf");
+      if (!resp.ok) throw new Error(`/fonts/Inter.ttf: ${resp.status}`);
+      await c.client.registerFont("Inter", new Uint8Array(await resp.arrayBuffer()), null);
+    });
+
+    await page.evaluate(() => {
+      type Fn = (...a: unknown[]) => Promise<unknown>;
+      const g = globalThis as unknown as {
+        __paged: { client: Record<string, Fn> };
+        __webFaces: Array<{ items: unknown[]; fontFallbacks: unknown }>;
+      };
+      g.__webFaces = [];
+      const c = g.__paged.client;
+      const orig = c.submitSceneLayer.bind(c);
+      c.submitSceneLayer = async (...args: unknown[]) => {
+        const reply = (await orig(...args)) as { fontFallbacks?: unknown };
+        const layer = args[1] as { items?: unknown[] };
+        g.__webFaces.push({
+          items: (layer.items ?? []).filter(
+            (i) => (i as { kind?: string }).kind === "text",
+          ),
+          fontFallbacks: reply?.fontFallbacks,
+        });
+        return reply;
+      };
+    });
+
+    const logs: string[] = [];
+    page.on("console", (m) => {
+      const t = m.text();
+      if (/renderWebFrame:/i.test(t)) logs.push(t);
+    });
+
+    await invoke(page, INSERT);
+    const html = page.locator("[data-web-html] [data-code-input]");
+    await expect(html).toBeVisible({ timeout: 6_000 });
+    await html.fill(
+      "<p style='margin:0;font:700 28px Inter;color:#101820'>Spring line sheet</p>",
+    );
+    // Baseline before the save, as above (a bundle may render on save).
+    const before = await designer.renderBytes();
+    const save = page.locator("[data-web-commit]");
+    if (await save.isEnabled().catch(() => false)) {
+      await save.click();
+      await page.waitForTimeout(300);
+    }
+
+    await invoke(page, RENDER);
+    await expect
+      .poll(() => logs.some((l) => /scene layer submitted|engine not loaded/i.test(l)), {
+        timeout: 15_000,
+      })
+      .toBe(true);
+    if (!logs.some((l) => /scene layer submitted/i.test(l))) {
+      test.skip(true, "the Blitz engine did not load in this realm — no scene text to read");
+    }
+
+    type Item = { text?: string; family?: string; weight?: number; italic?: boolean };
+    const read = () =>
+      page.evaluate(
+        () =>
+          (
+            globalThis as unknown as {
+              __webFaces: Array<{ items: unknown[]; fontFallbacks: unknown }>;
+            }
+          ).__webFaces,
+      );
+    // The submit that carries the text (an auto render may submit first).
+    await expect
+      .poll(async () => (await read()).some((s) => s.items.length > 0), { timeout: 10_000 })
+      .toBe(true);
+    const submits = await read();
+    const last = [...submits].reverse().find((s) => s.items.length > 0)!;
+    const items = last.items as Item[];
+
+    // HARD — the face is on the wire and the host reports, as values.
+    expect(
+      items.map((i) => i.text ?? "").join(""),
+      "the run text is the source text",
+    ).toContain("Spring");
+    for (const it of items) {
+      expect(it.family, `run ${JSON.stringify(it)} names its family`).toBe("Inter");
+      if (it.weight !== undefined) {
+        expect(it.weight, "a weight-carrying run carries the CSS weight").toBe(700);
+      }
+    }
+    expect(last.fontFallbacks, "the host reports fallbacks as a list").toEqual([]);
+    const weighted = items.filter((i) => i.weight !== undefined).length;
+    test.info().annotations.push({
+      type: "faces",
+      description:
+        weighted > 0
+          ? `${weighted}/${items.length} runs carry weight 700`
+          : `the installed @paged-media/web predates per-run weight (${items.length} runs, family only)`,
+    });
+
+    // And it paints.
+    await designer.expectRenderChangesFrom(before);
   });
 });
