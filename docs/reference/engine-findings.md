@@ -322,7 +322,7 @@ real document, deleting an early rectangle from a spread that groups
 later ones is refused until this is fixed.
 
 **Suite anchor.** `e2e/object-commands.spec.ts` AC-OBJ-ENGINE-1
-(`test.fail`); AC-OBJ-17 / AC-OBJ-18 pin the editor's two guards.
+(`test.fail`); AC-OBJ-17 / AC-OBJ-18 pinned the editor's two guards (both lifted since 0.65, below).
 
 **Fixed in 0.65** (core 4fa48f1: `register_frame_ref` /
 `unregister_frame_ref` renumber group members and drop the removed ref).
@@ -333,9 +333,11 @@ Deleting EVERY member of a group without dissolving it leaves an empty
 `group:<id>` in the tree (undo restored it in this measurement;
 paged.draw pinned a flow where it does not).
 AC-OBJ-ENGINE-1 is a plain pin now. The editor's read-back-and-undo guard
-was removed and AC-OBJ-18 asserts the ordinary delete; the member refusal
-(AC-OBJ-17) stays as host policy because of the empty-group case, with a
-reason that no longer blames the renumbering.
+was removed and AC-OBJ-18 asserts the ordinary delete. The member refusal
+was lifted too: a member is deleted on its own and its group keeps the
+rest, and a group the delete EMPTIES is dissolved in the same batch, so
+no empty `group:<id>` is left and one undo restores it (AC-OBJ-17,
+measured on 0.67.0).
 
 ## 11. Undo of deleteFrame restores a bare frame (FIXED in 0.65 — the residue of #4)
 

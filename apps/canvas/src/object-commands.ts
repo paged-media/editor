@@ -75,18 +75,19 @@
 //     `deleteFrame` per leaf, in ONE batch — and one undo brings the
 //     group back under its own id with its members in order.
 //
-//  6. A MEMBER OF A GROUP THAT STAYS IS NOT DELETED FROM HERE. Up to
+//  6. A MEMBER OF A GROUP IS DELETED ON ITS OWN. Up to
 //     engine 0.64 `deleteFrame` did not renumber group member tables
 //     (engine-findings §10): deleting a member, or any OLDER item of the
 //     same kind, left a surviving group pointing at its neighbours, so
 //     this layer refused the member case and read the member tables back
 //     after every other delete, undoing it on a difference. 0.65 fixed
 //     the renumbering (core 4fa48f1), and the read-back went with it: a
-//     delete below a group is an ordinary delete (AC-OBJ-18). The member
-//     refusal stays, as host policy: one member out of a two-plus group
-//     now lands right, but deleting EVERY member leaves an empty
-//     `group:<id>` behind in the tree (measured on 0.66.0), and paged.draw
-//     pinned an undo that does not restore it. See `deletePlan`.
+//     delete below a group is an ordinary delete (AC-OBJ-18), and so is
+//     a member delete (AC-OBJ-17): the group keeps its other members.
+//     Deleting EVERY member one by one would leave an empty `group:<id>`
+//     in the tree (measured on 0.66.0), whose undo paged.draw pinned as
+//     incomplete — so a group the delete empties is dissolved in the
+//     same batch (fact 5's shape). See `deletePlan`.
 //
 //  7. NUDGE IS A TRANSFORM WRITE, NEVER A BOUNDS WRITE. A page item's
 //     `ItemTransform` is the last step into spread space, so adding the
@@ -591,11 +592,11 @@ export type DeletePlan =
  *  · A selected item INSIDE a selected group is covered by the group
  *    and emits nothing of its own (the engine would refuse the second
  *    delete of an id that is already gone).
- *  · A selected item inside a group that is NOT selected is REFUSED,
- *    here, before the wire (fact 6). Up to engine 0.64 the engine left
- *    the group holding the wrong members; 0.65 takes one member out
- *    correctly, but taking every member out leaves an empty group, so
- *    the host keeps asking for the whole group or an ungroup first.
+ *  · A selected item inside a group that is NOT selected is deleted
+ *    on its own (fact 6) — a nested group as a whole — and the group
+ *    keeps its other members. A group left with NO members is
+ *    dissolved in the same batch, outermost first, ahead of everything
+ *    else, so nothing empty stays behind and one undo restores it.
  *
  * An id the tree does not carry still gets its op — a stale leaf is
  * the engine's to refuse, in its own words, and a pasted-into child is
@@ -631,6 +632,8 @@ export function deletePlan(
   const deletes: Mutation[] = [];
   const removed: PageItemId[] = [];
   const unnested = new Set<string>();
+  /** Groups that hold a deleted member but are not themselves selected. */
+  const ancestors = new Map<string, ElementId>();
 
   /** Release + remove everything clipped inside `container`, deepest
    *  first. Guarded, so an index that lists an item twice (or a cycle
@@ -673,20 +676,41 @@ export function deletePlan(
       continue;
     }
     if (place.groups.some((g) => seen.has(elementKey(g)))) continue; // covered.
-    const parent = place.groups[place.groups.length - 1];
-    if (parent) {
-      return {
-        ok: false,
-        reason:
-          `${describeElement(id)} is inside ${describeElement(parent)}. ` +
-          "Items are not deleted out of a group one by one here — select " +
-          "the whole group, or ungroup first.",
-      };
-    }
+    // A member of a group that is NOT selected goes on its own (fact 6):
+    // the engine takes it out and keeps the rest of the group.
+    for (const g of place.groups) ancestors.set(elementKey(g), g);
     collect(place.node);
   }
 
-  return { ok: true, ops: [...dissolves, ...deletes], removed };
+  // A group whose every member is going is dissolved in the same batch,
+  // so no empty `group:<id>` is left behind and one undo brings it back
+  // (fact 5). Checked innermost first, so a group emptied only because
+  // its last child was an emptied group goes too; dissolved outermost
+  // first, ahead of every other op, like a selected group.
+  const gone = new Set(removed.map(elementKey));
+  for (const op of dissolves) {
+    if (op.op === "dissolveGroup") gone.add(`group:${op.args.groupId}`);
+  }
+  const emptied: { id: PageItemId; depth: number }[] = [];
+  const byDepth = [...ancestors.values()]
+    .map((id) => ({ id, place: places.get(elementKey(id)) }))
+    .filter((a): a is { id: ElementId; place: TreePlace } => !!a.place)
+    .sort((a, b) => b.place.groups.length - a.place.groups.length);
+  for (const { id, place } of byDepth) {
+    const children = place.node.children ?? [];
+    const allGone =
+      children.length > 0 &&
+      children.every((c) => !!c.id && gone.has(elementKey(c.id)));
+    if (allGone && isPageItem(id)) {
+      gone.add(elementKey(id));
+      emptied.push({ id, depth: place.groups.length });
+    }
+  }
+  const emptiedOps: Mutation[] = emptied
+    .sort((a, b) => a.depth - b.depth)
+    .map(({ id }) => ({ op: "dissolveGroup", args: { groupId: id.id } }));
+
+  return { ok: true, ops: [...emptiedOps, ...dissolves, ...deletes], removed };
 }
 
 /** A 2×3 affine as the wire carries it: `[a b c d tx ty]`. */

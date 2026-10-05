@@ -497,9 +497,9 @@ test.describe("paged.object — the edit-context guard", () => {
 // ── Delete ───────────────────────────────────────────────────────────
 //
 // The plan is where two things are kept off the wire: a group id handed
-// to `deleteFrame` (the engine refuses it), and a member removed from a
-// group that is staying (host policy since engine 0.65 fixed the member
-// renumbering — taking every member out still leaves an empty group).
+// to `deleteFrame` (the engine refuses it), and an EMPTY group left
+// behind when a delete takes every member of one (it is dissolved in
+// the same batch instead).
 // The e2e tier proves the engine behaviour; this tier proves the plan
 // for every shape of selection, which an e2e test can only sample.
 
@@ -560,22 +560,58 @@ test.describe("paged.object — the delete plan", () => {
     }
   });
 
-  test("AC-OBJ-PURE-14 — a member of a group that STAYS is refused, naming both @feat:frames-paths.frame.delete @feat:frames-paths.groups @level:edge", () => {
+  test("AC-OBJ-PURE-14 — a member of a group goes on its own; a group the delete EMPTIES is dissolved first @feat:frames-paths.frame.delete @feat:frames-paths.groups @level:edge", () => {
+    // One member of a group that keeps another: just the member.
     const leafCase = deletePlan([rect("free"), rect("o1")], roots);
-    expect(leafCase.ok).toBe(false);
-    if (leafCase.ok) return;
-    expect(leafCase.reason).toContain("rectangle o1");
-    expect(leafCase.reason).toContain("group gOther");
-    expect(leafCase.reason).toContain("ungroup first");
+    expect(leafCase.ok).toBe(true);
+    if (!leafCase.ok) return;
+    expect(leafCase.ops).toEqual([
+      { op: "deleteFrame", args: { frameId: "free" } },
+      { op: "deleteFrame", args: { frameId: "o1" } },
+    ]);
 
-    // A nested group inside a surviving one is the same case: its
-    // dissolve would splice the leaves into the parent, and deleting
-    // them there is a member delete.
+    // A nested group inside a surviving one: dissolved and its leaves
+    // removed; the outer group keeps `shallow`.
     const nested = deletePlan([g("gInner")], roots);
-    expect(nested.ok).toBe(false);
-    if (nested.ok) return;
-    expect(nested.reason).toContain("group gInner");
-    expect(nested.reason).toContain("group gOuter");
+    expect(nested.ok).toBe(true);
+    if (!nested.ok) return;
+    expect(nested.ops).toEqual([
+      { op: "dissolveGroup", args: { groupId: "gInner" } },
+      { op: "deleteFrame", args: { frameId: "deep1" } },
+      { op: "deleteFrame", args: { frameId: "deep2" } },
+    ]);
+
+    // Every member selected, the group not: the group is dissolved in
+    // the same batch, ahead of the deletes, so nothing empty stays.
+    const every = deletePlan([rect("o2"), rect("o1")], roots);
+    expect(every.ok).toBe(true);
+    if (!every.ok) return;
+    expect(every.ops).toEqual([
+      { op: "dissolveGroup", args: { groupId: "gOther" } },
+      { op: "deleteFrame", args: { frameId: "o2" } },
+      { op: "deleteFrame", args: { frameId: "o1" } },
+    ]);
+
+    // Emptying cascades: the inner group's leaves and `shallow` leave
+    // gInner AND gOuter empty — both dissolved, outermost first.
+    const cascade = deletePlan([rect("deep1"), rect("shallow"), rect("deep2")], roots);
+    expect(cascade.ok).toBe(true);
+    if (!cascade.ok) return;
+    expect(cascade.ops).toEqual([
+      { op: "dissolveGroup", args: { groupId: "gOuter" } },
+      { op: "dissolveGroup", args: { groupId: "gInner" } },
+      { op: "deleteFrame", args: { frameId: "deep1" } },
+      { op: "deleteFrame", args: { frameId: "shallow" } },
+      { op: "deleteFrame", args: { frameId: "deep2" } },
+    ]);
+
+    // Partly: gInner emptied, gOuter keeps `shallow`.
+    const partly = deletePlan([rect("deep1"), rect("deep2")], roots);
+    expect(partly.ok && partly.ops).toEqual([
+      { op: "dissolveGroup", args: { groupId: "gInner" } },
+      { op: "deleteFrame", args: { frameId: "deep1" } },
+      { op: "deleteFrame", args: { frameId: "deep2" } },
+    ]);
   });
 
   test("AC-OBJ-PURE-15 — content addresses are not page items; stale ids still reach the engine @feat:frames-paths.frame.delete @level:edge", () => {
@@ -692,13 +728,38 @@ test.describe("paged.object — delete, against a recorded client", () => {
     expect(r.reports).toEqual([]);
   });
 
-  test("AC-OBJ-PURE-19 — a member of a surviving group never reaches the wire @feat:frames-paths.frame.delete @feat:frames-paths.groups @level:edge", async () => {
-    const r = recordingDeps([rect("a")], before, before);
-    await deleteSelection(r.deps);
-    expect(r.sent).toEqual([]);
-    expect(r.reports).toHaveLength(1);
-    expect(r.reports[0]!.message).toContain("Delete refused");
-    expect(r.reports[0]!.message).toContain("group g1");
+  test("AC-OBJ-PURE-19 — a member of a surviving group goes to the wire alone; its last members take the group with them @feat:frames-paths.frame.delete @feat:frames-paths.groups @level:edge", async () => {
+    // One member: a single deleteFrame, no report, selection cleared.
+    const one = recordingDeps(
+      [rect("a")],
+      before,
+      spreadOf([leaf("x"), group("g1", [leaf("b")]), leaf("z")]),
+    );
+    await deleteSelection(one.deps);
+    expect(one.sent).toEqual([{ op: "deleteFrame", args: { frameId: "a" } }]);
+    expect(one.reports).toEqual([]);
+    expect(one.selections).toEqual([[]]);
+
+    // Both members: ONE batch that dissolves g1 ahead of the deletes.
+    const both = recordingDeps(
+      [rect("a"), rect("b")],
+      before,
+      spreadOf([leaf("x"), leaf("z")]),
+    );
+    await deleteSelection(both.deps);
+    expect(both.sent).toEqual([
+      {
+        op: "batch",
+        args: {
+          ops: [
+            { op: "dissolveGroup", args: { groupId: "g1" } },
+            { op: "deleteFrame", args: { frameId: "a" } },
+            { op: "deleteFrame", args: { frameId: "b" } },
+          ],
+        },
+      },
+    ]);
+    expect(both.reports).toEqual([]);
   });
 
   test("AC-OBJ-PURE-20 — a deleted image frame posts no notice (undo keeps the image since engine 0.65) @feat:frames-paths.frame.delete @feat:round-tripping.undo-redo @level:edge", async () => {

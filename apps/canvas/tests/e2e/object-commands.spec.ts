@@ -1126,34 +1126,50 @@ test.describe("E2E paged.object.delete — against the real engine", () => {
     await expect.poll(() => geometry(page, [other])).toEqual([]);
   });
 
-  test("AC-OBJ-17 — one member of a group that stays is refused BEFORE the wire @feat:frames-paths.frame.delete @feat:frames-paths.groups @feat:editor-shell.panels.problems @level:edge", async ({
+  test("AC-OBJ-17 — one member of a group is deleted on its own; deleting EVERY member leaves no empty group; undo restores both @feat:frames-paths.frame.delete @feat:frames-paths.groups @feat:round-tripping.undo-redo @level:edge", async ({
     page,
   }) => {
     await openPanel(page, "paged.problems");
-    const [a, b, c] = await insertStack(page, 3);
-    await select(page, [a, b]);
+    const [a, b, c, free] = await insertStack(page, 4);
+    await select(page, [a, b, c]);
     await invokeCommand(page, GROUP);
     const groupRef = (await selection(page))[0];
     const structureBefore = await structure(page);
     expect(structureBefore).toBe(
-      `${key(groupRef)}[${key(a)},${key(b)}],${key(c)}`,
+      `${key(groupRef)}[${key(a)},${key(b)},${key(c)}],${key(free)}`,
     );
+    const before = await geometry(page, [a, b, c, free]);
 
-    await select(page, [a]);
+    // One member: it goes, the group keeps the other two where they were.
+    await select(page, [b]);
     await invokeCommand(page, DELETE);
+    const oneGone = `${key(groupRef)}[${key(a)},${key(c)}],${key(free)}`;
+    await expect.poll(() => structure(page)).toBe(oneGone);
+    expect(await geometry(page, [b])).toEqual([]);
+    expect(await geometry(page, [a, c, free])).toEqual([before[0], before[2], before[3]]);
+    await expect(objectProblem(page)).toHaveCount(0);
 
-    const problem = objectProblem(page);
-    await expect(problem).toHaveCount(1);
-    await expect(problem.locator("[data-problem-message]")).toContainText(
-      "Delete refused",
-    );
-    await expect(problem.locator("[data-problem-message]")).toContainText(
-      `group ${groupRef.id}`,
-    );
-    // Untouched: the member is still there, still selected, and there
-    // is nothing to undo — the document never changed.
+    await undo(page);
     expect(await structure(page)).toBe(structureBefore);
-    expect((await selection(page)).map(key)).toEqual([key(a)]);
+    expect(await geometry(page, [a, b, c, free])).toEqual(before);
+    const again = await redo(page);
+    expect(again.kind).toBe("redoApplied");
+    expect(await structure(page)).toBe(oneGone);
+    await undo(page);
+    expect(await structure(page)).toBe(structureBefore);
+
+    // Every member, the group itself NOT selected: nothing empty is left
+    // behind — the group is dissolved in the same batch — and ONE undo
+    // brings the group back under its own id with its members in order.
+    await select(page, [c, a, b]);
+    await invokeCommand(page, DELETE);
+    await expect.poll(() => structure(page)).toBe(key(free));
+    expect(await geometry(page, [a, b, c])).toEqual([]);
+    await expect(objectProblem(page)).toHaveCount(0);
+
+    await undo(page);
+    expect(await structure(page)).toBe(structureBefore);
+    expect(await geometry(page, [a, b, c, free])).toEqual(before);
   });
 
   test("AC-OBJ-18 — deleting an item BELOW a group leaves that group's members alone; one undo restores, redo re-deletes @feat:frames-paths.frame.delete @feat:frames-paths.groups @feat:round-tripping.undo-redo @feat:editor-shell.panels.problems @level:edge", async ({
