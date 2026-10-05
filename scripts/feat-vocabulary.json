@@ -5,7 +5,7 @@
     "by": "scripts/sync-feat-vocabulary.mjs",
     "commit": "4ae824bffeb29846f5c83d5e1c972b667a30f501"
   },
-  "count": 580,
+  "count": 582,
   "ids": [
     "anchored-inline-objects.anchor-alignment",
     "anchored-inline-objects.anchored-frames",
@@ -332,6 +332,7 @@
     "plugin-draw.bundle-manifest",
     "plugin-draw.compound-paths",
     "plugin-draw.corner-radius-tool",
+    "plugin-draw.direct-selection",
     "plugin-draw.edit-context-live",
     "plugin-draw.eyedropper",
     "plugin-draw.fill-schema-panel",
@@ -350,6 +351,7 @@
     "plugin-draw.opacity-mask-commands",
     "plugin-draw.path-weld",
     "plugin-draw.pattern-bake",
+    "plugin-draw.pen-existing-paths",
     "plugin-draw.pen-machine",
     "plugin-draw.pencil-pressure",
     "plugin-draw.pro-path-toolset",

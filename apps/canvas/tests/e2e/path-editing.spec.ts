@@ -371,7 +371,7 @@ test.describe("E2E path editing — anchors, handles and segments", () => {
     await loadPathEditFixture(page);
   });
 
-  test("AC-PATHEDIT-1 — dragging an anchor moves it and ONLY it; the overlay previews, the page repaints, one undo restores @feat:editor-tools.path.direct-edit @feat:geometry-coordinates.path-topology-ops @feat:round-tripping.undo-redo @level:gesture", async ({
+  test("AC-PATHEDIT-1 — dragging an anchor moves it and ONLY it; the overlay previews, the page repaints, one undo restores @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:geometry-coordinates.path-topology-ops @feat:round-tripping.undo-redo @level:gesture", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.quad);
@@ -454,7 +454,7 @@ test.describe("E2E path editing — anchors, handles and segments", () => {
     );
   });
 
-  test("AC-PATHEDIT-2 — a smooth anchor's handle drag swings BOTH handles; the opposite stays collinear and keeps its length @feat:editor-tools.path.direct-edit @feat:geometry-coordinates.bezier-path-geometry @feat:round-tripping.undo-redo @level:gesture", async ({
+  test("AC-PATHEDIT-2 — a smooth anchor's handle drag swings BOTH handles; the opposite stays collinear and keeps its length @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:geometry-coordinates.bezier-path-geometry @feat:round-tripping.undo-redo @level:gesture", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.arch);
@@ -483,7 +483,7 @@ test.describe("E2E path editing — anchors, handles and segments", () => {
     await expectOneUndoRestores(page, FX.arch, before);
   });
 
-  test("AC-PATHEDIT-3 — Alt drags one handle and leaves the other where it was @feat:editor-tools.path.direct-edit @feat:geometry-coordinates.bezier-path-geometry @feat:round-tripping.undo-redo @level:gesture", async ({
+  test("AC-PATHEDIT-3 — Alt drags one handle and leaves the other where it was @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:geometry-coordinates.bezier-path-geometry @feat:round-tripping.undo-redo @level:gesture", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.arch);
@@ -501,7 +501,7 @@ test.describe("E2E path editing — anchors, handles and segments", () => {
     await expectOneUndoRestores(page, FX.arch, before);
   });
 
-  test("AC-PATHEDIT-4 — dragging a segment bends it: the grabbed point follows the pointer, both anchors stay @feat:editor-tools.path.direct-edit @feat:geometry-coordinates.bezier-path-geometry @feat:round-tripping.undo-redo @level:gesture", async ({
+  test("AC-PATHEDIT-4 — dragging a segment bends it: the grabbed point follows the pointer, both anchors stay @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:geometry-coordinates.bezier-path-geometry @feat:round-tripping.undo-redo @level:gesture", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.quad);
@@ -526,7 +526,7 @@ test.describe("E2E path editing — anchors, handles and segments", () => {
     await expectOneUndoRestores(page, FX.quad, before);
   });
 
-  test("AC-PATHEDIT-5 — a marquee selects two anchors and one drag moves both, in one step @feat:editor-tools.path.direct-edit @feat:editor-tools.select.click-marquee @feat:round-tripping.undo-redo @level:gesture", async ({
+  test("AC-PATHEDIT-5 — a marquee selects two anchors and one drag moves both, in one step @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:editor-tools.select.click-marquee @feat:round-tripping.undo-redo @level:gesture", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.quad);
@@ -559,7 +559,7 @@ test.describe("E2E path editing — anchors, handles and segments", () => {
     await expectOneUndoRestores(page, FX.quad, before);
   });
 
-  test("AC-PATHEDIT-6 — Shift constrains the drag to 45° steps from where it began @feat:editor-tools.path.direct-edit @feat:round-tripping.undo-redo @level:gesture", async ({
+  test("AC-PATHEDIT-6 — Shift constrains the drag to 45° steps from where it began @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:round-tripping.undo-redo @level:gesture", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.quad);
@@ -576,7 +576,7 @@ test.describe("E2E path editing — anchors, handles and segments", () => {
     await expectOneUndoRestores(page, FX.quad, before);
   });
 
-  test("AC-PATHEDIT-7 — arrow keys nudge the selected anchor, not the frame; each press is its own undo step @feat:editor-tools.path.direct-edit @feat:editor-shell.keyboard-shortcuts @feat:round-tripping.undo-redo @level:gesture", async ({
+  test("AC-PATHEDIT-7 — arrow keys nudge the selected anchor, not the frame; each press is its own undo step @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:editor-shell.keyboard-shortcuts @feat:round-tripping.undo-redo @level:gesture", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.quad);
@@ -607,7 +607,7 @@ test.describe("E2E path editing — anchors, handles and segments", () => {
     await expectOneUndoRestores(page, FX.quad, before);
   });
 
-  test("AC-PATHEDIT-8 — Delete removes the selected anchors in one step, and refuses to starve a contour @feat:editor-tools.path.direct-edit @feat:geometry-coordinates.path-topology-ops @feat:editor-shell.panels.problems @feat:round-tripping.undo-redo @level:edge", async ({
+  test("AC-PATHEDIT-8 — Delete removes the selected anchors in one step, and refuses to starve a contour @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:geometry-coordinates.path-topology-ops @feat:editor-shell.panels.problems @feat:round-tripping.undo-redo @level:edge", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.quad);
@@ -652,7 +652,7 @@ test.describe("E2E path editing — anchors, handles and segments", () => {
     expect(await selectedAnchors(page)).toEqual([0, 1, 2]);
   });
 
-  test("AC-PATHEDIT-9 — Escape mid-drag cancels with nothing sent, and the mode stays on @feat:editor-tools.path.direct-edit @feat:editor-tools.gesture-lifecycle @level:edge", async ({
+  test("AC-PATHEDIT-9 — Escape mid-drag cancels with nothing sent, and the mode stays on @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:editor-tools.gesture-lifecycle @level:edge", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.quad);
@@ -683,7 +683,7 @@ test.describe("E2E path editing — anchors, handles and segments", () => {
     await expect(page.locator("[data-path-edit]")).toHaveCount(0);
   });
 
-  test("AC-PATHEDIT-10 — the clicks the overlay always had still work: double-click converts, a segment click inserts @feat:editor-tools.path.direct-edit @feat:geometry-coordinates.path-topology-ops @feat:round-tripping.undo-redo @level:gesture", async ({
+  test("AC-PATHEDIT-10 — the clicks the overlay always had still work: double-click converts, a segment click inserts @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:geometry-coordinates.path-topology-ops @feat:round-tripping.undo-redo @level:gesture", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.quad);
@@ -719,7 +719,7 @@ test.describe("E2E path editing — anchors, handles and segments", () => {
     await expectOneUndoRestores(page, FX.quad, before);
   });
 
-  test("AC-PATHEDIT-13 — the grab size and the click slop are screen distances: both follow the zoom @feat:editor-tools.path.direct-edit @feat:editor-tools.nav.zoom @feat:round-tripping.undo-redo @level:edge", async ({
+  test("AC-PATHEDIT-13 — the grab size and the click slop are screen distances: both follow the zoom @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:editor-tools.nav.zoom @feat:round-tripping.undo-redo @level:edge", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.quad);
@@ -783,7 +783,7 @@ test.describe("E2E path editing — a rotated path", () => {
     await loadPathEditFixture(page);
   });
 
-  test("AC-PATHEDIT-11 — the dots sit on the rotated outline, and a page-space drag is written in the path's own space @feat:editor-tools.path.direct-edit @feat:geometry-coordinates.path-topology-ops @feat:round-tripping.undo-redo @level:gesture", async ({
+  test("AC-PATHEDIT-11 — the dots sit on the rotated outline, and a page-space drag is written in the path's own space @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:geometry-coordinates.path-topology-ops @feat:round-tripping.undo-redo @level:gesture", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.rotated);
@@ -834,7 +834,7 @@ test.describe("E2E path editing — a rotated path", () => {
     await expectOneUndoRestores(page, FX.rotated, before);
   });
 
-  test("AC-PATHEDIT-12 — on a rotated path Shift constrains along the SCREEN's axes, the arrows nudge on the page, and the marquee selects where anchors show @feat:editor-tools.path.direct-edit @feat:editor-tools.select.click-marquee @feat:editor-shell.keyboard-shortcuts @feat:round-tripping.undo-redo @level:gesture", async ({
+  test("AC-PATHEDIT-12 — on a rotated path Shift constrains along the SCREEN's axes, the arrows nudge on the page, and the marquee selects where anchors show @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:editor-tools.select.click-marquee @feat:editor-shell.keyboard-shortcuts @feat:round-tripping.undo-redo @level:gesture", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.rotated);
@@ -897,7 +897,7 @@ test.describe("E2E path editing — the Direct Selection tool", () => {
     await loadPathEditFixture(page);
   });
 
-  test("AC-DIRECT-1 — a click on a path shows its anchors and edits them, with no Enter in between @feat:editor-tools.path.direct-edit @feat:editor-shell.tool-rail @feat:editor-tools.select.click-marquee @feat:round-tripping.undo-redo @level:gesture", async ({
+  test("AC-DIRECT-1 — a click on a path shows its anchors and edits them, with no Enter in between @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:editor-shell.tool-rail @feat:editor-tools.select.click-marquee @feat:round-tripping.undo-redo @level:gesture", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.openA);
@@ -923,7 +923,7 @@ test.describe("E2E path editing — the Direct Selection tool", () => {
     await expectOneUndoRestores(page, FX.openA, before);
   });
 
-  test("AC-DIRECT-2 — a click on a non-path element still selects it; another path takes the mode over; putting the tool down leaves it @feat:editor-tools.path.direct-edit @feat:editor-shell.tool-rail @feat:editor-tools.select.click-marquee @level:gesture", async ({
+  test("AC-DIRECT-2 — a click on a non-path element still selects it; another path takes the mode over; putting the tool down leaves it @feat:editor-tools.path.direct-edit @feat:plugin-draw.direct-selection @feat:editor-shell.tool-rail @feat:editor-tools.select.click-marquee @level:gesture", async ({
     page,
   }) => {
     await activateTool(page, "directSelect");
@@ -996,7 +996,7 @@ test.describe("E2E path editing — the Pen on existing paths", () => {
     await activateTool(page, "pen");
   });
 
-  test("AC-PENX-1 — pressing an open path's endpoint continues it: ONE element, more anchors, one undo @feat:editor-tools.draw.pen @feat:plugin-draw.pen-machine @feat:geometry-coordinates.path-topology-ops @feat:round-tripping.undo-redo @level:gesture", async ({
+  test("AC-PENX-1 — pressing an open path's endpoint continues it: ONE element, more anchors, one undo @feat:editor-tools.draw.pen @feat:plugin-draw.pen-machine @feat:plugin-draw.pen-existing-paths @feat:geometry-coordinates.path-topology-ops @feat:round-tripping.undo-redo @level:gesture", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.openA);
@@ -1024,7 +1024,7 @@ test.describe("E2E path editing — the Pen on existing paths", () => {
     await expectOneUndoRestores(page, FX.openA, before);
   });
 
-  test("AC-PENX-2 — ending on the path's own other endpoint closes it; one undo reopens it @feat:editor-tools.draw.pen @feat:plugin-draw.pen-machine @feat:frames-paths.path.close @feat:round-tripping.undo-redo @level:gesture", async ({
+  test("AC-PENX-2 — ending on the path's own other endpoint closes it; one undo reopens it @feat:editor-tools.draw.pen @feat:plugin-draw.pen-machine @feat:plugin-draw.pen-existing-paths @feat:frames-paths.path.close @feat:round-tripping.undo-redo @level:gesture", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.openA);
@@ -1047,7 +1047,7 @@ test.describe("E2E path editing — the Pen on existing paths", () => {
     await expectOneUndoRestores(page, FX.openA, before);
   });
 
-  test("AC-PENX-3 — ending on ANOTHER open path's endpoint joins the two into one element; one undo brings both back @feat:editor-tools.draw.pen @feat:plugin-draw.pen-machine @feat:frames-paths.path.join @feat:round-tripping.undo-redo @level:gesture", async ({
+  test("AC-PENX-3 — ending on ANOTHER open path's endpoint joins the two into one element; one undo brings both back @feat:editor-tools.draw.pen @feat:plugin-draw.pen-machine @feat:plugin-draw.pen-existing-paths @feat:frames-paths.path.join @feat:round-tripping.undo-redo @level:gesture", async ({
     page,
   }) => {
     const beforeA = await mustTable(page, FX.openA);
@@ -1083,7 +1083,7 @@ test.describe("E2E path editing — the Pen on existing paths", () => {
     expect(await elementKeys(page)).toEqual(elements);
   });
 
-  test("AC-PENX-4 — on the SELECTED path a segment click adds an anchor and an anchor click deletes one; elsewhere the Pen still draws a new path @feat:editor-tools.draw.pen @feat:plugin-draw.pen-machine @feat:geometry-coordinates.path-topology-ops @feat:frames-paths.path.insert @feat:round-tripping.undo-redo @level:gesture", async ({
+  test("AC-PENX-4 — on the SELECTED path a segment click adds an anchor and an anchor click deletes one; elsewhere the Pen still draws a new path @feat:editor-tools.draw.pen @feat:plugin-draw.pen-machine @feat:plugin-draw.pen-existing-paths @feat:geometry-coordinates.path-topology-ops @feat:frames-paths.path.insert @feat:round-tripping.undo-redo @level:gesture", async ({
     page,
   }) => {
     const before = await mustTable(page, FX.quad);
