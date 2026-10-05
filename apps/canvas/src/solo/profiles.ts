@@ -185,8 +185,10 @@ const DRAW_PROFILE: SoloProfile = {
  *
  * A CANVAS, and the size is the honest difference from draw: a photo
  * editor's document is the image's own pixel box, not a square artboard.
- * 1600×1200 is a starting canvas, replaced the moment a real image is
- * opened (paged.image's `openImage` sizes to the file).
+ * 1600×1200 is a starting canvas and it STAYS that size: nothing resizes
+ * the document to an image yet. paged.image's `openImage` command only
+ * raises its panel, and placing an image fits it into a frame on this
+ * canvas.
  *
  * Almost no HOST tools: unlike draw — whose 19 tools are all path
  * modifiers, so the host has to supply the pen and the shapes — paged.

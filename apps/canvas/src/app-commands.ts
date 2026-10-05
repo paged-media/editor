@@ -82,6 +82,49 @@ export interface AppCommandHandlers {
   zoomFit: () => void;
 }
 
+/** The undo hooks an active edit context may declare (ADR-012 Tier 1). */
+interface UndoOwner {
+  onUndo?(): boolean;
+  onCanUndo?(): boolean;
+  onCanRedo?(): boolean;
+  undoLabel?(): string | null;
+  redoLabel?(): string | null;
+}
+
+/** v66 — the edit context that owns undo right now, read off the editor
+ *  handle the menu evaluates against: the active frame's type, looked up
+ *  in the edit-context registry. `null` when the document stack owns it. */
+function undoOwner(state: unknown): UndoOwner | null {
+  const s = state as {
+    editContext?: { type?: string } | null;
+    registries?: { editContexts?: { get(type: string): unknown } };
+  } | null;
+  const type = s?.editContext?.type;
+  if (!type) return null;
+  const c = s?.registries?.editContexts?.get(type) as UndoOwner | undefined;
+  return c?.onUndo ? c : null;
+}
+
+/** Edit ▸ Undo/Redo enablement while a context owns undo: its
+ *  `onCanUndo` / `onCanRedo` (absent ⇒ enabled, ADR-012). The document
+ *  stack answers no probe, so outside a context the items stay live. */
+function undoOwnerAllows(state: unknown, which: "undo" | "redo"): boolean {
+  const owner = undoOwner(state);
+  if (!owner) return true;
+  const probe = which === "undo" ? owner.onCanUndo : owner.onCanRedo;
+  return probe ? probe.call(owner) : true;
+}
+
+/** "Undo Brush stroke" when the owning context names its next step. */
+function undoOwnerLabel(state: unknown, which: "undo" | "redo"): string | null {
+  const owner = undoOwner(state);
+  const name = owner
+    ? (which === "undo" ? owner.undoLabel : owner.redoLabel)?.call(owner)
+    : null;
+  if (!name) return null;
+  return `${which === "undo" ? "Undo" : "Redo"} ${name}`;
+}
+
 /** Build the canvas-app's command set. `handlers` is the bag of
  *  closures owned by `CanvasAppIntegration` — it's wired in there
  *  so the commands close over the same camera + animateCamera
@@ -167,6 +210,8 @@ export const APP_MENU_ITEMS: Array<{
   command: string;
   order?: number;
   group?: string;
+  when?: (state: unknown) => boolean;
+  labelFor?: (state: unknown) => string | null;
 }> = [
   // File menu — "Open PDF…" sits right after the shell's "Open IDML…"
   // (order 10, group "open"), the plugin-format sibling of the native open.
@@ -196,8 +241,22 @@ export const APP_MENU_ITEMS: Array<{
     group: "save",
   },
   // Edit menu
-  { path: "Edit/Undo", command: PAGED_EDITOR_UNDO, order: 10, group: "undo" },
-  { path: "Edit/Redo", command: PAGED_EDITOR_REDO, order: 20, group: "undo" },
+  {
+    path: "Edit/Undo",
+    command: PAGED_EDITOR_UNDO,
+    order: 10,
+    group: "undo",
+    when: (state) => undoOwnerAllows(state, "undo"),
+    labelFor: (state) => undoOwnerLabel(state, "undo"),
+  },
+  {
+    path: "Edit/Redo",
+    command: PAGED_EDITOR_REDO,
+    order: 20,
+    group: "undo",
+    when: (state) => undoOwnerAllows(state, "redo"),
+    labelFor: (state) => undoOwnerLabel(state, "redo"),
+  },
   // View menu
   {
     path: "View/Zoom in",

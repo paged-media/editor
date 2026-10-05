@@ -156,6 +156,45 @@ function describeGestureFailure(error: GestureFailure): string {
   return `${error.kind}: ${JSON.stringify(details)}`;
 }
 
+/** v66 — the buffers that may move to the worker: a view spanning its
+ *  whole, non-shared buffer. Anything else (a window onto wasm memory, a
+ *  SharedArrayBuffer) is copied by the structured clone instead —
+ *  transferring it would detach memory the caller does not own. */
+function transferable(views: readonly Uint8Array[]): Transferable[] {
+  const out: Transferable[] = [];
+  for (const v of views) {
+    const b = v.buffer;
+    if (
+      b instanceof ArrayBuffer &&
+      v.byteOffset === 0 &&
+      v.byteLength === b.byteLength &&
+      !out.includes(b)
+    ) {
+      out.push(b);
+    }
+  }
+  return out;
+}
+
+/** v66 — settle a binary scene-image reply. */
+function sceneImageApplied(
+  reply: WorkerToMain,
+  what: string,
+  elementId: string,
+): { pageIds: PageId[] } {
+  if (reply.kind !== "sceneLayerApplied") {
+    throw new Error(`${what}: unexpected reply ${reply.kind}`);
+  }
+  const p = reply.payload as { applied: boolean; pageIds?: PageId[] | null };
+  if (!p.applied) {
+    throw new Error(
+      `${what}("${elementId}"): the engine refused it (malformed buffer, ` +
+        `no image to patch, another plugin's frame, or no document)`,
+    );
+  }
+  return { pageIds: p.pageIds ?? [] };
+}
+
 export class CanvasClient {
   private readonly worker: Worker;
   private nextSeq = 1;
@@ -932,6 +971,179 @@ export class CanvasClient {
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
+  /** v66 — post one binary-door request and await its envelope reply.
+   *  Rides the same seq table as `send`, so a `dispatchError` warning
+   *  rejects it exactly like a JSON request. */
+  private postDirect(
+    msg: Record<string, unknown> & { op: string },
+    transfer: Transferable[],
+  ): Promise<WorkerToMain> {
+    if (this.fatal) return Promise.reject(this.fatal);
+    const seq = this.nextSeq++;
+    const promise = new Promise<WorkerToMain>((resolve, reject) => {
+      this.pending.set(seq, { resolve, reject });
+    });
+    this.worker.postMessage({ kind: "direct", seq, ...msg }, transfer);
+    return promise;
+  }
+
+  /** v66 — a byte READ on the binary doors (`directBytesReply`). */
+  private postDirectBytes<T>(msg: Record<string, unknown> & { op: string }): Promise<T> {
+    if (this.fatal) return Promise.reject(this.fatal);
+    const seq = this.nextSeq++;
+    const promise = new Promise<T>((resolve, reject) => {
+      this.bytesPending.set(seq, {
+        resolve: resolve as (v: unknown) => void,
+        reject,
+      });
+    });
+    this.worker.postMessage({ kind: "direct", seq, ...msg });
+    return promise;
+  }
+
+  private readonly bytesPending = new Map<
+    number,
+    { resolve: (v: unknown) => void; reject: (e: Error) => void }
+  >();
+
+  /**
+   * v66 — make the frame `elementId`'s scene layer ONE RGBA8 image
+   * (`width*height*4` bytes) drawn at `dest` (`[x, y, w, h]`,
+   * frame-content points), as bytes rather than a `number[]` in the JSON
+   * envelope. With `transfer` the buffer moves to the worker and is
+   * detached here (only when the view spans its whole, non-shared
+   * buffer; otherwise it is copied). Resolves with the pages the change
+   * repainted; rejects when the engine refused it (malformed buffer,
+   * another plugin's frame, no document).
+   */
+  async submitSceneImageBinary(
+    elementId: string,
+    image: {
+      rgba: Uint8Array;
+      width: number;
+      height: number;
+      dest: [number, number, number, number];
+    },
+    caller?: string,
+    transfer = false,
+  ): Promise<{ pageIds: PageId[] }> {
+    const reply = await this.postDirect(
+      {
+        op: "submitSceneImage",
+        elementId,
+        caller: caller ?? null,
+        rgba: image.rgba,
+        width: image.width,
+        height: image.height,
+        dest: image.dest,
+      },
+      transfer ? transferable([image.rgba]) : [],
+    );
+    return sceneImageApplied(reply, "submitSceneImageBinary", elementId);
+  }
+
+  /**
+   * v66 — patch rectangles of the image {@link submitSceneImageBinary}
+   * set: each tile is `x, y` (image pixels), `width × height` and its
+   * tightly packed RGBA8. The worker packs them; only the pages showing
+   * the frame repaint. All tiles are validated before any byte moves.
+   */
+  async submitSceneImageTilesBinary(
+    elementId: string,
+    tiles: ReadonlyArray<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      rgba: Uint8Array;
+    }>,
+    caller?: string,
+    transfer = false,
+  ): Promise<{ pageIds: PageId[] }> {
+    const reply = await this.postDirect(
+      {
+        op: "submitSceneImageTiles",
+        elementId,
+        caller: caller ?? null,
+        tiles: tiles.map((t) => ({
+          x: t.x,
+          y: t.y,
+          width: t.width,
+          height: t.height,
+          rgba: t.rgba,
+        })),
+      },
+      transfer ? transferable(tiles.map((t) => t.rgba)) : [],
+    );
+    return sceneImageApplied(reply, "submitSceneImageTilesBinary", elementId);
+  }
+
+  /** v66 — write a `.paged` part (`paged/…` path) as bytes. `caller`
+   *  confines the write to `paged/<caller>/` (C-34). */
+  async writePagedPartBinary(
+    path: string,
+    bytes: Uint8Array,
+    caller?: string,
+    transfer = false,
+  ): Promise<void> {
+    const reply = await this.postDirect(
+      { op: "writePagedPart", path, caller: caller ?? null, bytes },
+      transfer ? transferable([bytes]) : [],
+    );
+    if (reply.kind === "pagedPartWritten") return;
+    if (reply.kind === "pagedPartFailed") throw new Error(reply.payload.error);
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /** v66 — read a `.paged` part's bytes, or `null` when absent. */
+  readPagedPartBinary(path: string): Promise<Uint8Array | null> {
+    return this.postDirectBytes<Uint8Array | null>({ op: "readPagedPart", path });
+  }
+
+  /** v66 — delete a `.paged` part. Resolves whether it existed; a part
+   *  the loaded container carries is left out of the next save. */
+  async deletePagedPart(path: string, caller?: string): Promise<boolean> {
+    const reply = await this.send({
+      kind: "deletePagedPart",
+      payload: caller ? { path, caller } : { path },
+    } as never);
+    const r = reply as unknown as {
+      kind: string;
+      payload: { existed?: boolean; error?: string };
+    };
+    if (r.kind === "pagedPartDeleted") return r.payload.existed === true;
+    if (r.kind === "pagedPartFailed") throw new Error(r.payload.error);
+    throw new Error(`unexpected reply: ${r.kind}`);
+  }
+
+  /** v66 — a frame's placed image as bytes (`encoded`), or `null` when the
+   *  element holds none. */
+  placedAssetBytesBinary(elementId: string): Promise<{
+    uri: string;
+    width: number;
+    height: number;
+    encoded: Uint8Array;
+  } | null> {
+    return this.postDirectBytes({ op: "placedAssetBytes", elementId });
+  }
+
+  /**
+   * v66 — apply `mutation` (a `batch` too) handing `bytes` to its first
+   * `replaceImageBytes` whose `bytes` is `[]` — the commit lane for
+   * processed pixels without a `number[]`. Resolves with the same reply
+   * `mutate` does.
+   */
+  async mutateWithBytes(
+    mutation: Mutation,
+    bytes: Uint8Array,
+    transfer = false,
+  ): Promise<WorkerToMain> {
+    return this.postDirect(
+      { op: "mutateWithBytes", mutationJson: JSON.stringify(mutation), bytes },
+      transfer ? transferable([bytes]) : [],
+    );
+  }
+
   /**
    * C-6 (I-06) — claim a placed image's tiled mip pyramid (the v44 wire).
    * The worker registers the claim, rebuilds, and answers with the tiles
@@ -1482,6 +1694,9 @@ export class CanvasClient {
     const loads = [...this.loadDocPending.values()];
     const journals = [...this.journalPending.values()];
     const vellos = [...this.velloPending.values()];
+    const byteReads = [...this.bytesPending.values()];
+    this.bytesPending.clear();
+    for (const p of byteReads) p.reject(err);
     this.pending.clear();
     this.loadDocPending.clear();
     this.journalPending.clear();
@@ -1529,9 +1744,10 @@ export class CanvasClient {
       // request's seq. Only that caller is rejected.
       case "dispatchError":
         if (msg.seq !== null) {
-          const p = this.pending.get(msg.seq);
+          const p = this.pending.get(msg.seq) ?? this.bytesPending.get(msg.seq);
           if (p) {
             this.pending.delete(msg.seq);
+            this.bytesPending.delete(msg.seq);
             p.reject(new Error(`canvas worker dispatch failed: ${details}`));
           }
         }
@@ -1579,6 +1795,19 @@ export class CanvasClient {
     }
     // Sub-phase D side-channel: vello PNG readback replies bypass
     // the typed JSON envelope (transferable bytes ride directly).
+    if (raw && raw.kind === "directBytesReply") {
+      const r = event.data as {
+        seq: number;
+        bytes?: Uint8Array | null;
+        asset?: unknown;
+      };
+      const p = this.bytesPending.get(r.seq);
+      if (p) {
+        this.bytesPending.delete(r.seq);
+        p.resolve("asset" in r ? (r.asset ?? null) : (r.bytes ?? null));
+      }
+      return;
+    }
     if (raw && raw.kind === "journalDrainReply") {
       const reply = event.data as JournalDrain & { seq: number };
       const cb = this.journalPending.get(reply.seq);

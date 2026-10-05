@@ -207,5 +207,29 @@ export function useEditContextEntry() {
     [tryEnterEditContext],
   );
 
-  return { tryEnterEditContext, tryEnterOwnedContent };
+  /** v66 — enter a REGISTERED context of `type` on `element` without a
+   *  double-click (the plugin door `host.shell.enterEditContext`; the SDK
+   *  allows only the calling bundle's own types). Selects the element
+   *  first, as the double-click entry does — the controller exits any
+   *  context whose scope root leaves the selection. Resolves `false` when
+   *  no such context is registered. */
+  const enterContextByType = useCallback(
+    async (type: string, element: ElementId): Promise<boolean> => {
+      const real = editContexts.get(type);
+      if (!real) return false;
+      try {
+        const ids = await client.setElementSelection([element], "replace");
+        setElementSelection(ids);
+        const geom = await client.elementGeometry(ids);
+        setElementGeometry(geom);
+      } catch {
+        return false;
+      }
+      enter(real, element);
+      return true;
+    },
+    [client, editContexts, enter, setElementSelection, setElementGeometry],
+  );
+
+  return { tryEnterEditContext, tryEnterOwnedContent, enterContextByType };
 }

@@ -67,6 +67,11 @@ export interface MenuItemContribution {
    * inert until the evaluator lands in a later step). */
   when?: VisibilityPredicate;
 
+  /** v66 — a label computed from application state at render ("Undo
+   *  Brush stroke"). `null` / absent ⇒ the path's own label. Evaluated
+   *  like `when`; a throw falls back to the static label. */
+  labelFor?: (state: unknown) => string | null;
+
   /** F1 — this entry is a HOST COURTESY for a plugin's command, and
    *  stands down the moment that plugin contributes its own.
    *
