@@ -77,7 +77,12 @@ import {
 } from "@paged-media/draw/machines";
 
 import { hitPathTable, pathHitRadii } from "./path-hit";
-import { SNAP_TOLERANCE_PX, snappingOn } from "../handlers/snapper";
+import {
+  SNAP_TOLERANCE_PX,
+  snappingOn,
+  type EngineSnapQuery,
+  type EngineSnapResult,
+} from "../handlers/snapper";
 
 /** Pointer travel under which a press and release is a click — the
  *  canvas's own click-vs-drag threshold, so a click means the same
@@ -139,6 +144,11 @@ export interface DirectSelectSessionOptions {
   /** A refusal, in words for the user: the machine's (a Delete that
    *  would starve a contour) or the engine's own sentence. */
   report?: PathEditReport;
+  /** v67 (RFI C-68) — the engine's point snapper. With it, a dragged
+   *  anchor snaps to every visible element, the page, guides and the
+   *  grid, not only this path's other anchors. `null` from it (an engine
+   *  before v67) keeps the local snap. */
+  snapEngine?: (query: EngineSnapQuery) => Promise<EngineSnapResult | null>;
 }
 
 /** The engine's own sentence for a refused mutation, or null when it
@@ -199,7 +209,15 @@ export class DirectSelectSession implements PathEditSession {
     start: readonly [number, number];
     down: readonly [number, number];
     targets: SnapTarget[];
+    index: number;
   } | null = null;
+  /** v67 — the engine's answer for one dragged position (`key`), so a
+   *  move or the release at that position uses it; and the pointer of
+   *  the newest move, so a late answer for an older position is dropped
+   *  and a fresh one is applied by re-running that move. */
+  private engineSnap: { key: string; at: readonly [number, number] } | null = null;
+  private engineAsked: string | null = null;
+  private lastMove: PathEditPointer | null = null;
   private disposed = false;
 
   constructor(options: DirectSelectSessionOptions) {
@@ -256,7 +274,10 @@ export class DirectSelectSession implements PathEditSession {
               .filter((_, i) => i !== hit.index && !this.selected.includes(i))
               .map((a) => [a.anchor[0], a.anchor[1]]),
           ),
+          index: hit.index,
         };
+        this.engineSnap = null;
+        this.engineAsked = null;
       }
     }
     this.machine.handle({
@@ -281,12 +302,55 @@ export class DirectSelectSession implements PathEditSession {
       g.start[0] + pointer.point[0] - g.down[0],
       g.start[1] + pointer.point[1] - g.down[1],
     ];
-    const to = snapPoint(at, g.targets, SNAP_TOLERANCE_PX * pointer.ptPerPx).point;
+    const key = `${at[0]},${at[1]}`;
+    const engine = this.engineSnap?.key === key ? this.engineSnap.at : null;
+    if (!engine) this.askEngine(key, at, pointer);
+    const to = engine ?? snapPoint(at, g.targets, SNAP_TOLERANCE_PX * pointer.ptPerPx).point;
     return [pointer.point[0] + to[0] - at[0], pointer.point[1] + to[1] - at[1]];
+  }
+
+  /** v67 — ask the engine to snap the dragged position. The local snap
+   *  has already answered this sample; when the engine's answer comes
+   *  back for the position the drag is still at, that move is re-run
+   *  with it (and the release at that position uses it). An answer for a
+   *  position the drag has left is dropped. */
+  private askEngine(
+    key: string,
+    at: readonly [number, number],
+    pointer: PathEditPointer,
+  ): void {
+    const ask = this.options.snapEngine;
+    const pageId = this.reply?.pageId;
+    const g = this.grab;
+    if (!ask || !pageId || !g || this.engineAsked === key) return;
+    this.engineAsked = key;
+    const exclude = [
+      { id: this.target, anchors: [g.index, ...this.selected.filter((i) => i !== g.index)] },
+    ];
+    void ask({
+      pageId,
+      point: [at[0], at[1]],
+      cameraScale: 1 / pointer.ptPerPx,
+      exclude,
+    }).then((r) => {
+      if (!r || this.disposed || this.grab !== g) return;
+      this.engineSnap = { key, at: [r.point[0], r.point[1]] };
+      const last = this.lastMove;
+      if (!last || !this.machine) return;
+      const lastAt = `${g.start[0] + last.point[0] - g.down[0]},${g.start[1] + last.point[1] - g.down[1]}`;
+      if (lastAt !== key) return;
+      this.machine.handle({
+        type: "move",
+        point: this.snapped(last),
+        modifiers: last.modifiers,
+      });
+      this.publish();
+    });
   }
 
   pointerMove(pointer: PathEditPointer): void {
     if (!this.machine) return;
+    this.lastMove = pointer;
     this.machine.handle({
       type: "move",
       point: this.snapped(pointer),
@@ -305,6 +369,9 @@ export class DirectSelectSession implements PathEditSession {
       modifiers: pointer.modifiers,
     });
     this.grab = null;
+    this.engineSnap = null;
+    this.engineAsked = null;
+    this.lastMove = null;
     let release: PathEditRelease = "consumed";
     if (snap.commit) {
       this.commit(snap.commit);

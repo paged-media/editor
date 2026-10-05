@@ -47,6 +47,11 @@ export {
   type PathEditClient,
   type PathEditReport,
 } from "./path-edit/direct-select-session";
+export {
+  engineSnapPoint,
+  type EngineSnapQuery,
+  type EngineSnapResult,
+} from "./handlers/snapper";
 export { createPolygonHandler } from "./handlers/polygon-tool";
 export { createRectangleHandler } from "./handlers/rectangle-tool";
 export { createScissorsHandler } from "./handlers/scissors-tool";
