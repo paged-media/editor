@@ -43,6 +43,7 @@ import { Designer } from "../driver/designer";
 
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { skipWithoutDuckDB } from "./data-duckdb-gate";
 
 const CSV_FIXTURE = pathResolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -102,11 +103,11 @@ test.describe("journey · paged.data field-mapping wizard", () => {
       const got =
         (await page.locator("[data-status]").last().getAttribute("data-status").catch(() => null)) ??
         "unknown";
-      test.skip(
-        true,
+      skipWithoutDuckDB(
+        got,
         `field-mapping wizard needs DuckDB-WASM to boot (engine status "${got}"). It boots on the ` +
           "standard editor dev server (Vite duckdbDistRoute + COOP/COEP isolation); this skip only " +
-          "fires if the vendored dist is absent or the context is not cross-origin isolated.",
+          "fires if the package shipped no bin/duckdb-engine.wasm or the context is not cross-origin isolated.",
       );
     }
     await expect(page.getByText(/data_people/).first()).toBeVisible({ timeout: 6_000 });

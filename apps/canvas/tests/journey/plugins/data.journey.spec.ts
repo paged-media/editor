@@ -68,6 +68,7 @@ import { Designer } from "../driver/designer";
 
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { REQUIRE_REAL_DUCKDB } from "./data-duckdb-gate";
 
 const CSV_FIXTURE = pathResolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -222,7 +223,7 @@ test.describe("journey · paged.data plugin", () => {
           .getAttribute("data-status")
           .catch(() => null)) ?? "unknown";
       failures.push(
-        `import: source did not reach "ready" (engine status: "${status}"). DuckDB-WASM normally boots on the editor dev server (vite.config duckdbDistRoute + the COOP/COEP isolation); this only fails if the vendored dist is absent or the context is not cross-origin isolated. See the spec header.`,
+        `import: source did not reach "ready" (engine status: "${status}"). DuckDB-WASM normally boots on the editor dev server (vite.config duckdbDistRoute + the COOP/COEP isolation); this only fails if the package shipped no bin/duckdb-engine.wasm or the context is not cross-origin isolated. See the spec header.`,
       );
     }
 
@@ -261,6 +262,10 @@ test.describe("journey · paged.data plugin", () => {
     // The smoke surface is the gate; the data-flow steps are reported, not
     // gated, because real DuckDB-WASM headless boot is unproven. The HARD
     // assertions above already failed the test if host integration broke.
-    expect(true).toBe(true);
+    // Under REQUIRE_REAL_DUCKDB=1 the lane has promised a real DuckDB, so the
+    // data-flow steps ARE gated: any not-driven step fails the journey.
+    if (REQUIRE_REAL_DUCKDB) {
+      expect(failures, "REQUIRE_REAL_DUCKDB=1: every DuckDB-dependent step must drive").toEqual([]);
+    }
   });
 });

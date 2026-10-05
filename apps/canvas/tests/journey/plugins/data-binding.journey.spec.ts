@@ -42,7 +42,7 @@
 //
 // DuckDB-WASM headless boot is UNBLOCKED (the Vite duckdbDistRoute middleware +
 // the COOP/COEP isolation; see data-render.journey.spec.ts). The render
-// assertion is HARD; it SKIPS-with-status only if the vendored dist is absent
+// assertion is HARD; it SKIPS-with-status only if the package shipped no bin/duckdb-engine.wasm
 // or the context is not cross-origin isolated.
 
 import { expect, test, type Page } from "@playwright/test";
@@ -52,6 +52,7 @@ import { Designer } from "../driver/designer";
 
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { skipWithoutDuckDB } from "./data-duckdb-gate";
 
 const CSV_FIXTURE = pathResolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -122,11 +123,11 @@ test.describe("journey · paged.data binding engine + expression DSL", () => {
       const got =
         (await page.locator("[data-status]").last().getAttribute("data-status").catch(() => null)) ??
         "unknown";
-      test.skip(
-        true,
+      skipWithoutDuckDB(
+        got,
         `paged.data binding render needs DuckDB-WASM to boot (engine status "${got}"). On the ` +
           "standard editor dev server it boots on both lanes (Vite duckdbDistRoute + the " +
-          "COOP/COEP isolation); this skip only fires if the vendored dist is absent or the " +
+          "COOP/COEP isolation); this skip only fires if the shipped DuckDB (bin/duckdb-engine.wasm) is absent or the " +
           "context is not cross-origin isolated.",
       );
     }
