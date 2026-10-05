@@ -94,6 +94,13 @@
 // placeholder / batch_composition — and the shipping consumers in
 // plugin-draw / plugin-doc / the showcase) and are classified below;
 // KNOWN_UNCLASSIFIED is empty.
+//
+// 2026-10-05: the pin moved 0.64 → 0.66 in one step (protocol 65 and
+// 66). AC-E2E-CAPS-COVER named the two new Mutation ops,
+// `duplicateElements` (v65) and `deleteTable` (v66); both got real-args
+// probes and classify `supported` on canvas-wasm 0.66.0. (v66's
+// `deletePagedPart` is a worker message beside write/read/listPagedParts,
+// not a Mutation op, so it is correctly absent here.)
 
 export type CapabilityStatus = "supported" | "unsupported";
 
@@ -249,6 +256,10 @@ export const CAPABILITIES: Capability[] = [
   { op: "bindCreated", status: "supported", note: "only meaningful inside a batch — binds the batch's most recent createdId for $h:<handle> refs; probed as insert→bind→write" },
   // flow grow rule (v64, plugin-doc ADR 026/029)
   { op: "setFlowGrowRule", status: "supported", note: "proto 64; generated pages after the story's last frame while it oversets (InDesign Smart Text Reflow); UI = the Stories inspector's Smart text reflow, layout proof in e2e/paragraph-flow-ops.spec.ts AC-E2E-FLOW-smartReflow" },
+  // whole-element duplicate (v65, core d22bc31 — paged.draw's Reflect ▸ Copy)
+  { op: "duplicateElements", status: "supported", note: "proto 65; a whole clone of each element directly above its source, moved by `offset`; probed on a scratch frame" },
+  // whole-table removal (v66, core f3bfefe + de297f5 — the sheet campaign)
+  { op: "deleteTable", status: "supported", note: "proto 66; {storyId, tableId}; the removal is captured whole so one undo restores every cell; probed on a table the probe mints with insertTable" },
 ];
 
 export function expectedStatus(op: string): Capability | undefined {

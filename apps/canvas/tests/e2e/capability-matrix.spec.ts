@@ -1128,6 +1128,52 @@ const TEXT_PROBES: Probe[] = [
         : null,
   },
   {
+    op: "deleteTable",
+    // proto 66 (the sheet campaign, core f3bfefe / de297f5) — removes a
+    // whole table from its story by `{storyId, tableId}`; the removal is
+    // captured whole, so one undo restores every cell. The probe deletes
+    // a table it mints first with `insertTable` (the minted id is the
+    // STRUCTURED ElementId::Table), so the fixture's own text is never
+    // the thing removed.
+    build: async ({ page, fx }) => {
+      if (!fx.firstStory) return null;
+      const tableId = await page.evaluate(async (storyId) => {
+        const c = (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                mutate: (m: unknown) => Promise<{
+                  kind: string;
+                  payload?: {
+                    createdId?: {
+                      kind: string;
+                      id: { story_id: string; table_id: string } | string;
+                    } | null;
+                  };
+                }>;
+              };
+            };
+          }
+        ).__canvas;
+        const r = await c.client.mutate({
+          op: "insertTable",
+          args: { storyId, rows: 2, cols: 2 },
+        });
+        const created = r.kind === "mutationApplied" ? r.payload?.createdId : null;
+        return created && created.kind === "table" && typeof created.id === "object"
+          ? created.id.table_id
+          : null;
+      }, fx.firstStory.selfId);
+      return tableId
+        ? {
+            op: "deleteTable",
+            args: { storyId: fx.firstStory.selfId, tableId },
+          }
+        : null;
+    },
+    setupUndo: 1, // the scratch insertTable
+  },
+  {
     op: "insertAnchoredFrame",
     // proto 52 (plugin-doc's inline-image door) — anchors a w×h frame
     // at a story offset; `imageUri` optional (null = plain frame).
@@ -1422,6 +1468,26 @@ const GEOMETRY_PROBES: Probe[] = [
       return { op: "dissolveGroup", args: { groupId } };
     },
     setupUndo: 3, // two inserts + the createGroup
+  },
+  // ── duplicateElements (v65, core d22bc31) ─────────────────────
+  // A whole clone of each element, directly above its source, moved by
+  // `offset` — paged.draw's Reflect ▸ Copy rides it. One scratch frame,
+  // duplicated; the probe's own undo removes the clone, the setup undo
+  // the frame.
+  {
+    op: "duplicateElements",
+    build: async ({ page, fx }) => {
+      const made = await newFrames(page, fx.pages[0].pageId, [
+        [10, 10, 60, 60],
+      ]);
+      return made
+        ? {
+            op: "duplicateElements",
+            args: { elementIds: made, offset: [12, 12] },
+          }
+        : null;
+    },
+    setupUndo: 1, // the scratch insertFrame
   },
   // ── group transform (v40 re-capture) ──────────────────────────
   // setGroupTransform writes an affine onto an existing group — so
