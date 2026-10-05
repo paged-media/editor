@@ -30,11 +30,14 @@
 // plugin-doc imports a plain break as U+2028, the engine's forced line break
 // (core ab383b1: one paragraph, a new line), and styles a blank line with a
 // caret applyStyle (core 65cf615: a zero-length paragraph range names the
-// empty paragraph). Consecutive blank lines share one offset, so the engine
-// styles them together: the mixed pair takes the last one's pitch, which
-// plugin-doc reports as a warning — that one line is the documented
-// deviation. Engines before protocol 64 have neither contract, so the spec
-// skips there.
+// empty paragraph). Consecutive blank lines share one offset; on a
+// protocol-64 engine a caret there styles them together, so the mixed pair
+// took the last one's pitch (plugin-doc's warning, the one documented
+// deviation). Wire v65 lets applyStyle NAME its paragraph (core c9ad14a), and
+// plugin-doc's pour sends that address for every blank-line caret (plugin-doc
+// c3fc04e), so from protocol 65 each blank line keeps its own pitch and the
+// whole map is Word's. Engines before protocol 64 have neither contract, so
+// the spec skips there.
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -87,12 +90,17 @@ const WORD_MAP: Array<Array<[string, number]>> = [
     ["L10", 4],
   ],
 ];
-/** What the engine can do: all of Word's map, except that blank lines at one
- *  offset share one style — B04 and B05 both take B05's 12 pt, so L10 is one
- *  line higher (plugin-doc diagnoses it). */
-const ENGINE_MAP = WORD_MAP.map((p, i) =>
-  i === 1 ? p.map(([l, n]): [string, number] => (l === "L10" ? [l, 3] : [l, n])) : p,
-);
+/** What the engine can do. From protocol 65 (core c9ad14a: applyStyle names
+ *  its paragraph; plugin-doc c3fc04e sends it) every blank line keeps its
+ *  own style, so this is Word's map exactly — measured on canvas-wasm 0.66.0,
+ *  L10 on Word's line 4. On protocol 64 blank lines at one offset shared one
+ *  style — B04 and B05 both took B05's 12 pt, so L10 sat one line higher. */
+const ENGINE_MAP =
+  engineProtocol() >= 65
+    ? WORD_MAP
+    : WORD_MAP.map((p, i) =>
+        i === 1 ? p.map(([l, n]): [string, number] => (l === "L10" ? [l, 3] : [l, n])) : p,
+      );
 
 type Registries = {
   commands: { invoke: (id: string) => Promise<unknown> };
@@ -316,7 +324,8 @@ test.describe("plugin-doc — Word's line breaks and blank lines", () => {
   // e951762 (B01 14.4 pt instead of 12, B02/B03 14.4 instead of 24, so L07
   // landed at 13.2 and L08 at 16.6 lines). Green on a protocol-64 engine
   // that includes e951762 (verified 2026-10-01, core-p64 7e2d556); skips
-  // below protocol 64 like the rest of this file.
+  // below protocol 64 like the rest of this file. From protocol 65 the
+  // mixed blank pair on page 2 lands on Word's lines too (ENGINE_MAP).
   test("AC-DOCLB-2 — blank lines take their paragraph style's pitch, so every line lands on Word's 12 pt line @feat:plugin-doc.file-entry @level:gesture", async ({
     page,
   }) => {
