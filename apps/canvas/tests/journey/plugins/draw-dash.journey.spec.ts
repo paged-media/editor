@@ -33,6 +33,16 @@
 //
 // A negative control runs first: two snapshots of the untouched blank
 // page must be stable, so every later "changed" is genuine signal.
+//
+// The second test drives the CUSTOM dash — Draw ▸ Stroke ▸ Dashes…
+// (media.paged.draw.command.strokeDashOptions). That command mutates
+// NOTHING: it raises the Path Options panel at its "Stroke dashes"
+// section, whose six dash/gap fields are the only way to type a dash
+// pattern the four presets do not offer. The journey asserts the panel
+// opens AT that section with the selection counted, that the command
+// alone left the stroke solid, and that ticking "Dashed", typing a
+// two-pair pattern and pressing Apply bakes exactly that run — then
+// that one undo restores the solid stroke.
 
 import { expect, test } from "@playwright/test";
 
@@ -148,6 +158,70 @@ test.describe("journey · paged.draw stroke dash", () => {
     // ── 5. BACK TO SOLID — the Solid preset clears the array again (the
     //    gate is reversible, not one-shot). ──
     await invokeCommand(page, "media.paged.draw.command.strokeDashSolid");
+    await expect
+      .poll(() => dashArrayOf(page, ref), { timeout: 6_000 })
+      .toEqual([]);
+  });
+
+  test("a designer types a custom dash pattern in the Dashes… options panel @feat:plugin-draw.stroke-dash-commands @feat:frames-paths.stroke-dashed @feat:plugin-platform.panel-registration @level:happy", async ({
+    page,
+  }) => {
+    const designer = new Designer(page);
+    await designer.open();
+    await designer.newDocument();
+
+    const ref = { kind: "rectangle", id: await designer.drawRectangle({ x0: 150, y0: 160, x1: 440, y1: 360 }) };
+    expect(ref.id, "drew a rectangle").not.toBe("");
+    await designer.applyStroke("rectangle", ref.id, "Color/Black", 6);
+    await designer.selectElement("rectangle", ref.id);
+    await expect.poll(() => dashArrayOf(page, ref), { timeout: 6_000 }).toEqual([]);
+    const solid = await designer.renderBytes();
+
+    // ── 1. THE "…" COMMAND RAISES THE PANEL AT ITS SECTION — and writes
+    //    nothing on its own. ──
+    await invokeCommand(page, "media.paged.draw.command.strokeDashOptions");
+    const panel = page.locator('[data-draw-pathopts-panel="dash"]');
+    await expect(panel, "the Path Options panel opened at Stroke dashes").toBeVisible({
+      timeout: 8_000,
+    });
+    await expect(
+      page.locator('[data-draw-pathopts-section="dash"][data-draw-pathopts-open="true"]'),
+    ).toBeVisible();
+    await expect(panel, "the panel counts the one selected path").toHaveAttribute(
+      "data-draw-pathopts-targets",
+      "1",
+    );
+    // The section follows the selection: a solid path loads unticked.
+    const dashed = page.locator('[data-draw-pathopts-toggle="dash.dashed"]');
+    await expect(dashed).not.toBeChecked();
+    expect(await dashArrayOf(page, ref), "opening the panel changed nothing").toEqual([]);
+
+    // ── 2. TYPE A PATTERN THE PRESETS DO NOT HAVE — 8 on / 4 off /
+    //    2 on / 4 off — and Apply it. ──
+    await dashed.check();
+    for (const [field, value] of [
+      ["dash.dash1", 8],
+      ["dash.gap1", 4],
+      ["dash.dash2", 2],
+      ["dash.gap2", 4],
+    ] as const) {
+      await page.locator(`[data-draw-pathopts-field="${field}"]`).fill(String(value));
+    }
+    // The readout shows the run an Apply will write before it is written.
+    await expect(page.locator("[data-draw-pathopts-dash-pattern]")).toContainText("8");
+    expect(await dashArrayOf(page, ref), "typing alone writes nothing").toEqual([]);
+
+    const apply = page.locator('[data-draw-pathopts-apply="dash"]');
+    await expect(apply).toBeEnabled();
+    await apply.click();
+    await expect
+      .poll(() => dashArrayOf(page, ref), { timeout: 6_000 })
+      .toEqual([8, 4, 2, 4]);
+    // The gaps drop ink: the stroke visibly changes vs the solid baseline.
+    await designer.expectRenderChangesFrom(solid);
+
+    // ── 3. ONE UNDO STEP — the dash Apply is a single journal entry. ──
+    await designer.runCommand("paged.editor.undo");
     await expect
       .poll(() => dashArrayOf(page, ref), { timeout: 6_000 })
       .toEqual([]);

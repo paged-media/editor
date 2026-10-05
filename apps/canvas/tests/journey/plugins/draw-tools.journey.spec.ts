@@ -30,10 +30,22 @@
 // driven with real pointer input. Per-tool COLLECT-FAILURES: the Pencil
 // author is the HARD gate (it proves the gesture spine reaches the
 // bundle's machines); the rest collect so a partial drive is visible.
+//
+// The second test is the CUTTING pair in the rail's Scissors flyout,
+// both HARD-gated on the path model read back after the gesture:
+//   · Knife — a freehand drag across a closed filled rectangle splits it
+//     into two closed pieces along the cut: the rectangle keeps its id
+//     and becomes the left piece, the right piece is a NEW path, and one
+//     undo puts the uncut rectangle back (the strip probe the knife
+//     measures with must not leak into the history).
+//   · Scissors (any point) — a click MID-SEGMENT of an open path (not on
+//     an anchor, which is all the host's own Scissors can cut at) inserts
+//     an anchor there and opens the path at it: one path, two open
+//     subpaths meeting at the click; one undo restores the single run.
 
 import { expect, test } from "@playwright/test";
 
-import { dragMouse, screenPoint } from "../../e2e/harness/viewport";
+import { dragMouse, screenPoint, treeIds } from "../../e2e/harness/viewport";
 import { Designer } from "../driver/designer";
 
 async function invokeCommand(
@@ -88,6 +100,52 @@ async function propOf(
     },
     { r: ref, p: path },
   );
+}
+
+interface PathAnchorsResult {
+  anchors: Array<{ anchor: [number, number] }>;
+  subpathStarts: number[];
+  subpathOpen?: boolean[];
+}
+
+/** The path model (anchors + contours), read through the worker client —
+ *  the same query the bundle's cut planners resolve against. */
+async function pathAnchorsOf(
+  page: import("@playwright/test").Page,
+  ref: { kind: string; id: string },
+): Promise<PathAnchorsResult | null> {
+  return page.evaluate(async (r) => {
+    const c = (
+      globalThis as unknown as {
+        __canvas: { client: { pathAnchors: (id: unknown) => Promise<PathAnchorsResult | null> } };
+      }
+    ).__canvas;
+    return c.client.pathAnchors(r).catch(() => null);
+  }, ref);
+}
+
+/** `[left, right]` of an element's page box. Through `elementGeometry`,
+ *  not the anchors: a freshly drawn rectangle has no explicit anchor
+ *  table until something rewrites its path, but it always has a box. */
+async function xExtentOf(
+  page: import("@playwright/test").Page,
+  ref: { kind: string; id: string },
+): Promise<[number, number] | null> {
+  return page.evaluate(async (r) => {
+    const c = (
+      globalThis as unknown as {
+        __canvas: {
+          client: {
+            elementGeometry: (
+              ids: unknown[],
+            ) => Promise<Array<{ bounds: [number, number, number, number] }>>;
+          };
+        };
+      }
+    ).__canvas;
+    const g = await c.client.elementGeometry([r]).catch(() => []);
+    return g[0] ? [g[0].bounds[1], g[0].bounds[3]] : null;
+  }, ref);
 }
 
 /** Freehand drag across several screen points (down → moves → up). */
@@ -226,5 +284,105 @@ test.describe("journey · paged.draw pro tools", () => {
       collected,
       `paged.draw pro-tool steps that did not drive: ${collected.join("; ")}`,
     ).toEqual([]);
+  });
+
+  test("a designer cuts a closed shape with the Knife and opens a path mid-segment with Scissors (any point) @feat:plugin-draw.pro-path-toolset @feat:plugin-platform.tool-registration @feat:plugin-platform.planar-regions-door @level:gesture", async ({
+    page,
+  }) => {
+    const designer = new Designer(page);
+    await designer.open();
+    await designer.newDocument();
+
+    // ── 1. KNIFE — drag a straight-ish freehand cut top → bottom through
+    //    x = 250 across a 150..350 rectangle, overshooting both edges. ──
+    const rid = await designer.drawRectangle({ x0: 150, y0: 200, x1: 350, y1: 360 });
+    const rect = { kind: "rectangle", id: rid };
+    await designer.applyFill("rectangle", rid, "Color/Black");
+    await designer.selectElement("rectangle", rid);
+    const before = await xExtentOf(page, rect);
+    expect(before, "the rectangle has a readable box").not.toBeNull();
+    expect(before![0]).toBeCloseTo(150, 0);
+    expect(before![1]).toBeCloseTo(350, 0);
+    const polysBefore = await treeIds(page, "polygon");
+
+    await invokeCommand(page, "paged.tool.activate.media.paged.draw.tool.knife");
+    const cut: Array<{ x: number; y: number }> = [];
+    for (const y of [170, 220, 270, 320, 390]) cut.push(await screenPoint(page, 250, y));
+    await freehand(page, cut);
+
+    // The cut adds exactly ONE piece…
+    await expect
+      .poll(async () => (await treeIds(page, "polygon")).length, { timeout: 10_000 })
+      .toBe(polysBefore.length + 1);
+    // …the rectangle keeps its id and is now the LEFT piece (150..250)…
+    await expect
+      .poll(async () => JSON.stringify((await xExtentOf(page, rect))?.map(Math.round)), {
+        timeout: 8_000,
+      })
+      .toBe(JSON.stringify([150, 250]));
+    // …and the new path is the RIGHT piece (250..350), closed.
+    const piece = (await treeIds(page, "polygon")).find(
+      (p) => !polysBefore.some((b) => b.id === p.id),
+    )!;
+    const pieceX = await xExtentOf(page, piece);
+    expect(pieceX?.map(Math.round), "the new piece is the right half").toEqual([250, 350]);
+    const pieceModel = await pathAnchorsOf(page, piece);
+    expect(pieceModel?.subpathOpen?.some(Boolean) ?? false, "the piece is closed").toBe(false);
+
+    // ── 2. ONE UNDO — the whole cut is one step; the strip the knife
+    //    probed with is not in the history. ──
+    await designer.runCommand("paged.editor.undo");
+    await expect
+      .poll(async () => (await treeIds(page, "polygon")).length, { timeout: 8_000 })
+      .toBe(polysBefore.length);
+    await expect
+      .poll(async () => JSON.stringify((await xExtentOf(page, rect))?.map(Math.round)), {
+        timeout: 8_000,
+      })
+      .toBe(JSON.stringify([150, 350]));
+
+    // ── 3. SCISSORS (ANY POINT) — click the MIDDLE of an open path's
+    //    first segment, far from either anchor. ──
+    const sid = await designer.drawPath([
+      [400, 450],
+      [550, 450],
+      [550, 600],
+    ]);
+    const path = { kind: "polygon", id: sid };
+    await designer.applyStroke("polygon", sid, "Color/Black", 3);
+    await designer.selectElement("polygon", sid);
+    const uncut = await pathAnchorsOf(page, path);
+    expect(uncut?.anchors.length).toBe(3);
+    expect(uncut?.subpathStarts).toEqual([0]);
+    const polysBeforeCut = await designer.count("polygon");
+
+    await invokeCommand(page, "paged.tool.activate.media.paged.draw.tool.scissorsAnyPoint");
+    const click = await screenPoint(page, 475, 450);
+    await page.mouse.click(click.x, click.y);
+
+    // One path, now TWO open runs that meet at the click.
+    await expect
+      .poll(async () => JSON.stringify((await pathAnchorsOf(page, path))?.subpathStarts), {
+        timeout: 8_000,
+      })
+      .toBe(JSON.stringify([0, 2]));
+    const opened = (await pathAnchorsOf(page, path))!;
+    expect(opened.subpathOpen, "both runs are open").toEqual([true, true]);
+    expect(opened.anchors).toHaveLength(5);
+    // The new end of run 1 and the new start of run 2 sit at the click.
+    for (const i of [1, 2]) {
+      expect(opened.anchors[i]!.anchor[0]).toBeCloseTo(475, 0);
+      expect(opened.anchors[i]!.anchor[1]).toBeCloseTo(450, 0);
+    }
+    expect(await designer.count("polygon"), "scissors splits in place").toBe(polysBeforeCut);
+
+    // ── 4. ONE UNDO — insert + open are one batch. ──
+    await designer.runCommand("paged.editor.undo");
+    await expect
+      .poll(async () => JSON.stringify((await pathAnchorsOf(page, path))?.subpathStarts), {
+        timeout: 8_000,
+      })
+      .toBe(JSON.stringify([0]));
+    expect((await pathAnchorsOf(page, path))?.anchors).toHaveLength(3);
   });
 });
