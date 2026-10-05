@@ -134,12 +134,16 @@ export interface PagedEditor {
   sceneLayers: {
     /** `caller` (C-34) — the plugin whose render this is, filled by the
      *  SDK adapter from the manifest id. Optional: omitting it records
-     *  no owner and enforces nothing, which is the prior behaviour. */
+     *  no owner and enforces nothing, which is the prior behaviour.
+     *  Protocol 68 — resolves with the engine's `fontFallbacks` (the text
+     *  faces that drew in the default font), which the plugin-sdk host
+     *  hands back from `SceneLayerSurface.submit`; a wired channel is
+     *  also what makes it advertise `rendering.sceneLayer.faces@1`. */
     submit(
       elementId: string,
       layer: SceneLayer,
       caller?: string,
-    ): Promise<void>;
+    ): Promise<{ fontFallbacks: readonly string[] }>;
     clear(elementId: string): Promise<void>;
     /** v66 — the binary scene-image lane (`client.submitSceneImageBinary`):
      *  the frame's scene layer becomes one RGBA8 image, sent as bytes. With

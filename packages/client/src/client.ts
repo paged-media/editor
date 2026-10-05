@@ -940,12 +940,18 @@ export class CanvasClient {
 
   /** C-1 — submit (replace) a plugin vector scene layer rendered inside
    *  the frame `elementId` (its `Self` id). The worker stores it + rebuilds
-   *  so compose lowers it inside the frame; the next snapshot reflects it. */
+   *  so compose lowers it inside the frame; the next snapshot reflects it.
+   *
+   *  Protocol 68 — a text item draws in the face it names (`family` +
+   *  `style`, or `weight` / `italic`), resolved through the fonts
+   *  registered for the document. Resolves with `fontFallbacks`: the faces
+   *  (`"Family Style"`) that did not resolve and drew in the default font
+   *  instead; empty when every named face resolved. */
   async submitSceneLayer(
     elementId: string,
     layer: SceneLayer,
     caller?: string,
-  ): Promise<void> {
+  ): Promise<{ fontFallbacks: string[] }> {
     const reply = await this.send({
       kind: "submitSceneLayer",
       // C-34 — `caller` names the plugin whose render this is. The
@@ -956,7 +962,9 @@ export class CanvasClient {
       // this is additive and needs no protocol bump.
       payload: caller ? { elementId, layer, caller } : { elementId, layer },
     } as never);
-    if (reply.kind === "sceneLayerApplied") return;
+    if (reply.kind === "sceneLayerApplied") {
+      return { fontFallbacks: reply.payload.fontFallbacks ?? [] };
+    }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
