@@ -31,7 +31,7 @@
 //     loaded" on the fallback). That is the shipped milestone
 //     (plugin-web.engine-rendering). HARD when the engine loads;
 //     skip-with-note when it can't (a realm that can't fetch the sibling
-//     wasm) — honest degrade.
+//     wasm) — honest degrade — and a FAILURE under REQUIRE_REAL_ENGINE=1.
 //   · The submitted web sceneLayer PAINTS in the editor end-to-end — a
 //     solid-fill div lights real pixels in the deterministic snapshot
 //     (the same composite path sheet + image scene layers ride). This is a
@@ -113,10 +113,14 @@ test.describe("journey · paged.web render output", () => {
       .toBe(true);
 
     if (sawNotLoaded() && !sawSubmitted()) {
-      test.skip(
-        true,
-        "the Blitz engine did not load in this realm (cannot fetch the sibling wasm) — render is source-lane only here",
-      );
+      // Under REQUIRE_REAL_ENGINE=1 a missing engine is a FAILURE, not a
+      // skip: a lane that is supposed to render must not pass vacuously.
+      const reason =
+        "the Blitz engine did not load in this realm (cannot fetch the sibling wasm) — render is source-lane only here";
+      if (process.env.REQUIRE_REAL_ENGINE === "1") {
+        throw new Error(`REQUIRE_REAL_ENGINE=1: ${reason}; logs: ${logs.join(" | ")}`);
+      }
+      test.skip(true, reason);
     }
 
     // HARD: the engine booted headless and the C-1 submit path drove.
