@@ -30,19 +30,35 @@
 // absent it the door denies every origin (the honest no-consent posture).
 //
 // The OUTER wall is the editor's CSP `connect-src` (see `vite.config.ts` +
-// `public/_headers`): even a consented origin is reachable only if the page CSP
-// admits it. v1 ships a default-deny floor (`'self' blob: data:`); no
-// first-party bundle declares `capabilities.network` yet (all `network: false`),
-// so the granted set is empty and the floor is exact. Extending the wall for a
-// bundle that declares FIXED origins is a reviewed per-bundle CSP edit; dynamic
-// loosening for open-ended (`origins: "consent"`) reach is the server-mediated
-// M1 step — a meta/`_headers` CSP cannot be loosened after load, so an
-// externally-consented origin stays browser-unreachable until then, and the
-// bundle degrades honestly. This backend never lies about that: it resolves the
-// user's intent; the wall is a separate, conservative gate.
+// `public/_headers`, built from `boot/network-policy.ts`): even a consented
+// origin is reachable only if the page CSP admits it. The floor is
+// `'self' blob: data:`; a deployment may admit EXACT data origins at build time
+// (`PAGED_DATA_ORIGINS`, ADR 218). A header CSP is fixed when the page loads and
+// cannot be loosened by a later grant, so an origin the user consents to but
+// the deployment did not list stays browser-unreachable — the dialog says so
+// per origin (`admittedDataOrigins`), and the requesting bundle reports the
+// failed fetch. This backend resolves the user's intent; the wall is a
+// separate, conservative gate, and it never widens to a bare `https:`.
 
 import type { ConsentBackend } from "@paged-media/plugin-sdk";
 import type { ConsentResult } from "@paged-media/plugin-api";
+
+import { wallAdmits } from "./boot/network-policy";
+
+/** Replaced at build time by vite (`define`, ADR 218): the data origins this
+ *  build's CSP admits beyond the same-origin floor. */
+declare const __PAGED_DATA_ORIGINS__: readonly string[] | undefined;
+
+/** The data origins the page's `connect-src` admits (empty = the floor). */
+export function admittedDataOrigins(): readonly string[] {
+  return typeof __PAGED_DATA_ORIGINS__ === "undefined" ? [] : __PAGED_DATA_ORIGINS__;
+}
+
+/** Will a request to `origin` pass this page's network wall? */
+export function reachableOrigin(origin: string): boolean {
+  const self = typeof location === "undefined" ? undefined : location.origin;
+  return wallAdmits(origin, admittedDataOrigins(), self);
+}
 
 /** A consent request awaiting the user's decision. The dialog renders this and
  *  calls `decide` exactly once; a second call is a no-op (already settled). */

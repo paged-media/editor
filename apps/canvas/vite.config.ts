@@ -20,7 +20,13 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve, sep } from "node:path";
-import { createReadStream, readFileSync, readdirSync, statSync } from "node:fs";
+import { createReadStream, readFileSync, readdirSync, statSync, writeFileSync, existsSync } from "node:fs";
+import {
+  DATA_ORIGINS_ENV,
+  connectSrc,
+  parseDataOrigins,
+  rewriteHeadersCsp,
+} from "./src/boot/network-policy";
 
 // Resolve a corpus subdir, preferring a copy colocated in the editor
 // (`editor/corpus/<name>`) but falling back to the sibling workspace
@@ -103,16 +109,20 @@ const crossOriginIsolation = {
 // XHR / WebSocket the page (and its workers) can make, no matter who issues it.
 //
 // The floor admits only same-origin + local-bytes schemes — the editor app's
-// real network surface (corpus/fonts/wasm under `/`, swatch blob: reads). NO
-// external origin is reachable, which is exact today: every first-party bundle
-// declares `capabilities.network: false`, so the consented set is empty. We
-// scope the policy to `connect-src` only (no `default-src`) so script/style/img
-// execution is untouched — minimal blast radius, just the egress wall. Keep this
-// in lock-step with `public/_headers` (the authoritative production header).
-const CONNECT_SRC_FLOOR = "connect-src 'self' blob: data:";
+// real network surface (corpus/fonts/wasm under `/`, swatch blob: reads). A
+// deployment may add EXACT data origins at build time through
+// `PAGED_DATA_ORIGINS` (ADR 218): a consented remote data source on such an
+// origin is reachable; nothing else is. A header CSP cannot follow runtime
+// consent grants, so this is a reviewed, build-time list — never `https:`.
+// We scope the policy to `connect-src` only (no `default-src`) so script/style/
+// img execution is untouched — minimal blast radius, just the egress wall. The
+// floor, the parsing and the `_headers` rewrite live in
+// src/boot/network-policy.ts (tested by scripts/network-policy.test.mjs).
+const DATA_ORIGINS = parseDataOrigins(process.env[DATA_ORIGINS_ENV]);
+const CONNECT_SRC = connectSrc(DATA_ORIGINS);
 // Dev adds the Vite HMR WebSocket (client live-reload) — without it `pnpm dev`
 // and the Playwright runs lose hot updates.
-const CONNECT_SRC_DEV = `${CONNECT_SRC_FLOOR} ws://127.0.0.1:* ws://localhost:*`;
+const CONNECT_SRC_DEV = `${CONNECT_SRC} ws://127.0.0.1:* ws://localhost:*`;
 
 const networkConnectSrcPolicy = {
   name: "network-connect-src-policy",
@@ -122,15 +132,25 @@ const networkConnectSrcPolicy = {
       next();
     });
   },
-  // Build only: inject the floor as a `<meta>` so a static host that ignores
+  // Build only: inject the policy as a `<meta>` so a static host that ignores
   // `_headers` still ships the wall. Skipped in dev (the header above is the
   // single source — two policies would intersect and drop the HMR socket).
   transformIndexHtml(html: string, ctx: { server?: unknown }) {
     if (ctx.server) return html;
     return html.replace(
       "</title>",
-      `</title>\n    <meta http-equiv="Content-Security-Policy" content="${CONNECT_SRC_FLOOR}" />`,
+      `</title>\n    <meta http-equiv="Content-Security-Policy" content="${CONNECT_SRC}" />`,
     );
+  },
+  // Build only: `public/_headers` carries the floor (committed, reviewed);
+  // when the build admits data origins, the copy in the output carries the
+  // same policy as the `<meta>` — the two must never disagree (they
+  // intersect, so a stale floor would silently block the listed origins).
+  writeBundle(options: { dir?: string }) {
+    if (DATA_ORIGINS.length === 0 || !options.dir) return;
+    const file = resolve(options.dir, "_headers");
+    if (!existsSync(file)) return;
+    writeFileSync(file, rewriteHeadersCsp(readFileSync(file, "utf8"), CONNECT_SRC));
   },
 };
 
@@ -513,6 +533,11 @@ function dataBundleBin(): import("vite").Plugin {
 }
 
 export default defineConfig({
+  // The page learns which data origins its wall admits, so the consent
+  // dialog can say when a consented origin stays unreachable (ADR 218).
+  define: {
+    __PAGED_DATA_ORIGINS__: JSON.stringify(DATA_ORIGINS),
+  },
   // apps/canvas/ lives one extra level deep than web/ — adjust the
   // workspace root so node_modules + the Cargo target dir resolve.
   root: resolve(__dirname),

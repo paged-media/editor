@@ -125,6 +125,11 @@ jobs:
       - name: boot cross-origin-isolation check
         run: pnpm test:boot-coi
 
+      # The D-03 network wall (ADR 218): exact build-time data origins only,
+      # and the committed _headers floor in lock-step with the module.
+      - name: network policy (connect-src)
+        run: pnpm test:network-policy
+
       # Every gated fidelity pack must carry a threshold entry, or the
       # fidelity gate silently skips it.
       - name: fidelity thresholds schema

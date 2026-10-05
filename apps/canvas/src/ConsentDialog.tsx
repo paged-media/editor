@@ -28,7 +28,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CSSProperties } from "react";
-import type { ConsentController, PendingConsent } from "./plugin-consent";
+import { reachableOrigin, type ConsentController, type PendingConsent } from "./plugin-consent";
 
 export function ConsentDialog({
   controller,
@@ -138,6 +138,16 @@ function ConsentPrompt({ pending }: { pending: PendingConsent }) {
                 />
                 <code style={{ font: "12px var(--font-mono, monospace)" }}>{origin}</code>
               </label>
+              {reachableOrigin(origin) ? null : (
+                <p
+                  data-testid="consent-origin-blocked"
+                  data-origin={origin}
+                  style={{ margin: "4px 0 0 8px", fontSize: 12, color: "var(--muted-fg, #9a9a9a)" }}
+                >
+                  This editor&apos;s network policy does not admit this origin. Allowing it records
+                  your consent, but requests to it stay blocked until the deployment lists it.
+                </p>
+              )}
             </li>
           ))}
         </ul>
