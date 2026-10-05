@@ -75,16 +75,18 @@
 //     `deleteFrame` per leaf, in ONE batch — and one undo brings the
 //     group back under its own id with its members in order.
 //
-//  6. `deleteFrame` DOES NOT RENUMBER GROUP MEMBER TABLES. A group
-//     holds its members as indices into those leaf lists, and removing
-//     a leaf shifts every later index of that kind — in the z table,
-//     but not in any group. So deleting one member of a group, or any
-//     OLDER item of the same kind on the spread, leaves a surviving
-//     group pointing at its neighbours: `[A,B]` becomes `[B,C]`, A
-//     falls out and an unrelated C is pulled in. The engine reports
-//     success. See `deletePlan` (the member case is refused before the
-//     wire) and `deleteSelection` (the bystander case is detected and
-//     undone); docs/reference/engine-findings.md §10 has the reproduction.
+//  6. A MEMBER OF A GROUP THAT STAYS IS NOT DELETED FROM HERE. Up to
+//     engine 0.64 `deleteFrame` did not renumber group member tables
+//     (engine-findings §10): deleting a member, or any OLDER item of the
+//     same kind, left a surviving group pointing at its neighbours, so
+//     this layer refused the member case and read the member tables back
+//     after every other delete, undoing it on a difference. 0.65 fixed
+//     the renumbering (core 4fa48f1), and the read-back went with it: a
+//     delete below a group is an ordinary delete (AC-OBJ-18). The member
+//     refusal stays, as host policy: one member out of a two-plus group
+//     now lands right, but deleting EVERY member leaves an empty
+//     `group:<id>` behind in the tree (measured on 0.66.0), and paged.draw
+//     pinned an undo that does not restore it. See `deletePlan`.
 //
 //  7. NUDGE IS A TRANSFORM WRITE, NEVER A BOUNDS WRITE. A page item's
 //     `ItemTransform` is the last step into spread space, so adding the
@@ -99,10 +101,11 @@
 //     correct for every kind, on two counts, both measured: it lives in
 //     the item's INNER space, so on a rotated frame it moves along the
 //     rotated axes (the gesture itself switches to the transform
-//     there); and on a line or a pen path it moves the box and leaves
-//     the anchors where they were, so nothing repaints at all — a
-//     dragged line snaps back (engine-findings §14). For a plain
-//     rectangle the two writes paint the same pixels.
+//     there); and up to engine 0.64, on a line or a pen path it moved
+//     the box and left the anchors where they were, so a dragged line
+//     snapped back (engine-findings §14, fixed in the GESTURE by 0.65,
+//     core 91bafcc — a plain `frameBounds` write still moves only the
+//     box). For a plain rectangle the two writes paint the same pixels.
 //
 //     The readouts follow it: Properties ▸ Bounds and Transform ▸ X/Y
 //     compose the transform (`panels/page-position.ts`), and a typed
@@ -119,7 +122,7 @@
 //     previous; `batch` needs its ops up front; the only many-updates-
 //     one-commit path is a pointer GESTURE session, which is exclusive,
 //     needs an end signal the keybinding registry does not deliver, and
-//     commits a bounds write for an un-rotated frame. So a nudge is one
+//     commits a bounds write for an un-rotated box. So a nudge is one
 //     undo step per engine round trip — see `nudgeSelection` for what
 //     that means under key repeat.
 //
@@ -159,15 +162,17 @@
 //     the content lands beneath that group instead: a reorder cannot
 //     reparent (fact 2). See `releasePlan`.
 //
-// 13. A CONTAINER'S CONTENT NEITHER MOVES NOR DIES WITH IT. Nested
-//     children keep spread-space transforms, so `moveFrame` on the
-//     container — and the engine's own drag — move the MASK over content
-//     that stays where it was (§16); `deleteFrame` on it pops the content
-//     back out as free items (§12). So Delete and Nudge take indexed
-//     content along: Delete releases and removes each child before the
-//     container, in the same batch (and one undo re-nests it); Nudge
-//     moves each child by the same step. The drag is the engine's, and
-//     stays §16.
+// 13. A CONTAINER'S CONTENT DOES NOT MOVE WITH IT. Nested children keep
+//     spread-space transforms, so `moveFrame` on the container — and the
+//     engine's own drag — move the MASK over content that stays where it
+//     was (§16). So Nudge moves each indexed child by the same step. The
+//     drag is the engine's, and stays §16. Delete releases and removes
+//     each indexed child before the container, in the same batch (one
+//     undo re-nests it). Up to 0.64 that was the only way the content
+//     went with its container (§12: the engine popped it back out); 0.65
+//     removes nested content with its container itself (core 65ee6a1),
+//     so the explicit form is now simply the same batch spelled out, and
+//     content nested by anything else goes with its container too.
 
 import type {
   CommandContribution,
@@ -245,7 +250,6 @@ export interface ObjectCommandDeps {
     | "elementGeometry"
     | "layers"
     | "elementProperties"
-    | "undo"
   >;
   /** The LIVE element selection (read through a ref, never captured). */
   getSelection: () => readonly ElementId[];
@@ -563,48 +567,6 @@ export function treePlaces(
   return out;
 }
 
-/** Every group's DIRECT children, by key — the member tables as the
- *  scene tree reports them. This is what fact 6 corrupts, so it is what
- *  `deleteSelection` compares before and after. */
-export function groupTable(
-  roots: readonly SceneTreeNode[],
-): Map<string, string[]> {
-  const out = new Map<string, string[]>();
-  const walk = (nodes: readonly SceneTreeNode[]) => {
-    for (const node of nodes) {
-      if (node.id && node.id.kind === "group") {
-        out.set(
-          elementKey(node.id),
-          (node.children ?? [])
-            .map((c) => (c.id ? elementKey(c.id) : ""))
-            .filter(Boolean),
-        );
-      }
-      if (node.children) walk(node.children);
-    }
-  };
-  walk(roots);
-  return out;
-}
-
-/** The first group whose member table differs between `expected` and
- *  what the tree now holds, or null when every expected group is
- *  intact. Groups the tree holds beyond `expected` are not this
- *  function's business. */
-export function firstDisturbedGroup(
-  expected: ReadonlyMap<string, readonly string[]>,
-  actual: ReadonlyMap<string, readonly string[]>,
-): string | null {
-  for (const [key, members] of expected) {
-    const now = actual.get(key);
-    if (!now || now.length !== members.length) return key;
-    for (let i = 0; i < members.length; i += 1) {
-      if (now[i] !== members[i]) return key;
-    }
-  }
-  return null;
-}
-
 /** What `deletePlan` hands the runner. */
 export type DeletePlan =
   | {
@@ -614,9 +576,6 @@ export type DeletePlan =
       ops: Mutation[];
       /** Every LEAF that will be gone (group members included). */
       removed: PageItemId[];
-      /** The member tables that must come out of the delete untouched —
-       *  every group the delete does not itself dissolve. */
-      survivors: Map<string, string[]>;
     }
   | { ok: false; reason: string };
 
@@ -626,18 +585,17 @@ export type DeletePlan =
  *  · A LEAF is a `deleteFrame` (the op takes the bare id).
  *  · A GROUP is a `dissolveGroup` for itself and for every group nested
  *    inside it, OUTERMOST FIRST, then a `deleteFrame` per leaf. Order
- *    matters only in that every dissolve precedes the deletes: a leaf
- *    removed while its group still stands is exactly fact 6.
+ *    matters only in that every dissolve precedes the deletes: a group
+ *    whose leaves all go while it still stands is left behind empty
+ *    (fact 6).
  *  · A selected item INSIDE a selected group is covered by the group
  *    and emits nothing of its own (the engine would refuse the second
  *    delete of an id that is already gone).
  *  · A selected item inside a group that is NOT selected is REFUSED,
- *    here, before the wire. The engine would accept it and then leave
- *    the group holding the wrong members — and unlike the bystander
- *    case, undo does not put it right (the member comes back twice).
- *    Refusing is the only safe answer the host has; re-creating the
- *    group around the hole would mint a new id and drop the group's
- *    own transparency.
+ *    here, before the wire (fact 6). Up to engine 0.64 the engine left
+ *    the group holding the wrong members; 0.65 takes one member out
+ *    correctly, but taking every member out leaves an empty group, so
+ *    the host keeps asking for the whole group or an ungroup first.
  *
  * An id the tree does not carry still gets its op — a stale leaf is
  * the engine's to refuse, in its own words, and a pasted-into child is
@@ -650,7 +608,8 @@ export type DeletePlan =
  *    removed BEFORE the container, deepest first, so the engine never
  *    sees a delete of a nested item and one undo re-nests every one of
  *    them. Without the map the container is deleted alone, and the
- *    engine pops its content out (engine-findings §12).
+ *    engine (0.65+) takes its content with it; up to 0.64 it popped the
+ *    content back out (engine-findings §12).
  */
 export function deletePlan(
   selection: readonly ElementId[],
@@ -671,7 +630,6 @@ export function deletePlan(
   const dissolves: Mutation[] = [];
   const deletes: Mutation[] = [];
   const removed: PageItemId[] = [];
-  const dissolved = new Set<string>();
   const unnested = new Set<string>();
 
   /** Release + remove everything clipped inside `container`, deepest
@@ -693,7 +651,6 @@ export function deletePlan(
     const id = node.id;
     if (!id || !isPageItem(id)) return;
     if (id.kind === "group") {
-      dissolved.add(elementKey(id));
       dissolves.push({ op: "dissolveGroup", args: { groupId: id.id } });
       for (const child of node.children ?? []) collect(child);
     } else {
@@ -722,19 +679,14 @@ export function deletePlan(
         ok: false,
         reason:
           `${describeElement(id)} is inside ${describeElement(parent)}. ` +
-          "The engine cannot take one item out of a group — it leaves the " +
-          "group holding the wrong members. Select the whole group, or " +
-          "ungroup first.",
+          "Items are not deleted out of a group one by one here — select " +
+          "the whole group, or ungroup first.",
       };
     }
     collect(place.node);
   }
 
-  const survivors = new Map<string, string[]>();
-  for (const [key, members] of groupTable(roots)) {
-    if (!dissolved.has(key)) survivors.set(key, members);
-  }
-  return { ok: true, ops: [...dissolves, ...deletes], removed, survivors };
+  return { ok: true, ops: [...dissolves, ...deletes], removed };
 }
 
 /** A 2×3 affine as the wire carries it: `[a b c d tx ty]`. */
@@ -1224,7 +1176,7 @@ export async function selectParentGroup(
  * all of them back, at the z slots they left. Afterwards the selection
  * is empty.
  *
- * Three ways this ends without deleting, each of them reported:
+ * Two ways this ends without deleting, each of them reported:
  *
  *  · THE PLAN REFUSES — an item inside a group that is staying
  *    (`deletePlan`).
@@ -1232,15 +1184,12 @@ export async function selectParentGroup(
  *    into a container ("release it before removing"). A batch is
  *    atomic, so a refusal deletes nothing; the engine's sentence is
  *    surfaced verbatim.
- *  · THE ENGINE ACCEPTS AND DAMAGES A BYSTANDER (fact 6). The member
- *    tables of every surviving group are read back and compared; on a
- *    difference the delete is undone, and the redo entry that undo
- *    leaves behind is dropped by an empty batch (any applied mutation
- *    clears the redo log, and an empty batch is the one that changes
- *    nothing). The price is one inert undo step, which is the cheaper
- *    thing to leave in the log than a Redo that re-breaks the group.
- *    Remove this branch when core renumbers member tables on remove —
- *    AC-OBJ-ENGINE-1 turns red that day.
+ *
+ * Up to engine 0.64 there was a third: the engine accepted a delete
+ * below a group and re-seated that group's members (fact 6), so the
+ * member tables were read back and a damaging delete undone. 0.65 fixed
+ * the renumbering; AC-OBJ-ENGINE-1 turned red on the 0.66 pin and the
+ * read-back was removed.
  */
 export async function deleteSelection(deps: ObjectCommandDeps): Promise<void> {
   if (blockedByEditContext(deps, "Delete")) return;
@@ -1269,20 +1218,17 @@ export async function deleteSelection(deps: ObjectCommandDeps): Promise<void> {
   }
   // Fact 13 — a clipping path goes with what it clips. The first plan
   // names every leaf that will go; the index read is only for those that
-  // can clip, and a second plan folds their content in.
+  // can clip, and a second plan folds their content in. An index that
+  // cannot be read is no reason to refuse any more: since engine 0.65 a
+  // container's delete takes its content along by itself (up to 0.64 the
+  // content popped back out, so this refused).
   const clipPaths = plan.removed.filter(canClipBy);
   if (clipPaths.length > 0) {
-    let index: Map<string, PageItemId[]>;
+    let index = new Map<string, PageItemId[]>();
     try {
       index = await clipContentIndex(deps.client, clipPaths, roots);
     } catch {
-      deps.report(
-        "error",
-        "Delete refused: what the selection clips could not be read — " +
-          "deleting a clipping path without its content would leave the " +
-          "content behind — so nothing was removed.",
-      );
-      return;
+      /* the plain plan: the engine removes the content with its container. */
     }
     if (index.size > 0) {
       plan = deletePlan(selection, roots, index);
@@ -1294,16 +1240,6 @@ export async function deleteSelection(deps: ObjectCommandDeps): Promise<void> {
   }
   if (plan.ops.length === 0) return;
 
-  // Which of the leaves carry a placed image — asked BEFORE they are
-  // gone, for the notice below.
-  let withImage = 0;
-  try {
-    const geometry = await deps.client.elementGeometry(plan.removed);
-    withImage = geometry.filter((g) => g.hasImage).length;
-  } catch {
-    /* the notice is a courtesy; the delete does not wait on it. */
-  }
-
   const reply = await deps.client.mutate(asOneMutation(plan.ops));
   const refusal = refusalOf(reply);
   if (refusal) {
@@ -1311,79 +1247,10 @@ export async function deleteSelection(deps: ObjectCommandDeps): Promise<void> {
     return;
   }
 
-  if (plan.survivors.size > 0) {
-    const disturbed = await disturbedSurvivor(deps, plan.survivors);
-    if (disturbed) {
-      const restored = await undoDamagingDelete(deps, roots);
-      deps.report(
-        "error",
-        `Delete undone: removing the selection made the engine re-seat the ` +
-          `members of ${disturbed.replace(":", " ")} (it does not renumber a ` +
-          `group's member table when an older item of the same kind is ` +
-          `removed). ` +
-          (restored
-            ? "The document is back as it was. Ungroup that group to delete " +
-              "safely."
-            : "The undo did NOT restore the group structure — check the " +
-              "Layers panel before saving."),
-      );
-      return;
-    }
-  }
-
+  // No notice for a deleted image frame any more: up to engine 0.64 undo
+  // brought the frame back without its image (engine-findings §11) and
+  // the user was told; 0.65 captures the whole node, image included.
   await deps.setSelection([]);
-  if (withImage > 0) {
-    // The engine's undo record for a removed frame carries its
-    // geometry, fill and stroke — not its image (nor its opacity,
-    // effects or corners; engine-findings §11). The image is the one
-    // loss this layer can detect exactly, and it is CONTENT, so it is
-    // the one the user is told about.
-    deps.report(
-      "info",
-      (withImage === 1
-        ? "The deleted frame held a placed image. "
-        : `${withImage} of the deleted frames held a placed image. `) +
-        "Undo brings the frame back empty — this engine version does not " +
-        "keep image content in its undo record.",
-    );
-  }
-}
-
-/** The first surviving group whose member table no longer matches, or
- *  null. An unreadable tree answers null: the delete applied, and a
- *  check that could not run is not evidence of damage. */
-async function disturbedSurvivor(
-  deps: ObjectCommandDeps,
-  survivors: ReadonlyMap<string, readonly string[]>,
-): Promise<string | null> {
-  try {
-    return firstDisturbedGroup(
-      survivors,
-      groupTable(await deps.client.sceneTree()),
-    );
-  } catch {
-    return null;
-  }
-}
-
-/** Undo the delete that damaged a group and drop its redo entry.
- *  Returns whether the group structure is back to `before`. */
-async function undoDamagingDelete(
-  deps: ObjectCommandDeps,
-  before: readonly SceneTreeNode[],
-): Promise<boolean> {
-  await deps.client.undo();
-  await deps.client.mutate({ op: "batch", args: { ops: [] } });
-  try {
-    return (
-      firstDisturbedGroup(
-        groupTable(before),
-        groupTable(await deps.client.sceneTree()),
-      ) === null
-    );
-  } catch {
-    return false;
-  }
 }
 
 /** One selection's worth of pending movement. */

@@ -37,7 +37,9 @@
 // for every shape of selection in the Node tier; here each verb is
 // proven against the real engine — and so are the engine behaviours the
 // verbs are built around, as `test.fail` anchors that turn red the day
-// core fixes them (docs/reference/engine-findings.md §10–§12, §14–§16).
+// core fixes them (docs/reference/engine-findings.md §15–§16). The four
+// that engine 0.65 fixed (§10–§12, §14) flipped on the 0.66 pin and now
+// assert the fixed behaviour as plain pins.
 //
 // MAKE / RELEASE CLIPPING MASK ride B-18's `pasteInto` / `releaseFrom`.
 // Their pixel tests read four probe points at one pixel per point: what
@@ -1154,13 +1156,15 @@ test.describe("E2E paged.object.delete — against the real engine", () => {
     expect((await selection(page)).map(key)).toEqual([key(a)]);
   });
 
-  test("AC-OBJ-18 — a delete that would re-seat ANOTHER group's members is undone and reported @feat:frames-paths.frame.delete @feat:frames-paths.groups @feat:round-tripping.undo-redo @feat:editor-shell.panels.problems @level:edge", async ({
+  test("AC-OBJ-18 — deleting an item BELOW a group leaves that group's members alone; one undo restores, redo re-deletes @feat:frames-paths.frame.delete @feat:frames-paths.groups @feat:round-tripping.undo-redo @feat:editor-shell.panels.problems @level:edge", async ({
     page,
   }) => {
     await openPanel(page, "paged.problems");
-    // `older` is created BEFORE the group's members. Removing it shifts
-    // their slots in the spread's rectangle list, and the engine does
-    // not carry that shift into the group's member table.
+    // `older` is created BEFORE the group's members, so removing it
+    // shifts their slots in the spread's rectangle list. Up to engine
+    // 0.64 the group's member table was not renumbered for that
+    // (engine-findings §10) and the editor undid the delete and said so;
+    // 0.65 renumbers it (core 4fa48f1), so this is an ordinary delete.
     const [older, a, b, newer] = await insertStack(page, 4);
     await select(page, [a, b]);
     await invokeCommand(page, GROUP);
@@ -1174,36 +1178,25 @@ test.describe("E2E paged.object.delete — against the real engine", () => {
     await select(page, [older]);
     await invokeCommand(page, DELETE);
 
-    // The document is exactly as it was — `older` included.
-    await expect.poll(() => structure(page)).toBe(structureBefore);
-    expect(await geometry(page, [older, a, b, newer])).toEqual(before);
-    const problem = objectProblem(page);
-    await expect(problem).toHaveCount(1);
-    await expect(problem).toHaveAttribute("data-problem-severity", "error");
-    await expect(problem.locator("[data-problem-message]")).toContainText(
-      "Delete undone",
-    );
-    await expect(problem.locator("[data-problem-message]")).toContainText(
-      `group ${groupRef.id}`,
-    );
-    // Still selected: nothing was deleted.
-    expect((await selection(page)).map(key)).toEqual([key(older)]);
+    // Gone — and the group still holds exactly its own two members.
+    const deleted = `${key(groupRef)}[${key(a)},${key(b)}],${key(newer)}`;
+    await expect.poll(() => structure(page)).toBe(deleted);
+    expect(await geometry(page, [a, b, newer])).toEqual(before.slice(1));
+    expect(await geometry(page, [older])).toEqual([]);
+    await expect(objectProblem(page)).toHaveCount(0);
+    expect(await selection(page)).toEqual([]);
 
-    // And Redo cannot bring the damage back: its entry was dropped.
-    const again = await redo(page);
-    expect(again.kind).toBe("mutationFailed");
+    // One undo puts `older` back in its slot, the group untouched …
+    await undo(page);
     expect(await structure(page)).toBe(structureBefore);
-
-    // An item created AFTER the members shifts nothing — it deletes.
-    await select(page, [newer]);
-    await invokeCommand(page, DELETE);
-    await expect
-      .poll(() => structure(page))
-      .toBe(`${key(older)},${key(groupRef)}[${key(a)},${key(b)}]`);
-    await expect(problem).toHaveCount(0);
+    expect(await geometry(page, [older, a, b, newer])).toEqual(before);
+    // … and Redo deletes it again, just as cleanly.
+    const again = await redo(page);
+    expect(again.kind).toBe("redoApplied");
+    expect(await structure(page)).toBe(deleted);
   });
 
-  test("AC-OBJ-19 — deleting an image frame says what undo will not bring back @feat:frames-paths.frame.delete @feat:round-tripping.undo-redo @feat:editor-shell.panels.problems @level:edge", async ({
+  test("AC-OBJ-19 — deleting an image frame is silent, and undo brings the image back @feat:frames-paths.frame.delete @feat:round-tripping.undo-redo @feat:editor-shell.panels.problems @level:edge", async ({
     page,
   }) => {
     await openPanel(page, "paged.problems");
@@ -1223,12 +1216,15 @@ test.describe("E2E paged.object.delete — against the real engine", () => {
     await invokeCommand(page, DELETE);
     await expect.poll(() => geometry(page, [frame])).toEqual([]);
 
-    const problem = objectProblem(page);
-    await expect(problem).toHaveCount(1);
-    await expect(problem).toHaveAttribute("data-problem-severity", "info");
-    await expect(problem.locator("[data-problem-message]")).toContainText(
-      "placed image",
-    );
+    // Up to engine 0.64 undo brought the frame back EMPTY
+    // (engine-findings §11), so the delete posted an `info` line saying
+    // so. 0.65 captures the whole node (core e9b80a5): there is nothing
+    // to warn about, and nothing is posted.
+    await expect(objectProblem(page)).toHaveCount(0);
+    await undo(page);
+    await expect
+      .poll(async () => (await geometry(page, [frame]))[0]?.hasImage)
+      .toBe(true);
   });
 });
 
@@ -1866,13 +1862,13 @@ test.describe("E2E paged.object — the keys belong to whoever is being edited",
 
 // ───────────────────────────────────────────────── engine anchors
 //
-// Four things the ENGINE does that `paged.object.delete` and `.nudge*`
-// are built around. Each test asserts the behaviour a user would expect and is
-// marked `test.fail`, so it is green while the defect stands and turns
-// RED the day core fixes it — which is the signal to delete the
-// matching workaround (docs/reference/engine-findings.md §10–§12, §14). They drive the
-// wire directly: the host verb would refuse or revert before the
-// defect could show.
+// Four things the ENGINE did that `paged.object.delete` and `.nudge*`
+// were built around. Each test asserts the behaviour a user would expect
+// and WAS marked `test.fail`, green while the defect stood. Engine 0.65
+// fixed all four (core 4fa48f1, e9b80a5, 65ee6a1, 91bafcc); on the 0.66
+// pin they turned red, the marks came off, and the workarounds they
+// guarded went with them (docs/reference/engine-findings.md §10–§12,
+// §14). They now pin the fixed behaviour. They drive the wire directly.
 
 // ──────────────────────────────────────────────────── clipping masks
 
@@ -2182,10 +2178,7 @@ test.describe("E2E engine anchors — what paged.object.* works around", () => {
   test("AC-OBJ-ENGINE-1 — deleteFrame of an OLDER same-kind item leaves a group's members alone @feat:frames-paths.frame.delete @feat:frames-paths.groups @level:edge", async ({
     page,
   }) => {
-    test.fail(
-      true,
-      "engine-findings §10: RemoveNode does not renumber Group::members",
-    );
+    // engine-findings §10, FIXED in 0.65 (core 4fa48f1).
     const [older, a, b, bystander] = await insertStack(page, 4);
     const grouped = await mutate(page, {
       op: "createGroup",
@@ -2197,7 +2190,7 @@ test.describe("E2E engine anchors — what paged.object.* works around", () => {
       args: { frameId: older.id },
     });
     expect(reply.kind).toBe("mutationApplied");
-    // Today: `group[b, bystander], bystander` — a fell out, and an
+    // On 0.64: `group[b, bystander], bystander` — a fell out, and an
     // unrelated frame was pulled in.
     expect(await structure(page)).toBe(
       `${key(groupRef)}[${key(a)},${key(b)}],${key(bystander)}`,
@@ -2207,11 +2200,17 @@ test.describe("E2E engine anchors — what paged.object.* works around", () => {
   test("AC-OBJ-ENGINE-2 — undo of a delete restores the frame's formatting and its image @feat:frames-paths.frame.delete @feat:round-tripping.undo-redo @level:edge", async ({
     page,
   }) => {
-    test.fail(
-      true,
-      "engine-findings §11: NodeSpec captures geometry, fill and stroke only",
-    );
+    // engine-findings §11, FIXED in 0.65 (core e9b80a5: the node is
+    // captured whole).
     const [frame] = await insertStack(page, 1);
+    const placed = await mutate(page, {
+      op: "placeImage",
+      args: {
+        elementId: frame.id,
+        uri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==",
+      },
+    });
+    expect(placed.kind, "placeImage should apply").toBe("mutationApplied");
     const set = (path: string, value: unknown) =>
       mutate(page, {
         op: "setElementProperty",
@@ -2227,18 +2226,17 @@ test.describe("E2E engine anchors — what paged.object.* works around", () => {
 
     await mutate(page, { op: "deleteFrame", args: { frameId: frame.id } });
     await undo(page);
-    // Today both read `null`: the frame comes back bare.
+    // On 0.64 all three were lost: the frame came back bare.
     expect(await property(page, frame, "frameOpacity")).toBe(40);
     expect(await property(page, frame, "frameCornerRadiusTopLeft")).toBe(12);
+    expect((await geometry(page, [frame]))[0]?.hasImage).toBe(true);
   });
 
   test("AC-OBJ-ENGINE-4 — the engine's own translate gesture repaints a dragged LINE @feat:editor-tools.move.translate @feat:frames-paths.line.insert @level:edge", async ({
     page,
   }) => {
-    test.fail(
-      true,
-      "engine-findings §14: an un-rotated line's drag moves its box, not its anchors",
-    );
+    // engine-findings §14, FIXED in 0.65 (core 91bafcc: a path-drawn
+    // item's drag moves what is drawn).
     const pageId = await firstPageId(page);
     const line = (
       await mutate(page, {
@@ -2275,8 +2273,9 @@ test.describe("E2E engine anchors — what paged.object.* works around", () => {
       });
       await c.commitGesture(handle);
     }, line);
-    // Today: 0 — the committed drag paints the line where it started.
-    // This is why nudge does not copy what the gesture commits.
+    // On 0.64: 0 — the committed drag painted the line where it started.
+    // Nudge still writes the transform (fact 7 in object-commands.ts):
+    // that write is rigid for a rotated item too.
     expect(
       diffPngPixels(base, await pagePng(page, pageId, widthPt, widthPt)).changed,
     ).toBeGreaterThan(0);
@@ -2285,10 +2284,7 @@ test.describe("E2E engine anchors — what paged.object.* works around", () => {
   test("AC-OBJ-ENGINE-3 — deleting a container takes what was pasted into it @feat:frames-paths.frame.delete @feat:frames-paths.nested-content @level:edge", async ({
     page,
   }) => {
-    test.fail(
-      true,
-      "engine-findings §12: the pasted child is released to the top level instead",
-    );
+    // engine-findings §12, FIXED in 0.65 (core 65ee6a1).
     const [container, child] = await insertStack(page, 2);
     await mutate(page, {
       op: "pasteInto",
@@ -2296,8 +2292,20 @@ test.describe("E2E engine anchors — what paged.object.* works around", () => {
     });
     expect(await structure(page)).toBe(key(container));
     await mutate(page, { op: "deleteFrame", args: { frameId: container.id } });
-    // Today the child reappears as a free top-level item.
+    // On 0.64 the child reappeared as a free top-level item.
     expect(await structure(page)).toBe("");
+    expect(await geometry(page, [child])).toEqual([]);
+    // One undo re-nests it: the tree lists the container alone again,
+    // and the child is back (answers by id, released by releaseFrom).
+    await undo(page);
+    expect(await structure(page)).toBe(key(container));
+    expect(await geometry(page, [child])).toHaveLength(1);
+    const released = await mutate(page, {
+      op: "releaseFrom",
+      args: { childId: child },
+    });
+    expect(released.kind).toBe("mutationApplied");
+    expect(await structure(page)).toBe([container, child].map(key).join(","));
   });
 
   test("AC-OBJ-ENGINE-5 — some read lists what is pasted into a frame @feat:frames-paths.nested-content @level:edge", async ({

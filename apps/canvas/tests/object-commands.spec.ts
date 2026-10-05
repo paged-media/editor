@@ -64,10 +64,8 @@ import {
   deletePlan,
   deleteSelection,
   elementKey,
-  firstDisturbedGroup,
   groupMembersOf,
   groupSelection,
-  groupTable,
   nudgeDelta,
   nudgeKeyApplies,
   nudgeSelection,
@@ -498,11 +496,12 @@ test.describe("paged.object — the edit-context guard", () => {
 
 // ── Delete ───────────────────────────────────────────────────────────
 //
-// The plan is where the two things the ENGINE gets wrong are kept off
-// the wire (a group id handed to `deleteFrame`; a member removed from
-// a group that is staying). The e2e tier proves the engine really
-// behaves that way; this tier proves the plan for every shape of
-// selection, which an e2e test can only sample.
+// The plan is where two things are kept off the wire: a group id handed
+// to `deleteFrame` (the engine refuses it), and a member removed from a
+// group that is staying (host policy since engine 0.65 fixed the member
+// renumbering — taking every member out still leaves an empty group).
+// The e2e tier proves the engine behaviour; this tier proves the plan
+// for every shape of selection, which an e2e test can only sample.
 
 const g = (id: string): ElementId => ({ kind: "group", id });
 
@@ -526,12 +525,6 @@ test.describe("paged.object — the delete plan", () => {
       "rectangle:free",
       "rectangle:top",
     ]);
-    // Both groups survive, so both member tables are to be checked.
-    expect([...plan.survivors.keys()].sort()).toEqual([
-      "group:gInner",
-      "group:gOther",
-      "group:gOuter",
-    ]);
   });
 
   test("AC-OBJ-PURE-12 — a group is dissolved outermost-first, THEN its leaves go @feat:frames-paths.frame.delete @feat:frames-paths.groups @level:happy", () => {
@@ -545,18 +538,12 @@ test.describe("paged.object — the delete plan", () => {
       { op: "deleteFrame", args: { frameId: "deep2" } },
       { op: "deleteFrame", args: { frameId: "shallow" } },
     ]);
-    // Every dissolve precedes every delete — a leaf removed while its
-    // group still stands is the engine defect the plan exists to avoid.
+    // Every dissolve precedes every delete — a group whose leaves all
+    // go while it still stands is left behind empty.
     const firstDelete = plan.ops.findIndex((o) => o.op === "deleteFrame");
     expect(
       plan.ops.slice(firstDelete).every((o) => o.op === "deleteFrame"),
     ).toBe(true);
-    // Only the bystander group is left to verify.
-    expect([...plan.survivors.keys()]).toEqual(["group:gOther"]);
-    expect(plan.survivors.get("group:gOther")).toEqual([
-      "rectangle:o1",
-      "rectangle:o2",
-    ]);
   });
 
   test("AC-OBJ-PURE-13 — an item inside a SELECTED group is covered, not deleted twice @feat:frames-paths.frame.delete @feat:frames-paths.groups @level:edge", () => {
@@ -609,28 +596,6 @@ test.describe("paged.object — the delete plan", () => {
       { op: "dissolveGroup", args: { groupId: "ghostGroup" } },
       { op: "deleteFrame", args: { frameId: "ghost" } },
     ]);
-  });
-
-  test("AC-OBJ-PURE-16 — the member-table check sees a re-seated group @feat:frames-paths.groups @level:edge", () => {
-    const before = groupTable(roots);
-    expect(before.get("group:gOuter")).toEqual([
-      "group:gInner",
-      "rectangle:shallow",
-    ]);
-    expect(firstDisturbedGroup(before, groupTable(roots))).toBeNull();
-
-    // What the engine actually leaves behind when an older rectangle is
-    // removed: the table slides one slot along the spread's list.
-    const slid = spreadOf([
-      group("gOuter", [group("gInner", [leaf("deep1"), leaf("deep2")]), leaf("shallow")]),
-      group("gOther", [leaf("o2"), leaf("top")]),
-      leaf("top"),
-    ]);
-    expect(firstDisturbedGroup(before, groupTable(slid))).toBe("group:gOther");
-    // A group that vanished is disturbed too.
-    expect(
-      firstDisturbedGroup(before, groupTable(spreadOf([leaf("free")]))),
-    ).not.toBeNull();
   });
 });
 
@@ -713,26 +678,18 @@ test.describe("paged.object — delete, against a recorded client", () => {
     expect(r.undone()).toBe(0);
   });
 
-  test("AC-OBJ-PURE-18 — a delete that re-seats a bystander group is UNDONE and reported @feat:frames-paths.frame.delete @feat:frames-paths.groups @level:edge", async () => {
-    // What the engine leaves after removing `x`: g1 now claims b and z.
+  test("AC-OBJ-PURE-18 — a delete below a group is ONE op and is not second-guessed @feat:frames-paths.frame.delete @feat:frames-paths.groups @level:edge", async () => {
+    // Up to engine 0.64 removing `x` re-seated g1's members, so the tree
+    // was read back and a damaging delete undone. 0.65 renumbers the
+    // member table; whatever the tree says afterwards, the delete stands.
     const damaged = spreadOf([group("g1", [leaf("b"), leaf("z")]), leaf("z")]);
     const r = recordingDeps([rect("x")], before, damaged);
     await deleteSelection(r.deps);
 
-    expect(r.undone(), "the damaging delete was undone").toBe(1);
-    // The delete, then the empty batch that drops its redo entry — a
-    // Redo that re-breaks the group must not be left lying around.
-    expect(r.sent).toEqual([
-      { op: "deleteFrame", args: { frameId: "x" } },
-      { op: "batch", args: { ops: [] } },
-    ]);
-    // The selection is NOT cleared: nothing was deleted.
-    expect(r.selections).toEqual([]);
-    expect(r.reports).toHaveLength(1);
-    expect(r.reports[0]!.severity).toBe("error");
-    expect(r.reports[0]!.message).toContain("Delete undone");
-    expect(r.reports[0]!.message).toContain("group g1");
-    expect(r.reports[0]!.message).toContain("back as it was");
+    expect(r.undone()).toBe(0);
+    expect(r.sent).toEqual([{ op: "deleteFrame", args: { frameId: "x" } }]);
+    expect(r.selections).toEqual([[]]);
+    expect(r.reports).toEqual([]);
   });
 
   test("AC-OBJ-PURE-19 — a member of a surviving group never reaches the wire @feat:frames-paths.frame.delete @feat:frames-paths.groups @level:edge", async () => {
@@ -744,14 +701,12 @@ test.describe("paged.object — delete, against a recorded client", () => {
     expect(r.reports[0]!.message).toContain("group g1");
   });
 
-  test("AC-OBJ-PURE-20 — a deleted image frame says what undo will not bring back @feat:frames-paths.frame.delete @feat:round-tripping.undo-redo @level:edge", async () => {
+  test("AC-OBJ-PURE-20 — a deleted image frame posts no notice (undo keeps the image since engine 0.65) @feat:frames-paths.frame.delete @feat:round-tripping.undo-redo @level:edge", async () => {
     const after = spreadOf([group("g1", [leaf("a"), leaf("b")]), leaf("z")]);
     const r = recordingDeps([rect("x")], before, after, ["x"]);
     await deleteSelection(r.deps);
     expect(r.selections).toEqual([[]]);
-    expect(r.reports).toHaveLength(1);
-    expect(r.reports[0]!.severity).toBe("info");
-    expect(r.reports[0]!.message).toContain("placed image");
+    expect(r.reports).toEqual([]);
   });
 });
 
@@ -1378,7 +1333,8 @@ test.describe("paged.object — the clipping-mask plan", () => {
       "oval:o2",
       "oval:k",
     ]);
-    // Without an index the container goes alone (engine-findings §12).
+    // Without an index the container's own delete is the whole plan
+    // (since engine 0.65 it takes its content along; engine-findings §12).
     const bare = deletePlan([ov("k")], roots);
     expect(bare.ok && bare.ops).toEqual([{ op: "deleteFrame", args: { frameId: "k" } }]);
     // Flattening visits every level once.

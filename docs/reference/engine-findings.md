@@ -20,6 +20,15 @@ Discovered 2026-06-05.
 > AC-E2E-PAGE-4 (promoted to a live render sandwich), AC-E2E-PROVE-3.
 > Per-finding details below.
 
+> **STATUS 2026-10-05 — #10, #11, #12 + #14 FIXED at the current pin.**
+> Engine 0.65 fixed all four (core 4fa48f1, e9b80a5, 65ee6a1, 91bafcc);
+> the editor's pin moved 0.64 → 0.66.0, the four `test.fail` anchors
+> (AC-OBJ-ENGINE-1..4) turned red, and each was re-pinned to the fixed
+> behaviour as measured on canvas-wasm 0.66.0 in a Playwright chromium
+> run of `e2e/object-commands.spec.ts`. The editor workarounds they
+> guarded were removed (details per section). #15 and #16 stay OPEN, still
+> anchored by `test.fail`.
+
 > **STATUS 2026-08-18 — #6 + #7 FIXED at the current pin.** The W2 sweep
 > surfaced a batch-insertFrame duplicate-self_id bug (#6, gridify) and a
 > cluster of wire-accepted-but-render-ignored property paths (#7); both
@@ -260,7 +269,7 @@ ops pass where a stroked rectangle exists and skip where none does.
 paths correctly. Cost of the lesson: a harness target fact wearing an
 engine finding's clothes for one afternoon.
 
-## 10. deleteFrame does not renumber group member tables (OPEN)
+## 10. deleteFrame does not renumber group member tables (FIXED in 0.65)
 
 Discovered 2026-10-02 building `paged.object.delete`, at the
 `canvas-wasm` 0.64.0 pin (core `main` @ `9f933f1` carries the same
@@ -315,7 +324,20 @@ later ones is refused until this is fixed.
 **Suite anchor.** `e2e/object-commands.spec.ts` AC-OBJ-ENGINE-1
 (`test.fail`); AC-OBJ-17 / AC-OBJ-18 pin the editor's two guards.
 
-## 11. Undo of deleteFrame restores a bare frame (OPEN — the residue of #4)
+**Fixed in 0.65** (core 4fa48f1: `register_frame_ref` /
+`unregister_frame_ref` renumber group members and drop the removed ref).
+Measured on 0.66.0: deleting `u1` below `group[u2,u3]` leaves the group
+whole, one undo restores it exactly, redo re-deletes. Deleting one member
+of a two-plus group shrinks the group correctly and undo restores it.
+Deleting EVERY member of a group without dissolving it leaves an empty
+`group:<id>` in the tree (undo restored it in this measurement;
+paged.draw pinned a flow where it does not).
+AC-OBJ-ENGINE-1 is a plain pin now. The editor's read-back-and-undo guard
+was removed and AC-OBJ-18 asserts the ordinary delete; the member refusal
+(AC-OBJ-17) stays as host policy because of the empty-group case, with a
+reason that no longer blames the renumbering.
+
+## 11. Undo of deleteFrame restores a bare frame (FIXED in 0.65 — the residue of #4)
 
 **Symptom.** Delete → undo brings a frame back with its geometry, fill,
 stroke colour and stroke weight, and nothing else. Measured on a
@@ -353,7 +375,14 @@ detect exactly, a placed image, is announced when the frame is deleted
 **Suite anchor.** AC-OBJ-ENGINE-2 (`test.fail`); AC-OBJ-19 pins the
 notice.
 
-## 12. Deleting a container releases what was pasted into it (OPEN)
+**Fixed in 0.65** (core e9b80a5: `NodeSpec::Captured` carries the whole
+node, image bytes included). Measured on 0.66.0: opacity 40, corner
+radius 12 and the placed image all come back on undo. AC-OBJ-ENGINE-2 is
+a plain pin (now with the image too); the editor's "undo brings the frame
+back empty" notice was removed, and AC-OBJ-19 asserts that no notice is
+posted and that undo returns the image.
+
+## 12. Deleting a container releases what was pasted into it (FIXED in 0.65)
 
 **Symptom.** `pasteInto { container: u1, child: u2 }`, then
 `deleteFrame u1`: the tree goes from `rectangle:u1` (the child is not
@@ -378,6 +407,15 @@ that content before the container, in the same batch, so the content
 goes with it and one undo re-nests it (AC-OBJ-35). Content nested by
 anything else still pops out.
 
+**Fixed in 0.65** (core 65ee6a1: `RemoveNode` on a container releases and
+removes each child, and its inverse re-nests them). Measured on 0.66.0:
+the child goes with its container, and one undo brings the container back
+with the child nested (the tree lists the container alone;
+`releaseFrom` on the child applies). AC-OBJ-ENGINE-3 is a plain pin that
+also checks the undo. `paged.object.delete` keeps spelling the indexed
+content out in its batch (the same outcome), but no longer refuses when
+the index cannot be read: the engine takes the content along itself.
+
 ## 13. Two writes the engine accepts and should not (OPEN, minor)
 
 Found by the same probes; neither is on `paged.object.*`'s path.
@@ -395,7 +433,7 @@ Found by the same probes; neither is on `paged.object.*`'s path.
   only bites a selection made from a panel — but nothing below the
   editor would stop a script or a plugin.
 
-## 14. The translate gesture does not move an un-rotated line or path (OPEN)
+## 14. The translate gesture does not move an un-rotated line or path (FIXED in 0.65)
 
 Found 2026-10-02 while choosing the op for `paged.object.nudge*`, by
 rendering what the engine's own drag commits against what a transform
@@ -434,6 +472,12 @@ panel's X/Y fields, and has the same effect on a line.
 
 **Suite anchor.** AC-OBJ-ENGINE-4 (`test.fail`); AC-OBJ-30 proves the
 transform write does repaint a line and a pen path.
+
+**Fixed in 0.65** (core 91bafcc: the gesture sends every item the
+renderer draws from a path down the transform path). AC-OBJ-ENGINE-4 is a
+plain pin. Only the GESTURE changed: a direct `frameBounds` write still
+moves the box alone, so nudge and the typed X/Y keep writing the
+transform (which is also rigid for a rotated item).
 
 ## 15. Nothing on the wire lists what is pasted into a frame (OPEN)
 
