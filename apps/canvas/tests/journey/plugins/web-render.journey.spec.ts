@@ -48,6 +48,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { Designer } from "../driver/designer";
+import { words } from "./web-kit";
 
 const INSERT = "media.paged.web.command.insertWebFrame";
 const RENDER = "media.paged.web.command.renderWebFrame";
@@ -169,13 +170,13 @@ test.describe("journey · paged.web render output", () => {
   });
 
   // Protocol 68 — the web text reaches the engine as VALUES, not just
-  // pixels: each run names its family (the bundle's vendored Inter) and,
-  // from the face-carrying bundle on, its CSS weight; with Inter registered
+  // pixels: each run names its family (the bundle's vendored Inter) and
+  // its CSS weight (a <b> run 700, the rest 400); with Inter registered
   // by name the host's report (`fontFallbacks`, returned to the bundle
   // from `SceneLayerSurface.submit`) is empty — nothing drew in a face the
   // run did not ask for. Read at the editor's client, the object the
   // PagedEditor's `sceneLayers.submit` closes over.
-  test("a web frame's rendered text carries its face on the wire and nothing falls back when the document registers Inter @feat:plugin-web.engine-rendering @feat:plugin-platform.scene-layer @level:edge", async ({
+  test("a web frame's rendered text carries its face on the wire and nothing falls back when the document registers Inter @feat:plugin-web.engine-rendering @feat:plugin-web.web-fonts @feat:plugin-platform.scene-layer @level:edge", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -231,7 +232,7 @@ test.describe("journey · paged.web render output", () => {
     const html = page.locator("[data-web-html] [data-code-input]");
     await expect(html).toBeVisible({ timeout: 6_000 });
     await html.fill(
-      "<p style='margin:0;font:700 28px Inter;color:#101820'>Spring line sheet</p>",
+      "<p style='margin:0;font:400 28px Inter;color:#101820'>Spring <b>line</b> sheet</p>",
     );
     // Baseline before the save, as above (a bundle may render on save).
     const before = await designer.renderBytes();
@@ -269,26 +270,29 @@ test.describe("journey · paged.web render output", () => {
     const last = [...submits].reverse().find((s) => s.items.length > 0)!;
     const items = last.items as Item[];
 
-    // HARD — the face is on the wire and the host reports, as values.
+    // HARD — the face is on the wire and the host reports, as values: every
+    // run names Inter; the bold run carries weight 700 and the plain runs
+    // 400 or none (the face-carrying bundle, @paged-media/web 0.1.0-canary.9 on);
+    // with Inter registered nothing fell back.
     expect(
-      items.map((i) => i.text ?? "").join(""),
+      words(items.map((i) => i.text ?? "").join(" ")),
       "the run text is the source text",
-    ).toContain("Spring");
+    ).toEqual(["Spring", "line", "sheet"]);
     for (const it of items) {
       expect(it.family, `run ${JSON.stringify(it)} names its family`).toBe("Inter");
-      if (it.weight !== undefined) {
-        expect(it.weight, "a weight-carrying run carries the CSS weight").toBe(700);
-      }
+      expect(it.italic ?? false, `run ${JSON.stringify(it)} is upright`).toBe(false);
+    }
+    const bold = items.filter((i) => /line/.test(i.text ?? ""));
+    expect(bold.length, "the <b> run is its own scene item").toBeGreaterThan(0);
+    for (const it of bold) {
+      expect(it.text?.trim(), "the bold run holds only the bold text").toBe("line");
+      expect(it.weight, "the bold run carries weight 700").toBe(700);
+    }
+    // A regular run may omit the field (absent = 400 on the wire).
+    for (const it of items.filter((i) => !/line/.test(i.text ?? ""))) {
+      expect(it.weight ?? 400, `plain run "${it.text}" is weight 400`).toBe(400);
     }
     expect(last.fontFallbacks, "the host reports fallbacks as a list").toEqual([]);
-    const weighted = items.filter((i) => i.weight !== undefined).length;
-    test.info().annotations.push({
-      type: "faces",
-      description:
-        weighted > 0
-          ? `${weighted}/${items.length} runs carry weight 700`
-          : `the installed @paged-media/web predates per-run weight (${items.length} runs, family only)`,
-    });
 
     // And it paints.
     await designer.expectRenderChangesFrom(before);
