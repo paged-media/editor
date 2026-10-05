@@ -39,9 +39,11 @@
 // WHAT THE MANIFEST DECLARES (the resolved bundle the app loads:
 // `apps/canvas/node_modules/@paged-media/draw/manifest.json`, v0.5.0;
 // grown by canary.12's path-options panel, its eight "…Options" verbs and
-// Reverse path direction):
-//   19 tools · 11 panels · 101 commands · 1 importer · 1 exporter ·
-//   7 partTypes · 1 editContext  =  141 contributions.
+// Reverse path direction, then canary.14's Knife, Scissors (any point),
+// Reflect, Transform again, Create outlines and the Dashes…/Reflect…
+// sections):
+//   21 tools · 11 panels · 107 commands · 1 importer · 1 exporter ·
+//   7 partTypes · 1 editContext  =  149 contributions.
 //
 // THE ID LISTS BELOW ARE TRANSCRIBED FROM THAT MANIFEST ON PURPOSE.
 //   Reading the manifest at runtime would name zero ids in this file, and
@@ -78,6 +80,10 @@ const TOOLS = [
   "media.paged.draw.tool.livePaintSelect",
   "media.paged.draw.tool.typeOnPath",
   "media.paged.draw.tool.repeat",
+  // canary.14 — the cutting pair in the host's Scissors flyout (driven
+  // end to end in journey/plugins/draw-tools.journey.spec.ts).
+  "media.paged.draw.tool.knife",
+  "media.paged.draw.tool.scissorsAnyPoint",
 ] as const;
 
 const PANELS = [
@@ -198,6 +204,15 @@ const COMMANDS = [
   "media.paged.draw.command.insertPolarGridOptions",
   "media.paged.draw.command.selectSameStrokeWeightOptions",
   "media.paged.draw.command.reversePathDirection",
+  // canary.14 — Dashes… / Reflect… raise their Path Options sections;
+  // Reflect / Transform again (journey/plugins/draw-transform), Create
+  // outlines (journey/plugins/draw-outlines), Dashes… (draw-dash).
+  "media.paged.draw.command.strokeDashOptions",
+  "media.paged.draw.command.reflectOptions",
+  "media.paged.draw.command.createOutlines",
+  "media.paged.draw.command.reflectHorizontal",
+  "media.paged.draw.command.reflectVertical",
+  "media.paged.draw.command.transformAgain",
 ] as const;
 
 const IMPORTER = "media.paged.draw.importer.svg";
@@ -242,6 +257,8 @@ const TOOL_SLOT: Record<string, string> = {
   "media.paged.draw.tool.livePaintSelect": "livePaintSelect",
   "media.paged.draw.tool.typeOnPath": "type",
   "media.paged.draw.tool.repeat": "repeat",
+  "media.paged.draw.tool.knife": "scissors",
+  "media.paged.draw.tool.scissorsAnyPoint": "scissors",
 };
 
 /** Root DOM marker each panel renders. The two SCHEMA panels come from
@@ -480,7 +497,7 @@ test.describe("plugin surface · paged.draw", () => {
 
     const reg = await registrySnapshot(page);
 
-    // TOOLS — all 19 registered.
+    // TOOLS — all 21 registered.
     const missingTools = TOOLS.filter((id) => !reg.tools.includes(id));
     expect(missingTools, "every declared tool is in the tool registry").toEqual([]);
 
@@ -488,7 +505,7 @@ test.describe("plugin surface · paged.draw", () => {
     const missingPanels = PANELS.filter((id) => !reg.panels.includes(id));
     expect(missingPanels, "every declared panel is in the panel registry").toEqual([]);
 
-    // COMMANDS — all 101 registered.
+    // COMMANDS — all 107 registered.
     const missingCommands = COMMANDS.filter((id) => !reg.commands.includes(id));
     expect(missingCommands, "every declared command is in the command registry").toEqual(
       [],
@@ -524,9 +541,9 @@ test.describe("plugin surface · paged.draw", () => {
     ).toEqual([]);
 
     // And the totals the campaign quotes, so a silent shrink is loud.
-    expect(TOOLS).toHaveLength(19);
+    expect(TOOLS).toHaveLength(21);
     expect(PANELS).toHaveLength(11);
-    expect(COMMANDS).toHaveLength(101);
+    expect(COMMANDS).toHaveLength(107);
   });
 
   // ── 2. the rail ───────────────────────────────────────────────────
@@ -1151,7 +1168,7 @@ test.describe("plugin surface · paged.draw", () => {
   test("no declared command throws when invoked from the palette @feat:plugin-platform.command-registration @level:edge", async ({
     page,
   }) => {
-    // Nine of the 101 can only ever be a no-op from the palette because
+    // Nine of the 107 can only ever be a no-op from the palette because
     // they take an id the palette cannot supply (a style id, a symbol
     // id, a Live Paint face). They are REACHABLE from Cmd+K — they are
     // listed, searchable, selectable — and INERT there, which is the
