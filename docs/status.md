@@ -1,7 +1,7 @@
 # Status
 
-What the editor ships and what it does not, read from the code at commit `28dc764`
-(engine `@paged-media/canvas-wasm` 0.64.0, protocol 64). How the parts fit is in
+What the editor ships and what it does not, read from the code at commit `6d098eb`
+(engine `@paged-media/canvas-wasm` 0.66.0, protocol 66). How the parts fit is in
 [`architecture.md`](architecture.md). Panel-by-panel detail is in
 [`reference/panels.md`](reference/panels.md), which is a dated snapshot.
 
@@ -16,12 +16,16 @@ What the editor ships and what it does not, read from the code at commit `28dc76
   imported and exported as `.ase`.
 - **Canvas.** Rendering in a worker, on WebGPU with a CPU fallback. Pan and zoom; click and
   marquee selection; move, resize, scale and rotate gestures with snap guides; frame content
-  transforms; path-edit mode; text editing with caret and range selection.
+  transforms; path-edit mode, where anchors, handles and segments drag, several anchors
+  select by marquee, arrows nudge them and Delete removes them, each edit one undo step;
+  text editing with caret and range selection.
 - **Tools.** 28 built-in tools (`packages/tools/src/built-in-tools.ts`): 19 with a gesture
   handler (page, type, line, pen, pencil, smooth, frame and shape tools, scissors, rotate,
   scale, shear, two gradient tools, eyedropper); Selection, Direct Selection, Hand and Zoom;
-  and five marked `planned`. Direct Selection has no handler of its own: the pointer path
-  treats every tool except Type as Selection (`packages/shell/src/state/selection-context.tsx:50-52`).
+  and five marked `planned`. Direct Selection is the Selection tool's pointer path plus path-edit
+  mode, kept on while the tool is in hand (`packages/shell/src/state/selection-context.tsx:52-57`);
+  its behaviour, and the Pen's, are paged.draw's `DirectSelectMachine` and `PenMachine`
+  (`@paged-media/draw/machines`), so the Pen also continues, closes and joins open paths.
 - **Commands.** A command palette, menus and keybindings over one registry. Insert commands
   for text frame, rectangle, ellipse, line, table, page and placed image; arrange, group
   and ungroup; undo and redo.
