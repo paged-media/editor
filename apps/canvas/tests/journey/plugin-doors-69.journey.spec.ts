@@ -33,11 +33,11 @@
 //      text a face the document lacks, while the document still reports
 //      that family missing (supports("assets.registerFont@1"));
 //   5. DOCUMENT METADATA — `host.document.setDocumentMetadata` is one
-//      undoable edit that fires onDidChange (supports("document.metadata@1")).
+//      undoable edit that fires onDidChange (supports("document.documentMetadata@1")).
 //
-// Needs the plugin-sdk that ships these doors and an engine on protocol 69
-// (scene-scoped faces, document labels); the editor's pins move with the
-// release.
+// Needs the plugin-sdk that ships these doors and an engine on protocol 70
+// (scene-scoped faces and document labels arrived at 69; from 70 an IDML
+// export keeps the document label, which the round trip in test 5 reads).
 
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -128,7 +128,7 @@ async function loadDoorsBundle(page: Page): Promise<Doors["supports"]> {
           "overlay.layers@1",
           "document.onDidOpen@1",
           "assets.registerFont@1",
-          "document.metadata@1",
+          "document.documentMetadata@1",
         ]) {
           doors.supports[f] = host.supports(f);
         }
@@ -459,7 +459,7 @@ test.describe("journey · plugin doors: entering point, overlay layers, document
     await designer.open();
     await designer.newDocument();
     const supports = await loadDoorsBundle(page);
-    expect(supports["document.metadata@1"]).toBe(true);
+    expect(supports["document.documentMetadata@1"]).toBe(true);
 
     const read = (): Promise<unknown> =>
       hostCall(page, `return await host.document.getDocumentMetadata();`);
