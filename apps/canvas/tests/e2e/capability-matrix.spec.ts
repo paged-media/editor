@@ -1678,6 +1678,107 @@ const GEOMETRY_PROBES: Probe[] = [
       args: { page: fx.pages[0].pageId },
     }),
   },
+  // ── protocol 70 (core f6a8c56 — the presentation batch, ADR 129/130):
+  //    page order, page/document plugin labels, master CRUD and master
+  //    item edits. Shapes from canvas-wasm 0.70.0's generated .d.ts and
+  //    core's tests (master_crud.rs, on_master.rs, page_metadata.rs).
+  //    Master ids are the BARE MasterSpread self ids the `masterPages`
+  //    collection lists ("MasterSpread/<id>" is accepted too). ────────
+  {
+    op: "movePage",
+    // `after: null` = to the front; the inverse restores the order.
+    build: async ({ fx }) =>
+      fx.pageCount > 1
+        ? {
+            op: "movePage",
+            args: { page: fx.pages[fx.pageCount - 1].pageId, after: null },
+          }
+        : null,
+  },
+  {
+    op: "setPageMetadata",
+    // A page's plugin label — read back on the `pages` collection's
+    // `pluginMetadata`; gated by key namespace like item metadata.
+    build: async ({ fx }) => ({
+      op: "setPageMetadata",
+      args: {
+        page: fx.pages[0].pageId,
+        key: "x-paged:probe",
+        value: '{"v":1,"data":{}}',
+      },
+    }),
+  },
+  {
+    op: "setDocumentMetadata",
+    // The document-scoped plugin label (host.document.setDocumentMetadata).
+    build: async () => ({
+      op: "setDocumentMetadata",
+      args: { key: "x-paged:probe", value: '{"v":1,"data":{}}' },
+    }),
+  },
+  {
+    op: "createMaster",
+    // A fresh one-page master of a given size (no page applies it, so
+    // nothing repaints until applyMasterToPage); undo deletes it.
+    build: async () => ({
+      op: "createMaster",
+      args: { master: "uProbeCreate", name: "Probe", widthPt: 300, heightPt: 400 },
+    }),
+  },
+  {
+    op: "renameMaster",
+    // Renames a scratch master this probe creates first.
+    build: async ({ page }) => {
+      const made = await tryMutate(page, {
+        op: "createMaster",
+        args: { master: "uProbeRename", widthPt: 300, heightPt: 400 },
+      });
+      return made.ok
+        ? { op: "renameMaster", args: { master: "uProbeRename", name: "Renamed" } }
+        : null;
+    },
+    setupUndo: 1, // the scratch master
+  },
+  {
+    op: "deleteMaster",
+    // Refused while any page applies the master, so the probe deletes a
+    // scratch master no page uses; undo restores it exactly.
+    build: async ({ page }) => {
+      const made = await tryMutate(page, {
+        op: "createMaster",
+        args: { master: "uProbeDelete", widthPt: 300, heightPt: 400 },
+      });
+      return made.ok ? { op: "deleteMaster", args: { master: "uProbeDelete" } } : null;
+    },
+    setupUndo: 1,
+  },
+  {
+    op: "onMaster",
+    // Wraps an ordinary mutation so it lands on a master's spread (the
+    // master stands in as the document's only spread for the inner
+    // apply). Page/spread-list ops are refused inside it. The probe adds
+    // a guide to a scratch master — addressable by the master's own id,
+    // unlike an item insert, which would need the master page's id.
+    build: async ({ page }) => {
+      const made = await tryMutate(page, {
+        op: "createMaster",
+        args: { master: "uProbeOn", widthPt: 300, heightPt: 400 },
+      });
+      return made.ok
+        ? {
+            op: "onMaster",
+            args: {
+              master: "uProbeOn",
+              mutation: {
+                op: "insertGuide",
+                args: { spreadId: "uProbeOn", orientation: "vertical", position: 60 },
+              },
+            },
+          }
+        : null;
+    },
+    setupUndo: 1,
+  },
   {
     op: "insertSection",
     build: async ({ fx }) => ({
