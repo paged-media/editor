@@ -45,6 +45,45 @@ What the editor ships and what it does not, read from the code at commit `6d098e
 - **Playground build.** `build:demo` keeps the automation handle, a script playground and
   an iframe bridge for running `paged.*` source from an embedding page.
 
+## Object model in the panels (ADR 323, in progress on a branch)
+
+Panel fields read and write through `host.objects`, the one object registry the bundles, the
+automation surface and the panels share. A schema-driven field (`PropertyField`) takes its
+widget from the target's schema row; a bespoke control keeps its widget inside an
+`ObjectFieldFrame`. Both write one batch over the whole selection (one undo step), offer
+"Bind to data…" (routed to paged.data's `media.paged.data.bindProperty`) and show a badge
+when paged.data reports a property binding on the path
+(`media.paged.data.propertyBindings`).
+
+| Panel | Fields on the object model | Kept on the old lane |
+|---|---|---|
+| Stroke | 9 | — |
+| Text Frame Options | 7 | — |
+| Text Wrap | 5 | — |
+| Character | 16 schema fields; family select and OpenType chips (bespoke) | — |
+| Paragraph | 21 schema fields | rule above / below (no schema row: whole-struct `paragraphRule`) |
+| Frame Fitting | 3 schema fields; reference-point grid, fill-proportionally (bespoke) | — |
+| Color | fill (swatch collection select), tint; the mixer's Apply (`frameFillColor`, or `doc.defaultFillColor` with nothing selected) | — |
+| Effects | 57 per-effect schema fields; opacity, blend, 8 enable pills (bespoke) | — |
+| Gradients, Swatches | the fill field (collection select) | swatch edit (`editSwatch` writes the whole colour; `swatch.space` / `swatch.value` alone would lose tint and model) |
+| Bullets & Numbering | list type, two marker character styles; format, expression, glyph, text after, start at (bespoke); Assign | numbering continue (three-state on the wire, `text` in the schema) |
+| Object / Transform | opacity; W/H over `frameBounds`, rotation, scale X/Y, flip H (bespoke) | X/Y (the transformed footprint; written by the nudge's translation plan) |
+| Attributes | 5 | — |
+| Inspector | every row whose path has a schema row | rows without one (marked `data-schema="none"`) |
+| Table | 19 cell paths on `cell:<table>/<r>,<c>`, 3 table paths on `table:<id>` | row/column/span/header/footer (ops, not properties) |
+| Layers | visible, locked, printable, name on `layer:<id>`; delete; item → layer (`itemLayer`) | move, insert (ops) |
+| Paragraph / Character / Object Styles | the applied style (`ref`) | new / delete style (collection ops) |
+| Align | the typed command `paged.align.objects` `{ kind, targets }` (one batch) | — |
+| Control, Properties | reuse the migrated compositions | — |
+
+Not migrated yet: Tabs (`paragraphTabStops` has no schema row) and the collection panels
+(pages, links, hyperlinks, conditions, colour groups, master pages, …), whose rows are
+documents' collections rather than properties. Plugin panels migrate in their own repos.
+
+The table addresses go through an editor-side extension of the SDK's core seam, because
+the published seam answers `unmapped` for `cell:` and `table:` and its cell address does
+not carry the story; it moves into the SDK (or core's `Set`) when they map them.
+
 ## Limits of what is shipped
 
 - **Browser.** The application needs cross-origin isolation, `SharedArrayBuffer`,

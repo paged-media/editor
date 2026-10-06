@@ -330,9 +330,6 @@ export function setOps(
 
 // ------------------------------------------------- Bind to data… target
 
-/** ADR 559 — a binding recipe lives as JSON under this label key on the
- *  element it targets; the badge looks for the path inside it. */
-export const BIND_LABEL_KEY = "x-paged:bind";
 /** ADR 559 §4 — the stable object id, minted on first reference, because
  *  InDesign renumbers every `Self` on save. */
 export const OID_LABEL_KEY = "x-paged:oid";
@@ -342,11 +339,38 @@ export function quoteSelectorValue(text: string): string {
   return `"${text.replace(/["\\]/g, (c) => `\\${c}`)}"`;
 }
 
-/** Does the element carry a binding for `path`? The recipe format is
- *  paged.data's (Wave 5); every recipe names its `"path"`, which is the
- *  one thing this probe relies on. */
-export function boundProbeSelector(address: string, path: string): string {
-  return `${address}[label.${BIND_LABEL_KEY}*=${quoteSelectorValue(`"path":"${path}"`)}]`;
+/** paged.data's typed query for the badge: the property bindings that
+ *  target `{ address, path }`. The editor never parses paged.data's
+ *  labels (`x-paged:media.paged.data`, its own layout) — it asks. */
+export const PROPERTY_BINDINGS_COMMAND = "media.paged.data.propertyBindings";
+
+interface BindingsProbeObjects {
+  commands(): Promise<readonly { id: string }[]>;
+  invoke(command: string, args: unknown): Promise<unknown>;
+}
+
+/** Is `path` bound on any of `addresses`? `false` when no data plugin
+ *  offers the query (nothing can be bound then) or it fails. */
+export async function probeBound(
+  objects: BindingsProbeObjects,
+  addresses: readonly string[],
+  path: string,
+): Promise<boolean> {
+  if (addresses.length === 0) return false;
+  const offered = await objects.commands().then(
+    (cs) => cs.some((c) => c.id === PROPERTY_BINDINGS_COMMAND),
+    () => false,
+  );
+  if (!offered) return false;
+  for (const address of addresses) {
+    try {
+      const hits = await objects.invoke(PROPERTY_BINDINGS_COMMAND, { address, path });
+      if (Array.isArray(hits) && hits.length > 0) return true;
+    } catch {
+      /* a failing query is "not known to be bound" */
+    }
+  }
+  return false;
 }
 
 /** The engine gates every `x-paged:` label value to `{ v, data }`. */
@@ -445,16 +469,16 @@ export async function resolveBindTarget(
 
 // ------------------------------------------- the bindProperty command
 
-/** The command "Bind to data…" routes to. paged.data's universal binding
- *  (ADR 558) lands in Wave 5; until then the editor declares the args
- *  and shows a not-yet message when no bundle offers it. */
-export const BIND_PROPERTY_COMMAND = "paged.data.bindProperty";
-/** Ids the data plugin may register it under: the bare id above, its
- *  manifest-namespaced untyped twin, or a typed `objectModel` command. */
+/** The command "Bind to data…" routes to: paged.data's typed
+ *  `objectModel` command (ADR 558), which opens its Bindings panel
+ *  prefilled. Headless definition is `media.paged.data.defineProperty`.
+ *  With no bundle offering it the editor shows the prefilled request. */
+export const BIND_PROPERTY_COMMAND = "media.paged.data.bindProperty";
+/** Ids it may be reachable under: the typed command (via `host.objects`
+ *  or the command registry) and the manifest-namespaced untyped twin. */
 export const BIND_PROPERTY_COMMAND_IDS: readonly string[] = [
   BIND_PROPERTY_COMMAND,
   "media.paged.data.command.bindProperty",
-  "media.paged.data.bindProperty",
 ];
 
 /** `selector` — the durable target (ADR 558 `TargetRef::Selector`);

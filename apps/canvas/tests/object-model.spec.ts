@@ -25,18 +25,19 @@
 //     through `host.objects` (`__canvas.objects` is the SAME shared
 //     registry every bundle host is injected with), and it is ONE undo
 //     step;
-//   · "Bind to data…" hands paged.data a DURABLE target — a selector over
-//     an `x-paged:oid` label it mints — never a session address, plus the
-//     path and the schema row; with no data command registered it shows
-//     the prefilled request and writes nothing;
-//   · the binding badge appears when an `x-paged:bind` recipe names the
-//     path.
+//   · "Bind to data…" hands paged.data (the real bundle, packed from the
+//     data plugin's branch for this run) a DURABLE target — a selector over
+//     a Name or an `x-paged:oid` label — never a session address, plus the
+//     path and the schema row; its Bindings panel opens with the draft;
+//   · the binding badge appears once paged.data reports a property binding
+//     on the path (its typed `media.paged.data.propertyBindings` query).
 
 import { test, expect, type Page } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
+import { bindToData } from "./e2e/harness/objects";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = pathResolve(__dirname, "..", "..", "..");
@@ -93,10 +94,6 @@ const oidLabel = (page: Page) =>
     return e ? ((e.value!.value as { value?: string }).value ?? null) : null;
   }, FRAME);
 
-async function openBindMenu(page: Page) {
-  await page.locator(FIELD).click({ button: "right" });
-  await page.locator('[data-menu-item="bind-to-data"]').click();
-}
 
 test.describe("ADR 323 — object model in the editor", () => {
   test.beforeEach(async ({ page }) => {
@@ -128,75 +125,55 @@ test.describe("ADR 323 — object model in the editor", () => {
     await expect.poll(() => readWeight(page)).toBe(before);
   });
 
-  test("OM-2 — Bind to data… without a data command shows the prefilled request and writes nothing @feat:editor-shell.panels.stroke @feat:data.bind.authoring @level:edge", async ({
+  test("OM-2 — Bind to data… routes (selector, path, schema) to paged.data's media.paged.data.bindProperty: its Bindings panel opens with the draft; nothing is bound yet @feat:editor-shell.panels.stroke @feat:data.bind.authoring @level:happy", async ({
     page,
   }) => {
-    await openBindMenu(page);
-    const dialog = page.locator("[data-bind-to-data]");
-    await expect(dialog).toBeVisible();
-    await expect(dialog.locator("[data-bind-path]")).toHaveText("frameStrokeWeight");
-    await expect(dialog.locator("[data-bind-selector]")).toHaveText(/^frame\[label\.x-paged:oid\*=/);
-    await expect(dialog.locator("[data-bind-schema]")).toHaveText("length");
-    await expect(dialog.locator("[data-bind-notice]")).toContainText("arrives with paged.data");
-    // A dry run: no oid label minted for a binding nobody can make.
-    expect(await oidLabel(page)).toBeNull();
+    const { selector } = await bindToData(page, page.locator(FIELD), "frameStrokeWeight");
+    expect(selector.length).toBeGreaterThan(0);
+    // No fallback dialog on the routed path: paged.data owns the binding UI.
+    await expect(page.locator("[data-bind-to-data]")).toHaveCount(0);
+    // A draft is not a binding: the badge stays off. (The Bindings panel
+    // took the dock slot; bring Stroke back.)
+    await openPanel(page, "paged.stroke");
+    await expect(page.locator(FIELD)).not.toHaveAttribute("data-bound", "");
   });
 
-  test("OM-3 — Bind to data… routes (selector, path, schema) to paged.data.bindProperty; the selector resolves back to the frame; the badge follows x-paged:bind @feat:editor-shell.panels.stroke @feat:data.bind.authoring @level:happy", async ({
+  test("OM-3 — the durable target resolves back to the frame; a binding defined through the REAL data bundle lights the badge (asked via media.paged.data.propertyBindings, never by parsing labels) @feat:editor-shell.panels.stroke @feat:data.bind.authoring @level:happy", async ({
     page,
   }) => {
-    // Stand in for paged.data's Wave-5 command: capture what it receives.
-    await page.evaluate(() => {
-      const g = globalThis as unknown as { __canvas: Canvas; __bindArgs?: unknown[] };
-      g.__bindArgs = [];
-      g.__canvas.registries.commands.register({
-        id: "paged.data.bindProperty",
-        title: "Bind property (test stub)",
-        handler: (_paged, args) => {
-          g.__bindArgs!.push(args);
-        },
-      });
-    });
-    await openBindMenu(page);
-    await expect
-      .poll(() => page.evaluate(() => (globalThis as unknown as { __bindArgs: unknown[] }).__bindArgs.length))
-      .toBe(1);
-    const args = (await page.evaluate(
-      () => (globalThis as unknown as { __bindArgs: unknown[] }).__bindArgs[0],
-    )) as { selector: string; path: string; schema: string };
-    expect(args.path).toBe("frameStrokeWeight");
-    expect(JSON.parse(args.schema).type).toEqual({ kind: "length" });
-    // Durable: an x-paged:oid selector, never the session address.
-    expect(args.selector).toMatch(/^frame\[label\.x-paged:oid\*=/);
-    expect(args.selector).not.toContain(FRAME.id);
+    const { selector } = await bindToData(page, page.locator(FIELD), "frameStrokeWeight");
+    // Durable: a name or an x-paged:oid selector, never the session id.
+    expect(selector).not.toContain(FRAME.id);
+    const hits = await page.evaluate(
+      (sel) => (globalThis as unknown as { __canvas: Canvas }).__canvas.objects!.query(sel),
+      selector,
+    );
+    expect(hits).toEqual([ADDRESS]);
+    // The oid label paged.data will reuse was minted by the editor.
     const label = await oidLabel(page);
     expect(label).not.toBeNull();
     expect(JSON.parse(label!)).toMatchObject({ v: 1, data: { oid: expect.any(String) } });
-    // The selector resolves to exactly this frame through host.objects.
-    const hits = await page.evaluate(
-      (sel) => (globalThis as unknown as { __canvas: Canvas }).__canvas.objects!.query(sel),
-      args.selector,
-    );
-    expect(hits).toEqual([ADDRESS]);
-    // No dialog on the routed path: paged.data owns the binding UI.
-    await expect(page.locator("[data-bind-to-data]")).toHaveCount(0);
 
-    // The badge: a recipe under x-paged:bind that names the path.
+    await openPanel(page, "paged.stroke");
     await expect(page.locator(FIELD)).not.toHaveAttribute("data-bound", "");
-    await page.evaluate(async (target) => {
-      const c = (globalThis as unknown as { __canvas: Canvas }).__canvas;
-      await c.client.mutate({
-        op: "setPluginMetadata",
-        args: {
-          elementId: target,
-          key: "x-paged:bind",
-          value: JSON.stringify({ v: 1, data: { bindings: [{ path: "frameStrokeWeight", expr: "price" }] } }),
-        },
-      });
-    }, FRAME);
+    const defined = await page.evaluate(
+      async ({ sel }) => {
+        const o = (globalThis as unknown as { __canvas: { objects: { invoke(c: string, a: unknown): Promise<unknown> } } }).__canvas.objects;
+        return o.invoke("media.paged.data.defineProperty", {
+          id: "om-weight",
+          selector: sel,
+          path: "frameStrokeWeight",
+          query: "q",
+          expr: "PT(2)",
+        });
+      },
+      { sel: selector },
+    );
+    expect(defined).toMatchObject({ ok: true });
     await expect(page.locator(FIELD)).toHaveAttribute("data-bound", "");
     await expect(page.locator(`${FIELD} [data-badge="bound"]`)).toBeVisible();
   });
+
   test("OM-4 — editor.* automation: set/get/query/schema/batch over host.objects; refusals surface with a code @feat:scripting.property-readwrite @feat:round-tripping.undo-redo @level:happy", async ({
     page,
   }) => {

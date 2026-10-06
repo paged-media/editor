@@ -587,7 +587,8 @@ export {
 } from "./catalog/object-field";
 export { asPropertyFields } from "./catalog/property-field-migrate";
 export {
-  BIND_LABEL_KEY,
+  PROPERTY_BINDINGS_COMMAND,
+  probeBound,
   BIND_PROPERTY_ARGS,
   BIND_PROPERTY_COMMAND,
   BIND_PROPERTY_COMMAND_IDS,

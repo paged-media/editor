@@ -198,7 +198,11 @@ export function PropertyField(props: PropertyFieldProps) {
   const options = optionsFor(type, props);
   const state = field.state;
 
-  const seam = state.state === "absent" || state.state === "refused";
+  // ADR 023: `absent` is a SEAM only when an edit-context provider says
+  // so. Core answering `absent` means "this kind carries no such entry"
+  // (a text frame has no end cap): that reads as the em-dash, like the
+  // selection binding always showed it, not as a disabled seam.
+  const seam = state.state === "refused" || (state.state === "absent" && field.provider !== null);
   const write = row && field.commit && !seam ? field.commit : null;
   const commitLeaf = write
     ? (v: Value) => {

@@ -144,11 +144,24 @@ test("setOps writes every selected address in ONE batch", () => {
   ]);
 });
 
-test("the binding badge selector looks for the path inside x-paged:bind", () => {
+test("the binding badge asks paged.data's typed propertyBindings query, never parses labels", async () => {
+  const calls = [];
+  const objects = (offered, hits) => ({
+    commands: async () => (offered ? [{ id: M.PROPERTY_BINDINGS_COMMAND }] : []),
+    invoke: async (id, args) => {
+      calls.push([id, args]);
+      return hits[args.address] ?? [];
+    },
+  });
+  assert.equal(M.PROPERTY_BINDINGS_COMMAND, "media.paged.data.propertyBindings");
+  assert.equal(await M.probeBound(objects(false, {}), ["rectangle:u1"], "frameStrokeWeight"), false);
+  assert.equal(calls.length, 0, "no data plugin: nothing asked");
   assert.equal(
-    M.boundProbeSelector("rectangle:u1", "frameStrokeWeight"),
-    'rectangle:u1[label.x-paged:bind*="\\"path\\":\\"frameStrokeWeight\\""]',
+    await M.probeBound(objects(true, { "rectangle:u2": [{ binding: "b1" }] }), ["rectangle:u1", "rectangle:u2"], "frameStrokeWeight"),
+    true,
   );
+  assert.deepEqual(calls[0], [M.PROPERTY_BINDINGS_COMMAND, { address: "rectangle:u1", path: "frameStrokeWeight" }]);
+  assert.equal(await M.probeBound(objects(true, {}), [], "x"), false);
 });
 
 // ───────────────────────────────────────────── Bind to data… target
@@ -249,7 +262,7 @@ test("bind target: a plugin address is its own durable key (ADR 559 §6)", async
 });
 
 test("the bindProperty args are declared and checked", () => {
-  assert.equal(M.BIND_PROPERTY_COMMAND, "paged.data.bindProperty");
+  assert.equal(M.BIND_PROPERTY_COMMAND, "media.paged.data.bindProperty");
   const good = { selector: 'frame[name="a"]', path: "frameStrokeWeight", schema: "{}" };
   assert.equal(M.checkArgs(M.BIND_PROPERTY_ARGS, good), null);
   assert.match(M.checkArgs(M.BIND_PROPERTY_ARGS, { ...good, path: 3 }), /path/);
@@ -317,19 +330,19 @@ const { createCommandRegistry } = await import(shell("registries/command.ts"));
 
 test("the command registry declares bindProperty's args before any plugin registers it", () => {
   const reg = createCommandRegistry(() => null);
-  assert.deepEqual(reg.argsOf("paged.data.bindProperty"), M.BIND_PROPERTY_ARGS);
-  assert.equal(reg.get("paged.data.bindProperty"), undefined);
+  assert.deepEqual(reg.argsOf("media.paged.data.bindProperty"), M.BIND_PROPERTY_ARGS);
+  assert.equal(reg.get("media.paged.data.bindProperty"), undefined);
   assert.equal(reg.argsOf("paged.view.zoomIn"), undefined);
 });
 
 test("invoke refuses a payload that does not match the declared args, before the handler runs", async () => {
   const reg = createCommandRegistry(() => null);
   const seen = [];
-  reg.register({ id: "paged.data.bindProperty", title: "Bind", handler: (_p, payload) => seen.push(payload) });
-  await assert.rejects(reg.invoke("paged.data.bindProperty", { selector: "x" }), /invalidValue/);
+  reg.register({ id: "media.paged.data.bindProperty", title: "Bind", handler: (_p, payload) => seen.push(payload) });
+  await assert.rejects(reg.invoke("media.paged.data.bindProperty", { selector: "x" }), /invalidValue/);
   assert.equal(seen.length, 0);
   const ok = { selector: "frame", path: "frameStrokeWeight", schema: "{}" };
-  await reg.invoke("paged.data.bindProperty", ok);
+  await reg.invoke("media.paged.data.bindProperty", ok);
   assert.deepEqual(seen, [ok]);
 });
 

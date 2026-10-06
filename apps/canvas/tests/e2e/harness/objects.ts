@@ -68,18 +68,41 @@ export function fieldOf(scope: Locator | Page, path: string): Locator {
   return scope.locator(`[data-property-field="${path}"]`).first();
 }
 
-/** Right-click a field → "Bind to data…" → the dry-run dialog names the
- *  path and a schema type; nothing is bound. Closes the dialog. */
-export async function bindDryRun(page: Page, field: Locator, path: string): Promise<string> {
+/** Right-click a field → "Bind to data…". With paged.data loaded the
+ *  request routes to its `media.paged.data.bindProperty`, which opens the
+ *  Bindings panel with a DRAFT naming the path and the durable target
+ *  (nothing is bound until a query and an expression are given — the
+ *  draft is cancelled here). Without a data command the editor's fallback
+ *  dialog shows the same request. Returns the target selector. */
+export async function bindToData(
+  page: Page,
+  field: Locator,
+  path: string,
+): Promise<{ selector: string; routed: boolean }> {
   await expect(field).toHaveAttribute("data-value-type", /.+/);
   await field.click({ button: "right" });
   await page.locator('[data-menu-item="bind-to-data"]').click();
+  const draft = page.locator("[data-data-bind-property]");
   const dialog = page.locator("[data-bind-to-data]");
-  await expect(dialog).toBeVisible();
+  await expect(draft.or(dialog).first()).toBeVisible();
+  if (await draft.isVisible()) {
+    const codes = draft.locator("code");
+    await expect(codes.nth(0)).toHaveText(path);
+    const selector = (await codes.nth(1).textContent()) ?? "";
+    await draft.getByRole("button", { name: "Cancel" }).click();
+    return { selector, routed: true };
+  }
   await expect(dialog.locator("[data-bind-path]")).toHaveText(path);
-  await expect(dialog.locator("[data-bind-notice]")).toContainText("arrives with paged.data");
   const selector = (await dialog.locator("[data-bind-selector]").textContent()) ?? "";
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  return selector;
+  return { selector, routed: false };
+}
+
+/** The panel specs' family check: Bind to data… on `field` reaches
+ *  paged.data's real command (the data bundle is loaded in the editor). */
+export async function bindDryRun(page: Page, field: Locator, path: string): Promise<string> {
+  const r = await bindToData(page, field, path);
+  expect(r.routed, "Bind to data… reached paged.data's bindProperty").toBe(true);
+  return r.selector;
 }

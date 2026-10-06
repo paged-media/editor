@@ -65,7 +65,7 @@ import type {
   ShellPropertySchema,
 } from "./object-model-types";
 import {
-  boundProbeSelector,
+  probeBound,
   reduceValues,
   setOps,
   type FieldState,
@@ -108,7 +108,8 @@ export interface ObjectProperty {
   commit: ((value: unknown) => Promise<ShellObjectWriteResult>) | null;
   /** The last refused commit, cleared by the next successful one. */
   error: string | null;
-  /** A paged.data binding targets this path on (one of) the targets. */
+  /** A paged.data binding targets this path on (one of) the targets —
+   *  asked through paged.data's typed `propertyBindings` query. */
   bound: boolean;
   /** ADR 023 — the plugin whose edit context answered, else null. */
   provider: string | null;
@@ -246,12 +247,8 @@ export function useObjectProperty(req: ObjectPropertyRequest): ObjectProperty {
       return;
     }
     let cancelled = false;
-    void Promise.all(
-      list.map((a) =>
-        model.objects.query(boundProbeSelector(a, req.path)).catch(() => [] as string[]),
-      ),
-    ).then((hits) => {
-      if (!cancelled) setBound(hits.some((h) => h.length > 0));
+    void probeBound(model.objects, list, req.path).then((hit) => {
+      if (!cancelled) setBound(hit);
     });
     return () => {
       cancelled = true;
