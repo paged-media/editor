@@ -103,7 +103,7 @@ const pagesHost = (page: Page) =>
   page.evaluate(() => (globalThis as unknown as G).__pages70.host.viewport.activePage());
 
 test.describe("journey · v70 page doors: go to a page, page images", () => {
-  test("goToPage moves the camera to the page and the active page follows @feat:plugin-slide.page-doors @level:gesture", async ({
+  test("goToPage moves the camera to the page and the active page follows @feat:editor-shell.panels.pages-navigator @level:gesture", async ({
     page,
   }) => {
     await openCanvas(page);
@@ -138,7 +138,7 @@ test.describe("journey · v70 page doors: go to a page, page images", () => {
     expect(after.camera.ty, "the camera moved down the document").not.toBe(r.before.ty);
   });
 
-  test("render.snapshot answers a PNG of a page and null for an unknown one @feat:plugin-slide.page-doors @level:query", async ({
+  test("render.snapshot answers a PNG of a page and null for an unknown one @level:happy", async ({
     page,
   }) => {
     await openCanvas(page);
