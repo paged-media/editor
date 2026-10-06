@@ -26,6 +26,8 @@
 import { Icon, displayName, useCollection } from "@paged-media/shell";
 import type { TableStyleSummary } from "@paged-media/client";
 
+import { StyleOptionsButton } from "./style-options-panel";
+
 const PARTS = ["Header", "Body", "Alt", "Border"];
 
 export function TableStylesPanel() {
@@ -85,7 +87,7 @@ export function TableStylesPanel() {
               <div
                 key={s.selfId}
                 data-style-id={s.selfId}
-                className="px-[10px] py-[6px] text-[11px]"
+                className="flex items-center px-[10px] py-[6px] text-[11px]"
                 style={{
                   borderTop: "1px solid var(--pg-border)",
                   background:
@@ -95,7 +97,8 @@ export function TableStylesPanel() {
                   color: "var(--pg-fg)",
                 }}
               >
-                {displayName(s.name)}
+                <span className="flex-1">{displayName(s.name)}</span>
+                <StyleOptionsButton family="table" selfId={s.selfId} />
               </div>
             ))}
             <div

@@ -48,7 +48,14 @@
 
 import { useEffect, useState } from "react";
 
-import { Icon, useCanvasClient, useSelection } from "@paged-media/shell";
+import {
+  Icon,
+  ObjectFieldFrame,
+  useCanvasClient,
+  useObjectBindings,
+  useSelection,
+  type ObjectField,
+} from "@paged-media/shell";
 import { KitSelect, LengthInput } from "@paged-media/ui";
 import type {
   ElementId,
@@ -130,6 +137,24 @@ const ANCHORED_PATHS: PropertyPath[] = [
   "anchoredSpineRelative",
   "anchoredLockPosition",
 ];
+
+// ADR 323 — every control is an object-model field on the selection:
+// writes go through `host.objects` (one batch over the selection = one
+// undo step), and each sits in an `ObjectFieldFrame` ("Bind to data…" +
+// badge). Reads stay on the snapshot, which also decides "anchored?".
+const FIELDS = {
+  anchoredPosition: { path: "anchoredPosition" },
+  anchorPoint: { path: "anchorPoint" },
+  anchoredXOffset: { path: "anchoredXOffset" },
+  anchoredYOffset: { path: "anchoredYOffset" },
+  anchoredHorizontalReference: { path: "anchoredHorizontalReference" },
+  anchoredVerticalReference: { path: "anchoredVerticalReference" },
+  anchoredHorizontalAlignment: { path: "anchoredHorizontalAlignment" },
+  anchoredVerticalAlignment: { path: "anchoredVerticalAlignment" },
+  anchoredSpineRelative: { path: "anchoredSpineRelative" },
+  anchoredLockPosition: { path: "anchoredLockPosition" },
+} as const;
+type AnchoredKey = keyof typeof FIELDS;
 
 interface AnchoredSnapshot {
   /** True when the selected element carries an AnchoredObjectSetting. */
@@ -216,6 +241,7 @@ function unwrapBool(v: Value | undefined): boolean {
 
 /** Kit select bound to one `Value::Text` anchored path. */
 function EnumRow({
+  field,
   label,
   testId,
   options,
@@ -223,6 +249,7 @@ function EnumRow({
   disabled,
   onCommit,
 }: {
+  field: ObjectField;
   label: string;
   testId: string;
   options: Array<[string, string]>;
@@ -232,6 +259,7 @@ function EnumRow({
 }) {
   return (
     <Row label={label}>
+      <ObjectFieldFrame field={field} className="relative w-full">
       <KitSelect
         data-anchored-select={testId}
         value={value}
@@ -247,12 +275,14 @@ function EnumRow({
           </option>
         ))}
       </KitSelect>
+      </ObjectFieldFrame>
     </Row>
   );
 }
 
 /** A small toggle pill bound to one `Value::Bool` anchored path. */
 function BoolRow({
+  field,
   label,
   testId,
   on,
@@ -260,6 +290,7 @@ function BoolRow({
   disabled,
   onCommit,
 }: {
+  field: ObjectField;
   label: string;
   testId: string;
   on: boolean;
@@ -269,6 +300,7 @@ function BoolRow({
 }) {
   return (
     <Row label={label}>
+      <ObjectFieldFrame field={field} className="relative">
       <button
         type="button"
         role="switch"
@@ -294,45 +326,20 @@ function BoolRow({
           style={{ left: on ? 15 : 2 }}
         />
       </button>
+      </ObjectFieldFrame>
     </Row>
   );
 }
 
 export function AnchoredPanel() {
-  const client = useCanvasClient();
   const { anchored, values, id, kind, loading } = useAnchored();
-
-  const setText = (path: PropertyPath, value: string) => {
-    if (!id) return;
-    void client
-      .mutate({
-        op: "setElementProperty",
-        args: { elementId: id, path, value: { type: "text", value } as Value },
-      })
-      .catch(() => {});
+  const fields = useObjectBindings(FIELDS);
+  const write = (key: AnchoredKey, value: unknown) => {
+    void fields[key].commit?.(value);
   };
-  const setLength = (path: PropertyPath, value: number) => {
-    if (!id) return;
-    void client
-      .mutate({
-        op: "setElementProperty",
-        args: {
-          elementId: id,
-          path,
-          value: { type: "length", value } as Value,
-        },
-      })
-      .catch(() => {});
-  };
-  const setBool = (path: PropertyPath, value: boolean) => {
-    if (!id) return;
-    void client
-      .mutate({
-        op: "setElementProperty",
-        args: { elementId: id, path, value: { type: "bool", value } as Value },
-      })
-      .catch(() => {});
-  };
+  const setText = (key: AnchoredKey, value: string) => write(key, value);
+  const setLength = (key: AnchoredKey, value: number) => write(key, value);
+  const setBool = (key: AnchoredKey, value: boolean) => write(key, value);
 
   const position = unwrapText(values.anchoredPosition);
   // Custom-position controls only matter when the object is in the
@@ -391,6 +398,7 @@ export function AnchoredPanel() {
         <>
           <Kicker>Position</Kicker>
           <EnumRow
+            field={fields.anchoredPosition}
             label="Mode"
             testId="position"
             options={POSITION_OPTIONS}
@@ -398,12 +406,14 @@ export function AnchoredPanel() {
             onCommit={(v) => setText("anchoredPosition", v)}
           />
           <BoolRow
+            field={fields.anchoredSpineRelative}
             label="Spine relative"
             testId="spine-relative"
             on={unwrapBool(values.anchoredSpineRelative)}
             onCommit={(v) => setBool("anchoredSpineRelative", v)}
           />
           <BoolRow
+            field={fields.anchoredLockPosition}
             label="Lock position"
             testId="lock-position"
             icon="ui-lock"
@@ -423,6 +433,7 @@ export function AnchoredPanel() {
             </div>
           )}
           <Row label="X offset">
+            <ObjectFieldFrame field={fields.anchoredXOffset} className="relative w-full">
             <span data-anchored-num="x-offset" className="block w-full">
               <LengthInput
                 aria-label="x-offset"
@@ -432,8 +443,10 @@ export function AnchoredPanel() {
                 onCommitPt={(n) => setLength("anchoredXOffset", n)}
               />
             </span>
+            </ObjectFieldFrame>
           </Row>
           <Row label="Y offset">
+            <ObjectFieldFrame field={fields.anchoredYOffset} className="relative w-full">
             <span data-anchored-num="y-offset" className="block w-full">
               <LengthInput
                 aria-label="y-offset"
@@ -443,8 +456,10 @@ export function AnchoredPanel() {
                 onCommitPt={(n) => setLength("anchoredYOffset", n)}
               />
             </span>
+            </ObjectFieldFrame>
           </Row>
           <EnumRow
+            field={fields.anchorPoint}
             label="Anchor point"
             testId="anchor-point"
             options={ANCHOR_POINT_OPTIONS}
@@ -453,6 +468,7 @@ export function AnchoredPanel() {
             onCommit={(v) => setText("anchorPoint", v)}
           />
           <EnumRow
+            field={fields.anchoredHorizontalReference}
             label="H reference"
             testId="h-reference"
             options={H_REFERENCE_OPTIONS}
@@ -461,6 +477,7 @@ export function AnchoredPanel() {
             onCommit={(v) => setText("anchoredHorizontalReference", v)}
           />
           <EnumRow
+            field={fields.anchoredVerticalReference}
             label="V reference"
             testId="v-reference"
             options={V_REFERENCE_OPTIONS}
@@ -469,6 +486,7 @@ export function AnchoredPanel() {
             onCommit={(v) => setText("anchoredVerticalReference", v)}
           />
           <EnumRow
+            field={fields.anchoredHorizontalAlignment}
             label="H align"
             testId="h-align"
             options={H_ALIGN_OPTIONS}
@@ -477,6 +495,7 @@ export function AnchoredPanel() {
             onCommit={(v) => setText("anchoredHorizontalAlignment", v)}
           />
           <EnumRow
+            field={fields.anchoredVerticalAlignment}
             label="V align"
             testId="v-align"
             options={V_ALIGN_OPTIONS}

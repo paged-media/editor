@@ -25,15 +25,19 @@
 // createCharacterStyle / deleteCharacterStyle. Redefine, groups
 // and override markers are honest seams (style-infra roadmap).
 
+import { useObjectField } from "@paged-media/shell";
+
 import { StyleApplyPanel } from "./style-apply";
 
 export function CharacterStylesPanel() {
+  // ADR 323 — the applied style is an object-model field on the selection.
+  const applied = useObjectField({ path: "appliedCharacterStyle", scope: "content" });
   return (
     <div className="p-0" data-character-styles-panel="ready">
       <StyleApplyPanel
         collection="characterStyles"
-        appliedPath="appliedCharacterStyle"
-        scope="content"
+        applied={applied}
+        family="character"
         itemIcon="panel-character-styles"
         testId="character-styles"
         createOp="createCharacterStyle"

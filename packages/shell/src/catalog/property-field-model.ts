@@ -404,6 +404,26 @@ export function selectorKindOf(address: string): string {
   return PAGE_ITEM_KINDS.has(head) ? "frame" : head || "*";
 }
 
+/** Address kinds named by an IDML Self id that round-trips (bound as
+ *  the address itself; see `resolveBindTarget`). */
+const SELF_ID_KINDS = new Set([
+  "page",
+  "spread",
+  "master",
+  "layer",
+  "style",
+  "swatch",
+  "gradient",
+  "colorGroup",
+  "numberingList",
+  "condition",
+  "conditionSet",
+  "textVariable",
+  "section",
+  "guide",
+  "hyperlink",
+]);
+
 export interface BindTargetDeps {
   objects: { query(selector: string): Promise<string[]> };
   /** The element's IDML `Name`, when core models one. */
@@ -417,7 +437,7 @@ export interface BindTargetDeps {
 
 export interface BindTarget {
   selector: string;
-  via: "name" | "oid" | "plugin";
+  via: "name" | "oid" | "plugin" | "address";
   /** An oid label was written to make the selector durable. */
   wrote: boolean;
 }
@@ -438,6 +458,13 @@ export async function resolveBindTarget(
 ): Promise<BindTarget> {
   if (address.startsWith("plugin:")) {
     return { selector: address, via: "plugin", wrote: false };
+  }
+  // A document-level object addressed by its IDML Self id (a style, a
+  // swatch, a page, a text variable, …) or the document itself: the
+  // address IS durable — the Self id round-trips through IDML — and
+  // there is no page item to carry an oid label.
+  if (address === "doc" || SELF_ID_KINDS.has(selectorKindOf(address))) {
+    return { selector: address, via: "address", wrote: false };
   }
   const kind = selectorKindOf(address);
   const name = await deps.readName(address);

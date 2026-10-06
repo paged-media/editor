@@ -27,15 +27,19 @@
 // honest seams until their engine surfaces land (style-infra
 // roadmap).
 
+import { useObjectField } from "@paged-media/shell";
+
 import { StyleApplyPanel } from "./style-apply";
 
 export function ParagraphStylesPanel() {
+  // ADR 323 — the applied style is an object-model field on the selection.
+  const applied = useObjectField({ path: "appliedParagraphStyle", scope: "content" });
   return (
     <div className="p-0" data-paragraph-styles-panel="ready">
       <StyleApplyPanel
         collection="paragraphStyles"
-        appliedPath="appliedParagraphStyle"
-        scope="content"
+        applied={applied}
+        family="paragraph"
         itemIcon="panel-paragraph-styles"
         testId="paragraph-styles"
         createOp="createParagraphStyle"

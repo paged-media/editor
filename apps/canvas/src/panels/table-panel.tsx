@@ -85,6 +85,7 @@ import {
   CockpitSection,
   Icon,
   ObjectFieldFrame,
+  PropertyField,
   displayName,
   useCanvasClient,
   useObjectField,
@@ -162,12 +163,28 @@ const CELL_PATHS = [
   "cellInsetRight",
   "cellVerticalJustification",
   "appliedCellStyle",
-  ...["Top", "Bottom", "Left", "Right"].flatMap((side) => [
-    `cell${side}EdgeStrokeColor`,
-    `cell${side}EdgeStrokeWeight`,
-    `cell${side}EdgeStrokeTint`,
-  ]),
+  "cellTopEdgeStrokeColor",
+  "cellTopEdgeStrokeWeight",
+  "cellTopEdgeStrokeTint",
+  "cellBottomEdgeStrokeColor",
+  "cellBottomEdgeStrokeWeight",
+  "cellBottomEdgeStrokeTint",
+  "cellLeftEdgeStrokeColor",
+  "cellLeftEdgeStrokeWeight",
+  "cellLeftEdgeStrokeTint",
+  "cellRightEdgeStrokeColor",
+  "cellRightEdgeStrokeWeight",
+  "cellRightEdgeStrokeTint",
 ] as const;
+
+/** Cell paths with no bespoke control: schema-driven `PropertyField`s on
+ *  the cell address (tint, and the span — core's `Set` lowers `rowSpan` /
+ *  `columnSpan` to `setCellSpan`). */
+const CELL_SCHEMA_FIELDS: ReadonlyArray<{ path: string; label: string }> = [
+  { path: "cellFillTint", label: "Fill tint" },
+  { path: "rowSpan", label: "Row span" },
+  { path: "columnSpan", label: "Column span" },
+];
 const TABLE_PATHS = ["appliedTableStyle", "tableRowCount", "tableColumnCount"] as const;
 const NO_TARGETS: readonly string[] = [];
 
@@ -685,6 +702,20 @@ export function TablePanel() {
           </span>
 </ObjectFieldFrame>
         </CockpitRow>
+      </CockpitSection>
+
+      <CockpitSection title="Cell options">
+        <div className="flex flex-col gap-1.5 pb-2" data-cell-schema-fields={cellAddress ?? ""}>
+          {CELL_SCHEMA_FIELDS.map((f) => (
+            <PropertyField
+              key={f.path}
+              path={f.path}
+              label={f.label}
+              targets={cellAddress ? [cellAddress] : NO_TARGETS}
+              schemaKind={cellAddress ?? "cell"}
+            />
+          ))}
+        </div>
       </CockpitSection>
 
       <CockpitSection title="Cell strokes">

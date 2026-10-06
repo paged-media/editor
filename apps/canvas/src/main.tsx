@@ -202,6 +202,15 @@ import { BookmarksPanel } from "./panels/bookmarks-panel";
 import { CharacterStylesPanel } from "./panels/character-styles-panel";
 import { ColorGroupsPanel } from "./panels/color-groups-panel";
 import { ColorSettingsPanel } from "./panels/color-settings-panel";
+import { StyleOptionsPanel, STYLE_OPTIONS_PANEL } from "./panels/style-options-panel";
+import { DocumentSetupPanel, MarginsColumnsPanel } from "./panels/document-setup-panel";
+import { ObjectOptionsPanel } from "./panels/object-options-panel";
+import {
+  GuidesPanel,
+  SectionOptionsPanel,
+  SwatchOptionsPanel,
+  TextVariablesPanel,
+} from "./panels/object-options-panels";
 import { InkManagerPanel } from "./panels/ink-manager-panel";
 import { ConditionSetsPanel } from "./panels/condition-sets-panel";
 import { ConditionsPanel } from "./panels/conditions-panel";
@@ -507,6 +516,65 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     component: ColorSettingsPanel,
     defaultDock: "right",
     defaultGroup: "styles",
+  },
+  // ADR 323 — schema-driven options over object-model addresses
+  // (style definitions, the document, pages, swatches, text variables,
+  // sections, guides). Every field is a PropertyField on the address.
+  {
+    id: STYLE_OPTIONS_PANEL,
+    title: "Style Options",
+    component: StyleOptionsPanel,
+    defaultDock: "right",
+    defaultGroup: "styles",
+  },
+  {
+    id: "paged.object-options",
+    title: "Object Options",
+    component: ObjectOptionsPanel,
+    defaultDock: "right",
+    defaultGroup: "properties",
+  },
+  {
+    id: "paged.document-setup",
+    title: "Document Setup",
+    component: DocumentSetupPanel,
+    defaultDock: "right",
+    defaultGroup: "structure",
+  },
+  {
+    id: "paged.margins-columns",
+    title: "Margins and Columns",
+    component: MarginsColumnsPanel,
+    defaultDock: "right",
+    defaultGroup: "structure",
+  },
+  {
+    id: "paged.swatch-options",
+    title: "Swatch Options",
+    component: SwatchOptionsPanel,
+    defaultDock: "right",
+    defaultGroup: "styles",
+  },
+  {
+    id: "paged.text-variables",
+    title: "Text Variables",
+    component: TextVariablesPanel,
+    defaultDock: "right",
+    defaultGroup: "structure",
+  },
+  {
+    id: "paged.section-options",
+    title: "Numbering & Section Options",
+    component: SectionOptionsPanel,
+    defaultDock: "right",
+    defaultGroup: "structure",
+  },
+  {
+    id: "paged.guides",
+    title: "Guides",
+    component: GuidesPanel,
+    defaultDock: "right",
+    defaultGroup: "structure",
   },
   {
     id: "paged.articles",

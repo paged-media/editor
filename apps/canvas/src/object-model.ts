@@ -125,6 +125,10 @@ function withTableSeam(core: CoreObjects): CoreObjects {
     ...core,
     async get(a, path) {
       if (!isTable(a)) return core.get(a, path);
+      // Protocol 71: the SDK seam reaches cells and tables through core's
+      // `Get` — use it, and fall back only while it answers `unmapped`.
+      const viaCore = await core.get(a, path);
+      if (viaCore.kind !== "refused" || viaCore.code !== "unmapped") return viaCore;
       const scope = a.kind;
       const row = coreRow(path);
       if (!row || row.scope !== scope) return refuse("unknownPath", `${scope} has no path "${path}"`);
@@ -141,8 +145,10 @@ function withTableSeam(core: CoreObjects): CoreObjects {
       if (!e) return { kind: "absent" };
       return e.value == null ? { kind: "mixed" } : { kind: "value", value: (e.value as { value: unknown }).value };
     },
-    async planSet(a, path, value) {
-      if (!isTable(a)) return core.planSet(a, path, value);
+    async planSet(a, path, value, ...rest) {
+      if (!isTable(a)) return core.planSet(a, path, value, ...rest);
+      const viaCore = await core.planSet(a, path, value, ...rest);
+      if (viaCore.ok || viaCore.code !== "unmapped") return viaCore;
       const scope = a.kind;
       const row = coreRow(path);
       if (!row || row.scope !== scope) return { ok: false, code: "unknownPath", reason: `${scope} has no path "${path}"` };

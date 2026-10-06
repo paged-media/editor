@@ -468,7 +468,10 @@ export function BoundsLeaf({ value, onCommit, props }: LeafProps) {
  *  payload + react-key); `name` is the human-readable label. */
 interface CollectionRow {
   selfId: string;
-  name: string;
+  /** Absent on collections whose rows carry a `label` instead (master
+   *  pages, spreads). */
+  name?: string;
+  label?: string;
 }
 
 /** Reads a Value as either Text or ColorRef payload (the two
@@ -563,7 +566,7 @@ export function CollectionSelectLeaf({ value, onCommit, props }: LeafProps) {
         <option value="">[None]</option>
         {items.map((row) => (
           <option key={row.selfId} value={row.selfId}>
-            {displayName(row.name)}
+            {displayName(row.name ?? row.label ?? row.selfId)}
           </option>
         ))}
       </KitSelect>

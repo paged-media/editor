@@ -38,16 +38,14 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   ApplyList,
+  CockpitBtn,
   ObjectFieldFrame,
   useCanvasClient,
-  useObjectField,
+  type ObjectField,
 } from "@paged-media/shell";
-import type {
-  CollectionName,
-  Mutation,
-  PropertyPath,
-  Value,
-} from "@paged-media/client";
+import type { CollectionName, Mutation, Value } from "@paged-media/client";
+
+import { openStyleOptions, type StyleFamily } from "./style-options-panel";
 
 interface StyleRow {
   selfId: string;
@@ -67,10 +65,12 @@ type DeleteStyleOp =
 export interface StyleApplyPanelProps {
   /** Document collection feeding the list. */
   collection: CollectionName;
-  /** The applied-entity PropertyPath (e.g. appliedParagraphStyle). */
-  appliedPath: PropertyPath;
-  /** Binding scope — content for text styles, element for object. */
-  scope: "content" | "element";
+  /** The applied-style object-model field (`appliedParagraphStyle` on
+   *  the text selection, `appliedObjectStyle` on the page items, …) —
+   *  built by the family's panel, which names its path. */
+  applied: ObjectField;
+  /** The style family "Style Options…" opens. */
+  family: StyleFamily;
   /** The panel's row glyph. */
   itemIcon: string;
   /** ApplyList's `data-apply-list` hook. */
@@ -90,8 +90,8 @@ function unwrapAppliedId(v: Value | null): string {
 
 export function StyleApplyPanel({
   collection,
-  appliedPath,
-  scope,
+  applied,
+  family,
   itemIcon,
   testId,
   createOp,
@@ -99,7 +99,6 @@ export function StyleApplyPanel({
   newName,
 }: StyleApplyPanelProps) {
   const client = useCanvasClient();
-  const applied = useObjectField({ path: appliedPath, scope });
   const appliedId = unwrapAppliedId(applied.value);
   const onCommit = applied.onCommit;
 
@@ -160,6 +159,16 @@ export function StyleApplyPanel({
         onDelete={onDelete}
         testId={testId}
       />
+      <div className="px-3.5 py-2">
+        <CockpitBtn
+          sm
+          testId={`${testId}-options`}
+          disabled={items.length === 0}
+          onClick={() => openStyleOptions(family, appliedId || null)}
+        >
+          Style Options…
+        </CockpitBtn>
+      </div>
     </ObjectFieldFrame>
   );
 }

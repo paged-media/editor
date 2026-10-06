@@ -87,10 +87,12 @@
 // papered over with a `binding`-lane row set that would take the read
 // out of the platform seam and put it back in one panel.
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   CatalogRegistryProvider,
+  CockpitSection,
+  PropertyField,
   PAGED_LIST,
   SchemaPanelRenderer,
   createLocalBindingsSurface,
@@ -525,6 +527,58 @@ export function LayersPanel(_: PanelProps) {
       <CatalogRegistryProvider registry={appCatalogRegistry()}>
         <SchemaPanelRenderer schema={LAYERS_SCHEMA} bindings={layersBindings} />
       </CatalogRegistryProvider>
+      {!provider && rows && rows.length > 0 && <LayerOptions rows={rows} />}
     </div>
+  );
+}
+
+// ADR 323 — Layer Options: one layer's properties as schema-driven
+// fields on `layer:<id>` (each a `set` = one undo step, "Bind to data…"
+// + badge), and the selection's layer (`itemLayer`, one batch over the
+// selected items).
+const LAYER_OPTION_FIELDS: ReadonlyArray<{ path: string; label: string }> = [
+  { path: "layerName", label: "Name" },
+  { path: "layerVisible", label: "Show layer" },
+  { path: "layerLocked", label: "Lock layer" },
+  { path: "layerPrintable", label: "Print layer" },
+];
+
+function LayerOptions({ rows }: { rows: readonly LayerRow[] }) {
+  const [pick, setPick] = useState("");
+  const id = rows.some((r) => r.selfId === pick) ? pick : rows[0]!.selfId;
+  const address = layerAddress(id);
+  const targets = useMemo(() => [address], [address]);
+  return (
+    <CockpitSection title="Layer Options" defaultOpen={false}>
+      <div className="flex flex-col gap-1.5 pb-2" data-layer-options={address}>
+        <select
+          data-layer-options-select=""
+          className="h-[28px] w-full rounded-[6px] border border-input bg-background px-2 text-[12px]"
+          value={id}
+          onChange={(e) => setPick(e.target.value)}
+        >
+          {rows.map((r) => (
+            <option key={r.selfId} value={r.selfId}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+        {LAYER_OPTION_FIELDS.map((f) => (
+          <PropertyField
+            key={f.path}
+            path={f.path}
+            label={f.label}
+            targets={targets}
+            schemaKind={address}
+          />
+        ))}
+        <PropertyField
+          path="itemLayer"
+          label="Selection on"
+          style="collection"
+          collection="layers"
+        />
+      </div>
+    </CockpitSection>
   );
 }

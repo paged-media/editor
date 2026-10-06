@@ -26,6 +26,8 @@
 import { Icon, displayName, useCollection } from "@paged-media/shell";
 import type { CellStyleSummary } from "@paged-media/client";
 
+import { StyleOptionsButton } from "./style-options-panel";
+
 export function CellStylesPanel() {
   const items = useCollection<CellStyleSummary>("cellStyles");
   if (items === null) {
@@ -100,6 +102,7 @@ export function CellStylesPanel() {
                     ← {displayName(s.basedOn)}
                   </span>
                 ) : null}
+                <StyleOptionsButton family="cell" selfId={s.selfId} />
               </div>
             ))}
           </div>
