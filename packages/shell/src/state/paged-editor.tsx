@@ -123,6 +123,14 @@ export interface PagedEditor {
       text: string,
       sizePt: number,
     ): Promise<{ advance: number; ascender: number; descender: number }>;
+    /** D-27 — many strings, one face + size, ONE worker round-trip
+     *  (`client.measureTexts`); backs `host.text.measureStrings`. */
+    measureMany(
+      family: string,
+      style: string | null,
+      texts: readonly string[],
+      sizePt: number,
+    ): Promise<Array<{ advance: number; ascender: number; descender: number }>>;
   };
 
   /**
@@ -325,6 +333,8 @@ function PagedEditorBinder({
       text: {
         measure: (family, style, str, sizePt) =>
           client.measureText(family, style, str, sizePt),
+        measureMany: (family, style, texts, sizePt) =>
+          client.measureTexts(family, style, texts, sizePt),
       },
       sceneLayers: {
         submit: (elementId, layer, caller) =>

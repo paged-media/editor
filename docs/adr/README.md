@@ -33,6 +33,7 @@ and 024 predate that scheme and keep their numbers. Records 200–217 were writt
 | [215](215-measured-capability-table.md) | The capability table is measured, not declared | Accepted, recorded retroactively 2026-10-02 |
 | [216](216-test-tiers.md) | Test tiers, and where each one gates | Accepted, recorded retroactively 2026-10-02 |
 | [217](217-showcase-reference-document.md) | The showcase: one reference document built through the real editor | Accepted, recorded retroactively 2026-10-02 |
+| [219](219-plugin-documents-door.md) | A plugin may replace the open document, and the editor asks first | Accepted, 2026-10-06 |
 
 Decisions made in other repositories that this editor's code rests on are listed in
 [`../README.md`](../README.md). Comments in the source also cite ADR 025 (the journal) and

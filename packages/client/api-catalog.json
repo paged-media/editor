@@ -3,8 +3,8 @@
   "package": "@paged-media/client",
   "protocol": 68,
   "counts": {
-    "clientMembers": 73,
-    "wireKinds": 50,
+    "clientMembers": 74,
+    "wireKinds": 51,
     "exports": 67
   },
   "wireKinds": [
@@ -45,6 +45,7 @@
     "requestLineBounds",
     "requestMarqueeHits",
     "requestMeasureText",
+    "requestMeasureTextBatch",
     "requestPage",
     "requestParagraphBounds",
     "requestPathAnchors",
@@ -281,6 +282,12 @@
           "kind": "method",
           "signature": "async measureText( family: string, style: string | null, text: string, sizePt: number, ): Promise<{ advance: number; ascender: number; descender: number }>",
           "summary": "S-13 (K-7) — measure a text run against the loaded document's font registry."
+        },
+        {
+          "name": "CanvasClient.measureTexts",
+          "kind": "method",
+          "signature": "async measureTexts( family: string, style: string | null, texts: readonly string[], sizePt: number, ): Promise<Array<{ advance: number; ascender: number; descender: number }>>",
+          "summary": "D-27 — measure many strings in one face and size in ONE worker round-trip; one entry per input, in order, each equal to what {@link measureText} answers for that string."
         },
         {
           "name": "CanvasClient.submitSceneLayer",

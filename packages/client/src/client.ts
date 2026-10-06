@@ -938,6 +938,42 @@ export class CanvasClient {
     throw new Error(`unexpected reply: ${reply.kind}`);
   }
 
+  /**
+   * D-27 — measure many strings in one face and size in ONE worker
+   * round-trip; one entry per input, in order, each equal to what
+   * {@link measureText} answers for that string. The worker loops the
+   * same `CanvasWorker.measureText` shaper, so this is an editor-local
+   * message (`requestMeasureTextBatch`), not an engine wire kind: no
+   * protocol change. An empty input resolves `[]` without a message.
+   */
+  async measureTexts(
+    family: string,
+    style: string | null,
+    texts: readonly string[],
+    sizePt: number,
+  ): Promise<Array<{ advance: number; ascender: number; descender: number }>> {
+    if (texts.length === 0) return [];
+    const reply = (await this.send({
+      kind: "requestMeasureTextBatch",
+      payload: { family, style, texts: [...texts], sizePt },
+    } as never)) as unknown as {
+      kind: string;
+      payload?: {
+        metrics?: Array<{ advance: number; ascender: number; descender: number }>;
+      };
+    };
+    const metrics = reply.payload?.metrics;
+    if (reply.kind === "measureTextBatchResult" && Array.isArray(metrics)) {
+      if (metrics.length !== texts.length) {
+        throw new Error(
+          `measureTexts: ${metrics.length} metrics for ${texts.length} strings`,
+        );
+      }
+      return metrics;
+    }
+    throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
   /** C-1 — submit (replace) a plugin vector scene layer rendered inside
    *  the frame `elementId` (its `Self` id). The worker stores it + rebuilds
    *  so compose lowers it inside the frame; the next snapshot reflects it.

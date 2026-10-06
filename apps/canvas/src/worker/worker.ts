@@ -804,6 +804,33 @@ async function dispatch(data: IncomingMessage): Promise<void> {
     return;
   }
 
+  // D-27 — the batched measure. An EDITOR-LOCAL channel kind, not an engine
+  // wire kind: it is served here, before `handleMessage`, by looping the
+  // same `measureText` shaper, so many strings cost one postMessage each
+  // way instead of one per string. Same zeroing of a null answer.
+  const local = data.kind === "channel" ? (data.msg as unknown as {
+    kind: string;
+    seq: number;
+    payload?: { family: string; style?: string | null; texts: string[]; sizePt: number };
+  }) : null;
+  if (local && local.kind === "requestMeasureTextBatch" && local.payload) {
+    await initPromise;
+    if (!worker) return;
+    const { family, style, texts, sizePt } = local.payload;
+    const zero = { advance: 0, ascender: 0, descender: 0 };
+    const metrics = texts.map((text) => {
+      const m = worker!.measureText(family, style ?? null, text, sizePt);
+      return m ? { advance: m.advance, ascender: m.ascender, descender: m.descender } : zero;
+    });
+    postBack({
+      seq: local.seq,
+      protocol: PROTOCOL_VERSION,
+      kind: "measureTextBatchResult",
+      payload: { metrics },
+    } as unknown as WorkerToMain);
+    return;
+  }
+
   // Default: the typed JSON channel.
   await initPromise;
   if (!worker) {

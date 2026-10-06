@@ -61,7 +61,7 @@ import {
 } from "@paged-media/shell";
 import "@paged-media/shell/styles/globals.css";
 
-import { CanvasClient } from "@paged-media/client";
+import { CanvasClient, type DocumentHandle } from "@paged-media/client";
 // Vite `?worker` import — constructs the render worker in THIS (app) module
 // graph so Vite emits the worker chunk AND follows its transitive `?url` wasm
 // import into a real `.wasm` asset. Passing only a worker URL across the
@@ -116,6 +116,8 @@ import imageDecodeWorkerUrl from "@paged-media/image/decode-worker?worker&url";
 import drawTraceWorkerUrl from "@paged-media/draw/trace-worker?worker&url";
 import { createEditorConsentBackend } from "./plugin-consent";
 import { ConsentDialog } from "./ConsentDialog";
+import { createEditorDocuments } from "./plugin-documents";
+import { DocumentReplaceDialog } from "./DocumentReplaceDialog";
 import { createEditorSecretStore } from "./plugin-secret-store";
 import { SecretPromptDialog } from "./SecretPromptDialog";
 import { createEditorNativeDocumentBackend } from "./plugin-native-document";
@@ -1032,6 +1034,27 @@ if (!import.meta.env.PROD) {
   };
 }
 
+// D-26 (ADR 219) — the plugin DOCUMENTS door (host.documents): serialize the
+// open document and replace it with plugin-built bytes, asking keep/discard
+// first when it has unsaved edits. One instance: `PluginBundles` attaches the
+// live client + open orchestration and injects `backend` into every bundle
+// host; `<DocumentReplaceDialog>` renders the prompt from `controller`.
+const editorDocuments = createEditorDocuments();
+if (!import.meta.env.PROD) {
+  // Test affordance (the `__consent` pattern): drive the door without a
+  // bundle that declares `capabilities.documents` (the pinned plugin-sdk may
+  // predate it). The requester is a fixed test identity.
+  (globalThis as unknown as { __documents?: unknown }).__documents = {
+    exportPaged: () => editorDocuments.backend.exportPaged(),
+    open: (bytes: Uint8Array, name?: string) =>
+      editorDocuments.backend.open(bytes, {
+        name: name ?? null,
+        requester: { id: "media.paged.test", name: "Test plugin" },
+      }),
+    current: () => editorDocuments.controller.current(),
+  };
+}
+
 // D-11 — the editor's reference credential store (host.secrets). One instance
 // for the whole app: `PluginBundles` injects `backend` into every bundle host
 // (the SDK door calls set/exists/forget), and `<SecretPromptDialog>` renders +
@@ -1291,6 +1314,48 @@ function PluginBundles() {
       () => pagedRef.current?.client ?? null,
       openBytes,
     );
+    // D-26 — the same File > Open orchestration for a plugin-built document,
+    // but strict: it resolves the handle (the door answers its page ids) and
+    // THROWS when the bytes do not load (loadDocumentFile reports a failure
+    // through setStatus only). It never consumes the parked import name;
+    // the name is the one the plugin asked for.
+    const detachDocuments = editorDocuments.attach({
+      getClient: () => pagedRef.current?.client ?? null,
+      openBytes: async (bytes, name) => {
+        const client = pagedRef.current?.client;
+        if (!client) throw new Error("no engine client to open the document in");
+        const d = docRef.current;
+        let handle: DocumentHandle | null = null;
+        let failure: string | null = null;
+        const ab = new ArrayBuffer(bytes.byteLength);
+        new Uint8Array(ab).set(bytes);
+        // `.paged` is appended so the loader's extension strip leaves the
+        // asked-for name whole ("Catalog v1.2" keeps its ".2").
+        await loadDocumentFile(client, new File([ab], `${name}.paged`), {
+          setHandle: (h) => {
+            handle = h;
+            d.setHandle(h);
+          },
+          setSourceName: d.setSourceName,
+          setLoading: d.setLoading,
+          setStatus: (status: string) => {
+            if (status.startsWith("load failed")) failure = status;
+          },
+          setSnapshotsReady: d.setSnapshotsReady,
+          addSnapshot: (pageId, url) =>
+            d.setSnapshots((prev) => {
+              const next = new Map(prev);
+              next.set(pageId, url);
+              return next;
+            }),
+          resetForNewDocument: d.resetForNewDocument,
+          pushWarning: () => {},
+        });
+        if (failure || !handle) throw new Error(failure ?? "the document did not load");
+        return handle;
+      },
+    });
+    const documents = editorDocuments.backend;
     const sharedHostOptions = {
       shell,
       widgets,
@@ -1307,6 +1372,9 @@ function PluginBundles() {
       consent,
       secrets,
       nativeDocument,
+      // D-26 — rides inert until the pinned plugin-sdk knows the option
+      // (0.2.41); it then flips supports("documents.open@1") true.
+      documents,
       diagnosticsSink: problemsSink,
       schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
     };
@@ -1389,6 +1457,7 @@ function PluginBundles() {
     ].filter((l): l is NonNullable<typeof l> => l !== null);
     return () => {
       for (const l of loaded) l.dispose();
+      detachDocuments();
       delete (globalThis as unknown as { __shellDoors?: unknown })
         .__shellDoors;
     };
@@ -1936,6 +2005,7 @@ function CanvasAppRoot() {
       <CanvasAppIntegration />
       <PluginBundles />
       <ConsentDialog controller={editorConsent.controller} />
+      <DocumentReplaceDialog controller={editorDocuments.controller} />
       <SecretPromptDialog controller={editorSecrets.controller} />
       {/* The live-demo playground UI — only in the `demo` build, only when a
           ?script= is present (renders null otherwise). */}
