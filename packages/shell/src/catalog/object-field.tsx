@@ -42,7 +42,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
-import type { Value } from "@paged-media/client";
+import type { ElementId, Value } from "@paged-media/client";
 
 import { Icon } from "../icons";
 import { useRegistries } from "../state/registries-context";
@@ -70,7 +70,13 @@ import {
   checkArgs,
   oidFromEnvelope,
   resolveBindTarget,
+  scopedBindTarget,
+  type BindScope,
+  type BindScopeOf,
 } from "./property-field-model";
+
+export type { BindScope, BindScopeOf };
+export { scopedBindTarget };
 
 /** The wire `Value` variant a schema type reads back as, for paths the
  *  app names no wire for (plugin rows). */
@@ -229,7 +235,12 @@ const mintOid = (): string =>
  * request with a not-yet message — and writes nothing (no oid label is
  * minted for a binding that cannot be made).
  */
-export function useBindToData(field: ReturnType<typeof useObjectProperty>, path: string) {
+
+export function useBindToData(
+  field: ReturnType<typeof useObjectProperty>,
+  path: string,
+  scopeOf?: BindScopeOf,
+) {
   const model = useObjectModel();
   const client = useCanvasClient();
   const { commands } = useRegistries();
@@ -245,29 +256,36 @@ export function useBindToData(field: ReturnType<typeof useObjectProperty>, path:
     const typedId =
       BIND_PROPERTY_COMMAND_IDS.find((id) => typed.some((c) => c.id === id)) ?? null;
     const command = plain ?? typedId;
-    const element = field.elementOf(address);
-    const target = await resolveBindTarget(
-      {
-        objects: model.objects,
-        readName: async () => (await readLabels(element)).name,
-        readOid: async () => oidFromEnvelope((await readLabels(element)).oid),
-        // `caller` omitted: the editor writes outside any plugin's own
-        // namespace; the engine still gates the `x-paged:` prefix and the
-        // `{v, data}` envelope. One undo step, like any label write.
-        writeOid: async (_address, envelope) => {
-          if (!element) throw new Error("no element to label");
-          await client.mutate({
-            op: "setPluginMetadata",
-            args: { elementId: element, key: OID_LABEL_KEY, value: envelope },
-          } as never);
-        },
-        mintOid,
+    const depsFor = (element: ElementId | null) => ({
+      objects: model.objects,
+      readName: async () => (await readLabels(element)).name,
+      readOid: async () => oidFromEnvelope((await readLabels(element)).oid),
+      // `caller` omitted: the editor writes outside any plugin's own
+      // namespace; the engine still gates the `x-paged:` prefix and the
+      // `{v, data}` envelope. One undo step, like any label write.
+      writeOid: async (_address: string, envelope: string) => {
+        if (!element) throw new Error("no element to label");
+        await client.mutate({
+          op: "setPluginMetadata",
+          args: { elementId: element, key: OID_LABEL_KEY, value: envelope },
+        } as never);
       },
-      address,
-      { write: command !== null },
-    );
+      mintOid,
+    });
+    const scope = scopeOf?.(address) ?? null;
+    const target =
+      (scope
+        ? await scopedBindTarget(model.objects, address, scope, (host) =>
+            resolveBindTarget(depsFor(host.element as ElementId | null), host.address, { write: command !== null }),
+          )
+        : null) ??
+      (
+        await resolveBindTarget(depsFor(field.elementOf(address)), address, {
+          write: command !== null,
+        })
+      ).selector;
     const request: BindRequest = {
-      selector: target.selector,
+      selector: target,
       path,
       schema: JSON.stringify(field.row),
     };
@@ -282,7 +300,7 @@ export function useBindToData(field: ReturnType<typeof useObjectProperty>, path:
     } catch (err) {
       setNotice({ ...request, reason: String(err), command });
     }
-  }, [model, client, field, commands, readLabels, path]);
+  }, [model, client, field, commands, readLabels, path, scopeOf]);
 
   return { open, notice, close: () => setNotice(null) };
 }
@@ -397,6 +415,7 @@ export function canBindField(field: ObjectProperty, bindable?: boolean): boolean
 export function ObjectFieldFrame({
   field,
   bindable,
+  bindScope,
   className = "relative min-w-0",
   badges = true,
   children,
@@ -404,13 +423,15 @@ export function ObjectFieldFrame({
 }: {
   field: ObjectField;
   bindable?: boolean;
+  /** ADR 323 — how "Bind to data…" reaches a plugin object durably. */
+  bindScope?: BindScopeOf;
   className?: string;
   /** Draw the corner badge (off when the control shows them itself,
    *  e.g. next to its label). */
   badges?: boolean;
   children: ReactNode;
 } & Record<`data-${string}`, string | undefined>) {
-  const bind = useBindToData(field, field.path);
+  const bind = useBindToData(field, field.path, bindScope);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const canBind = canBindField(field, bindable);
   const s = field.state;

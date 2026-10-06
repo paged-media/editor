@@ -55,6 +55,18 @@ widget from the target's schema row; a bespoke control keeps its widget inside a
 when paged.data reports a property binding on the path
 (`media.paged.data.propertyBindings`).
 
+**Plugin objects (ADR 323 §4).** A plugin declares property rows in a schema panel
+(`{ field: "property", address, path, kind }`, plugin-api 0.2.45); the renderer draws each
+with the same `PropertyField` over `host.objects`. The address resolves live: the selection
+(scoped to a plugin kind: `<selected> > kind`), a selector, a binding the plugin publishes
+(a list row picks one object), or explicit addresses. "Bind to data…" on a plugin object
+gets a durable selector through its hosting frame (`<frame Name / x-paged:oid> > kind`,
+`:nth` when several). React plugin panels get the same field as `host.widgets.PropertyField`
+(and `PropertyFrame` around a kept control). Panels: Web properties, Image properties
+(layer, mask, smart object, 22 adjustment rows), Draw properties (+ Stroke and Fill as
+core property rows), Sheet properties, Word properties; paged.slide declares five, but this
+editor does not load the slide bundle yet.
+
 | Panel | Fields on the object model | Kept on the old lane |
 |---|---|---|
 | Stroke | 9 | — |

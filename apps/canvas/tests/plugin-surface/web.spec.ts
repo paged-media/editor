@@ -65,6 +65,8 @@ const MANIFEST = JSON.parse(
 };
 
 const SOURCE_PANEL = "media.paged.web.panel.source";
+// ADR 323 — object properties as host PropertyFields (a schema panel).
+const PROPERTIES_PANEL = "media.paged.web.panel.properties";
 const INSERT = "media.paged.web.command.insertWebFrame";
 const IMPORTER = "media.paged.web.importer.html";
 
@@ -75,7 +77,7 @@ const IMPORTER = "media.paged.web.importer.html";
  *  the surface-coverage gate (which matches literal id strings) see that
  *  these ids are exercised. */
 const DECLARED = {
-  panels: [SOURCE_PANEL],
+  panels: [SOURCE_PANEL, PROPERTIES_PANEL],
   commands: [
     INSERT,
     "media.paged.web.command.renderWebFrame",

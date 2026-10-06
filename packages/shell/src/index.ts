@@ -457,7 +457,12 @@ export type {
   SchemaListRename as ShellSchemaListRename,
   SchemaRenameAction as ShellSchemaRenameAction,
   SchemaRenamePayload as ShellSchemaRenamePayload,
+  // ADR 323 — the object-model property row (plugin-api panel schema).
+  PanelSchemaWidgetRow as ShellPanelSchemaWidgetRow,
+  PanelSchemaPropertyRow as ShellPanelSchemaPropertyRow,
+  PropertyFieldAddress as ShellPropertyFieldAddress,
 } from "./catalog/schema-panel-types";
+export { isPropertyRow as isShellPropertyRow } from "./catalog/schema-panel-types";
 // ── ADR 023 phase C — the HOST side of the binding-provider seam: the
 //    hooks a host-owned panel uses to read/write through the shared
 //    registry, with fall-through to core. The app builds the ONE
@@ -579,13 +584,25 @@ export {
 export { PropertyField, PropertyFieldLeaf, type PropertyFieldProps } from "./catalog/property-field";
 export {
   ObjectFieldFrame,
+  scopedBindTarget,
   useObjectBindings,
   useObjectField,
   wireTypeFor,
+  type BindScope,
+  type BindScopeOf,
   type ObjectBindingState,
   type ObjectField,
 } from "./catalog/object-field";
 export { asPropertyFields } from "./catalog/property-field-migrate";
+export {
+  ObjectPropertyField,
+  ObjectPropertyFrame,
+  SchemaPropertyRow,
+  useFieldTargets,
+  type ObjectPropertyFieldProps,
+  type ObjectPropertyFrameProps,
+  type ResolvedFieldTargets,
+} from "./catalog/object-property-field";
 export {
   PROPERTY_BINDINGS_COMMAND,
   probeBound,

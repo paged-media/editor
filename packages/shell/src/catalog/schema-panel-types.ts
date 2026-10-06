@@ -297,7 +297,7 @@ export interface SchemaListSpec {
   rename?: SchemaListRename;
 }
 
-export interface PanelSchemaRow {
+export interface PanelSchemaWidgetRow {
   widget: string;
   props?: Record<string, unknown>;
   value?: WidgetValueBinding;
@@ -306,6 +306,42 @@ export interface PanelSchemaRow {
   list?: SchemaListSpec;
   visible?: SchemaGate;
   enabled?: SchemaGate;
+  field?: undefined;
+}
+
+/** ADR 323 — which object(s) a property row edits (plugin-api
+ *  `PropertyFieldAddress`, mirrored): the selection (scoped to `kind`), a
+ *  selector, a published binding, or explicit addresses. */
+export type PropertyFieldAddress =
+  | "selection"
+  | string
+  | { bind: string }
+  | { addresses: readonly string[] };
+
+/** ADR 323 — the object-model property row (plugin-api schema v1.2,
+ *  mirrored): the host renders it with `PropertyField` over
+ *  `host.objects`. */
+export interface PanelSchemaPropertyRow {
+  field: "property";
+  address: PropertyFieldAddress;
+  path: string;
+  kind?: string;
+  label?: string;
+  style?: "select" | "segments" | "collection";
+  options?: readonly { value: string; label?: string; icon?: string }[];
+  bindable?: boolean;
+  props?: Record<string, unknown>;
+  visible?: SchemaGate;
+  enabled?: SchemaGate;
+  widget?: undefined;
+  value?: undefined;
+  list?: undefined;
+}
+
+export type PanelSchemaRow = PanelSchemaWidgetRow | PanelSchemaPropertyRow;
+
+export function isPropertyRow(row: PanelSchemaRow): row is PanelSchemaPropertyRow {
+  return (row as { field?: unknown }).field === "property";
 }
 
 export interface PanelSchemaSection {

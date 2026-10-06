@@ -549,3 +549,35 @@ test("runAlign reads through host.objects and commits ONE batch; declared args c
   assert.equal(M.checkArgs(ALIGN.ALIGN_ARGS, { kind: "left", targets: ["rectangle:a"] }), null);
   assert.match(M.checkArgs(ALIGN.ALIGN_ARGS, { kind: "sideways", targets: [] }), /must be one of/);
 });
+
+// ADR 323 §4 — plugin property rows: "Bind to data…" on a plugin object
+// gets a DURABLE selector (a plugin address is a session handle).
+test("scopedBindTarget: a declared selector, narrowed with :nth; else the host's durable target > kind", async () => {
+  const L = "plugin:acme.img/layer";
+  const table = {
+    [`${L}[name="Badge"]`]: [`${L}/f1/2`],
+    [`${L}`]: [`${L}/f1/1`, `${L}/f1/2`],
+    [`frame[name="Hero"] > ${L}`]: [`${L}/f1/1`, `${L}/f1/2`],
+  };
+  const objects = { query: async (s) => table[s] ?? [] };
+  // The declared selector selects exactly the object.
+  assert.equal(await M.scopedBindTarget(objects, `${L}/f1/2`, { selector: `${L}[name="Badge"]` }, null), `${L}[name="Badge"]`);
+  // It selects several: narrowed with :nth.
+  assert.equal(await M.scopedBindTarget(objects, `${L}/f1/2`, { selector: L }, null), `${L}:nth(2)`);
+  // Through the selected host (the core resolver supplies its durable selector).
+  let asked = null;
+  const host = async (h) => ((asked = h.address), { selector: 'frame[name="Hero"]', wrote: false });
+  assert.equal(
+    await M.scopedBindTarget(objects, `${L}/f1/1`, { host: { address: "rectangle:f1", element: null }, kind: L }, host),
+    `frame[name="Hero"] > ${L}:nth(1)`,
+  );
+  assert.equal(asked, "rectangle:f1");
+  // A dry run that cannot resolve yet keeps the shape it will store.
+  const none = { query: async () => [] };
+  assert.equal(
+    await M.scopedBindTarget(none, `${L}/f1/1`, { host: { address: "rectangle:f1", element: null }, kind: L }, host),
+    `frame[name="Hero"] > ${L}`,
+  );
+  // Nothing to go on: the caller falls back.
+  assert.equal(await M.scopedBindTarget(none, `${L}/f1/1`, { selector: L }, host), null);
+});

@@ -101,6 +101,8 @@ const XLSX_MIME =
 const WORKBOOK_PANEL = "media.paged.sheet.panel.workbook";
 const GRID_PANEL = "media.paged.sheet.panel.grid";
 const DATASETS_PANEL = "media.paged.sheet.panel.datasets";
+// ADR 323 — object properties as host PropertyFields (a schema panel).
+const PROPERTIES_PANEL = "media.paged.sheet.panel.properties";
 const IMPORTER = "media.paged.sheet.importer.xlsx";
 const CSV_IMPORTER = "media.paged.sheet.importer.csv";
 const EXPORTER = "media.paged.sheet.exporter.xlsx";
@@ -114,7 +116,7 @@ const EXPORTER = "media.paged.sheet.exporter.xlsx";
  *  surface-coverage gate (which matches literal id strings across
  *  `tests/`) able to see that these are exercised at all. */
 const DECLARED = {
-  panels: [WORKBOOK_PANEL, GRID_PANEL, DATASETS_PANEL],
+  panels: [WORKBOOK_PANEL, GRID_PANEL, DATASETS_PANEL, PROPERTIES_PANEL],
   commands: [
     "media.paged.sheet.command.importXlsx",
     "media.paged.sheet.command.lowerToFrame",

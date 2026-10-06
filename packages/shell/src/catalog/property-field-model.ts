@@ -566,3 +566,74 @@ export function checkArgs(type: ShellValueType, value: unknown, at = "args"): st
       return null;
   }
 }
+
+// ------------------------------------------- plugin bind targets
+
+/** ADR 323 — how a plugin field's object is reached DURABLY (a plugin
+ *  address is a session handle). `selector`: the selector the panel
+ *  declared (used when it still selects this object). `host`: the core
+ *  object hosting it — its durable core target (a Name or an
+ *  `x-paged:oid` label), then `> kind`. `:nth(n)` disambiguates. */
+export interface BindScope {
+  selector?: string;
+  host?: { address: string; element: unknown };
+  /** Hosts that MAY hold the object (the selection, for a field whose
+   *  address came from a published binding): the first whose
+   *  `<host> > kind` selects it is used as `host`. */
+  hostCandidates?: readonly { address: string; element: unknown }[];
+  kind?: string;
+}
+
+export type BindScopeOf = (address: string) => BindScope | null;
+
+/** Pick the selector that still names exactly `address`: the selector
+ *  itself, or its `:nth(n)` when it selects several. `null` = it does not
+ *  select the object (the caller falls back). */
+async function narrowTo(
+  objects: { query(selector: string): Promise<string[]> },
+  selector: string,
+  address: string,
+): Promise<string | null> {
+  let hits: string[] = [];
+  try {
+    hits = await objects.query(selector);
+  } catch {
+    return null;
+  }
+  const i = hits.indexOf(address);
+  if (i < 0) return null;
+  return hits.length === 1 ? selector : `${selector}:nth(${i + 1})`;
+}
+
+/** The durable selector of a plugin object reached through a declared
+ *  selector or its core host (see `BindScope`). */
+export async function scopedBindTarget(
+  objects: { query(selector: string): Promise<string[]> },
+  address: string,
+  scope: BindScope,
+  hostTarget: (host: { address: string; element: unknown }) => Promise<{ selector: string; wrote: boolean }>,
+): Promise<string | null> {
+  if (scope.selector) {
+    const hit = await narrowTo(objects, scope.selector, address);
+    if (hit) return hit;
+  }
+  let chosen = scope.host;
+  if (!chosen && scope.kind && scope.hostCandidates) {
+    for (const h of scope.hostCandidates) {
+      const hits = await objects.query(`${h.address} > ${scope.kind}`).catch(() => [] as string[]);
+      if (hits.includes(address)) {
+        chosen = h;
+        break;
+      }
+    }
+  }
+  if (chosen && scope.kind) {
+    const host = await hostTarget(chosen);
+    const selector = `${host.selector} > ${scope.kind}`;
+    // A dry run (no oid written yet) cannot resolve; the shape is still
+    // the one the binding will store.
+    return (await narrowTo(objects, selector, address)) ?? selector;
+  }
+  return null;
+}
+

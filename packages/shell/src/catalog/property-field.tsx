@@ -53,7 +53,7 @@ import {
   ToggleGroupLeaf,
   ToggleSwitchLeaf,
 } from "./leaves";
-import { Badges, ObjectFieldFrame, useObjectField } from "./object-field";
+import { Badges, ObjectFieldFrame, useObjectField, type BindScopeOf } from "./object-field";
 import type { ShellPropertySchema, ShellValueType } from "./object-model-types";
 import {
   formatValue,
@@ -78,6 +78,11 @@ export interface PropertyFieldProps extends FieldPresentation {
   chrome?: Record<string, unknown>;
   /** Offer "Bind to data…" (default: when the row is bindable). */
   bindable?: boolean;
+  /** No `label`: label the row with the schema row's title (else the
+   *  path). Plugin rows declared without a label use it. */
+  autoLabel?: boolean;
+  /** ADR 323 — how "Bind to data…" reaches a plugin object durably. */
+  bindScope?: BindScopeOf;
 }
 
 const UNIT_SUFFIX: Record<string, string> = { percent: "%", deg: "°" };
@@ -159,6 +164,29 @@ function TypedTextField({
     setInvalid(null);
     onCommit(r.value);
   };
+  if (type.kind === "text" && type.multiline) {
+    // A multi-line text row (HTML / CSS source, notes): a textarea that
+    // commits on blur or Cmd/Ctrl+Enter, Escape reverts.
+    return (
+      <textarea
+        value={draft}
+        disabled={disabled}
+        rows={4}
+        placeholder={state.state === "mixed" ? "—" : (placeholder ?? "")}
+        data-mixed={state.state === "mixed" || state.state === "none" ? "" : undefined}
+        data-invalid={invalid ? "" : undefined}
+        aria-invalid={invalid ? true : undefined}
+        title={invalid ?? undefined}
+        className="w-full resize-y rounded-[6px] border border-input bg-transparent px-2 py-1 font-mono text-xs"
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) commit();
+          if (e.key === "Escape") setDraft(shown);
+        }}
+      />
+    );
+  }
   return (
     <Input
       value={draft}
@@ -210,12 +238,13 @@ export function PropertyField(props: PropertyFieldProps) {
       }
     : undefined;
 
+  const label = props.label ?? (props.autoLabel ? (row?.title ?? path) : undefined);
   const adornment = <Badges bound={field.bound} inferred={field.inferred} />;
   const chrome: Record<string, unknown> = {
     ...(props.chrome ?? {}),
-    ...(props.label ? { label: props.label } : {}),
+    ...(label ? { label } : {}),
     ...(props.labelPosition ? { labelPosition: props.labelPosition } : {}),
-    ...(props.label ? { labelAdornment: adornment } : {}),
+    ...(label ? { labelAdornment: adornment } : {}),
     ...(seam ? { seam: true } : {}),
   };
   if (widget === "number" && type.kind === "number" && type.unit && !chrome.suffix) {
@@ -260,7 +289,7 @@ export function PropertyField(props: PropertyFieldProps) {
       break;
     default:
       control = (
-        <LabelledRow label={props.label} adornment={adornment}>
+        <LabelledRow label={label} adornment={adornment}>
           <TypedTextField
             type={type}
             row={row}
@@ -274,7 +303,12 @@ export function PropertyField(props: PropertyFieldProps) {
   }
 
   return (
-    <ObjectFieldFrame field={field} bindable={props.bindable} badges={!props.label}>
+    <ObjectFieldFrame
+      field={field}
+      bindable={props.bindable}
+      bindScope={props.bindScope}
+      badges={!label}
+    >
       {control}
     </ObjectFieldFrame>
   );
