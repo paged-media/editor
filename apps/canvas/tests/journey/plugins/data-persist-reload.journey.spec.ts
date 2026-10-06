@@ -38,7 +38,12 @@
 //     SAME field in place; Lower again re-resolves it without placing a
 //     second field.
 //   · UNDO — Edit ▸ Undo puts the previous field value back; the session part
-//     is container state and does not change with undo.
+//     is container state and does not change with an undo that changes no
+//     session.
+//   · LABEL (engine protocol 69) — the Lower's write carried the document's
+//     own label naming the session version it was made under; the saved file
+//     holds that version as `sessions/<hash>.json`, and the reopened document
+//     still names it. (Before 69 these checks are skipped.)
 //
 // Gate: under REQUIRE_REAL_DUCKDB=1 a DuckDB that does not boot FAILS the
 // journey (data-duckdb-gate.ts); otherwise it skips and says why.
@@ -53,6 +58,7 @@ import { readZipText, zipEntryNames } from "../../e2e/harness/read-zip";
 import { openPanel } from "../../fidelity/canvas-driver";
 import { Designer } from "../driver/designer";
 import { skipWithoutDuckDB } from "./data-duckdb-gate";
+import { ENGINE_PROTOCOL, sessionLabel } from "./data-engine";
 
 const CSV_FIXTURE = pathResolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -133,7 +139,7 @@ async function importCsv(page: Page, designer: Designer): Promise<void> {
       (await status.getAttribute("data-status").catch(() => null)) ?? "unknown";
     skipWithoutDuckDB(
       got,
-      `the data-persist journey needs DuckDB-WASM to boot (engine status "${got}")`,
+      `the data-persist-reload journey needs DuckDB-WASM to boot (engine status "${got}")`,
     );
   }
 }
@@ -145,7 +151,7 @@ async function savePaged(designer: Designer, page: Page): Promise<Buffer> {
 }
 
 test.describe("journey · paged.data persistence", () => {
-  test("import, bind, save, reopen, refresh, undo: the data session comes back with the file @feat:data.plugin.persistence @feat:data.bind.authoring @level:happy", async ({
+  test("import, bind, save, reload, refresh, undo: the data session comes back with the file @feat:data.plugin.bundle @feat:data.bind.authoring @level:happy", async ({
     page,
   }) => {
     test.setTimeout(180_000);
@@ -171,6 +177,8 @@ test.describe("journey · paged.data persistence", () => {
       })
       .toEqual(["Ada Lovelace"]);
     const key = (await dataFields(page))[0].key;
+    const labelled = ENGINE_PROTOCOL >= 69 ? await sessionLabel(page) : null;
+    if (ENGINE_PROTOCOL >= 69) expect(labelled, "the Lower carried the session label").not.toBeNull();
 
     // ── 2. SAVE — the session part is in the file ─────────────────────────
     const saved = await savePaged(designer, page);
@@ -183,6 +191,10 @@ test.describe("journey · paged.data persistence", () => {
     expect(part.v).toBe(1);
     expect(part.engine?.bindings?.map((b) => b.id)).toEqual([key]);
     expect(part.data?.map((d) => d.source)).toEqual(["data_people"]);
+    if (labelled) {
+      // The labelled version travels with the file.
+      expect(zipEntryNames(saved)).toContain(`paged/media.paged.data/sessions/${labelled}.json`);
+    }
 
     // ── 3. REOPEN — File ▸ New, then File ▸ Open the saved file ───────────
     await designer.newDocument();
@@ -201,7 +213,7 @@ test.describe("journey · paged.data persistence", () => {
     await (
       await chooser
     ).setFiles({
-      name: "data-persist.paged",
+      name: "data-persist-reload.paged",
       mimeType: "application/x-paged+zip",
       buffer: saved,
     });
@@ -222,6 +234,7 @@ test.describe("journey · paged.data persistence", () => {
       "data-data-persistence",
       "saved",
     );
+    if (labelled) expect(await sessionLabel(page), "the reopened document names the same version").toBe(labelled);
 
     // ── 4. REFRESH — step to record 2: DuckDB re-runs the restored query ──
     await openPanel(page, BINDINGS_PANEL);
