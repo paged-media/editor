@@ -73,8 +73,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@paged-media/web':
-        specifier: 0.1.0-canary.10
-        version: 0.1.0-canary.10(@paged-media/plugin-api@0.2.43-canary.0)(@paged-media/plugin-sdk@0.2.43-canary.0(react@18.3.1))(react@18.3.1)
+        specifier: 0.1.0-canary.11
+        version: 0.1.0-canary.11(@paged-media/plugin-api@0.2.43-canary.0)(@paged-media/plugin-sdk@0.2.43-canary.0(react@18.3.1))(react@18.3.1)
       apache-arrow:
         specifier: ^17.0.0
         version: 17.0.0
@@ -972,8 +972,8 @@ packages:
       '@paged-media/plugin-sdk': '>=0.2.29-canary.0'
       react: ^18.3.0
 
-  '@paged-media/web@0.1.0-canary.10':
-    resolution: {integrity: sha512-CP8655vjOpjvRso81HeZ+Y6i9e9yt82VKi9quZO42TYqDmoN0X3Z5Mp9sWf3MyIw2qBJMSGiEEGf/S4BJhahZg==}
+  '@paged-media/web@0.1.0-canary.11':
+    resolution: {integrity: sha512-ksxkCTa+d3jaCXU5yBDiL8mIgtl/9Yqy3v1Vhm0ll+buiFvB0sWDF61hbxEPZ7+FDyacEbvEuzQ5t9nIe8dsgQ==}
     peerDependencies:
       '@paged-media/plugin-api': '>=0.2.29-canary.0'
       '@paged-media/plugin-sdk': '>=0.2.29-canary.0'
@@ -3080,7 +3080,7 @@ snapshots:
       '@paged-media/plugin-sdk': 0.2.43-canary.0(react@18.3.1)
       react: 18.3.1
 
-  '@paged-media/web@0.1.0-canary.10(@paged-media/plugin-api@0.2.43-canary.0)(@paged-media/plugin-sdk@0.2.43-canary.0(react@18.3.1))(react@18.3.1)':
+  '@paged-media/web@0.1.0-canary.11(@paged-media/plugin-api@0.2.43-canary.0)(@paged-media/plugin-sdk@0.2.43-canary.0(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@paged-media/plugin-api': 0.2.43-canary.0
       '@paged-media/plugin-sdk': 0.2.43-canary.0(react@18.3.1)
