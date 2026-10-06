@@ -36,11 +36,11 @@
     "@paged-media/plugin-api": "0.2.42-canary.0",
     "@paged-media/plugin-sdk": "0.2.42-canary.0",
     "@paged-media/publish": "0.1.0-canary.0",
-    "@paged-media/sheet": "0.1.0-canary.13",
+    "@paged-media/sheet": "0.1.0-canary.14",
     "@paged-media/shell": "workspace:*",
     "@paged-media/tools": "workspace:*",
     "@paged-media/ui": "workspace:*",
-    "@paged-media/web": "0.1.0-canary.9",
+    "@paged-media/web": "0.1.0-canary.10",
     "apache-arrow": "^17.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
