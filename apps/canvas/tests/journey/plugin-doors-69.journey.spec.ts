@@ -17,9 +17,9 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// Journey: three plugin doors that need no new engine wire, driven end to
-// end through a throwaway bundle loaded with the same loader and host
-// options as every real bundle (dev-only `__loadTestBundle`):
+// Journey: the protocol-69 plugin doors, driven end to end through a
+// throwaway bundle loaded with the same loader and host options as every
+// real bundle (dev-only `__loadTestBundle`):
 //
 //   1. ENTERING POINT — double-clicking a frame a plugin edit context
 //      claims hands `onEnter` the page, the page-local point and the
@@ -28,17 +28,32 @@
 //      preview are on the canvas together, and each clears without
 //      touching the others (supports("overlay.layers@1"));
 //   3. DOCUMENT OPENED — `host.document.onDidOpen` fires on File ▸ New and
-//      on opening an IDML through the importer (File ▸ Open's lane).
+//      on opening an IDML through the importer (File ▸ Open's lane);
+//   4. SCENE FACES — `host.assets.registerFont` gives a plugin's scene
+//      text a face the document lacks, while the document still reports
+//      that family missing (supports("assets.registerFont@1"));
+//   5. DOCUMENT METADATA — `host.document.setDocumentMetadata` is one
+//      undoable edit that fires onDidChange (supports("document.metadata@1")).
 //
-// Needs the plugin-sdk that ships these doors; the editor's pin moves to
-// it with the release.
+// Needs the plugin-sdk that ships these doors and an engine on protocol 69
+// (scene-scoped faces, document labels); the editor's pins move with the
+// release.
+
+import { dirname, resolve as pathResolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { loadIdml, openCanvas, openPanel } from "../fidelity/canvas-driver";
 import { Designer } from "./driver/designer";
 import { screenPointInFrame, select } from "./plugins/web-kit";
 
 const BUNDLE_ID = "media.paged.journeydoors";
+const REPO_ROOT = pathResolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+/** A generated fixture with a run pinned to "Phantom Display", a family no
+ *  font provides — `FontSummary.isMissing` is true by design. */
+const PREFLIGHT_IDML = `${REPO_ROOT}/corpus/idml/generated/preflight.idml`;
+const MISSING_FAMILY = "Phantom Display";
 const BREADCRUMB = "[data-edit-context-breadcrumb]";
 
 type Pt = [number, number];
@@ -58,6 +73,7 @@ interface Opened {
 interface Doors {
   enters: Entered[];
   opens: Opened[];
+  changes: string[];
   supports: Record<string, boolean>;
 }
 
@@ -71,7 +87,10 @@ async function loadDoorsBundle(page: Page): Promise<Doors["supports"]> {
     type Host = {
       supports(f: string): boolean;
       contribute: { editContext(c: unknown): unknown; objectType(c: unknown): unknown };
-      document: { onDidOpen(l: (e: unknown) => void): unknown };
+      document: {
+        onDidOpen(l: (e: unknown) => void): unknown;
+        onDidChange(l: (e: { kind: string }) => void): unknown;
+      };
       overlay: {
         layer(id?: string): { set(s: unknown[]): void; clear(): void; dispose(): void };
         setToolPreviews(s: unknown[] | null): void;
@@ -82,7 +101,7 @@ async function loadDoorsBundle(page: Page): Promise<Doors["supports"]> {
       __doors69Dispose?: { dispose(): void };
       __loadTestBundle: (b: unknown) => { dispose(): void };
     };
-    const doors = { enters: [], opens: [], supports: {} } as Doors & {
+    const doors = { enters: [], opens: [], changes: [], supports: {} } as Doors & {
       host?: Host;
     };
     g.__doors69 = doors;
@@ -92,7 +111,11 @@ async function loadDoorsBundle(page: Page): Promise<Doors["supports"]> {
         name: "journey doors",
         version: "0.0.0",
         apiVersion: "^0.2",
-        capabilities: { document: { read: "broad", write: "broad" }, rendering: ["overlay"] },
+        capabilities: {
+          document: { read: "broad", write: "broad" },
+          rendering: ["overlay", "sceneLayer"],
+          assets: ["fonts"],
+        },
         contributes: {
           editContexts: [{ type: "journeyFrame", entry: "doubleClick" }],
           objectTypes: [{ type: "journeyFrame", bakedFallback: "rectangle" }],
@@ -104,6 +127,8 @@ async function loadDoorsBundle(page: Page): Promise<Doors["supports"]> {
           "editContext.enterPoint@1",
           "overlay.layers@1",
           "document.onDidOpen@1",
+          "assets.registerFont@1",
+          "document.metadata@1",
         ]) {
           doors.supports[f] = host.supports(f);
         }
@@ -122,6 +147,7 @@ async function loadDoorsBundle(page: Page): Promise<Doors["supports"]> {
           bakedFallback: "rectangle",
         });
         host.document.onDidOpen((e) => doors.opens.push(e as Opened));
+        host.document.onDidChange((e) => doors.changes.push(e.kind));
         return { dispose() {} };
       },
     });
@@ -132,8 +158,19 @@ async function loadDoorsBundle(page: Page): Promise<Doors["supports"]> {
 const doors = (page: Page): Promise<Omit<Doors, "supports">> =>
   page.evaluate(() => {
     const d = (globalThis as unknown as { __doors69: Doors }).__doors69;
-    return { enters: d.enters, opens: d.opens };
+    return { enters: d.enters, opens: d.opens, changes: d.changes };
   });
+
+/** Run `body` (an async function body over `host`) inside the page and
+ *  return its JSON result. */
+async function hostCall<T>(page: Page, body: string): Promise<T> {
+  return page.evaluate(async (src) => {
+    const d = (globalThis as unknown as { __doors69: { host: unknown } }).__doors69;
+    // eslint-disable-next-line no-new-func
+    const fn = new Function("host", `return (async () => { ${src} })();`);
+    return JSON.parse(JSON.stringify((await fn(d.host)) ?? null));
+  }, body) as Promise<T>;
+}
 
 /** Run `body` against the bundle's live host inside the page. */
 async function withHost(page: Page, body: string): Promise<void> {
@@ -147,7 +184,7 @@ async function withHost(page: Page, body: string): Promise<void> {
 const near = (a: Pt | undefined, b: Pt, tol = 1.5): boolean =>
   !!a && Math.abs(a[0] - b[0]) <= tol && Math.abs(a[1] - b[1]) <= tol;
 
-test.describe("journey · plugin doors: entering point, overlay layers, document opened", () => {
+test.describe("journey · plugin doors: entering point, overlay layers, document opened, scene faces, document metadata", () => {
   test("double-clicking a claimed frame hands onEnter the page point and the frame-content point @feat:plugin-platform.edit-context @feat:plugin-platform.one-entry-gesture @level:gesture", async ({
     page,
   }) => {
@@ -352,4 +389,135 @@ test.describe("journey · plugin doors: entering point, overlay layers, document
     expect(onOpen.pageIds).toHaveLength(2);
     expect(onOpen.pageIds).toEqual((await designer.handle()).pageIds);
   });
+
+  test("a scene face registered by a plugin draws its scene text while the document still reports the family missing @feat:plugin-platform.font-asset-serving @feat:plugin-platform.scene-layer @feat:editor-shell.panels.fonts @level:happy", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    const loaded = await loadIdml(page, PREFLIGHT_IDML);
+    const pageId = loaded.pages[0].pageId;
+    const supports = await loadDoorsBundle(page);
+    expect(supports["assets.registerFont@1"], "the editor's asset source registers scene faces").toBe(true);
+
+    const missing = (): Promise<boolean | null> =>
+      hostCall<boolean | null>(
+        page,
+        `const fonts = await host.document.collection("fonts");
+         const f = fonts.find((x) => x.family === ${JSON.stringify(MISSING_FAMILY)});
+         return f ? Boolean(f.isMissing) : null;`,
+      );
+    expect(await missing(), "the fixture's family is missing to begin with").toBe(true);
+
+    // A frame for the plugin's scene text, and one text run naming the family.
+    const frameId = await hostCall<string>(
+      page,
+      `const r = await host.document.mutate({ op: "insertFrame", args: { pageId: ${JSON.stringify(pageId)}, bounds: [100, 100, 220, 400] } });
+       if (!r.applied || !r.createdId) throw new Error("insertFrame: " + JSON.stringify(r));
+       return r.createdId.id;`,
+    );
+    const submitScene = (): Promise<string[]> =>
+      hostCall<string[]>(
+        page,
+        `globalThis.__doorsScene ??= host.contribute.sceneLayer();
+         const r = await globalThis.__doorsScene.submit(${JSON.stringify(frameId)}, {
+           items: [{ kind: "text", x: 6, y: 60, text: "Hamburgefonstiv", size: 30,
+                     paint: { r: 0, g: 0, b: 0, a: 1 }, family: ${JSON.stringify(MISSING_FAMILY)} }],
+         });
+         return [...r.fontFallbacks];`,
+      );
+    expect(await submitScene(), "unregistered: the scene run falls back").toEqual([MISSING_FAMILY]);
+
+    // Register a face under that family through the plugin door.
+    await hostCall(
+      page,
+      `const resp = await fetch("/fonts/Lora.ttf");
+       if (!resp.ok) throw new Error("/fonts/Lora.ttf: " + resp.status);
+       globalThis.__doorsFace = await host.assets.registerFont(
+         new Uint8Array(await resp.arrayBuffer()), ${JSON.stringify(MISSING_FAMILY)});`,
+    );
+    expect(await submitScene(), "the scene run resolves the plugin's face").toEqual([]);
+
+    // ...and the DOCUMENT does not: the family is still missing, in the
+    // collection and in the Fonts panel (opened after the registration, so
+    // it reads fresh).
+    expect(await missing(), "the document still reports the family missing").toBe(true);
+    await openPanel(page, "paged.fonts");
+    await expect(page.locator('[data-fonts-panel="ready"]')).toBeVisible();
+    const row = page.locator("[data-font-list] [data-list-row]", { hasText: MISSING_FAMILY });
+    await expect(row).toHaveCount(1);
+    await expect(row.locator('[data-row-badge="missing"]')).toBeVisible();
+
+    // Disposing the face takes it out of the scene table again.
+    await hostCall(page, `globalThis.__doorsFace.dispose();`);
+    await expect.poll(submitScene, { timeout: 10_000 }).toEqual([MISSING_FAMILY]);
+  });
+
+  test("document metadata is one undoable edit that fires onDidChange @feat:plugin-platform.document-metadata @level:happy", async ({
+    page,
+  }) => {
+    const designer = new Designer(page);
+    await designer.open();
+    await designer.newDocument();
+    const supports = await loadDoorsBundle(page);
+    expect(supports["document.metadata@1"]).toBe(true);
+
+    const read = (): Promise<unknown> =>
+      hostCall(page, `return await host.document.getDocumentMetadata();`);
+    const write = (title: string): Promise<{ applied: boolean }> =>
+      hostCall(
+        page,
+        `return await host.document.setDocumentMetadata({ v: 1, data: { values: { title: ${JSON.stringify(title)} } } });`,
+      );
+    const A = { v: 1, data: { values: { title: "A" } } };
+    const B = { v: 1, data: { values: { title: "B" } } };
+
+    expect(await read(), "a new document carries none").toBeNull();
+    expect((await write("A")).applied).toBe(true);
+    await expect.poll(async () => (await doors(page)).changes).toEqual(["mutationApplied"]);
+    expect(await read()).toEqual(A);
+    expect((await write("B")).applied).toBe(true);
+    expect(await read()).toEqual(B);
+
+    // The editor's own Undo / Redo — the bundle wrote no undo code.
+    await designer.runCommand("paged.editor.undo");
+    await expect.poll(read).toEqual(A);
+    await designer.runCommand("paged.editor.undo");
+    await expect.poll(read).toBeNull();
+    await designer.runCommand("paged.editor.redo");
+    await expect.poll(read).toEqual(A);
+    expect((await doors(page)).changes).toEqual([
+      "mutationApplied",
+      "mutationApplied",
+      "undoApplied",
+      "undoApplied",
+      "redoApplied",
+    ]);
+
+    // It travels with the document: exported and reopened, the value is there.
+    const reopened = await page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: { exportIdml(): Promise<Uint8Array> };
+            registries: {
+              importers: {
+                resolve(name: string): {
+                  import(f: { name: string; bytes: Uint8Array }): Promise<void> | void;
+                } | null;
+              };
+            };
+          };
+        }
+      ).__canvas;
+      const bytes = await c.client.exportIdml();
+      const imp = c.registries.importers.resolve("doors.idml");
+      if (!imp) return "no importer claims .idml";
+      await imp.import({ name: "doors.idml", bytes });
+      return "";
+    });
+    expect(reopened).toBe("");
+    await expect.poll(async () => (await doors(page)).opens.length, { timeout: 15_000 }).toBe(1);
+    expect(await read(), "the label survives an IDML round trip").toEqual(A);
+  });
 });
+

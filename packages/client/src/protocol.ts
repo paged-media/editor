@@ -71,6 +71,7 @@ export type {
   ElementId,
   FieldChange,
   FieldKind,
+  FontScope,
   FrameBounds,
   FrameChainLink,
   GuideOrientationSpec,

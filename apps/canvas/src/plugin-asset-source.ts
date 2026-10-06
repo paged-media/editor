@@ -34,6 +34,13 @@
 // an unregistered document family still answers `found:false` → null —
 // the bundle keeps its substitution badge for those, never shown a
 // wrong face as "the document's".
+//
+// W-15 (protocol 69): `registerFont` / `clearSceneFonts` back the one
+// WRITE on the door, `host.assets.registerFont`. They address the
+// engine's SCENE-LAYER face table (`scope: "sceneLayer"`), which only
+// plugin scene-layer text reads — a bundle's face never reaches document
+// layout or the Fonts panel. The SDK owns which faces are live and
+// replays them after a clear; this adapter only forwards.
 
 import type { CanvasClient } from "@paged-media/client";
 import type { BundleAssetProvider } from "@paged-media/plugin-sdk";
@@ -79,6 +86,21 @@ export function createEditorAssetSource(
       } catch {
         return null;
       }
+    },
+    async registerFont(
+      family: string,
+      bytes: Uint8Array,
+      style?: string,
+    ): Promise<void> {
+      const client = getClient();
+      if (!client) throw new Error("no engine client to register the face with");
+      await client.registerFont(family, bytes, style ?? null, {
+        scope: "sceneLayer",
+      });
+    },
+    async clearSceneFonts(): Promise<void> {
+      // No client: no engine, so no scene faces to drop.
+      await getClient()?.clearFontRegistry({ scope: "sceneLayer" });
     },
   };
 }

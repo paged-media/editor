@@ -1190,7 +1190,9 @@ function PluginBundles() {
     // the provider reads the engine's font registry over the
     // requestFontFaceBytes wire pair (registered faces; unregistered
     // document families still answer null and the preview keeps its
-    // honest substitution badge).
+    // honest substitution badge). ONE source for every bundle: since
+    // protocol 69 it also registers scene-layer faces (W-15), and the
+    // SDK keys its list of live faces by this object.
     const assetSource = createEditorAssetSource(
       () => pagedRef.current?.client ?? null,
     );

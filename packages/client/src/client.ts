@@ -42,6 +42,7 @@ import {
   type DocumentMeta,
   type ExportPdfWireOptions,
   type ElementGeometryItem,
+  type FontScope,
   type ElementId,
   type GestureAnchor,
   type GestureFailure,
@@ -1573,24 +1574,38 @@ export class CanvasClient {
    * loadDocument calls; the renderer's `BytesResolver` will route any
    * `AppliedFont` matching `family` (+ optional `style`) to these
    * bytes. Mirrors `paged-inspect --font-family "Family=path"`.
+   * `scope: "sceneLayer"` puts the face in the table only plugin
+   * scene-layer text reads (document layout and the Fonts panel never
+   * see it); the default is the document registry.
    */
   async registerFont(
     family: string,
     bytes: Uint8Array,
     style: string | null = null,
+    options: { scope?: FontScope } = {},
   ): Promise<void> {
     const reply = await this.send({
       kind: "registerFont",
-      payload: { family, style, bytes: Array.from(bytes) },
+      payload: {
+        family,
+        style,
+        bytes: Array.from(bytes),
+        ...(options.scope ? { scope: options.scope } : {}),
+      },
     });
     if (reply.kind !== "fontRegistered") {
       throw new Error(`unexpected reply: ${reply.kind}`);
     }
   }
 
-  /** Drop every previously-registered font. */
-  async clearFontRegistry(): Promise<void> {
-    const reply = await this.send({ kind: "clearFontRegistry" });
+  /** Drop every previously-registered font of one registry: the
+   *  document's by default, or the scene-layer faces with
+   *  `scope: "sceneLayer"` (the other registry is left alone). */
+  async clearFontRegistry(options: { scope?: FontScope } = {}): Promise<void> {
+    const reply = await this.send({
+      kind: "clearFontRegistry",
+      payload: options.scope ? { scope: options.scope } : null,
+    });
     if (reply.kind !== "fontRegistryCleared") {
       throw new Error(`unexpected reply: ${reply.kind}`);
     }

@@ -454,8 +454,8 @@
         {
           "name": "CanvasClient.clearFontRegistry",
           "kind": "method",
-          "signature": "async clearFontRegistry(): Promise<void>",
-          "summary": "Drop every previously-registered font."
+          "signature": "async clearFontRegistry(options: { scope?: FontScope }",
+          "summary": "Drop every previously-registered font of one registry: the document's by default, or the scene-layer faces with `scope: \"sceneLayer\"` (the other registry is left alone)."
         },
         {
           "name": "CanvasClient.requestVelloPng",
@@ -642,6 +642,12 @@
           "name": "FieldKind",
           "kind": "type",
           "signature": "FieldKind",
+          "summary": null
+        },
+        {
+          "name": "FontScope",
+          "kind": "type",
+          "signature": "FontScope",
           "summary": null
         },
         {
