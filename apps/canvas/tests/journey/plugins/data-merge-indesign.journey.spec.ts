@@ -26,7 +26,7 @@
 // whose one text frame holds `<<name>>`, `SKU: <<sku>>`, `Stock: <<stock>>`,
 // a 57-record CSV in no column's sort order, and InDesign's own merge of it
 // (Multiple Records, columns first, 6 pt row and 12 pt column spacing):
-// 3 pages, 20 + 20 + 17 records.
+// 3 pages, 26 + 26 + 5 records.
 //
 //   · OPEN the template (File ▸ Open, the .idml InDesign saved);
 //   · IMPORT the CSV in the Sources panel (DuckDB boots and sniffs it);
@@ -36,7 +36,8 @@
 //   · MERGE AGAIN: the first run is replaced, not added to (InDesign's texts
 //     again, on the same 3 pages);
 //   · UNDO: two steps take the re-merge back (the first merge is there), one
-//     more takes the first merge's content back.
+//     more takes the first merge's content back, and the last one its pages:
+//     the template, as InDesign left it.
 //
 // Gate: under REQUIRE_REAL_DUCKDB=1 a DuckDB that does not boot FAILS the
 // journey (data-duckdb-gate.ts); otherwise it skips and says why.
@@ -192,13 +193,16 @@ test.describe("journey · paged.data Data Merge", () => {
     }
     await expect.poll(async () => pageTexts(page), { timeout: 30_000 }).toEqual(expected);
     // One more takes the first merge's content back: its pages stay, empty.
-    // (The next undo — the first merge's pages — restores the template in
-    // headless core, test/merge-real-core.spec.ts in plugin-data, but in the
-    // editor it brings the 57 frames back instead: an editor-side undo
-    // divergence after a re-merge, reported, not asserted here.)
     await designer.runCommand(CMD.undo);
     await expect
       .poll(async () => (await pageTexts(page)).map((p) => p.length), { timeout: 30_000 })
       .toEqual([0, 0, 0]);
+    // And the last one, the first merge's pages: the template is back — one
+    // page, its one frame, its placeholders (D-29: the editor used to bring
+    // the first merge's 57 frames back here).
+    await designer.runCommand(CMD.undo);
+    await expect
+      .poll(async () => (await pageTexts(page)).flat(), { timeout: 30_000 })
+      .toEqual(["<<name>>\nSKU: <<sku>>\nStock: <<stock>>"]);
   });
 });
