@@ -191,8 +191,10 @@ test.describe("journey · paged.data persistence", () => {
       "the new document has no data field",
     ).toEqual([]);
     await openPanel(page, BINDINGS_PANEL);
+    // The header carries a "sync states" button between the label and the
+    // list since the bundle's sync-state view; "none" is the empty list.
     await expect(page.locator("[data-data-bindings]")).toContainText(
-      /bindings:\s*none/,
+      /bindings:[\s\S]*none/,
     );
     const chooser = page.waitForEvent("filechooser", { timeout: 30_000 });
     const opening = designer.runCommand(CMD.open);
@@ -238,7 +240,11 @@ test.describe("journey · paged.data persistence", () => {
       .poll(async () => (await dataFields(page)).map((f) => f.value), {
         timeout: 30_000,
       })
-      .toEqual(["Grace Hopper"]);
+      // Records are numbered in the engine's STABILIZED order (sorted by
+      // every column, so record N is the same row whatever order DuckDB
+      // delivers — plugin-data defect DP-4): Ada, Alan, Grace. Record 2 is
+      // Alan Turing, not the CSV's second line.
+      .toEqual(["Alan Turing"]);
     // Lower re-resolves the same field (record 1); it does not place a second.
     await page.getByRole("button", { name: /lower to document/i }).click();
     await expect
@@ -258,7 +264,7 @@ test.describe("journey · paged.data persistence", () => {
       .poll(async () => (await dataFields(page)).map((f) => f.value), {
         timeout: 20_000,
       })
-      .toEqual(["Grace Hopper"]);
+      .toEqual(["Alan Turing"]);
     expect(await partText(page, SESSION_PART)).toBe(partBefore);
   });
 });
