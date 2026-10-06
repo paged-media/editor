@@ -498,7 +498,7 @@ test.describe("plugin surface · paged.web", () => {
 
   // ── 5. EDIT CONTEXT ──────────────────────────────────────────────
 
-  test("double-clicking a web frame enters the 'webFrame' edit context; Esc leaves", async ({
+  test("double-clicking a web frame enters the 'webFrame' edit context with a caret; Esc ends the edit, a second Esc leaves", async ({
     page,
   }) => {
     const declared = await page.evaluate(() => {
@@ -573,8 +573,29 @@ test.describe("plugin surface · paged.web", () => {
       ).toHaveAttribute("data-applies", "here");
     }
 
+    // The entering double-click also places the in-frame text caret
+    // (@paged-media/web 0.1.0-canary.10 hands EnteredEditContext's
+    // `contentPoint` to its in-frame session as a pointer-down), so you
+    // land ready to type where you clicked. That makes leaving TWO steps:
+    // while the text edit is open the context is dirty and owns every key,
+    // so the first Esc cancels the TEXT edit (the caret goes, the context
+    // stays); the second Esc, with nothing open, leaves the context.
+    // A vertical caret line has no width, so Playwright calls it hidden —
+    // count it rather than asserting visibility.
+    const caret = page.locator('svg polyline[stroke="var(--overlay-snap)"]');
+    await expect
+      .poll(() => caret.count(), { timeout: 10_000, message: "entering places the caret" })
+      .toBeGreaterThan(0);
+
     await page.keyboard.press("Escape");
-    await expect(breadcrumb).toHaveCount(0);
+    await expect
+      .poll(() => caret.count(), { timeout: 10_000, message: "the first Esc ends the text edit" })
+      .toBe(0);
+    await expect(breadcrumb, "…and the context stays").toBeVisible();
+    await expect(breadcrumb.locator('[data-edit-context-crumb="webFrame"]')).toHaveCount(1);
+
+    await page.keyboard.press("Escape");
+    await expect(breadcrumb, "the second Esc leaves the context").toHaveCount(0);
   });
 
   // ── 6. AUDIT — is any of this REACHABLE? ─────────────────────────
