@@ -31,6 +31,8 @@
 // runs here (main-thread runner) or, later, inside a host-extensible Boa.
 
 import { demoShowInfo, demoHighlight } from "./overlay";
+import type { ShellObjectsSurface } from "../catalog/object-model-types";
+import { buildObjectAutomation, type ObjectAutomationApi } from "./object-automation";
 
 /** The subset of the `__canvas` dev handle the automation needs. */
 export interface CanvasHandleLike {
@@ -51,6 +53,8 @@ export interface CanvasHandleLike {
   setElementSelection?: (ids: unknown[], mode: string) => void;
   elementSelection?: unknown[];
   handle?: { pageIds?: string[]; pageCount?: number } | null;
+  /** ADR 323 — the app's shared object registry (`host.objects`). */
+  objects?: Pick<ShellObjectsSurface, "query" | "get" | "set" | "batch" | "schema"> | null;
 }
 
 export interface PagedScriptApi {
@@ -58,7 +62,7 @@ export interface PagedScriptApi {
   run(source: string): Promise<string[]>;
 }
 
-export interface EditorAutomationApi {
+export interface EditorAutomationApi extends ObjectAutomationApi {
   /** Open a registered panel as a right-dock tab. */
   openPanel(id: string): void;
   /** Invoke a command id (the same ids menu items dispatch). */
@@ -138,6 +142,8 @@ export function buildAutomation(h: CanvasHandleLike, opts: AutomationOptions = {
       }
     },
     mutate: (op) => h.client.mutate(op),
+    // ADR 323 — get/set/query/batch/schema over `host.objects`.
+    ...buildObjectAutomation(() => h.objects),
   };
 
   const demo: DemoNarrationApi = {

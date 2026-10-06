@@ -62,6 +62,7 @@ import {
   PAGED_INPUT_TOGGLE_GROUP,
   PAGED_LAYOUT_CLUSTER,
   PAGED_LAYOUT_SECTION,
+  asPropertyFields,
 } from "@paged-media/shell";
 
 // Built-in IDML StrokeType references. The canvas read-side returns
@@ -73,7 +74,11 @@ const STROKE_TYPES = [
   { value: "StrokeStyle/$ID/Dotted", label: "Dotted" },
 ];
 
-export const strokeComposition: CompositionNode = {
+// ADR 323 — every live field is a schema-driven `PropertyField`: the
+// type comes from the target's schema row, reads/writes go through
+// `host.objects` (one batch = one undo step over a multi-selection), and
+// each field offers "Bind to data…" with a binding badge. Seams stay seams.
+export const strokeComposition: CompositionNode = asPropertyFields({
   catalogId: PAGED_LAYOUT_SECTION,
   props: { title: "Stroke", heading: false },
   bindings: {},
@@ -259,4 +264,4 @@ export const strokeComposition: CompositionNode = {
       ],
     },
   ],
-};
+});

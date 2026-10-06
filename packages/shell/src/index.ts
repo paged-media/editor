@@ -564,7 +564,45 @@ export {
   PAGED_LAYOUT_SECTION,
   PAGED_LAYOUT_CLUSTER,
   PAGED_LABEL,
+  PAGED_INPUT_PROPERTY,
 } from "./catalog/built-in";
+
+// ADR 323 — the object model in the panel tree: the shared registry's
+// structural mirror, the schema-driven field, and its pure model.
+export {
+  ObjectModelProvider,
+  useObjectModel,
+  useObjectProperty,
+  type ObjectProperty,
+  type ObjectPropertyRequest,
+} from "./catalog/object-model";
+export { PropertyField, PropertyFieldLeaf, type PropertyFieldProps } from "./catalog/property-field";
+export { asPropertyFields } from "./catalog/property-field-migrate";
+export {
+  BIND_LABEL_KEY,
+  BIND_PROPERTY_ARGS,
+  BIND_PROPERTY_COMMAND,
+  BIND_PROPERTY_COMMAND_IDS,
+  OID_LABEL_KEY,
+  checkArgs,
+  formatValue,
+  parseInput,
+  reduceValues,
+  resolveBindTarget,
+  widgetFor,
+  type FieldPresentation,
+  type FieldState,
+  type FieldWidget,
+} from "./catalog/property-field-model";
+export type {
+  ShellObjectModelHost,
+  ShellObjectsSurface,
+  ShellObjectValue,
+  ShellObjectOp,
+  ShellObjectWriteResult,
+  ShellPropertySchema,
+  ShellValueType,
+} from "./catalog/object-model-types";
 
 // Live-demo / playground scripting surface (the demo build + the docs playground
 // consume these). The automation handle + narration overlay are dev/demo-gated
@@ -594,7 +632,9 @@ export type {
   DemoNarrationApi,
   DemoInfoRequest,
   RunResult,
+  ObjectAutomationApi,
 } from "./demo";
+export { ObjectModelError, buildObjectAutomation } from "./demo";
 
 // ── Actions — record / replay a command sequence ────────────────
 export * from "./actions";

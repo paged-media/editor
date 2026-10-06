@@ -110,10 +110,14 @@ export function displayName(name: string): string {
 function LeafRow({
   label,
   stack,
+  adornment,
   children,
 }: {
   label?: string;
   stack?: boolean;
+  /** ADR 323 — `PropertyField`'s binding / inferred badges, after the
+   *  label text. */
+  adornment?: React.ReactNode;
   children: React.ReactNode;
 }) {
   if (!label) return <>{children}</>;
@@ -125,6 +129,7 @@ function LeafRow({
           style={{ color: "var(--pg-muted-fg)" }}
         >
           {label}
+          {adornment}
         </div>
         {children}
       </div>
@@ -134,6 +139,7 @@ function LeafRow({
     <div className="grid grid-cols-[84px_1fr] items-center gap-2">
       <span className="text-xs" style={{ color: "var(--pg-muted-fg)" }}>
         {label}
+        {adornment}
       </span>
       <div className="min-w-0">{children}</div>
     </div>
@@ -144,6 +150,7 @@ function rowProps(props: Record<string, unknown>) {
   return {
     label: labelFromProps(props),
     stack: props.labelPosition === "stack",
+    adornment: props.labelAdornment as React.ReactNode | undefined,
   };
 }
 
@@ -713,6 +720,7 @@ export function ToggleSwitchLeaf({ value, onCommit, props }: LeafProps) {
       >
         <span className="text-xs" style={{ color: "var(--pg-muted-fg)" }}>
           {label}
+          {props.labelAdornment as React.ReactNode}
         </span>
         {pill}
       </div>
@@ -726,6 +734,7 @@ export function ToggleSwitchLeaf({ value, onCommit, props }: LeafProps) {
     >
       <span className="text-xs" style={{ color: "var(--pg-fg)" }}>
         {label}
+        {props.labelAdornment as React.ReactNode}
       </span>
       {pill}
     </label>

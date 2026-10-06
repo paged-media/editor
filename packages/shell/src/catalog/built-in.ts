@@ -39,6 +39,8 @@ import {
   ToggleGroupLeaf,
   ToggleSwitchLeaf,
 } from "./leaves";
+import { PropertyFieldLeaf } from "./property-field";
+import { PAGED_INPUT_PROPERTY } from "./property-field-migrate";
 
 /** Stable catalog ids the rest of the codebase references. */
 export const PAGED_INPUT_LENGTH = "paged.input.length";
@@ -54,6 +56,9 @@ export const PAGED_LIST = "paged.list";
 export const PAGED_LAYOUT_SECTION = "paged.layout.section";
 export const PAGED_LAYOUT_CLUSTER = "paged.layout.cluster";
 export const PAGED_LABEL = "paged.label";
+/** ADR 323 — the schema-driven field: props name the PATH; the type comes
+ *  from the target's schema row and the value from `host.objects`. */
+export { PAGED_INPUT_PROPERTY };
 
 // Leaf binding declarations describe the leaf's *write surface* —
 // the audit-only declaration that this primitive emits a typed
@@ -293,6 +298,31 @@ const ENTRIES: CatalogEntry[] = [
     props: { text: "string" },
     bindings: { reads: [], writes: [] },
     leaf: LabelLeaf,
+  },
+  {
+    id: PAGED_INPUT_PROPERTY,
+    kind: "leaf",
+    props: {
+      path: "string",
+      label: "string",
+      labelPosition: "string",
+      scope: "string",
+      schemaKind: "string",
+      style: "string",
+      bindable: "boolean",
+      icon: "string",
+      prefix: "string",
+      suffix: "string",
+      placeholder: "string",
+      layout: "string",
+    },
+    // Reads and writes go through `host.objects`, not a selection
+    // binding: the leaf's write surface is the object model.
+    bindings: {
+      reads: ["selectionProperty:*"],
+      writes: ["selectionProperty:*"],
+    },
+    leaf: PropertyFieldLeaf,
   },
 ];
 

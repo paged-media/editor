@@ -19,6 +19,22 @@
 
 import { isEnabled } from "./types";
 import type { Disposable, VisibilityPredicate } from "./types";
+import type { ShellValueType } from "../catalog/object-model-types";
+import {
+  BIND_PROPERTY_ARGS,
+  BIND_PROPERTY_COMMAND_IDS,
+  checkArgs,
+} from "../catalog/property-field-model";
+
+/**
+ * ADR 323 — args the EDITOR declares for commands a bundle is expected to
+ * register, so a caller (PropertyField's "Bind to data…") and the
+ * registering plugin meet on one typed shape before the plugin exists.
+ * A contribution's own `args` wins over a declaration.
+ */
+const DECLARED_ARGS: ReadonlyMap<string, ShellValueType> = new Map(
+  BIND_PROPERTY_COMMAND_IDS.map((id) => [id, BIND_PROPERTY_ARGS] as const),
+);
 
 /**
  * Canonical action primitive. Every menu item, every keybinding,
@@ -38,6 +54,10 @@ export interface CommandContribution {
   handler: (paged: unknown, payload?: unknown) => unknown | Promise<unknown>;
   /** Optional enablement predicate. Disabled commands appear greyed. */
   when?: VisibilityPredicate;
+  /** ADR 323 — the payload's value type. When declared (here or in the
+   *  registry's declared table), `invoke` checks the payload against it
+   *  and throws `invalidValue: …` instead of running the handler. */
+  args?: ShellValueType;
 }
 
 /**
@@ -66,6 +86,9 @@ export interface CommandRegistry {
   invoke(id: string, payload?: unknown): Promise<unknown>;
   get(id: string): CommandContribution | undefined;
   list(): CommandContribution[];
+  /** ADR 323 — the declared payload type of `id` (the contribution's own
+   *  `args`, else the editor's declaration), registered or not. */
+  argsOf(id: string): ShellValueType | undefined;
   /**
    * Watch every invocation. `invoke` is the only place a command
    * handler is ever called (grep `.handler(` — one hit), so this is
@@ -143,6 +166,13 @@ export function createCommandRegistry(
       // every stale menu click into an error dialog. Observers still see
       // nothing, because nothing ran.
       if (!isEnabled(cmd.when, getEditor)) return undefined;
+      // ADR 323 — a typed command refuses a payload that does not conform,
+      // before anything runs (and before any observer records it).
+      const args = cmd.args ?? DECLARED_ARGS.get(id);
+      if (args) {
+        const bad = checkArgs(args, payload);
+        if (bad) throw new Error(`invalidValue: ${id}: ${bad}`);
+      }
       if (observers.size === 0) return await cmd.handler(editor, payload);
 
       // Emit `started` BEFORE the handler so recorded order is call
@@ -169,6 +199,9 @@ export function createCommandRegistry(
     },
     list() {
       return Array.from(byId.values());
+    },
+    argsOf(id) {
+      return byId.get(id)?.args ?? DECLARED_ARGS.get(id);
     },
     observe(observer) {
       observers.add(observer);

@@ -27,6 +27,11 @@ export {
   type EditorAutomationApi,
   type DemoNarrationApi,
 } from "./automation";
+export {
+  ObjectModelError,
+  buildObjectAutomation,
+  type ObjectAutomationApi,
+} from "./object-automation";
 export { runDemoScript, runDemoScriptWithHandle, type RunResult } from "./runner";
 export {
   DemoSession,

@@ -87,6 +87,11 @@ import {
   notePluginLoaded,
 } from "./journal-sink";
 import { createGuardedLoader } from "./plugin-load-guard";
+import {
+  editorObjectModel,
+  objectRegistry,
+  setObjectModelEditor,
+} from "./object-model";
 import { resolveSoloProfile } from "./solo/profiles";
 import { soloMode } from "./solo/mode";
 import { drawBundle } from "@paged-media/draw";
@@ -1111,6 +1116,8 @@ function PluginBundles() {
   const paged = usePaged();
   const pagedRef = useRef(paged);
   pagedRef.current = paged;
+  // ADR 323 — the shared object registry's core seam reads this editor.
+  setObjectModelEditor(paged);
   // Test affordance (like `__consent`/`__secrets`) — the aggregate
   // PagedEditor handle, i.e. the object the plugin-sdk host reads via
   // `getEditor()`. E2E specs probe the members capability flags gate
@@ -1369,6 +1376,11 @@ function PluginBundles() {
       dataProviders,
       // ADR 023 phase A/C — see the module-scope registry above.
       bindingProviders,
+      // ADR 323 — the ONE object registry (`./object-model.ts`): every
+      // bundle's `contribute.objectModel` registers into it and its
+      // `host.objects` routes across bundles. Flips
+      // supports("objects.shared@1") true.
+      objects: objectRegistry,
       consent,
       secrets,
       nativeDocument,
@@ -2001,6 +2013,7 @@ function CanvasAppRoot() {
       initialMode={SOLO ? "design" : undefined}
       initialDocumentSizePt={SOLO?.documentSizePt}
       bindingProviders={bindingProviders}
+      objectModel={editorObjectModel}
     >
       <CanvasAppIntegration />
       <PluginBundles />

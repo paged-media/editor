@@ -102,6 +102,8 @@ import {
   BindingProviderProvider,
   type ShellBindingProviderHost,
 } from "./catalog/binding-providers";
+import { ObjectModelProvider, useObjectModel } from "./catalog/object-model";
+import type { ShellObjectModelHost } from "./catalog/object-model-types";
 import { PagedEditorProvider } from "./state/paged-editor";
 import { useRegistries } from "./state/registries-context";
 import { ActionsProvider } from "./actions/actions-context";
@@ -212,6 +214,13 @@ export interface PagedShellProps {
    *  reads core, which is exactly right for a shell that loads no
    *  bundles. */
   bindingProviders?: ShellBindingProviderHost | null;
+  /** ADR 323 — the app's ONE shared object registry (`host.objects`,
+   *  built with plugin-sdk's `createObjectRegistry` and injected into
+   *  every bundle host), plus the two app-side helpers a field needs.
+   *  Published to the panel tree for `PropertyField` and to
+   *  `__canvas.objects` for `editor.*` automation. Omitted/null = every
+   *  schema-driven field renders disabled. */
+  objectModel?: ShellObjectModelHost | null;
 }
 
 /**
@@ -230,6 +239,7 @@ export function PagedShell({
   panelRail,
   canvasComponent,
   bindingProviders,
+  objectModel,
   initialMode,
   initialDocumentSizePt,
   children,
@@ -279,6 +289,9 @@ export function PagedShell({
                                     <BindingProviderProvider
                                       host={bindingProviders ?? null}
                                     >
+                                    <ObjectModelProvider
+                                      host={objectModel ?? null}
+                                    >
                                     <PagedEditorProvider>
                                     {/* Actions — the command recorder.
                                         INSIDE PagedEditorProvider (it
@@ -304,6 +317,7 @@ export function PagedShell({
                                       </ShellChrome>
                                     </ActionsProvider>
                                     </PagedEditorProvider>
+                                    </ObjectModelProvider>
                                     </BindingProviderProvider>
                                     </EditContextStackProvider>
                                     </InstrumentationProvider>
@@ -399,6 +413,7 @@ function ShellChrome({
   initialDocumentSizePt?: readonly [number, number];
 }>) {
   const client = useCanvasClient();
+  const objectModel = useObjectModel();
   const {
     handle,
     snapshotsReady,
@@ -1004,6 +1019,9 @@ function ShellChrome({
       // inside CockpitStateProvider); reads the ref so it stays valid
       // across this object's per-render republish.
       debugContext: () => debugContextRef.current,
+      // ADR 323 — the shared object registry: `editor.get/set/query/
+      // batch/schema` (demo automation) and specs read it here.
+      objects: objectModel?.objects ?? null,
     };
     // Demo/automation entry: run a demo script (paged.* + editor.* + demo.*)
     // against the live handle. Trusted first-party scripts only (see runner).
