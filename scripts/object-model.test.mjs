@@ -467,7 +467,7 @@ test("the app model maps table cells and tables to addresses and back (story rem
   assert.deepEqual(editorObjectModel.elementIdOf("table:t1"), { kind: "table", id: { story_id: "u9", table_id: "t1" } });
   assert.deepEqual(editorObjectModel.elementIdOf("rectangle:u12"), { kind: "rectangle", id: "u12" });
   assert.equal(editorObjectModel.elementIdOf("cell:unknown/0,0"), null);
-  // The inset rows the inferred SDK catalog typed as text write lengths.
+  // The inset rows write lengths (the SDK catalog types them so since 0.2.43).
   assert.equal(editorObjectModel.wireOf("cellInsetTop"), "length");
 });
 

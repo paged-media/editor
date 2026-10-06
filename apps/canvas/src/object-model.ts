@@ -88,9 +88,8 @@ const coreRow = (path: string): CoreRow | null =>
 //   · the story comes from the table → story map `addressOf` fills
 //     whenever the editor names a table element (the selection, the
 //     Table panel's targets).
-// Two schema rows are corrected here because the inferred SDK rows are
-// wrong against the engine: `cellInset*` read back and write as LENGTHS
-// (the panel always sent `Value::Length`), not text. Both stay inferred.
+// (The SDK's 0.2.43 rows already type `cellInset*` as lengths; nothing
+// is re-typed here.)
 // ------------------------------------------------------------------
 
 const tableStories = new Map<string, string>();
@@ -100,14 +99,7 @@ export function noteTableStory(tableId: string, storyId: string): void {
   tableStories.set(tableId, storyId);
 }
 
-const TABLE_ROW_FIX: Record<string, { type: { kind: "length" }; wire: "length" }> = {
-  cellInsetTop: { type: { kind: "length" }, wire: "length" },
-  cellInsetLeft: { type: { kind: "length" }, wire: "length" },
-  cellInsetBottom: { type: { kind: "length" }, wire: "length" },
-  cellInsetRight: { type: { kind: "length" }, wire: "length" },
-};
-
-const wireOfPath = (path: string): string | null => TABLE_ROW_FIX[path]?.wire ?? coreRow(path)?.wire ?? null;
+const wireOfPath = (path: string): string | null => coreRow(path)?.wire ?? null;
 
 type Parsed = NonNullable<ReturnType<typeof parseAddress>>;
 
@@ -131,11 +123,6 @@ function withTableSeam(core: CoreObjects): CoreObjects {
     ({ kind: "refused", code, reason }) as const;
   return {
     ...core,
-    schema(kind) {
-      const rows = core.schema(kind);
-      if (kind !== "cell" && kind !== "table") return rows;
-      return rows.map((r) => (TABLE_ROW_FIX[r.path] ? { ...r, type: TABLE_ROW_FIX[r.path].type } : r));
-    },
     async get(a, path) {
       if (!isTable(a)) return core.get(a, path);
       const scope = a.kind;

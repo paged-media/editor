@@ -76,7 +76,7 @@
 // ContentSelection.cell → useTextEditing). This panel edits cell
 // STRUCTURE; the in-canvas caret edits cell TEXT.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   CockpitBtn,
@@ -801,6 +801,9 @@ function NumberCommit({
   testId: string;
 }) {
   const [draft, setDraft] = useState<string>("");
+  // The last text committed: Enter commits AND blurs, and the blur must
+  // not write the same value a second time (that was a second undo step).
+  const committed = useRef<string | null>(null);
   // Sync the draft to the read-back value when it changes (and the
   // field isn't mid-edit — a blank draft means "show the model").
   useEffect(() => {
@@ -808,7 +811,10 @@ function NumberCommit({
   }, [value]);
   const commit = () => {
     const n = Number(draft);
-    if (draft.trim() !== "" && Number.isFinite(n)) onCommit(n);
+    if (draft.trim() === "" || !Number.isFinite(n)) return;
+    if (committed.current === draft) return;
+    committed.current = draft;
+    onCommit(n);
   };
   return (
     <input
@@ -816,7 +822,10 @@ function NumberCommit({
       data-num-input={testId}
       value={draft}
       placeholder={placeholder}
-      onChange={(e) => setDraft(e.target.value)}
+      onChange={(e) => {
+        committed.current = null;
+        setDraft(e.target.value);
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
           commit();
