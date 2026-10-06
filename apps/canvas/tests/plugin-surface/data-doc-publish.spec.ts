@@ -68,6 +68,8 @@
 //   no prompt (the editor has no dirty flag and no `beforeunload` guard
 //   anywhere). That test authors a rectangle first and watches it vanish.
 
+import { readFileSync } from "node:fs";
+
 import { expect, test, type Page } from "@playwright/test";
 import { fitFirstPage } from "../fidelity/canvas-driver";
 import { dirname, resolve as pathResolve } from "node:path";
@@ -77,9 +79,22 @@ import { openPanel } from "../fidelity/canvas-driver";
 import { mutate } from "../e2e/harness/ui";
 import { treeCount } from "../e2e/harness/viewport";
 import { Designer } from "../journey/driver/designer";
+import { skipWithoutDuckDB } from "../journey/plugins/data-duckdb-gate";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PDF_FIXTURE = pathResolve(HERE, "../../public/sample.pdf");
+
+/** paged.data's manifest as THE APP RESOLVES it (apps/canvas/node_modules). */
+const DATA_MANIFEST = JSON.parse(
+  readFileSync(pathResolve(HERE, "../../node_modules/@paged-media/data/manifest.json"), "utf8"),
+) as {
+  contributes: {
+    panels: string[];
+    commands: string[];
+    importers?: string[];
+    partTypes?: Array<{ type: string; role: string; format: string }>;
+  };
+};
 
 // ── the four manifests, transcribed from the bundles the app RESOLVES
 //    (apps/canvas/node_modules/@paged-media/<pkg>/manifest.json). Any
@@ -89,6 +104,7 @@ const DATA_PANELS = [
   "media.paged.data.panel.sources",
   "media.paged.data.panel.bindings",
   "media.paged.data.panel.dataset",
+  "media.paged.data.panel.query",
 ] as const;
 
 const DATA_COMMANDS = [
@@ -99,7 +115,15 @@ const DATA_COMMANDS = [
   "media.paged.data.command.openDataset",
   "media.paged.data.command.captureDataSet",
   "media.paged.data.command.applyDataSet",
+  "media.paged.data.command.mergeRecords",
+  "media.paged.data.command.editQuery",
 ] as const;
+
+const DATA_IMPORTER = "media.paged.data.importer.table";
+
+/** Declared under `contributes.partTypes`. The host has no partType
+ *  registry, so these are pinned against the manifest, not a live one. */
+const DATA_PART_TYPES = ["session", "data", "data-json", "data-parquet", "data-xlsx"] as const;
 
 const DOC_PANEL = "media.paged.doc.panel.outline";
 const DOC_COMMAND = "media.paged.doc.command.placeDoc";
@@ -329,9 +353,15 @@ test.describe("plugin surface · paged.data", () => {
       "paged.data registers no objectType (see the D3 defect below)",
     ).not.toContain("dataBinding");
 
-    // paged.data injects nothing else: no tools, no importers, no
-    // exporters, no menu items. Its ONLY chrome presence is hardcoded by
-    // the HOST (cockpit-modes.ts) — see the host-chrome describe below.
+    // The pinned lists match the manifest the app resolves, so a
+    // contribution silently added to (or dropped from) the published
+    // bundle lands here first.
+    const c = DATA_MANIFEST.contributes;
+    expect([...c.panels].sort()).toEqual([...DATA_PANELS].sort());
+    expect([...c.commands].sort()).toEqual([...DATA_COMMANDS].sort());
+    expect(c.importers ?? []).toEqual([DATA_IMPORTER]);
+
+    // No tools, no exporters; its menu entries are its own (below).
     const dataIo = await page.evaluate(() => {
       const r = (globalThis as unknown as CanvasProbe).__canvas.registries;
       return {
@@ -340,12 +370,31 @@ test.describe("plugin surface · paged.data", () => {
         menus: r.menus.list().map((m) => m.command),
       };
     });
-    expect(dataIo.importers.filter((i) => i.startsWith("media.paged.data"))).toEqual(
-      [],
-    );
+
+    // IMPORTERS — one since canary.10, and it is live. This assertion
+    // used to read `.toEqual([])` ("paged.data injects no importers");
+    // it went red the day the bundle started contributing
+    // `media.paged.data.importer.table` (JSON / NDJSON / Parquet) through
+    // `contribute.importer()`, which is the exposure improving, not a
+    // defect. Its reachability is proven in the importer test below.
+    // Still no exporters.
+    expect(dataIo.importers.filter((i) => i.startsWith("media.paged.data"))).toEqual([
+      DATA_IMPORTER,
+    ]);
     expect(dataIo.exporters.filter((e) => e.startsWith("media.paged.data"))).toEqual(
       [],
     );
+
+    // PART TYPES are declaration-only, as for every bundle: the host has
+    // no partType registry, so nothing reads them. Pin them to the
+    // manifest so a change is noticed. (The bytes behind them are proven
+    // by the import-formats / persist-reload journeys, which write
+    // `data/<hash>.<format>` parts.)
+    expect((c.partTypes ?? []).map((p) => p.type)).toEqual([...DATA_PART_TYPES]);
+    const registryNames = await page.evaluate(() =>
+      Object.keys((globalThis as unknown as CanvasProbe).__canvas.registries),
+    );
+    expect(registryNames, "the shell has no partType registry").not.toContain("partTypes");
     // THIRD STATE, each written to go red when the exposure improved,
     // and each one did:
     //   · `.toEqual([])` — paged.data reached no menu at all;
@@ -466,7 +515,7 @@ test.describe("plugin surface · paged.data", () => {
     await (await realChooser).setFiles([]); // cancel — no ingest here
   });
 
-  test("all seven commands are invocable through the registry @feat:data.plugin.bundle @level:happy", async ({
+  test("every declared command is invocable through the registry @feat:data.plugin.bundle @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -476,7 +525,7 @@ test.describe("plugin surface · paged.data", () => {
     // Invoke every one and record how it settled. "Invocable" means the
     // registry reached a REAL handler: it either resolved, or rejected
     // with a bundle-side error (no engine booted, no binding defined) —
-    // never with "no such command". Three of them are pure panel raises;
+    // never with "no such command". Four of them are pure panel raises;
     // the rest touch the session. None may throw an unknown-command
     // error, and none may hang.
     const results = await page.evaluate(async (ids) => {
@@ -517,17 +566,114 @@ test.describe("plugin surface · paged.data", () => {
     )) as { applied?: number } | null;
     expect(applied?.applied, "applyDataSet with no name applies nothing").toBe(0);
 
-    // The three panel-raising verbs land on the panels they name.
+    // `mergeRecords` (Data Merge) with no payload merges the session's
+    // first query; on a fresh document there is none, and the documented
+    // refusal is a warning and a null — the document is not touched. The
+    // merge itself is proven through the Bindings panel's Data Merge row
+    // (journey data-merge-indesign), which drives the same session lane.
+    const pagesBefore = await page.evaluate(
+      async () =>
+        (
+          await (
+            globalThis as unknown as {
+              __canvas: { client: { collection: (n: string) => Promise<unknown[]> } };
+            }
+          ).__canvas.client.collection("pages")
+        ).length,
+    );
+    const merged = await invoke(page, "media.paged.data.command.mergeRecords");
+    expect(merged, "mergeRecords with no query merges nothing").toBeNull();
+    const pagesAfter = await page.evaluate(
+      async () =>
+        (
+          await (
+            globalThis as unknown as {
+              __canvas: { client: { collection: (n: string) => Promise<unknown[]> } };
+            }
+          ).__canvas.client.collection("pages")
+        ).length,
+    );
+    expect(pagesAfter, "…and adds no pages").toBe(pagesBefore);
+
+    // The four panel-raising verbs land on the panels they name.
     for (const [cmd, panel] of [
       ["media.paged.data.command.defineBinding", "media.paged.data.panel.bindings"],
       ["media.paged.data.command.openDataset", "media.paged.data.panel.dataset"],
       ["media.paged.data.command.importData", "media.paged.data.panel.sources"],
+      ["media.paged.data.command.editQuery", "media.paged.data.panel.query"],
     ] as const) {
       await invoke(page, cmd);
       await expect
         .poll(async () => (await panelState(page)).active, { timeout: 10_000 })
         .toBe(panel);
     }
+  });
+
+  test("the table importer is registered, reachable by extension and MIME, and imports a JSON file @feat:data.source.adapters @feat:data.plugin.bundle @level:happy", async ({
+    page,
+  }) => {
+    const designer = new Designer(page);
+    await designer.open();
+    await designer.newDocument();
+
+    const live = await page.evaluate(() => {
+      const r = (globalThis as unknown as CanvasProbe).__canvas.registries;
+      return {
+        importer: r.importers.list().find((i) => i.id === "media.paged.data.importer.table") ?? null,
+        json: r.importers.resolve("rows.json")?.id ?? null,
+        ndjson: r.importers.resolve("events.NDJSON")?.id ?? null,
+        jsonl: r.importers.resolve("events.jsonl")?.id ?? null,
+        parquet: r.importers.resolve("products.parquet")?.id ?? null,
+        byMime: r.importers.resolve("no-extension", "application/vnd.apache.parquet")?.id ?? null,
+        accept: r.importers.acceptExtensions(),
+      };
+    });
+    expect(live.importer, "the table importer is registered").toBeTruthy();
+    expect(live.importer!.extensions).toEqual([".json", ".ndjson", ".jsonl", ".parquet"]);
+    for (const [what, id] of [
+      [".json", live.json],
+      [".NDJSON (case-insensitive)", live.ndjson],
+      [".jsonl", live.jsonl],
+      [".parquet", live.parquet],
+      ["the Parquet MIME type", live.byMime],
+    ] as const) {
+      expect(id, `resolve() claims ${what}`).toBe(DATA_IMPORTER);
+    }
+    for (const ext of [".json", ".ndjson", ".jsonl", ".parquet"]) {
+      expect(live.accept, `the picker's accept union carries ${ext}`).toContain(ext);
+    }
+
+    // DRIVE IT with real bytes — the path PagedShell's `onFile` takes for
+    // a dropped / File ▸ Open… .json: the importer hands the file to the
+    // data session and raises the Sources panel, where the source lists.
+    await page.evaluate(async () => {
+      const r = (globalThis as unknown as CanvasProbe).__canvas.registries;
+      const imp = r.importers.resolve("catalog.json", "application/json") as
+        | { import: (f: { name: string; bytes: Uint8Array; mimeType: string }) => Promise<void> }
+        | null;
+      if (!imp) throw new Error("no importer resolved for .json");
+      await imp.import({
+        name: "catalog.json",
+        bytes: new TextEncoder().encode('[{"sku":"A-1","price":9.99},{"sku":"B-2","price":19.5}]'),
+        mimeType: "application/json",
+      });
+    });
+    await expect
+      .poll(async () => (await panelState(page)).active, { timeout: 10_000 })
+      .toBe("media.paged.data.panel.sources");
+
+    // JSON needs DuckDB-WASM (its json extension); skip — or fail under
+    // REQUIRE_REAL_DUCKDB=1 — when it cannot boot, as every data journey does.
+    const status = page.locator("[data-status]").last();
+    const listed = page.locator('[data-data-source="catalog"]');
+    try {
+      await expect(listed).toContainText("json", { timeout: 45_000 });
+    } catch (err) {
+      const got = (await status.getAttribute("data-status").catch(() => null)) ?? "unknown";
+      if (got !== "ready") skipWithoutDuckDB(got, `the JSON import needs DuckDB-WASM (engine status "${got}")`);
+      throw err;
+    }
+    await expect(page.locator('[data-data-diagnostics] li[data-level="error"]')).toHaveCount(0);
   });
 
   // DELIBERATELY UNTAGGED — a defect characterisation is evidence of the
