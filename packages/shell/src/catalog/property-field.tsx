@@ -164,6 +164,29 @@ function TypedTextField({
     setInvalid(null);
     onCommit(r.value);
   };
+  if (type.kind === "text" && type.multiline) {
+    // A multi-line text row (HTML / CSS source, notes): a textarea that
+    // commits on blur or Cmd/Ctrl+Enter, Escape reverts.
+    return (
+      <textarea
+        value={draft}
+        disabled={disabled}
+        rows={4}
+        placeholder={state.state === "mixed" ? "—" : (placeholder ?? "")}
+        data-mixed={state.state === "mixed" || state.state === "none" ? "" : undefined}
+        data-invalid={invalid ? "" : undefined}
+        aria-invalid={invalid ? true : undefined}
+        title={invalid ?? undefined}
+        className="w-full resize-y rounded-[6px] border border-input bg-transparent px-2 py-1 font-mono text-xs"
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) commit();
+          if (e.key === "Escape") setDraft(shown);
+        }}
+      />
+    );
+  }
   return (
     <Input
       value={draft}
