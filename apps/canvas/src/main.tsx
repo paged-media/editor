@@ -88,6 +88,7 @@ import {
   notePluginLoaded,
 } from "./journal-sink";
 import { createGuardedLoader } from "./plugin-load-guard";
+import { cameraForPage, pagesBackend, publishActivePage, setPageGoTo } from "./plugin-pages";
 import { resolveSoloProfile } from "./solo/profiles";
 import { soloMode } from "./solo/mode";
 import { drawBundle } from "@paged-media/draw";
@@ -1380,6 +1381,8 @@ function PluginBundles() {
       // D-26 — rides inert until the pinned plugin-sdk knows the option
       // (0.2.41); it then flips supports("documents.open@1") true.
       documents,
+      // v70 — page navigation and the active page (`viewport.pages@1`).
+      pages: pagesBackend,
       diagnosticsSink: problemsSink,
       schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
       // W-19 — the shell's pointer entries (double-click, the Type-tool
@@ -1636,7 +1639,24 @@ function CanvasAppIntegration() {
   useEffect(() => {
     const target = pageTargetFor({ handle, camera, viewportSize });
     client.setActivePage(target?.pageId ?? null);
+    // v70 — the same page, for `host.viewport.activePage` and its event.
+    publishActivePage(target?.pageId ?? null);
   }, [client, handle, camera, viewportSize]);
+
+  // v70 — `host.viewport.goToPage`: the page by id, fitted whole or by
+  // width, with the navigator's animation.
+  useEffect(() => {
+    setPageGoTo((pageId, fit) => {
+      const index = handle?.pageIds.indexOf(pageId) ?? -1;
+      if (!handle || index < 0) return false;
+      const [vw, vh] = viewportSize;
+      const cam = cameraForPage(handle.pageSizesPt, index, fit, vw, vh);
+      if (!cam) return false;
+      animateCamera(cam);
+      return true;
+    });
+    return () => setPageGoTo(null);
+  }, [animateCamera, handle, viewportSize]);
 
   // Cockpit — the thumbnail filmstrip / document map navigate by
   // page indices; the camera-fit math (page layout convention) is
