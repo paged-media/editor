@@ -72,12 +72,15 @@ import type {
   PanelSchema,
   PanelSchemaRow,
   PanelSchemaSection,
+  PanelSchemaWidgetRow,
   SchemaGate,
   SchemaReorderPayload,
   SchemaRenamePayload,
   SchemaRowAction,
   WidgetValueBinding,
 } from "./schema-panel-types";
+import { isPropertyRow } from "./schema-panel-types";
+import { SchemaPropertyRow } from "./object-property-field";
 import {
   buildSchemaTreeRows,
   flatSchemaTreeRows,
@@ -96,7 +99,7 @@ function toCatalogBinding(b: WidgetValueBinding): Binding {
 /** A schema row → a catalog `CompositionNode`. The widget id is the
  *  catalog id; the value binding (if any) is the node's primary
  *  `"value"` binding. */
-function rowToNode(row: PanelSchemaRow): CompositionNode {
+function rowToNode(row: PanelSchemaWidgetRow): CompositionNode {
   return {
     catalogId: row.widget,
     props: { ...(row.props ?? {}) },
@@ -515,6 +518,11 @@ function SchemaRow({
 }) {
   if (!gate(row.visible, bindings)) return null;
   const enabled = gate(row.enabled, bindings);
+  // ADR 323 — an object-model property row: the shared PropertyField
+  // over host.objects (it owns its disabled chrome).
+  if (isPropertyRow(row)) {
+    return <SchemaPropertyRow row={row} bindings={bindings} disabled={!enabled} />;
+  }
   const rendered = row.list ? (
     <SchemaListRow row={row} bindings={bindings} />
   ) : (
@@ -547,7 +555,11 @@ function SchemaSection({
   // chrome the catalog leaf uses (kicker title above a hairline) so a
   // schema section reads identical to a native one.
   const rows = section.rows.map((row, i) => (
-    <SchemaRow key={`${row.widget}-${i}`} row={row} bindings={bindings} />
+    <SchemaRow
+      key={`${isPropertyRow(row) ? `property:${row.path}` : row.widget}-${i}`}
+      row={row}
+      bindings={bindings}
+    />
   ));
   if (section.title === undefined) {
     return (

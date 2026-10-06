@@ -153,6 +153,7 @@ const _schemaRendererCompat: _AssertSchemaRenderer = true;
 void _schemaRendererCompat;
 import { CodeEditor } from "@paged-media/ui";
 import { HostColorPicker } from "./plugin-color-picker";
+import { ObjectPropertyField, ObjectPropertyFrame } from "@paged-media/shell";
 import { createWillSaveRegistry } from "./plugin-will-save";
 import { cockpitActions } from "@paged-media/shell";
 import { assertCrossOriginIsolated } from "./boot/cross-origin-isolation-check";
@@ -1181,7 +1182,15 @@ function PluginBundles() {
     // v66 — the colour picker (`widgets.colorPicker@1`) is the shared
     // mixer, so a plugin colour and a document swatch are chosen the
     // same way.
-    const widgets = { CodeEditor, ColorPicker: HostColorPicker };
+    // ADR 323 — `widgets.propertyField@1`: a React plugin panel renders the
+    // SAME schema-driven field (and its frame around a kept control) the
+    // schema-panel property rows render, over the shared `host.objects`.
+    const widgets = {
+      CodeEditor,
+      ColorPicker: HostColorPicker,
+      PropertyField: ObjectPropertyField,
+      PropertyFrame: ObjectPropertyFrame,
+    };
     // v66 — tool options a bundle declared are written by the host's
     // tool-options popover; `host.tools.settings` reads them back.
     const toolSettings = {

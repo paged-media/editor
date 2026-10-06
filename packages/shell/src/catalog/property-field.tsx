@@ -53,7 +53,7 @@ import {
   ToggleGroupLeaf,
   ToggleSwitchLeaf,
 } from "./leaves";
-import { Badges, ObjectFieldFrame, useObjectField } from "./object-field";
+import { Badges, ObjectFieldFrame, useObjectField, type BindScopeOf } from "./object-field";
 import type { ShellPropertySchema, ShellValueType } from "./object-model-types";
 import {
   formatValue,
@@ -78,6 +78,11 @@ export interface PropertyFieldProps extends FieldPresentation {
   chrome?: Record<string, unknown>;
   /** Offer "Bind to data…" (default: when the row is bindable). */
   bindable?: boolean;
+  /** No `label`: label the row with the schema row's title (else the
+   *  path). Plugin rows declared without a label use it. */
+  autoLabel?: boolean;
+  /** ADR 323 — how "Bind to data…" reaches a plugin object durably. */
+  bindScope?: BindScopeOf;
 }
 
 const UNIT_SUFFIX: Record<string, string> = { percent: "%", deg: "°" };
@@ -210,12 +215,13 @@ export function PropertyField(props: PropertyFieldProps) {
       }
     : undefined;
 
+  const label = props.label ?? (props.autoLabel ? (row?.title ?? path) : undefined);
   const adornment = <Badges bound={field.bound} inferred={field.inferred} />;
   const chrome: Record<string, unknown> = {
     ...(props.chrome ?? {}),
-    ...(props.label ? { label: props.label } : {}),
+    ...(label ? { label } : {}),
     ...(props.labelPosition ? { labelPosition: props.labelPosition } : {}),
-    ...(props.label ? { labelAdornment: adornment } : {}),
+    ...(label ? { labelAdornment: adornment } : {}),
     ...(seam ? { seam: true } : {}),
   };
   if (widget === "number" && type.kind === "number" && type.unit && !chrome.suffix) {
@@ -260,7 +266,7 @@ export function PropertyField(props: PropertyFieldProps) {
       break;
     default:
       control = (
-        <LabelledRow label={props.label} adornment={adornment}>
+        <LabelledRow label={label} adornment={adornment}>
           <TypedTextField
             type={type}
             row={row}
@@ -274,7 +280,12 @@ export function PropertyField(props: PropertyFieldProps) {
   }
 
   return (
-    <ObjectFieldFrame field={field} bindable={props.bindable} badges={!props.label}>
+    <ObjectFieldFrame
+      field={field}
+      bindable={props.bindable}
+      bindScope={props.bindScope}
+      badges={!label}
+    >
       {control}
     </ObjectFieldFrame>
   );
