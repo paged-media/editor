@@ -72,6 +72,8 @@ import type {
   Value,
 } from "@paged-media/client";
 
+import { useObjectModel } from "./object-model";
+import type { ShellObjectOp } from "./object-model-types";
 import { useCanvasClient } from "../state/canvas-client-context";
 import { useCollection } from "./use-collection";
 import { useReportBindingSurface } from "./panel-binding-surface";
@@ -568,11 +570,16 @@ export interface ProvidedWrite {
  */
 export function useProviderFirstMutate(): (
   mutation: Mutation,
+  objectOps?: readonly ShellObjectOp[],
 ) => Promise<ProvidedWrite> {
   const host = useBindingProviderHost();
   const client = useCanvasClient();
+  const model = useObjectModel();
   return useCallback(
-    async (mutation: Mutation): Promise<ProvidedWrite> => {
+    async (
+      mutation: Mutation,
+      objectOps?: readonly ShellObjectOp[],
+    ): Promise<ProvidedWrite> => {
       if (host) {
         let offered: ShellBindingWriteResult;
         try {
@@ -593,7 +600,16 @@ export function useProviderFirstMutate(): (
           };
         }
       }
-      // Nobody claimed it — core answers.
+      // Nobody claimed it — core answers. ADR 323: when the caller names
+      // the same write as object-model ops and the app wired `host.objects`,
+      // it goes through the shared registry (ONE batch = one undo step),
+      // exactly like a schema-driven field's commit.
+      if (model && objectOps && objectOps.length > 0) {
+        const r = await model.objects.batch(objectOps, { label: mutation.op });
+        return r.applied
+          ? { applied: true, provider: null }
+          : { applied: false, provider: null, error: `${r.code ?? "failed"}: ${r.reason ?? "refused"}` };
+      }
       //
       // `client.mutate` RESOLVES on a rejected mutation (the failure
       // arrives as a `mutationFailed` reply, it does not throw), so the
@@ -613,6 +629,6 @@ export function useProviderFirstMutate(): (
         return { applied: false, provider: null, error: err };
       }
     },
-    [host, client],
+    [host, client, model],
   );
 }

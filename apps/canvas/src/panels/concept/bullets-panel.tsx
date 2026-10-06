@@ -62,6 +62,17 @@
 //
 // Still-seam gallery rows: Level / Restart scope / Position — they
 // await a per-paragraph list-level model.
+//
+// ADR 323 — every field is an object-model field: the list-type segment
+// and the two marker char-style pickers are migrated `PropertyField`s;
+// the bespoke format / expression / glyph / text-after / start-at
+// controls keep their widgets but read/write through `host.objects`
+// (`useObjectBindings`) inside an `ObjectFieldFrame` ("Bind to data…" +
+// badges), and Assign writes `paragraphAppliedNumberingList` through it.
+// ONE exception stays on the selection binding: `paragraphNumberingContinue`
+// is three-state on the wire (Bool or Text("") = inherit) while its schema
+// row says `text`, so `host.objects` would refuse the Bool — a schema gap
+// for core (an enum `"" | continue | restart`, or a nullable bool).
 
 import { useState } from "react";
 
@@ -70,11 +81,14 @@ import {
   CatalogRegistryProvider,
   CompositionRenderer,
   Icon,
+  ObjectFieldFrame,
   PAGED_INPUT_COLLECTION_SELECT,
+  asPropertyFields,
   useBindings,
   useCanvasClient,
   useCollection,
   useContentSelection,
+  useObjectBindings,
 } from "@paged-media/shell";
 import type { NumberingListSummary, Value } from "@paged-media/client";
 import { KitSelect, NumberInput } from "@paged-media/ui";
@@ -84,36 +98,25 @@ import { bulletsNumberingComposition } from "../bullets-numbering.composition";
 import { ConceptShell, Kicker, Row, SeamNum, SeamSelect } from "./concept-kit";
 
 const TEXT_BINDINGS = {
-  bullet: {
-    kind: "selectionProperty" as const,
-    scope: "content" as const,
-    path: "paragraphBulletCharacter" as const,
-  },
-  format: {
-    kind: "selectionProperty" as const,
-    scope: "content" as const,
-    path: "paragraphNumberingFormat" as const,
-  },
-  expression: {
-    kind: "selectionProperty" as const,
-    scope: "content" as const,
-    path: "paragraphNumberingExpression" as const,
-  },
-  textAfter: {
-    kind: "selectionProperty" as const,
-    scope: "content" as const,
-    path: "paragraphBulletsTextAfter" as const,
-  },
-  startAt: {
-    kind: "selectionProperty" as const,
-    scope: "content" as const,
-    path: "paragraphNumberingStartAt" as const,
-  },
+  bullet: { scope: "content" as const, path: "paragraphBulletCharacter" },
+  format: { scope: "content" as const, path: "paragraphNumberingFormat" },
+  expression: { scope: "content" as const, path: "paragraphNumberingExpression" },
+  textAfter: { scope: "content" as const, path: "paragraphBulletsTextAfter" },
+  startAt: { scope: "content" as const, path: "paragraphNumberingStartAt" },
+};
+
+/** Three-state on the wire; see the module header. */
+const CONTINUE_BINDING = {
   continue: {
     kind: "selectionProperty" as const,
     scope: "content" as const,
     path: "paragraphNumberingContinue" as const,
   },
+};
+
+/** Write-only on the wire (no read-back entry): Assign is a forward write. */
+const APPLIED_LIST_BINDING = {
+  applied: { scope: "content" as const, path: "paragraphAppliedNumberingList" },
 };
 
 /** IDML `NumberingFormat` sample strings — the counter style the
@@ -134,13 +137,13 @@ const NUMBERING_FORMATS = [
 function charStylePicker(
   path: "paragraphBulletsCharacterStyle" | "paragraphNumberingCharacterStyle",
 ): CompositionNode {
-  return {
+  return asPropertyFields({
     catalogId: PAGED_INPUT_COLLECTION_SELECT,
     props: { collectionName: "characterStyles" },
     bindings: {
       value: { kind: "selectionProperty", scope: "content", path },
     },
-  };
+  });
 }
 
 const BULLET_CHAR_STYLE = charStylePicker("paragraphBulletsCharacterStyle");
@@ -337,7 +340,8 @@ function ListDefinitions() {
   const client = useCanvasClient();
   const lists = useCollection<NumberingListSummary>("numberingLists");
   const { contentSelection } = useContentSelection();
-  const canAssign = contentSelection != null;
+  const { applied } = useObjectBindings(APPLIED_LIST_BINDING);
+  const canAssign = contentSelection != null && applied.onCommit != null;
 
   const onNew = () => {
     void client
@@ -385,23 +389,7 @@ function ListDefinitions() {
   // entry), so this is a forward command.
   const onAssign = (listId: string) => {
     if (!contentSelection) return;
-    void client
-      .mutate({
-        op: "setElementProperty",
-        args: {
-          elementId: {
-            kind: "storyRange",
-            id: {
-              story_id: contentSelection.storyId,
-              start: contentSelection.start,
-              end: contentSelection.end,
-            },
-          } as never,
-          path: "paragraphAppliedNumberingList",
-          value: { type: "text", value: listId } as Value,
-        },
-      })
-      .catch(() => {});
+    applied.onCommit?.({ type: "text", value: listId } as Value);
   };
 
   return (
@@ -463,13 +451,14 @@ function ListDefinitions() {
 }
 
 export function BulletsPanel() {
-  const text = useBindings(TEXT_BINDINGS);
+  const text = useObjectBindings(TEXT_BINDINGS);
+  const cont = useBindings(CONTINUE_BINDING).continue;
   const bullet = unwrapText(text.bullet.value);
   const format = unwrapText(text.format.value);
   const expression = unwrapText(text.expression.value);
   const textAfter = unwrapText(text.textAfter.value);
   const startAt = unwrapCount(text.startAt.value);
-  const mode = unwrapMode(text.continue.value);
+  const mode = unwrapMode(cont.value);
 
   return (
     <CatalogRegistryProvider registry={appCatalogRegistry()}>
@@ -493,6 +482,7 @@ export function BulletsPanel() {
         <Row label="Style">
           {/* LIVE — paragraphNumberingFormat, the counter style
               ("1, 2, 3, 4…" / "i, ii, iii, iv…"). */}
+          <ObjectFieldFrame field={text.format}>
           <KitSelect
             data-bullets-field="numbering-format"
             aria-label="numbering-format"
@@ -515,18 +505,21 @@ export function BulletsPanel() {
               <option value={format}>{format}</option>
             ) : null}
           </KitSelect>
+          </ObjectFieldFrame>
         </Row>
         <Row label="Number">
           {/* LIVE (v64) — paragraphNumberingExpression, the marker
               template ("^#.^t", "(^#)"). */}
+          <ObjectFieldFrame field={text.expression}>
           <TextField
             testId="numbering-expression"
             value={expression}
             placeholder="^#.^t"
             mono
             disabled={text.expression.onCommit == null}
-            onCommit={text.expression.onCommit}
+            onCommit={text.expression.onCommit ?? undefined}
           />
+          </ObjectFieldFrame>
         </Row>
         <Row label="Char style">
           {/* LIVE (v64) — paragraphNumberingCharacterStyle. */}
@@ -541,11 +534,11 @@ export function BulletsPanel() {
             aria-label="numbering-mode"
             value={mode ?? "__mixed__"}
             soft={mode === null}
-            disabled={text.continue.onCommit == null}
+            disabled={cont.onCommit == null}
             onChange={(e) => {
               const next = e.target.value;
               if (next === "__mixed__") return;
-              text.continue.onCommit?.(modeValue(next as NumberingMode));
+              cont.onCommit?.(modeValue(next as NumberingMode));
             }}
           >
             {mode === null && (
@@ -561,6 +554,7 @@ export function BulletsPanel() {
         <Row label="Start at">
           {/* LIVE (v64) — paragraphNumberingStartAt, a whole number
               >= 1. Read when the count restarts (Mode = Start at). */}
+          <ObjectFieldFrame field={text.startAt}>
           <NumberInput
             value={startAt}
             min={1}
@@ -575,6 +569,7 @@ export function BulletsPanel() {
             }
             aria-label="numbering-start-at"
           />
+          </ObjectFieldFrame>
         </Row>
         <Row label="Restart">
           <SeamSelect value="At this level" />
@@ -583,25 +578,29 @@ export function BulletsPanel() {
         <Kicker>Bullet</Kicker>
         <Row label="Glyph">
           {/* LIVE — paragraphBulletCharacter (the glyph itself). */}
+          <ObjectFieldFrame field={text.bullet}>
           <TextField
             testId="bullet-character"
             value={bullet}
             placeholder="•"
             disabled={text.bullet.onCommit == null}
-            onCommit={text.bullet.onCommit}
+            onCommit={text.bullet.onCommit ?? undefined}
           />
+          </ObjectFieldFrame>
         </Row>
         <Row label="Text after">
           {/* LIVE (v64) — paragraphBulletsTextAfter, IDML spelling
               ("^t" is a tab). */}
+          <ObjectFieldFrame field={text.textAfter}>
           <TextField
             testId="bullets-text-after"
             value={textAfter}
             placeholder="^t"
             mono
             disabled={text.textAfter.onCommit == null}
-            onCommit={text.textAfter.onCommit}
+            onCommit={text.textAfter.onCommit ?? undefined}
           />
+          </ObjectFieldFrame>
         </Row>
         <Row label="Char style">
           {/* LIVE (v64) — paragraphBulletsCharacterStyle. */}

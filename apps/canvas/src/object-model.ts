@@ -39,10 +39,15 @@ import {
   CORE_PATHS,
   createCoreObjects,
   createObjectRegistry,
+  formatAddress,
   fromElementId,
+  parseAddress,
+  toElementId,
+  type CoreObjects,
   type ObjectRegistry,
 } from "@paged-media/plugin-sdk";
 import type { PagedEditor } from "@paged-media/plugin-api";
+import type { ElementId } from "@paged-media/client";
 import type {
   ShellObjectModelHost,
   ShellObjectsSurface,
@@ -57,16 +62,140 @@ export function setObjectModelEditor(editor: PagedEditor | null): void {
   currentEditor = editor;
 }
 
-export const objectRegistry: ObjectRegistry = createObjectRegistry({
-  core: createCoreObjects(() => {
-    if (!currentEditor) throw new Error("the editor has not mounted yet");
-    return currentEditor;
-  }),
-});
+const getEditor = (): PagedEditor => {
+  if (!currentEditor) throw new Error("the editor has not mounted yet");
+  return currentEditor;
+};
 
-type CoreRow = { wire?: string; inferred?: true };
+type CoreRow = { scope?: string; wire?: string; inferred?: true; readOnly?: true };
 const coreRow = (path: string): CoreRow | null =>
   ((CORE_PATHS as Record<string, CoreRow | { op: true }>)[path] as CoreRow | undefined) ?? null;
+
+// ------------------------------------------------------------------
+// Table seam — an EDITOR-SIDE extension of the SDK's core seam, until it
+// lands there (reported to the SDK track; core's `Set` on om/schema
+// subsumes it).
+//
+// The protocol-69 core seam lists `table` and `cell` kinds with schema
+// rows but answers `unmapped` for every get and set on them, and its
+// `cell:<table>/<r>,<c>` address drops the STORY the wire's
+// `ElementId::TableCell` needs. The Table panel used to write cells
+// through `setElementProperty` directly; routing it through
+// `host.objects` must not lose that. So, for these two kinds only:
+//   · reads go through `requestElementProperties` on the cell / table;
+//   · writes plan the same `setElementProperty` the panel sent, so the
+//     registry still commits ONE batch = one undo step;
+//   · the story comes from the table → story map `addressOf` fills
+//     whenever the editor names a table element (the selection, the
+//     Table panel's targets).
+// Two schema rows are corrected here because the inferred SDK rows are
+// wrong against the engine: `cellInset*` read back and write as LENGTHS
+// (the panel always sent `Value::Length`), not text. Both stay inferred.
+// ------------------------------------------------------------------
+
+const tableStories = new Map<string, string>();
+
+/** Remember which story a table lives in (the cell address drops it). */
+export function noteTableStory(tableId: string, storyId: string): void {
+  tableStories.set(tableId, storyId);
+}
+
+const TABLE_ROW_FIX: Record<string, { type: { kind: "length" }; wire: "length" }> = {
+  cellInsetTop: { type: { kind: "length" }, wire: "length" },
+  cellInsetLeft: { type: { kind: "length" }, wire: "length" },
+  cellInsetBottom: { type: { kind: "length" }, wire: "length" },
+  cellInsetRight: { type: { kind: "length" }, wire: "length" },
+};
+
+const wireOfPath = (path: string): string | null => TABLE_ROW_FIX[path]?.wire ?? coreRow(path)?.wire ?? null;
+
+type Parsed = NonNullable<ReturnType<typeof parseAddress>>;
+
+function tableElementId(a: Parsed): ElementId | null {
+  if (a.kind === "cell") {
+    const story = tableStories.get(a.table);
+    return story
+      ? { kind: "tableCell", id: { story_id: story, table_id: a.table, row: a.row, col: a.col } }
+      : null;
+  }
+  if (a.kind === "table") {
+    const story = tableStories.get(a.id);
+    return story ? { kind: "table", id: { story_id: story, table_id: a.id } } : null;
+  }
+  return null;
+}
+
+function withTableSeam(core: CoreObjects): CoreObjects {
+  const isTable = (a: Parsed) => a.kind === "cell" || a.kind === "table";
+  const refuse = (code: "unknownAddress" | "unknownPath" | "readOnly", reason: string) =>
+    ({ kind: "refused", code, reason }) as const;
+  return {
+    ...core,
+    schema(kind) {
+      const rows = core.schema(kind);
+      if (kind !== "cell" && kind !== "table") return rows;
+      return rows.map((r) => (TABLE_ROW_FIX[r.path] ? { ...r, type: TABLE_ROW_FIX[r.path].type } : r));
+    },
+    async get(a, path) {
+      if (!isTable(a)) return core.get(a, path);
+      const scope = a.kind;
+      const row = coreRow(path);
+      if (!row || row.scope !== scope) return refuse("unknownPath", `${scope} has no path "${path}"`);
+      const id = tableElementId(a);
+      if (!id) return refuse("unknownAddress", `no ${scope} ${JSON.stringify(a)} (its story is unknown)`);
+      const reply = (await getEditor()
+        .client.send({ kind: "requestElementProperties", payload: { id } } as never)
+        .catch(() => null)) as
+        | { kind: string; payload?: { result?: { entries: { path: string; value: unknown }[] } | null } }
+        | null;
+      const props = reply?.kind === "elementProperties" ? reply.payload?.result : null;
+      if (!props) return refuse("unknownAddress", `no ${scope} ${JSON.stringify(a)}`);
+      const e = props.entries.find((x) => x.path === path);
+      if (!e) return { kind: "absent" };
+      return e.value == null ? { kind: "mixed" } : { kind: "value", value: (e.value as { value: unknown }).value };
+    },
+    async planSet(a, path, value) {
+      if (!isTable(a)) return core.planSet(a, path, value);
+      const scope = a.kind;
+      const row = coreRow(path);
+      if (!row || row.scope !== scope) return { ok: false, code: "unknownPath", reason: `${scope} has no path "${path}"` };
+      if (row.readOnly) return { ok: false, code: "readOnly", reason: `${path} is read-only` };
+      const id = tableElementId(a);
+      if (!id) return { ok: false, code: "unknownAddress", reason: `no ${scope} ${JSON.stringify(a)} (its story is unknown)` };
+      return {
+        ok: true,
+        mutations: [
+          {
+            op: "setElementProperty",
+            args: { elementId: id, path, value: { type: wireOfPath(path) ?? "text", value } },
+          } as never,
+        ],
+      };
+    },
+    async elementIdOf(a) {
+      if (isTable(a)) return tableElementId(a) as never;
+      return core.elementIdOf(a);
+    },
+  };
+}
+
+export const objectRegistry: ObjectRegistry = createObjectRegistry({
+  core: withTableSeam(createCoreObjects(getEditor)),
+});
+
+/** `layer:<id>` with the id escaped as the grammar requires (a self id
+ *  like `Layer/u0` carries a slash). */
+export function layerAddress(id: string): string {
+  return formatAddress({ kind: "layer", id } as never);
+}
+
+/** The ADR 131 address of an element, remembering a table's story. */
+export function addressOfElement(id: ElementId): string {
+  if (id.kind === "tableCell" || id.kind === "table") {
+    noteTableStory(id.id.table_id, id.id.story_id);
+  }
+  return fromElementId(id as never);
+}
 
 // The structural assertion: the SDK registry IS the shell's mirror. A
 // contract change fails the editor's typecheck here, at the seam.
@@ -74,8 +203,13 @@ const objects: ShellObjectsSurface = objectRegistry;
 
 export const editorObjectModel: ShellObjectModelHost = {
   objects,
-  addressOf: (id) => fromElementId(id),
+  addressOf: (id) => addressOfElement(id),
   isInferred: (row: ShellPropertySchema) =>
     !(row.addressKind ?? "").startsWith("plugin:") && coreRow(row.path)?.inferred === true,
-  wireOf: (path) => coreRow(path)?.wire ?? null,
+  wireOf: (path) => wireOfPath(path),
+  elementIdOf: (address) => {
+    const a = parseAddress(address);
+    if (!a) return null;
+    return (tableElementId(a) ?? toElementId(a)) as ElementId | null;
+  },
 };

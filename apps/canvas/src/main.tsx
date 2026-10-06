@@ -92,6 +92,7 @@ import {
   objectRegistry,
   setObjectModelEditor,
 } from "./object-model";
+import { ALIGN_ARGS, ALIGN_COMMAND, runAlign, type AlignKind } from "./align-plan";
 import { resolveSoloProfile } from "./solo/profiles";
 import { soloMode } from "./solo/mode";
 import { drawBundle } from "@paged-media/draw";
@@ -1906,10 +1907,23 @@ function CanvasAppIntegration() {
       placeImage: freshInsert((p) => placeImage(p, insertReport)),
       newPage: freshInsert((p) => addPage(p, insertReport)),
     });
+    // ADR 323 — Align / Distribute as a TYPED command over
+    // `host.objects` (align-plan.ts): declared args, one batch = one undo.
+    const alignCommands = [
+      {
+        id: ALIGN_COMMAND,
+        title: "Align objects",
+        category: "Object",
+        args: ALIGN_ARGS,
+        handler: (_paged: unknown, payload?: unknown) =>
+          runAlign(objectRegistry, payload as { kind: AlignKind; targets: string[] }),
+      },
+    ];
     const cmdDisposables = [
       ...commands,
       ...objectCommands,
       ...insertCommands,
+      ...alignCommands,
     ].map((c) => registries.commands.register(c));
     const menuDisposables = [
       ...APP_MENU_ITEMS,

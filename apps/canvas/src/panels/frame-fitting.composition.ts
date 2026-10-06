@@ -39,9 +39,14 @@ import {
   PAGED_INPUT_TOGGLE_GROUP,
   PAGED_INPUT_TOGGLE_SWITCH,
   PAGED_LAYOUT_SECTION,
+  asPropertyFields,
 } from "@paged-media/shell";
 
-export const frameFittingFitComposition: CompositionNode = {
+// ADR 323 — every live field is a schema-driven `PropertyField`: the
+// type comes from the target's schema row, reads/writes go through
+// `host.objects` (one batch = one undo step over a multi-selection), and
+// each field offers "Bind to data…" with a binding badge. Seams stay seams.
+export const frameFittingFitComposition: CompositionNode = asPropertyFields({
   catalogId: PAGED_LAYOUT_SECTION,
   props: { title: "Frame Fitting", heading: false },
   bindings: {},
@@ -67,11 +72,13 @@ export const frameFittingFitComposition: CompositionNode = {
       },
     },
   ],
-};
+});
 
 /** Combined tree (fit + crop/auto-fit) — the Properties panel's
  *  Image-inspector embed, where the bespoke ref-grid interleave
  *  isn't needed. */
+// Not wrapped: its children are the two migrated compositions' own
+// (already `PropertyField`s), read lazily through the getter.
 export const frameFittingComposition: CompositionNode = {
   catalogId: PAGED_LAYOUT_SECTION,
   props: { title: "Frame Fitting", heading: false },
@@ -84,7 +91,11 @@ export const frameFittingComposition: CompositionNode = {
   },
 };
 
-export const frameFittingCropComposition: CompositionNode = {
+// ADR 323 — every live field is a schema-driven `PropertyField`: the
+// type comes from the target's schema row, reads/writes go through
+// `host.objects` (one batch = one undo step over a multi-selection), and
+// each field offers "Bind to data…" with a binding badge. Seams stay seams.
+export const frameFittingCropComposition: CompositionNode = asPropertyFields({
   catalogId: PAGED_LAYOUT_SECTION,
   props: { title: "Crop & auto-fit", heading: false },
   bindings: {},
@@ -122,4 +133,4 @@ export const frameFittingCropComposition: CompositionNode = {
     // computation that physically reseats the image is the renderer's
     // job against that type; the editor only authors the choice.
   ],
-};
+});

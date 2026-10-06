@@ -28,6 +28,12 @@
 // stroke colour, stroke weight, opacity. Story / paragraph /
 // character / object-style edits are added as the apply layer's
 // supported (NodeId, PropertyPath) combinations expand.
+//
+// ADR 323 — every row whose path has a schema row on the element's
+// address kind renders as a schema-driven `PropertyField` (type from the
+// row, reads/writes through `host.objects`, "Bind to data…" + badges).
+// A path the schema does not carry (a wire-only struct) keeps the legacy
+// editor and is marked `data-schema="none"`, so the gap stays visible.
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -37,7 +43,12 @@ import {
   LengthInput,
   NumberInput,
 } from "@paged-media/ui";
-import { useCanvasClient, useSelection } from "@paged-media/shell";
+import {
+  PropertyField,
+  useCanvasClient,
+  useObjectModel,
+  useSelection,
+} from "@paged-media/shell";
 
 import type {
   ElementId,
@@ -57,6 +68,27 @@ export function InspectorPanel(_: PanelProps) {
   const [props, setProps] = useState<ElementProperties | null>(null);
   // Panel-gallery pass — the raw inspector's filter input.
   const [filter, setFilter] = useState("");
+  // ADR 323 — which of the element's paths have a schema row.
+  const model = useObjectModel();
+  const [schemaPaths, setSchemaPaths] = useState<ReadonlySet<string>>(new Set());
+  useEffect(() => {
+    if (!model || !target) {
+      setSchemaPaths(new Set());
+      return;
+    }
+    let cancelled = false;
+    void model.objects
+      .schema(model.addressOf(target))
+      .then((rows) => {
+        if (!cancelled) setSchemaPaths(new Set(rows.map((r) => r.path)));
+      })
+      .catch(() => {
+        if (!cancelled) setSchemaPaths(new Set());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [model, target]);
 
   // Re-fetch on selection change OR when the document mutates so the
   // values stay live (A1). The worker pushes mutationApplied /
@@ -152,13 +184,19 @@ export function InspectorPanel(_: PanelProps) {
         />
       </label>
       <div className="space-y-2">
-        {entries.map((entry) => (
-          <PropertyRow
-            key={entry.path}
-            entry={entry}
-            onCommit={(next) => commit(client, target, entry.path, next)}
-          />
-        ))}
+        {entries.map((entry) =>
+          schemaPaths.has(entry.path) ? (
+            <div key={entry.path} data-property={entry.path} data-schema="row">
+              <PropertyField path={entry.path} label={labelForPath(entry.path)} />
+            </div>
+          ) : (
+            <PropertyRow
+              key={entry.path}
+              entry={entry}
+              onCommit={(next) => commit(client, target, entry.path, next)}
+            />
+          ),
+        )}
       </div>
       <div className="pg-value text-[10px] text-muted-foreground pt-2 border-t border-input">
         element {idText} · re-fetched on mutation
@@ -189,6 +227,7 @@ function PropertyRow(props: {
     <div
       className="grid grid-cols-[8rem_1fr] items-center gap-2"
       data-property={entry.path}
+      data-schema="none"
     >
       <label className="text-xs text-muted-foreground">
         {labelForPath(entry.path)}

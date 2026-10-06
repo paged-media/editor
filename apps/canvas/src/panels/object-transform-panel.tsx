@@ -55,8 +55,21 @@
 // edge / centre of the frame stays FIXED when the user edits W/H (or
 // scale). The math is pure client-side over the existing `frameBounds`
 // path — no new op, no new PropertyPath.
+//
+// ADR 323 — CUSTOM WIDGETS KEPT (the schema cannot express a derived
+// projection or a reference-point resize), but every model read/write
+// goes through `host.objects` (`useObjectBindings`): W/H write
+// `frameBounds`, rotation/scale/flip their decomposed paths, opacity
+// `frameOpacity` — each an `ObjectFieldFrame` ("Bind to data…" + badges).
+// X / Y stay on the nudge's own translation plan (`page-position.ts`):
+// they are the transformed footprint, which no single schema path holds.
 
-import { Icon, ReferencePointGrid, useBindings } from "@paged-media/shell";
+import {
+  Icon,
+  ObjectFieldFrame,
+  ReferencePointGrid,
+  useObjectBindings,
+} from "@paged-media/shell";
 import { LengthInput, NumberInput, SmartDialMicro } from "@paged-media/ui";
 import { useState } from "react";
 import type { Value } from "@paged-media/client";
@@ -64,36 +77,12 @@ import type { Value } from "@paged-media/client";
 import { usePagePosition } from "./page-position";
 
 const BINDINGS = {
-  bounds: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "frameBounds" as const,
-  },
-  opacity: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "frameOpacity" as const,
-  },
-  rotation: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "frameRotationAngle" as const,
-  },
-  scaleX: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "frameScaleX" as const,
-  },
-  scaleY: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "frameScaleY" as const,
-  },
-  flipH: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "frameFlipH" as const,
-  },
+  bounds: { scope: "element" as const, path: "frameBounds" },
+  opacity: { scope: "element" as const, path: "frameOpacity" },
+  rotation: { scope: "element" as const, path: "frameRotationAngle" },
+  scaleX: { scope: "element" as const, path: "frameScaleX" },
+  scaleY: { scope: "element" as const, path: "frameScaleY" },
+  flipH: { scope: "element" as const, path: "frameFlipH" },
 };
 
 function unwrapBounds(
@@ -123,7 +112,7 @@ function anchorFractions(index: number): { fx: number; fy: number } {
 }
 
 export function ObjectTransformPanel() {
-  const resolved = useBindings(BINDINGS);
+  const resolved = useObjectBindings(BINDINGS);
   const position = usePagePosition();
   const bounds = unwrapBounds(resolved.bounds.value);
   const opacity = unwrapLength(resolved.opacity.value);
@@ -228,7 +217,7 @@ export function ObjectTransformPanel() {
             aria-label="y"
           />
         </div>
-        <div className="flex items-center gap-2" data-size-cells>
+        <ObjectFieldFrame field={resolved.bounds} className="relative flex items-center gap-2" data-size-cells="">
           <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
             <LengthInput
               prefix="W"
@@ -265,8 +254,8 @@ export function ObjectTransformPanel() {
               style={{ color: "var(--pg-muted-fg)" }}
             />
           </button>
-        </div>
-        <div className="grid grid-cols-[84px_1fr] items-center gap-2">
+        </ObjectFieldFrame>
+        <ObjectFieldFrame field={resolved.opacity} className="relative grid grid-cols-[84px_1fr] items-center gap-2">
           <span className="text-xs" style={{ color: "var(--pg-muted-fg)" }}>
             Opacity
           </span>
@@ -287,7 +276,7 @@ export function ObjectTransformPanel() {
             }}
             aria-label="opacity"
           />
-        </div>
+        </ObjectFieldFrame>
         {/* Rotate & scale — W2.3 transform-decompose. Read =
             decomposed components of item_transform; write recomposes.
             Flip V stays a seam: frameFlipV is write-only on the v28
@@ -317,6 +306,7 @@ export function ObjectTransformPanel() {
           </button>
           {rsOpen && (
             <div className="flex flex-col gap-[9px] pb-3">
+              <ObjectFieldFrame field={resolved.rotation}>
               <SmartDialMicro
                 label="Rotation"
                 value={rotation}
@@ -335,7 +325,9 @@ export function ObjectTransformPanel() {
                   } as Value);
                 }}
               />
+              </ObjectFieldFrame>
               <div className="grid grid-cols-2 gap-2">
+                <ObjectFieldFrame field={resolved.scaleX}>
                 <NumberInput
                   value={scaleX == null ? null : scaleX * 100}
                   icon="ui-size"
@@ -352,6 +344,8 @@ export function ObjectTransformPanel() {
                   }}
                   aria-label="scale x"
                 />
+                </ObjectFieldFrame>
+                <ObjectFieldFrame field={resolved.scaleY}>
                 <NumberInput
                   value={scaleY == null ? null : scaleY * 100}
                   icon="ui-size"
@@ -368,8 +362,10 @@ export function ObjectTransformPanel() {
                   }}
                   aria-label="scale y"
                 />
+                </ObjectFieldFrame>
               </div>
               <div className="flex gap-[6px]">
+                <ObjectFieldFrame field={resolved.flipH} className="relative flex flex-1">
                 <button
                   type="button"
                   disabled={!canFlipH}
@@ -391,6 +387,7 @@ export function ObjectTransformPanel() {
                 >
                   Flip H
                 </button>
+                </ObjectFieldFrame>
                 <button
                   type="button"
                   disabled

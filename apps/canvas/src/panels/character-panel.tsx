@@ -52,12 +52,21 @@
 // There is not one `if (pluginId === …)` in this panel and there must
 // never be. It does not learn who answered — `data-binding-source` is a
 // DOM hook for tests and diagnostics, nothing reads it as control flow.
+//
+// ADR 323 — every field is an object-model field. The 16 composition
+// fields are migrated `PropertyField`s (character.composition.ts); the two
+// bespoke surfaces keep their widgets (a family select over the `fonts`
+// collection; chips that toggle one tag inside the `characterOtfFeatures`
+// string) but read/write through `host.objects` (`useObjectBindings`)
+// inside an `ObjectFieldFrame` ("Bind to data…" + badges). The ADR 023
+// provider claim still answers first, inside `useObjectProperty`.
 
 import {
   CatalogRegistryProvider,
   CompositionRenderer,
-  useBindings,
+  ObjectFieldFrame,
   useCollection,
+  useObjectBindings,
 } from "@paged-media/shell";
 import { KitSelect } from "@paged-media/ui";
 import type { FontSummary, Value } from "@paged-media/client";
@@ -77,11 +86,7 @@ const OPENTYPE_CHIPS: ReadonlyArray<{ label: string; tag: string }> = [
 ];
 
 const OTF_BINDING = {
-  otf: {
-    kind: "selectionProperty" as const,
-    scope: "content" as const,
-    path: "characterOtfFeatures" as const,
-  },
+  otf: { scope: "content" as const, path: "characterOtfFeatures" },
 };
 
 /** Parse the opaque space-separated tag string into a tag set. */
@@ -94,10 +99,10 @@ function parseTags(v: Value | null): Set<string> {
 /** OpenType feature chips — each toggles its tag in the run's
  *  `characterOtfFeatures` string, preserving the other tags (W2.4). */
 function OpenTypeChips() {
-  const { otf } = useBindings(OTF_BINDING);
+  const { otf } = useObjectBindings(OTF_BINDING);
   const active = parseTags(otf.value);
   const disabled = otf.onCommit == null;
-  const absent = otf.state === "absent";
+  const absent = otf.bindingState === "absent";
   const commit = (tag: string) => {
     if (disabled) return;
     const next = new Set(active);
@@ -113,15 +118,13 @@ function OpenTypeChips() {
     otf.onCommit?.({ type: "text", value: ordered.join(" ") } as Value);
   };
   return (
-    <div
-      className="-mx-3 border-t border-input px-3 pt-2"
-      data-opentype-seam
-      data-control="characterOtfFeatures"
-      data-binding-source={otf.provider ?? "core"}
-      data-binding-state={otf.state}
+    <ObjectFieldFrame
+      field={otf}
+      className="relative -mx-3 border-t border-input px-3 pt-2"
+      data-opentype-seam=""
       data-seam={absent ? "true" : undefined}
-      style={{ opacity: absent ? 0.55 : 1 }}
     >
+      <div style={{ opacity: absent ? 0.55 : 1 }}>
       <div className="pg-label mb-2">Opentype</div>
       <div className="flex gap-[6px]">
         {OPENTYPE_CHIPS.map(({ label, tag }) => {
@@ -151,16 +154,13 @@ function OpenTypeChips() {
           );
         })}
       </div>
-    </div>
+      </div>
+    </ObjectFieldFrame>
   );
 }
 
 const FAMILY_BINDING = {
-  family: {
-    kind: "selectionProperty" as const,
-    scope: "content" as const,
-    path: "characterFontFamily" as const,
-  },
+  family: { scope: "content" as const, path: "characterFontFamily" },
 };
 
 function unwrapText(v: Value | null): string | null {
@@ -173,7 +173,7 @@ function unwrapText(v: Value | null): string | null {
  *  row shape, and the wire value is the family name string). */
 function FamilySelect() {
   const fonts = useCollection<FontSummary>("fonts");
-  const { family } = useBindings(FAMILY_BINDING);
+  const { family } = useObjectBindings(FAMILY_BINDING);
   const current = unwrapText(family.value);
   const resolved = current !== null && current !== "";
   const families = fonts ?? [];
@@ -181,15 +181,9 @@ function FamilySelect() {
   // ADR 023 — an owned-but-inapplicable path is a SEAM, not a mixed
   // value. The em-dash stays (there is still nothing to show) but the
   // `data-mixed` claim does not.
-  const absent = family.state === "absent";
+  const absent = family.bindingState === "absent";
   return (
-    <div
-      className="mb-px"
-      data-character-family
-      data-control="characterFontFamily"
-      data-binding-source={family.provider ?? "core"}
-      data-binding-state={family.state}
-    >
+    <ObjectFieldFrame field={family} className="relative mb-px" data-character-family="">
       <div
         className="text-[11.5px] mb-[5px]"
         style={{ color: "var(--pg-muted-fg)" }}
@@ -221,7 +215,7 @@ function FamilySelect() {
             in-use list (e.g. a style default not on any run). */}
         {resolved && !known ? <option value={current}>{current}</option> : null}
       </KitSelect>
-    </div>
+    </ObjectFieldFrame>
   );
 }
 

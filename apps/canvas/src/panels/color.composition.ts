@@ -35,9 +35,14 @@ import {
   PAGED_INPUT_COLLECTION_SELECT,
   PAGED_INPUT_NUMERIC_SCRUB,
   PAGED_LAYOUT_SECTION,
+  asPropertyFields,
 } from "@paged-media/shell";
 
-export const colorComposition: CompositionNode = {
+// ADR 323 — every live field is a schema-driven `PropertyField`: the
+// type comes from the target's schema row, reads/writes go through
+// `host.objects` (one batch = one undo step over a multi-selection), and
+// each field offers "Bind to data…" with a binding badge. Seams stay seams.
+export const colorComposition: CompositionNode = asPropertyFields({
   catalogId: PAGED_LAYOUT_SECTION,
   props: { title: "Color" },
   bindings: {},
@@ -69,4 +74,4 @@ export const colorComposition: CompositionNode = {
       },
     },
   ],
-};
+});

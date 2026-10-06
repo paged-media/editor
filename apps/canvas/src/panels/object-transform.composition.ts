@@ -26,11 +26,19 @@
 // bespoke Transform panel (`object-transform-panel.tsx`).
 
 import type { CompositionNode } from "@paged-media/catalog";
-import { PAGED_INPUT_LENGTH, PAGED_LAYOUT_SECTION } from "@paged-media/shell";
+import {
+  PAGED_INPUT_LENGTH,
+  PAGED_LAYOUT_SECTION,
+  asPropertyFields,
+} from "@paged-media/shell";
 
 import { PAGED_INPUT_PAGE_BOUNDS } from "./page-bounds-leaf";
 
-export const objectTransformComposition: CompositionNode = {
+// ADR 323 — every live field is a schema-driven `PropertyField`: the
+// type comes from the target's schema row, reads/writes go through
+// `host.objects` (one batch = one undo step over a multi-selection), and
+// each field offers "Bind to data…" with a binding badge. Seams stay seams.
+export const objectTransformComposition: CompositionNode = asPropertyFields({
   catalogId: PAGED_LAYOUT_SECTION,
   props: { title: "Object" },
   bindings: {},
@@ -54,4 +62,4 @@ export const objectTransformComposition: CompositionNode = {
       },
     },
   ],
-};
+});

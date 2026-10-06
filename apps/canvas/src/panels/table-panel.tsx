@@ -84,22 +84,24 @@ import {
   CockpitRow,
   CockpitSection,
   Icon,
+  ObjectFieldFrame,
   displayName,
   useCanvasClient,
+  useObjectField,
+  type ObjectField,
   useCollection,
   useOptionalTableSelection,
   tableCellElementId,
-  type TableCellSelection,
 } from "@paged-media/shell";
 import type {
-  CanvasClient,
   CellStyleSummary,
   ElementId,
-  PropertyEntry,
   SwatchSummary,
   TableStyleSummary,
   Value,
 } from "@paged-media/client";
+
+import { addressOfElement } from "../object-model";
 
 /** IDML `<Cell VerticalJustification>` values (same enum as the text
  *  frame preference). */
@@ -144,123 +146,77 @@ interface TableReadback {
   columnCount: number | null;
 }
 
-function entryValue(
-  entries: PropertyEntry[],
-  path: string,
-): Value | null | undefined {
-  return entries.find((e) => e.path === path)?.value;
+
+// ADR 323 — every cell / table property is an object-model field on a
+// `cell:<table>/<r>,<c>` or `table:<id>` address: reads and writes go
+// through `host.objects` (the app's table seam maps them onto the same
+// `setElementProperty` the panel used to send — one write = one undo
+// step), and each control sits in an `ObjectFieldFrame` ("Bind to data…"
+// + badges). Structure edits (rows, columns, spans, header/footer) are
+// ops, not properties, and stay ops.
+const CELL_PATHS = [
+  "cellFillColor",
+  "cellInsetTop",
+  "cellInsetLeft",
+  "cellInsetBottom",
+  "cellInsetRight",
+  "cellVerticalJustification",
+  "appliedCellStyle",
+  ...["Top", "Bottom", "Left", "Right"].flatMap((side) => [
+    `cell${side}EdgeStrokeColor`,
+    `cell${side}EdgeStrokeWeight`,
+    `cell${side}EdgeStrokeTint`,
+  ]),
+] as const;
+const TABLE_PATHS = ["appliedTableStyle", "tableRowCount", "tableColumnCount"] as const;
+const NO_TARGETS: readonly string[] = [];
+
+/** One object field per path over ONE address (a fixed path list, so
+ *  the hook count never changes). */
+function useAddressFields(
+  paths: readonly string[],
+  address: string | null,
+  schemaKind: string,
+): Record<string, ObjectField> {
+  const out: Record<string, ObjectField> = {};
+  const targets = address ? [address] : NO_TARGETS;
+  for (const path of paths) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- fixed list
+    out[path] = useObjectField({ path, targets, schemaKind });
+  }
+  return out;
 }
 
-/** Live cell + table property snapshot for the selected cell, refetched
- *  on every Operation push. `null` until the first read resolves. */
-function useTableReadback(
-  client: CanvasClient,
-  cell: TableCellSelection | null,
-): { cell: CellReadback | null; table: TableReadback | null } {
-  const [state, setState] = useState<{
-    cell: CellReadback | null;
-    table: TableReadback | null;
-  }>({ cell: null, table: null });
+const raw = (f: ObjectField | undefined): unknown =>
+  f && f.state.state === "value" ? f.state.value : null;
+const num = (f: ObjectField | undefined): number | null => {
+  const v = raw(f);
+  return typeof v === "number" ? v : null;
+};
+const str = (f: ObjectField | undefined): string | null => {
+  const v = raw(f);
+  return typeof v === "string" ? v : null;
+};
 
-  useEffect(() => {
-    if (!cell) {
-      setState({ cell: null, table: null });
-      return;
-    }
-    let cancelled = false;
-    const cellId = tableCellElementId(cell);
-    const tableId: ElementId = {
-      kind: "table",
-      id: { story_id: cell.storyId, table_id: cell.tableId },
-    };
-    const refetch = () => {
-      void Promise.all([
-        client.elementProperties(cellId),
-        client.elementProperties(tableId),
-      ])
-        .then(([cellProps, tableProps]) => {
-          if (cancelled) return;
-          const ce = cellProps?.entries ?? [];
-          const te = tableProps?.entries ?? [];
-          const colorRef = entryValue(ce, "cellFillColor");
-          const vj = entryValue(ce, "cellVerticalJustification");
-          const acs = entryValue(ce, "appliedCellStyle");
-          const ats = entryValue(te, "appliedTableStyle");
-          const len = (p: string): number => {
-            const v = entryValue(ce, p);
-            return v && v.type === "length" ? (v.value ?? 0) : 0;
-          };
-          // Nullable length (edge weight / tint — null ⇒ unset, distinct
-          // from 0). Nullable colour ref (edge colour — null ⇒ inherit).
-          const lenOrNull = (p: string): number | null => {
-            const v = entryValue(ce, p);
-            return v && v.type === "length" ? (v.value ?? null) : null;
-          };
-          const colorOrNull = (p: string): string | null => {
-            const v = entryValue(ce, p);
-            return v && v.type === "colorRef" ? v.value : null;
-          };
-          const edge = (side: string): EdgeStroke => ({
-            color: colorOrNull(`cell${side}EdgeStrokeColor`),
-            weight: lenOrNull(`cell${side}EdgeStrokeWeight`),
-            tint: lenOrNull(`cell${side}EdgeStrokeTint`),
-          });
-          // tableRowCount / tableColumnCount ride the integer-as-Length
-          // convention on the Table NodeId; absent ⇒ null (honest gap).
-          const intLen = (p: string): number | null => {
-            const v = entryValue(te, p);
-            return v && v.type === "length" && v.value != null
-              ? Math.round(v.value)
-              : null;
-          };
-          setState({
-            cell: {
-              fillColor:
-                colorRef && colorRef.type === "colorRef"
-                  ? colorRef.value
-                  : null,
-              insetTop: len("cellInsetTop"),
-              insetLeft: len("cellInsetLeft"),
-              insetBottom: len("cellInsetBottom"),
-              insetRight: len("cellInsetRight"),
-              verticalJustification:
-                vj && vj.type === "text" ? vj.value : "",
-              appliedCellStyle: acs && acs.type === "text" ? acs.value : "",
-              edgeTop: edge("Top"),
-              edgeBottom: edge("Bottom"),
-              edgeLeft: edge("Left"),
-              edgeRight: edge("Right"),
-            },
-            table: {
-              appliedTableStyle: ats && ats.type === "text" ? ats.value : "",
-              rowCount: intLen("tableRowCount"),
-              columnCount: intLen("tableColumnCount"),
-            },
-          });
-        })
-        .catch(() => {
-          if (!cancelled) setState({ cell: null, table: null });
-        });
-    };
-    refetch();
-    const off = client.subscribe((msg) => {
-      if (
-        msg.kind === "mutationApplied" ||
-        msg.kind === "undoApplied" ||
-        msg.kind === "redoApplied"
-      ) {
-        refetch();
-      }
-    });
-    return () => {
-      cancelled = true;
-      off();
-    };
-    // Re-key on the cell address (story/table/row/col) — a new cell
-    // selection re-fetches; same cell keeps the subscription.
-  }, [client, cell?.storyId, cell?.tableId, cell?.row, cell?.col]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return state;
+function readCell(f: Record<string, ObjectField>): CellReadback {
+  const edge = (side: string): EdgeStroke => ({
+    color: str(f[`cell${side}EdgeStrokeColor`]),
+    weight: num(f[`cell${side}EdgeStrokeWeight`]),
+    tint: num(f[`cell${side}EdgeStrokeTint`]),
+  });
+  return {
+    fillColor: str(f.cellFillColor),
+    insetTop: num(f.cellInsetTop) ?? 0,
+    insetLeft: num(f.cellInsetLeft) ?? 0,
+    insetBottom: num(f.cellInsetBottom) ?? 0,
+    insetRight: num(f.cellInsetRight) ?? 0,
+    verticalJustification: str(f.cellVerticalJustification) ?? "",
+    appliedCellStyle: str(f.appliedCellStyle) ?? "",
+    edgeTop: edge("Top"),
+    edgeBottom: edge("Bottom"),
+    edgeLeft: edge("Left"),
+    edgeRight: edge("Right"),
+  };
 }
 
 export function TablePanel() {
@@ -270,38 +226,38 @@ export function TablePanel() {
   const swatches = useCollection<SwatchSummary>("swatches");
   const tableStyles = useCollection<TableStyleSummary>("tableStyles");
   const cellStyles = useCollection<CellStyleSummary>("cellStyles");
-  const { cell: cellRead, table: tableRead } = useTableReadback(client, cell);
-
-  const cellId = cell ? tableCellElementId(cell) : null;
+  const cellAddress = cell ? addressOfElement(tableCellElementId(cell)) : null;
+  const tableAddress = cell
+    ? addressOfElement({
+        kind: "table",
+        id: { story_id: cell.storyId, table_id: cell.tableId },
+      } as ElementId)
+    : null;
+  const cellFields = useAddressFields(CELL_PATHS, cellAddress, "cell");
+  const tableFields = useAddressFields(TABLE_PATHS, tableAddress, "table");
+  const cellRead: CellReadback | null = cell ? readCell(cellFields) : null;
+  const rowCount = num(tableFields.tableRowCount);
+  const columnCount = num(tableFields.tableColumnCount);
+  const tableRead: TableReadback | null = cell
+    ? {
+        appliedTableStyle: str(tableFields.appliedTableStyle) ?? "",
+        rowCount: rowCount == null ? null : Math.round(rowCount),
+        columnCount: columnCount == null ? null : Math.round(columnCount),
+      }
+    : null;
 
   const setCellProp = useCallback(
     (path: string, value: Value) => {
-      if (!cellId) return;
-      void client.mutate({
-        op: "setElementProperty",
-        args: { elementId: cellId, path: path as never, value },
-      });
+      cellFields[path]?.onCommit?.(value);
     },
-    [client, cellId],
+    [cellFields],
   );
 
   const setTableStyle = useCallback(
     (styleId: string) => {
-      if (!cell) return;
-      const tableId: ElementId = {
-        kind: "table",
-        id: { story_id: cell.storyId, table_id: cell.tableId },
-      };
-      void client.mutate({
-        op: "setElementProperty",
-        args: {
-          elementId: tableId,
-          path: "appliedTableStyle" as never,
-          value: { type: "text", value: styleId },
-        },
-      });
+      tableFields.appliedTableStyle?.onCommit?.({ type: "text", value: styleId } as Value);
     },
-    [client, cell],
+    [tableFields],
   );
 
   const tableLineOp = useCallback(
@@ -629,6 +585,7 @@ export function TablePanel() {
 
       <CockpitSection title="Cell">
         <CockpitRow label="Fill">
+<ObjectFieldFrame field={cellFields.cellFillColor} className="relative inline-flex w-full">
           <span className="relative inline-flex w-full">
             <select
               data-cell-fill-select
@@ -656,9 +613,11 @@ export function TablePanel() {
               style={{ color: "var(--pg-muted-fg)" }}
             />
           </span>
+</ObjectFieldFrame>
         </CockpitRow>
         <CockpitRow label="Insets (T L B R)">
           <div className="grid grid-cols-4 gap-1">
+<ObjectFieldFrame field={cellFields.cellInsetTop} className="relative min-w-0">
             <NumberCommit
               testId="inset-top"
               value={cellRead?.insetTop}
@@ -666,6 +625,8 @@ export function TablePanel() {
                 setCellProp("cellInsetTop", { type: "length", value: v })
               }
             />
+</ObjectFieldFrame>
+<ObjectFieldFrame field={cellFields.cellInsetLeft} className="relative min-w-0">
             <NumberCommit
               testId="inset-left"
               value={cellRead?.insetLeft}
@@ -673,6 +634,8 @@ export function TablePanel() {
                 setCellProp("cellInsetLeft", { type: "length", value: v })
               }
             />
+</ObjectFieldFrame>
+<ObjectFieldFrame field={cellFields.cellInsetBottom} className="relative min-w-0">
             <NumberCommit
               testId="inset-bottom"
               value={cellRead?.insetBottom}
@@ -680,6 +643,8 @@ export function TablePanel() {
                 setCellProp("cellInsetBottom", { type: "length", value: v })
               }
             />
+</ObjectFieldFrame>
+<ObjectFieldFrame field={cellFields.cellInsetRight} className="relative min-w-0">
             <NumberCommit
               testId="inset-right"
               value={cellRead?.insetRight}
@@ -687,9 +652,11 @@ export function TablePanel() {
                 setCellProp("cellInsetRight", { type: "length", value: v })
               }
             />
+</ObjectFieldFrame>
           </div>
         </CockpitRow>
         <CockpitRow label="Vert. justify">
+<ObjectFieldFrame field={cellFields.cellVerticalJustification} className="relative inline-flex w-full">
           <span className="relative inline-flex w-full">
             <select
               data-cell-vjustify-select
@@ -716,6 +683,7 @@ export function TablePanel() {
               style={{ color: "var(--pg-muted-fg)" }}
             />
           </span>
+</ObjectFieldFrame>
         </CockpitRow>
       </CockpitSection>
 
@@ -732,6 +700,7 @@ export function TablePanel() {
         ).map(([side, edge]) => (
           <CockpitRow key={side} label={side}>
             <div className="grid grid-cols-[1fr_56px_56px] gap-1">
+<ObjectFieldFrame field={cellFields[`cell${side}EdgeStrokeColor`]} className="relative inline-flex w-full">
               <span className="relative inline-flex w-full">
                 <select
                   data-edge-color-select={side.toLowerCase()}
@@ -754,18 +723,23 @@ export function TablePanel() {
                   style={{ color: "var(--pg-muted-fg)" }}
                 />
               </span>
+</ObjectFieldFrame>
+<ObjectFieldFrame field={cellFields[`cell${side}EdgeStrokeWeight`]} className="relative min-w-0">
               <NumberCommit
                 testId={`edge-weight-${side.toLowerCase()}`}
                 placeholder="Wt"
                 value={edge.weight ?? undefined}
                 onCommit={(v) => setEdgeWeight(side, v)}
               />
+</ObjectFieldFrame>
+<ObjectFieldFrame field={cellFields[`cell${side}EdgeStrokeTint`]} className="relative min-w-0">
               <NumberCommit
                 testId={`edge-tint-${side.toLowerCase()}`}
                 placeholder="Tint"
                 value={edge.tint ?? undefined}
                 onCommit={(v) => setEdgeTint(side, v)}
               />
+</ObjectFieldFrame>
             </div>
           </CockpitRow>
         ))}
@@ -773,6 +747,7 @@ export function TablePanel() {
 
       <CockpitSection title="Applied styles">
         <CockpitRow label="Cell style">
+<ObjectFieldFrame field={cellFields.appliedCellStyle} className="relative inline-flex w-full">
           <StyleSelect
             testId="apply-cell-style"
             collection="cellStyles"
@@ -782,8 +757,10 @@ export function TablePanel() {
               setCellProp("appliedCellStyle", { type: "text", value: id })
             }
           />
+</ObjectFieldFrame>
         </CockpitRow>
         <CockpitRow label="Table style">
+<ObjectFieldFrame field={tableFields.appliedTableStyle} className="relative inline-flex w-full">
           <StyleSelect
             testId="apply-table-style"
             collection="tableStyles"
@@ -791,6 +768,7 @@ export function TablePanel() {
             value={tableRead?.appliedTableStyle ?? ""}
             onApply={setTableStyle}
           />
+</ObjectFieldFrame>
         </CockpitRow>
       </CockpitSection>
 

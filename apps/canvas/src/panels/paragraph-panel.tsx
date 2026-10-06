@@ -39,6 +39,15 @@
 // never be answered from core — the text caret is independent of a
 // plugin's edit context, so falling through would show whatever
 // paragraph was last touched.
+//
+// ADR 323 — the composition fields (align, indents, spacing, drop cap,
+// hyphenation, keep options, span columns: 21 paths) are migrated
+// `PropertyField`s (paragraph.composition.ts). The rule rows STAY on the
+// selection binding: `paragraphRuleAbove` / `paragraphRuleBelow` are
+// whole-struct `Value::ParagraphRule` writes with NO schema row in the
+// core catalog (no `type` — a schema gap for core: a `struct` of weight,
+// colour, tint, offset, indents, width), so `host.objects` has nothing
+// to validate them against.
 
 import {
   CatalogRegistryProvider,

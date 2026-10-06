@@ -43,16 +43,23 @@
 // materialises a default effect struct on enable so the disclosure's
 // per-field editors always have a target. Each family's read-side
 // reports the same bool, so the pill reflects on/off + mixed.
+//
+// ADR 323 — every control is an object-model field: the per-field
+// compositions are migrated `PropertyField`s (effects.composition.ts);
+// the bespoke opacity metric, blend select and enable pills keep their
+// widgets but read/write through `host.objects` (`useObjectBindings`) and
+// sit in an `ObjectFieldFrame` ("Bind to data…" + badges).
 
 import {
   CatalogRegistryProvider,
   CompositionRenderer,
   Icon,
+  ObjectFieldFrame,
   TogglePill,
-  useBindings,
+  useObjectBindings,
 } from "@paged-media/shell";
 import { KitSelect, NumberInput } from "@paged-media/ui";
-import type { Binding, CompositionNode } from "@paged-media/catalog";
+import type { CompositionNode } from "@paged-media/catalog";
 import type { PropertyPath, Value } from "@paged-media/client";
 
 import { appCatalogRegistry } from "./catalog-registry";
@@ -69,12 +76,8 @@ import {
 } from "./effects.composition";
 
 // Typed against `PropertyPath` so a mistyped path is a tsc error.
-function elementProp(path: PropertyPath): Binding {
-  return {
-    kind: "selectionProperty",
-    scope: "element",
-    path,
-  };
+function elementProp(path: PropertyPath): { path: string; scope: "element" } {
+  return { path, scope: "element" };
 }
 
 // One row per effect family. `enable` is the stable bindings map the
@@ -84,7 +87,7 @@ function elementProp(path: PropertyPath): Binding {
 // enable rides the legacy `frameDropShadow` bool (not `*Enabled`).
 const EFFECT_FAMILIES: {
   name: string;
-  enable: { enabled: Binding };
+  enable: { enabled: { path: string; scope: "element" } };
   fields: CompositionNode;
 }[] = [
   { name: "Drop shadow", enable: { enabled: elementProp("frameDropShadow") }, fields: dropShadowComposition },
@@ -131,15 +134,15 @@ function EffectDisclosure({
   fields,
 }: {
   name: string;
-  enable: { enabled: Binding };
+  enable: { enabled: { path: string; scope: "element" } };
   fields: CompositionNode;
 }) {
-  const resolved = useBindings(enable);
+  const resolved = useObjectBindings(enable);
   const checked = unwrapBool(resolved.enabled.value);
   const on = checked === true;
   return (
     <div data-effect-row={name}>
-      <div className="flex items-center gap-[9px] py-[5px]">
+      <ObjectFieldFrame field={resolved.enabled} className="relative flex items-center gap-[9px] py-[5px]">
         <TogglePill
           checked={on}
           mixed={checked === null}
@@ -162,7 +165,7 @@ function EffectDisclosure({
             style={{ color: "var(--pg-muted-fg)" }}
           />
         )}
-      </div>
+      </ObjectFieldFrame>
       {on && (
         <div
           className="mb-[6px] ml-1 py-2 pl-3"
@@ -177,7 +180,7 @@ function EffectDisclosure({
 }
 
 export function EffectsPanel() {
-  const top = useBindings(TOP_BINDINGS);
+  const top = useObjectBindings(TOP_BINDINGS);
   const opacity = unwrapLength(top.opacity.value);
   const blendId = unwrapText(top.blend.value);
   const blendDisabled = top.blend.onCommit == null;
@@ -186,7 +189,7 @@ export function EffectsPanel() {
   return (
     <CatalogRegistryProvider registry={appCatalogRegistry()}>
       <div className="p-3 flex flex-col gap-[9px]" data-effects-panel="ready">
-        <div className="grid grid-cols-[84px_1fr] items-center gap-2">
+        <ObjectFieldFrame field={top.opacity} className="relative grid grid-cols-[84px_1fr] items-center gap-2">
           <span className="text-xs" style={{ color: "var(--pg-muted-fg)" }}>
             Opacity
           </span>
@@ -207,9 +210,9 @@ export function EffectsPanel() {
             }}
             aria-label="opacity"
           />
-        </div>
+        </ObjectFieldFrame>
         {/* Object-level blend mode — LIVE (W2.2) on frameBlendMode. */}
-        <div className="grid grid-cols-[84px_1fr] items-center gap-2">
+        <ObjectFieldFrame field={top.blend} className="relative grid grid-cols-[84px_1fr] items-center gap-2">
           <span className="text-xs" style={{ color: "var(--pg-muted-fg)" }}>
             Blend
           </span>
@@ -238,7 +241,7 @@ export function EffectsPanel() {
               </option>
             ))}
           </KitSelect>
-        </div>
+        </ObjectFieldFrame>
         <div className="-mx-3 border-t border-input px-3 pt-2">
           <div className="pg-label mb-1">Effects</div>
           <div className="flex flex-col">

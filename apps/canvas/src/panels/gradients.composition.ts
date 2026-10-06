@@ -36,9 +36,14 @@ import type { CompositionNode } from "@paged-media/catalog";
 import {
   PAGED_INPUT_COLLECTION_SELECT,
   PAGED_LAYOUT_SECTION,
+  asPropertyFields,
 } from "@paged-media/shell";
 
-export const gradientsComposition: CompositionNode = {
+// ADR 323 — every live field is a schema-driven `PropertyField`: the
+// type comes from the target's schema row, reads/writes go through
+// `host.objects` (one batch = one undo step over a multi-selection), and
+// each field offers "Bind to data…" with a binding badge. Seams stay seams.
+export const gradientsComposition: CompositionNode = asPropertyFields({
   catalogId: PAGED_LAYOUT_SECTION,
   props: { title: "Gradients" },
   bindings: {},
@@ -59,4 +64,4 @@ export const gradientsComposition: CompositionNode = {
       },
     },
   ],
-};
+});

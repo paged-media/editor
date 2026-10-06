@@ -26,10 +26,22 @@
 // New / Delete through the collection-mutation ops. Redefine is
 // an honest seam (no engine op yet) — ApplyList renders the
 // handlerless button disabled.
+//
+// ADR 323 — the applied style is an object-model field: read/written
+// through `host.objects` (`appliedParagraphStyle` / `…Character…` /
+// `…Object…` are `ref` rows; one batch over a multi-selection = one undo
+// step), and the list sits in an `ObjectFieldFrame` so "Bind to data…"
+// binds the applied style. New / Delete stay collection ops (they make
+// and remove STYLES, not set a property).
 
 import { useCallback, useEffect, useState } from "react";
 
-import { ApplyList, useBindings, useCanvasClient } from "@paged-media/shell";
+import {
+  ApplyList,
+  ObjectFieldFrame,
+  useCanvasClient,
+  useObjectField,
+} from "@paged-media/shell";
 import type {
   CollectionName,
   Mutation,
@@ -87,15 +99,9 @@ export function StyleApplyPanel({
   newName,
 }: StyleApplyPanelProps) {
   const client = useCanvasClient();
-  const resolved = useBindings({
-    value: {
-      kind: "selectionProperty",
-      scope,
-      path: appliedPath,
-    },
-  });
-  const appliedId = unwrapAppliedId(resolved.value.value);
-  const onCommit = resolved.value.onCommit;
+  const applied = useObjectField({ path: appliedPath, scope });
+  const appliedId = unwrapAppliedId(applied.value);
+  const onCommit = applied.onCommit;
 
   const [items, setItems] = useState<StyleRow[]>([]);
   const refresh = useCallback(() => {
@@ -143,7 +149,7 @@ export function StyleApplyPanel({
     : undefined;
 
   return (
-    <div data-style-apply={collection}>
+    <ObjectFieldFrame field={applied} data-style-apply={collection}>
       <ApplyList
         appliedId={appliedId}
         groups={[{ items }]}
@@ -154,6 +160,6 @@ export function StyleApplyPanel({
         onDelete={onDelete}
         testId={testId}
       />
-    </div>
+    </ObjectFieldFrame>
   );
 }

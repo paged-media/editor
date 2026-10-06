@@ -309,6 +309,7 @@ const ENTRIES: CatalogEntry[] = [
       scope: "string",
       schemaKind: "string",
       style: "string",
+      collectionName: "string",
       bindable: "boolean",
       icon: "string",
       prefix: "string",

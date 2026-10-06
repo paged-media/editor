@@ -28,7 +28,8 @@
 //
 // What it keeps: the label, chrome props (icon, prefix, suffix,
 // placeholder, layout) and the presentation of enum-like TEXT paths (the
-// options and whether they were segments or a select) — core's schema
+// options and whether they were segments or a select), and a collection
+// select's collection (`collectionName` → `style: "collection"`) — core's schema
 // says `text` for those until it publishes their members (ADR 132).
 // Literal-bound and seam nodes are left exactly as they were.
 //
@@ -42,6 +43,7 @@ export const PAGED_INPUT_PROPERTY = "paged.input.property";
 
 const SEGMENTS = "paged.input.toggle-group";
 const SELECT = "paged.input.select";
+const COLLECTION_SELECT = "paged.input.collection-select";
 
 export function asPropertyFields(node: CompositionNode): CompositionNode {
   const children = node.children?.map(asPropertyFields);
@@ -67,6 +69,7 @@ export function asPropertyFields(node: CompositionNode): CompositionNode {
       ...(value.scope ? { scope: value.scope } : {}),
       ...(node.catalogId === SEGMENTS ? { style: "segments" } : {}),
       ...(node.catalogId === SELECT ? { style: "select" } : {}),
+      ...(node.catalogId === COLLECTION_SELECT ? { style: "collection" } : {}),
     },
     bindings: rest,
     ...(children ? { children } : {}),

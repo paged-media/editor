@@ -35,6 +35,13 @@
 // (whole-triple, not undoable) — matching InDesign's "set the default
 // fill when no object is selected" behaviour. The panel reads the
 // current default off `documentMeta()` so the readout reflects it.
+//
+// ADR 323 — the fill + tint fields are migrated `PropertyField`s
+// (color.composition.ts: the fill keeps its swatch collection select).
+// The mixer's Apply writes through `host.objects` too: the selection's
+// `frameFillColor`, or — with nothing selected — the document's
+// `doc.defaultFillColor` virtual path (the same `setDocumentDefaults`
+// op, the other two defaults preserved by the core seam).
 
 import { useEffect, useState } from "react";
 
@@ -42,8 +49,8 @@ import {
   CatalogRegistryProvider,
   CompositionRenderer,
   cockpitActions,
-  useBindings,
   useCanvasClient,
+  useObjectBindings,
   useDocumentMeta,
 } from "@paged-media/shell";
 import { ColorMixer, type MixerValue } from "@paged-media/ui";
@@ -53,11 +60,8 @@ import { appCatalogRegistry } from "./catalog-registry";
 import { colorComposition } from "./color.composition";
 
 const FILL_BINDING = {
-  value: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "frameFillColor" as const,
-  },
+  value: { scope: "element" as const, path: "frameFillColor" },
+  docDefault: { path: "defaultFillColor", targets: ["doc"] as const },
 };
 
 function unwrapColorRef(v: Value | null): string | null {
@@ -68,7 +72,7 @@ function unwrapColorRef(v: Value | null): string | null {
 
 export function ColorPanel() {
   const client = useCanvasClient();
-  const resolved = useBindings(FILL_BINDING);
+  const resolved = useObjectBindings(FILL_BINDING);
   const meta = useDocumentMeta();
   // W2.5 — with nothing selected the binding has no commit path; the
   // panel then targets the document-default fill instead.
@@ -122,18 +126,9 @@ export function ColorPanel() {
         if (hasSelection) {
           resolved.value.onCommit?.({ type: "colorRef", value: last.selfId });
         } else {
-          // W2.5 — no selection: write the document-default fill,
-          // preserving the existing stroke/weight defaults.
-          await client
-            .mutate({
-              op: "setDocumentDefaults",
-              args: {
-                fillColor: last.selfId,
-                strokeColor: meta?.defaultStrokeColor ?? null,
-                strokeWeight: meta?.defaultStrokeWeight ?? null,
-              },
-            })
-            .catch(() => {});
+          // W2.5 — no selection: write the document-default fill; the
+          // core seam preserves the existing stroke/weight defaults.
+          resolved.docDefault.onCommit?.({ type: "colorRef", value: last.selfId });
         }
       })
       .catch(() => {});

@@ -40,9 +40,14 @@ import type { CompositionNode } from "@paged-media/catalog";
 import {
   PAGED_INPUT_TOGGLE_GROUP,
   PAGED_LAYOUT_SECTION,
+  asPropertyFields,
 } from "@paged-media/shell";
 
-export const bulletsNumberingComposition: CompositionNode = {
+// ADR 323 — every live field is a schema-driven `PropertyField`: the
+// type comes from the target's schema row, reads/writes go through
+// `host.objects` (one batch = one undo step over a multi-selection), and
+// each field offers "Bind to data…" with a binding badge. Seams stay seams.
+export const bulletsNumberingComposition: CompositionNode = asPropertyFields({
   catalogId: PAGED_LAYOUT_SECTION,
   props: { title: "Bullets & numbering", heading: false },
   bindings: {},
@@ -66,4 +71,4 @@ export const bulletsNumberingComposition: CompositionNode = {
       },
     },
   ],
-};
+});

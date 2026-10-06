@@ -577,6 +577,14 @@ export {
   type ObjectPropertyRequest,
 } from "./catalog/object-model";
 export { PropertyField, PropertyFieldLeaf, type PropertyFieldProps } from "./catalog/property-field";
+export {
+  ObjectFieldFrame,
+  useObjectBindings,
+  useObjectField,
+  wireTypeFor,
+  type ObjectBindingState,
+  type ObjectField,
+} from "./catalog/object-field";
 export { asPropertyFields } from "./catalog/property-field-migrate";
 export {
   BIND_LABEL_KEY,

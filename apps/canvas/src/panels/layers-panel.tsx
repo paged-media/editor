@@ -97,6 +97,7 @@ import {
   useActiveBindingProviders,
   useCollectionPathOffered,
   useProvidedCollection,
+  useObjectModel,
   useProviderFirstMutate,
   useRegistries,
   useSelection,
@@ -106,8 +107,10 @@ import {
 } from "@paged-media/shell";
 
 import type { ElementId, LayerSummary, Mutation } from "@paged-media/client";
+import type { ShellObjectOp } from "@paged-media/shell";
 
 import { appCatalogRegistry } from "./catalog-registry";
+import { layerAddress } from "../object-model";
 
 export const LAYERS_PANEL_ID = "paged.layers";
 
@@ -297,9 +300,16 @@ export function LayersPanel(_: PanelProps) {
   // op to the active providers, send it to the engine if nobody claims
   // it. The panel speaks ONE vocabulary; the translation into a
   // plugin's own realm is that plugin's business.
+  //
+  // ADR 323 — each write ALSO names itself as object-model ops on
+  // `layer:<id>` (and the selection's addresses for `itemLayer`): when no
+  // provider claims it, it lands through `host.objects` (one batch = one
+  // undo step). Reorder and insert are ops the object model has no
+  // property for, so they stay plain mutations.
+  const objectModel = useObjectModel();
   const run = useCallback(
-    async (mutation: Mutation, what: string) => {
-      const out = await mutate(mutation);
+    async (mutation: Mutation, what: string, objectOps?: readonly ShellObjectOp[]) => {
+      const out = await mutate(mutation, objectOps);
       if (!out.applied) {
         // A claimed-but-refused write names its owner; an unclaimed one
         // that the engine rejected does not. Both are reported — a
@@ -348,6 +358,7 @@ export function LayersPanel(_: PanelProps) {
               args: { layerId: p.id, name: p.name },
             } as Mutation,
             "layerSetName",
+            [{ op: "set", address: layerAddress(p.id), path: "layerName", value: p.name }],
           );
         },
       },
@@ -363,6 +374,7 @@ export function LayersPanel(_: PanelProps) {
               args: { layerId: row.selfId, visible: !row.visible },
             } as Mutation,
             "layerSetVisible",
+            [{ op: "set", address: layerAddress(row.selfId), path: "layerVisible", value: !row.visible }],
           );
         },
       },
@@ -392,6 +404,14 @@ export function LayersPanel(_: PanelProps) {
               ? ops[0]
               : ({ op: "batch", args: { ops } } as Mutation),
             "itemLayer",
+            objectModel
+              ? targets.map((el) => ({
+                  op: "set" as const,
+                  address: objectModel.addressOf(el),
+                  path: "itemLayer",
+                  value: row.selfId,
+                }))
+              : undefined,
           );
         },
       },
@@ -407,6 +427,7 @@ export function LayersPanel(_: PanelProps) {
               args: { layerId: row.selfId, printable: !row.printable },
             } as Mutation,
             "layerSetPrintable",
+            [{ op: "set", address: layerAddress(row.selfId), path: "layerPrintable", value: !row.printable }],
           );
         },
       },
@@ -422,6 +443,7 @@ export function LayersPanel(_: PanelProps) {
               args: { layerId: row.selfId, locked: !row.locked },
             } as Mutation,
             "layerSetLocked",
+            [{ op: "set", address: layerAddress(row.selfId), path: "layerLocked", value: !row.locked }],
           );
         },
       },
@@ -433,6 +455,7 @@ export function LayersPanel(_: PanelProps) {
           return run(
             { op: "layerRemove", args: { layerId: payload } } as Mutation,
             "layerRemove",
+            [{ op: "delete", address: layerAddress(payload) }],
           );
         },
       },
@@ -467,7 +490,7 @@ export function LayersPanel(_: PanelProps) {
         }),
       );
     return () => handles.forEach((h) => h.dispose());
-  }, [registries, run, rowById]);
+  }, [registries, run, rowById, objectModel]);
 
   const onAdd = useCallback(() => {
     void registries.commands.invoke(LAYERS_ADD_COMMAND);

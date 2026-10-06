@@ -437,3 +437,102 @@ test("the app model maps selections to canonical addresses and flags inferred co
   assert.equal(editorObjectModel.wireOf("frameStrokeWeight"), "length");
   assert.equal(editorObjectModel.wireOf("framePath"), null);
 });
+
+// ───────────────────────────────────────────── panel migration (Wave 6)
+
+test("a collection select migrates to a schema field that keeps its collection", () => {
+  const out = asPropertyFields({
+    catalogId: "paged.input.collection-select",
+    props: { label: "Fill", collectionName: "swatches", valueType: "colorRef" },
+    bindings: { value: { kind: "selectionProperty", scope: "element", path: "frameFillColor" } },
+  });
+  assert.equal(out.catalogId, PAGED_INPUT_PROPERTY);
+  assert.equal(out.props.style, "collection");
+  assert.equal(out.props.collectionName, "swatches");
+  assert.equal(out.props.path, "frameFillColor");
+  // The row's TYPE still decides: a colour / ref / text row over a named
+  // collection is a collection select; anything else keeps its widget.
+  const pres = { style: "collection", collection: "swatches" };
+  assert.equal(M.widgetFor({ kind: "color" }, pres), "collection");
+  assert.equal(M.widgetFor({ kind: "ref", to: "style:character" }, pres), "collection");
+  assert.equal(M.widgetFor({ kind: "length" }, pres), "length");
+  assert.equal(M.widgetFor({ kind: "color" }, { style: "collection" }), "color", "no collection named");
+});
+
+test("the app model maps table cells and tables to addresses and back (story remembered)", () => {
+  const cell = { kind: "tableCell", id: { story_id: "u9", table_id: "t1", row: 2, col: 3 } };
+  const address = editorObjectModel.addressOf(cell);
+  assert.equal(address, "cell:t1/2,3");
+  assert.deepEqual(editorObjectModel.elementIdOf(address), cell);
+  assert.deepEqual(editorObjectModel.elementIdOf("table:t1"), { kind: "table", id: { story_id: "u9", table_id: "t1" } });
+  assert.deepEqual(editorObjectModel.elementIdOf("rectangle:u12"), { kind: "rectangle", id: "u12" });
+  assert.equal(editorObjectModel.elementIdOf("cell:unknown/0,0"), null);
+  // The inset rows the inferred SDK catalog typed as text write lengths.
+  assert.equal(editorObjectModel.wireOf("cellInsetTop"), "length");
+});
+
+test("cell / table schema rows route through the app's table seam", async () => {
+  const rows = await editorObjectModel.objects.schema("cell:t1/0,0");
+  const inset = rows.find((r) => r.path === "cellInsetTop");
+  assert.deepEqual(inset?.type, { kind: "length" });
+  assert.ok(rows.some((r) => r.path === "cellFillColor"));
+  assert.ok((await editorObjectModel.objects.schema("table:t1")).some((r) => r.path === "appliedTableStyle"));
+});
+
+test("layer addresses escape a self id with a slash", async () => {
+  const { layerAddress } = await import(APP);
+  assert.equal(layerAddress("u0"), "layer:u0");
+  assert.equal(layerAddress("Layer/u0"), "layer:Layer%2Fu0");
+});
+
+const ALIGN = await import(
+  pathToFileURL(resolvePath(here, "..", "apps", "canvas", "src", "align-plan.ts")).href
+);
+
+test("align plans frameBounds writes: AABB edges and centres, already-aligned skipped", () => {
+  const e = [
+    { address: "rectangle:a", bounds: [0, 0, 10, 10] },
+    { address: "rectangle:b", bounds: [20, 30, 40, 50] },
+  ];
+  assert.deepEqual(ALIGN.planAlign("left", e), [
+    { op: "set", address: "rectangle:b", path: "frameBounds", value: [20, 0, 40, 20] },
+  ]);
+  assert.deepEqual(ALIGN.planAlign("bottom", e), [
+    { op: "set", address: "rectangle:a", path: "frameBounds", value: [30, 0, 40, 10] },
+  ]);
+  assert.deepEqual(ALIGN.planAlign("centerH", e).map((o) => o.value[1]), [20, 15]);
+  assert.deepEqual(ALIGN.planAlign("left", e.slice(0, 1)), [], "align needs two objects");
+});
+
+test("distribute spaces centres evenly and needs three objects", () => {
+  const e = [
+    { address: "a", bounds: [0, 0, 10, 10] },
+    { address: "c", bounds: [0, 90, 10, 100] },
+    { address: "b", bounds: [0, 10, 10, 20] },
+  ];
+  assert.deepEqual(ALIGN.planAlign("distributeH", e), [
+    { op: "set", address: "b", path: "frameBounds", value: [0, 45, 10, 55] },
+  ]);
+  assert.deepEqual(ALIGN.planAlign("distributeV", e.slice(0, 2)), []);
+});
+
+test("runAlign reads through host.objects and commits ONE batch; declared args check", async () => {
+  const bounds = { "rectangle:a": [0, 0, 10, 10], "rectangle:b": [20, 30, 40, 50] };
+  const batches = [];
+  const objects = {
+    get: async (a) => ({ kind: "value", value: bounds[a] }),
+    batch: async (ops) => {
+      batches.push(ops);
+      return { applied: true, undoSteps: 1 };
+    },
+  };
+  const r = await ALIGN.runAlign(objects, { kind: "top", targets: ["rectangle:a", "rectangle:b"] });
+  assert.deepEqual(r, { applied: true, undoSteps: 1 });
+  assert.equal(batches.length, 1);
+  assert.deepEqual(batches[0][0].value, [0, 30, 20, 50]);
+  const nothing = await ALIGN.runAlign(objects, { kind: "top", targets: ["rectangle:a"] });
+  assert.equal(nothing.undoSteps, 0);
+  assert.equal(batches.length, 1, "nothing to move = no write");
+  assert.equal(M.checkArgs(ALIGN.ALIGN_ARGS, { kind: "left", targets: ["rectangle:a"] }), null);
+  assert.match(M.checkArgs(ALIGN.ALIGN_ARGS, { kind: "sideways", targets: [] }), /must be one of/);
+});

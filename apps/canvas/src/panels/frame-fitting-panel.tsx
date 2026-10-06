@@ -30,8 +30,9 @@
 import {
   CatalogRegistryProvider,
   CompositionRenderer,
+  ObjectFieldFrame,
   ReferencePointGrid,
-  useBindings,
+  useObjectBindings,
 } from "@paged-media/shell";
 import type { Value } from "@paged-media/client";
 
@@ -56,23 +57,20 @@ const ANCHORS = [
   "BottomRightPoint",
 ] as const;
 
+// ADR 323 — the composition fields are migrated `PropertyField`s; the
+// 9-point grid and the fill action keep their widgets but read/write
+// through `host.objects`; the grid sits in an `ObjectFieldFrame`
+// ("Bind to data…" + badges). `frameFittingReferencePoint` is `text` in
+// the schema until core publishes the nine anchor members (ADR 132).
 const REFERENCE_POINT_BINDING = {
-  value: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "frameFittingReferencePoint" as const,
-  },
+  value: { scope: "element" as const, path: "frameFittingReferencePoint" },
 };
 
 // W2.4 — the "Fill frame proportionally" action writes the existing
 // `frameFittingType` enum to `"FillProportionally"` (a real persisted
 // model property — not a client-side scale hack and not a new op).
 const FITTING_TYPE_BINDING = {
-  value: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "frameFittingType" as const,
-  },
+  value: { scope: "element" as const, path: "frameFittingType" },
 };
 
 /** Resolve the bound anchor string to a grid index, or null when the
@@ -91,11 +89,11 @@ function fittingType(v: Value | null): string | null {
 }
 
 export function FrameFittingPanel() {
-  const resolved = useBindings(REFERENCE_POINT_BINDING);
+  const resolved = useObjectBindings(REFERENCE_POINT_BINDING);
   const refPoint = resolved.value;
   const index = anchorToIndex(refPoint.value);
 
-  const fitting = useBindings(FITTING_TYPE_BINDING).value;
+  const fitting = useObjectBindings(FITTING_TYPE_BINDING).value;
   const fittingDisabled = fitting.onCommit == null;
   const isFillProp = fittingType(fitting.value) === "FillProportionally";
 
@@ -106,7 +104,7 @@ export function FrameFittingPanel() {
         data-frame-fitting-panel="ready"
       >
         <CompositionRenderer composition={frameFittingFitComposition} />
-        <div className="my-[2px] flex items-center gap-[14px]">
+        <ObjectFieldFrame field={refPoint} className="relative my-[2px] flex items-center gap-[14px]">
           <ReferencePointGrid
             value={index ?? 0}
             disabled={refPoint.onCommit == null}
@@ -123,7 +121,7 @@ export function FrameFittingPanel() {
           >
             Align content
           </span>
-        </div>
+        </ObjectFieldFrame>
         <CompositionRenderer composition={frameFittingCropComposition} />
         {/* W2.4 — fill-frame-proportionally action. Writes the real
             `frameFittingType` enum; reflects the current type so the

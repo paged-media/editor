@@ -52,6 +52,7 @@ import {
   PAGED_INPUT_TOGGLE_SWITCH,
   PAGED_LAYOUT_CLUSTER,
   PAGED_LAYOUT_SECTION,
+  asPropertyFields,
 } from "@paged-media/shell";
 
 // Common IDML FontStyle face names — a static write surface (no
@@ -85,7 +86,11 @@ const LANGUAGES = [
   { value: "$ID/Italian", label: "Italian" },
 ];
 
-export const characterComposition: CompositionNode = {
+// ADR 323 — every live field is a schema-driven `PropertyField`: the
+// type comes from the target's schema row, reads/writes go through
+// `host.objects` (one batch = one undo step over a multi-selection), and
+// each field offers "Bind to data…" with a binding badge. Seams stay seams.
+export const characterComposition: CompositionNode = asPropertyFields({
   catalogId: PAGED_LAYOUT_SECTION,
   props: { title: "Character", heading: false },
   bindings: {},
@@ -311,4 +316,4 @@ export const characterComposition: CompositionNode = {
       },
     },
   ],
-};
+});

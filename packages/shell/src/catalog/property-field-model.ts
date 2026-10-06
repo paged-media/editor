@@ -45,6 +45,7 @@ export type FieldWidget =
   | "color"
   | "select"
   | "segments"
+  | "collection"
   | "text"
   | "bounds"
   | "transform"
@@ -64,14 +65,21 @@ export interface FieldOption {
  *  options — the field writes them as text, validated as text. */
 export interface FieldPresentation {
   options?: readonly FieldOption[];
-  /** `select` (default with options) or icon/label `segments`. */
-  style?: "select" | "segments";
+  /** `select` (default with options), icon/label `segments`, or
+   *  `collection` — a select over a document collection (swatches,
+   *  gradients) named by `collection`; the row's type still decides
+   *  what is written (`color` → a swatch ref). */
+  style?: "select" | "segments" | "collection";
+  collection?: string;
 }
 
 export function widgetFor(
   type: ShellValueType,
   presentation?: FieldPresentation,
 ): FieldWidget {
+  if (presentation?.style === "collection" && presentation.collection) {
+    if (type.kind === "color" || type.kind === "ref" || type.kind === "text") return "collection";
+  }
   const offered =
     type.kind === "enum" ||
     ((type.kind === "text" || type.kind === "ref") &&

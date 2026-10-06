@@ -148,4 +148,8 @@ export interface ShellObjectModelHost {
    *  for the ADR 023 binding-provider lane, which still speaks wire
    *  values. Absent / null: the provider lane is not consulted. */
   wireOf?(path: string): string | null;
+  /** The selection element an address names, for targets that did not
+   *  come from the selection (a table cell, a layer): "Bind to data…"
+   *  labels it. Absent / null: the label write is refused. */
+  elementIdOf?(address: string): ElementId | null;
 }

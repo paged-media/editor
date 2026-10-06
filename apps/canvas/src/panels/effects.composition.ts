@@ -48,6 +48,7 @@ import {
   PAGED_INPUT_TOGGLE_SWITCH,
   PAGED_LAYOUT_CLUSTER,
   PAGED_LAYOUT_SECTION,
+  asPropertyFields,
 } from "@paged-media/shell";
 
 // InDesign `BlendMode` enum strings (the parser stores the raw
@@ -115,13 +116,16 @@ function bind(path: PropertyPath) {
   };
 }
 
+// ADR 323 — every live field is a schema-driven `PropertyField` (type
+// from the schema row, reads/writes through `host.objects`, "Bind to
+// data…" + badge); `section` migrates each family's fields.
 function section(title: string, children: CompositionNode[]): CompositionNode {
-  return {
+  return asPropertyFields({
     catalogId: PAGED_LAYOUT_SECTION,
     props: { title, heading: false },
     bindings: {},
     children,
-  };
+  });
 }
 
 // ── Drop shadow ────────────────────────────────────────────────

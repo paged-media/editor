@@ -47,7 +47,7 @@ import {
   type PropsWithChildren,
 } from "react";
 
-import type { ElementId, Value } from "@paged-media/client";
+import type { ElementId, PropertyPath, Value } from "@paged-media/client";
 
 import { useCanvasClient } from "../state/canvas-client-context";
 import { useSelection } from "../state/selection-context";
@@ -58,6 +58,7 @@ import {
   writeSelectionProperty,
   type SelectionResolution,
 } from "./binding-providers";
+import { useReportBindingSurface } from "./panel-binding-surface";
 import type {
   ShellObjectModelHost,
   ShellObjectWriteResult,
@@ -115,6 +116,8 @@ export interface ObjectProperty {
 }
 
 const NONE: FieldState = { state: "none" };
+const NO_COLLECTIONS: readonly never[] = [];
+const NO_PATHS: readonly PropertyPath[] = [];
 
 function storyRangeId(c: { storyId: string; start: number; end: number }): ElementId {
   return {
@@ -145,10 +148,18 @@ export function useObjectProperty(req: ObjectPropertyRequest): ObjectProperty {
   const elementOf = useCallback(
     (address: string): ElementId | null => {
       const i = addresses.indexOf(address);
-      return i >= 0 ? (targetIds[i] ?? null) : null;
+      const fromSelection = i >= 0 ? (targetIds[i] ?? null) : null;
+      // Explicit targets (a cell, a layer) carry no selection element;
+      // the app maps the address back when it can.
+      return fromSelection ?? model?.elementIdOf?.(address) ?? null;
     },
-    [addresses, targetIds],
+    [addresses, targetIds, model],
   );
+
+  // ADR 023 — report the selection-bound PATH exactly like `useBindings`
+  // does, so entering an edit context still knows which panels it would
+  // displace. Explicit targets are not selection-bound.
+  useReportBindingSurface(NO_COLLECTIONS, req.targets ? NO_PATHS : [req.path as PropertyPath]);
 
   // ---------------------------------------------- change ticks
   const [tick, setTick] = useState(0);

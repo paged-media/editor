@@ -34,35 +34,24 @@
 // PropertyEntry the binding reads null → the pill shows the mixed
 // (em-dash) sentinel, disabled.
 
-import { Icon, TogglePill, useBindings } from "@paged-media/shell";
+import {
+  Icon,
+  ObjectFieldFrame,
+  TogglePill,
+  useObjectBindings,
+  type ObjectField,
+} from "@paged-media/shell";
 import type { Value } from "@paged-media/client";
 
+// ADR 323 — every pill is an object-model field: reads/writes through
+// `host.objects` (one batch over a multi-selection = one undo step),
+// each row an `ObjectFieldFrame` ("Bind to data…" + badges).
 const BINDINGS = {
-  visible: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "elementVisible" as const,
-  },
-  locked: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "elementLocked" as const,
-  },
-  nonprinting: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "frameNonprinting" as const,
-  },
-  overprintFill: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "frameOverprintFill" as const,
-  },
-  overprintStroke: {
-    kind: "selectionProperty" as const,
-    scope: "element" as const,
-    path: "frameOverprintStroke" as const,
-  },
+  visible: { scope: "element" as const, path: "elementVisible" },
+  locked: { scope: "element" as const, path: "elementLocked" },
+  nonprinting: { scope: "element" as const, path: "frameNonprinting" },
+  overprintFill: { scope: "element" as const, path: "frameOverprintFill" },
+  overprintStroke: { scope: "element" as const, path: "frameOverprintStroke" },
 };
 
 function unwrapBool(v: Value | null): boolean | null {
@@ -72,6 +61,7 @@ function unwrapBool(v: Value | null): boolean | null {
 }
 
 function CheckRow({
+  field,
   label,
   on,
   mixed,
@@ -79,6 +69,7 @@ function CheckRow({
   disabled,
   onToggle,
 }: {
+  field: ObjectField;
   label: string;
   on: boolean;
   mixed?: boolean;
@@ -87,6 +78,7 @@ function CheckRow({
   onToggle?: (next: boolean) => void;
 }) {
   return (
+    <ObjectFieldFrame field={field}>
     <label
       className="flex items-center justify-between py-[6px]"
       data-check-row={label}
@@ -102,11 +94,12 @@ function CheckRow({
         onToggle={onToggle}
       />
     </label>
+    </ObjectFieldFrame>
   );
 }
 
 export function AttributesPanel() {
-  const resolved = useBindings(BINDINGS);
+  const resolved = useObjectBindings(BINDINGS);
   const vis = resolved.visible;
   const visChecked = unwrapBool(vis.value);
   const lock = resolved.locked;
@@ -124,6 +117,7 @@ export function AttributesPanel() {
           so the unset state shows checked; mixed selections read null
           → the em-dash sentinel. */}
       <CheckRow
+        field={vis}
         label="Visible"
         on={visChecked === true}
         mixed={visChecked === null}
@@ -133,6 +127,7 @@ export function AttributesPanel() {
         }}
       />
       <CheckRow
+        field={lock}
         label="Locked"
         on={lockChecked === true}
         mixed={lockChecked === null}
@@ -142,6 +137,7 @@ export function AttributesPanel() {
         }}
       />
       <CheckRow
+        field={np}
         label="Nonprinting"
         on={checked === true}
         mixed={checked === null}
@@ -153,6 +149,7 @@ export function AttributesPanel() {
       <div className="-mx-3 mt-2 border-t border-input px-3 pt-2">
         <div className="pg-label mb-1">Overprint</div>
         <CheckRow
+          field={opFill}
           label="Overprint fill"
           on={opFillChecked === true}
           mixed={opFillChecked === null}
@@ -162,6 +159,7 @@ export function AttributesPanel() {
           }}
         />
         <CheckRow
+          field={opStroke}
           label="Overprint stroke"
           on={opStrokeChecked === true}
           mixed={opStrokeChecked === null}
