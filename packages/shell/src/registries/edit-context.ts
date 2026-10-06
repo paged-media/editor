@@ -39,7 +39,7 @@
 // editor's plugin-api-compat.ts dev link).
 
 // eslint-disable-next-line import/no-relative-parent-imports
-import type { ElementId } from "@paged-media/client";
+import type { ElementId, PageId } from "@paged-media/client";
 
 import type { Disposable } from "./types";
 
@@ -58,10 +58,20 @@ export interface EditContextCandidate {
   metadata: { v: number; data: Record<string, unknown>; engine?: Record<string, string> } | null;
 }
 
-/** The live handle a context's onEnter/onExit hook receives. */
+/** The live handle a context's onEnter/onExit hook receives. Mirrors
+ *  plugin-api `EnteredEditContext`. */
 export interface EnteredEditContext {
   type: string;
   id: ElementId;
+  /** W-19 — the entering pointer, on a POINTER entry only (the
+   *  double-click; the Type-tool click on plugin-owned content). Absent
+   *  on a programmatic entry and on `onExit`. */
+  pageId?: PageId;
+  /** Page-local pt. */
+  pagePoint?: [number, number];
+  /** Frame-content pt (`pageToContentPoint`, the K-1 pointer mapping);
+   *  absent when the point is outside the content box. */
+  contentPoint?: [number, number];
 }
 
 /** An edit-context CLAIM. Mirrors plugin-api `EditContextContribution`. */

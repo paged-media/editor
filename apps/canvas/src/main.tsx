@@ -26,6 +26,7 @@ import {
   hitMarkerContribution,
   marqueeContribution,
   toolPreviewContribution,
+  pluginOverlayLayersContribution,
   guideOverlayContribution,
   pageDecorationsContribution,
   pathEditContribution,
@@ -302,6 +303,8 @@ const BUILT_IN_OVERLAYS: OverlayContribution[] = [
   contentGrabberContribution,
   pathEditContribution,
   marqueeContribution,
+  // W-20 — plugins' retained overlay layers, just below the tool preview.
+  pluginOverlayLayersContribution,
   toolPreviewContribution,
   snapLinesContribution,
   caretContribution,
@@ -1377,6 +1380,12 @@ function PluginBundles() {
       documents,
       diagnosticsSink: problemsSink,
       schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
+      // W-19 — the shell's pointer entries (double-click, the Type-tool
+      // click on owned content) hand the entering point to `onEnter`
+      // (use-edit-context-entry.tsx), so this host vouches for
+      // supports("editContext.enterPoint@1"). Inert under an SDK that
+      // predates the option.
+      editContextEnterPoint: true,
     };
     // ADR 025 §4a — identical doors for every bundle, but a PER-PLUGIN
     // console so `host.log` is attributed at the source rather than parsed
@@ -1414,6 +1423,17 @@ function PluginBundles() {
       // v66 — the will-save registry, so a spec can register a listener
       // as a bundle would and see Save wait for it.
       (globalThis as unknown as { __willSave?: unknown }).__willSave = willSave;
+      // Load a throwaway bundle through the SAME loader and host options
+      // every real bundle gets, so a journey can exercise a plugin door
+      // end to end (SDK host → shell) without a published plugin that
+      // happens to use it. Returns the disposer.
+      (globalThis as unknown as { __loadTestBundle?: unknown }).__loadTestBundle =
+        (bundle: Parameters<typeof loadBundle>[1]) =>
+          loadBundle(
+            () => pagedRef.current,
+            bundle,
+            hostOptionsFor(bundle.manifest.id),
+          );
     }
     // Solo loads ONE bundle. Filtering here (rather than after
     // registration) means the other seven never activate at all, so
@@ -1460,6 +1480,8 @@ function PluginBundles() {
       detachDocuments();
       delete (globalThis as unknown as { __shellDoors?: unknown })
         .__shellDoors;
+      delete (globalThis as unknown as { __loadTestBundle?: unknown })
+        .__loadTestBundle;
     };
     // Mount-once by design; the ref keeps the handle live.
     // eslint-disable-next-line react-hooks/exhaustive-deps

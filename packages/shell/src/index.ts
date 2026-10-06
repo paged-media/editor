@@ -126,6 +126,8 @@ export {
   // K-9 — what the tool-preview slot holds: one shape or a list.
   type ToolPreviewSlot,
   type ToolPreviewText,
+  // W-20 — one retained plugin overlay layer.
+  type OverlayLayerEntry,
 } from "./state/overlay-signals-context";
 
 // W2.8 — guide creation/drag state (rulers + overlay + controller).
@@ -277,7 +279,9 @@ export {
   useOptionalEditContextStack,
   type EditContextFrame,
   type EditContextStackValue,
+  type EnterPoint,
 } from "./state/edit-context-stack";
+export { pageToContentPoint } from "./state/content-point";
 export { EditContextBreadcrumb } from "./chrome/EditContextBreadcrumb";
 export {
   useEditContextEntry,
@@ -403,6 +407,8 @@ export {
   hitMarkerContribution,
   marqueeContribution,
   toolPreviewContribution,
+  pluginOverlayLayersContribution,
+  renderPreviewShape,
   pageDecorationsContribution,
   pathEditContribution,
   resizeHandlesContribution,

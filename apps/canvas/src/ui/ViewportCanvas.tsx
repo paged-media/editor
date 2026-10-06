@@ -38,6 +38,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
   OverlayHost,
+  pageToContentPoint,
   useContentSelection,
   useEditContextEntry,
   useOptionalEditContextStack,
@@ -171,50 +172,9 @@ export interface ViewportCanvasProps {
 
 const CLICK_DRAG_THRESHOLD_PX = 4;
 
-/**
- * K-1 — invert a PAGE-LOCAL pointer into a frame's CONTENT coordinates
- * (the space a plugin's scene layer / edit context works in; §8.5 — the
- * plugin never compensates for the frame transform). The geometry's
- * `itemTransform` maps the frame's bounds-space `(bounds.left..right,
- * bounds.top..bottom)` to page-local; we invert it, then subtract the
- * bounds origin so `(0,0)` is the content-box top-left — the SAME model a
- * scene-layer submission uses (C-1 composes at `itemTransform ∘
- * translate(bounds.left, bounds.top)`). Returns `null` when the point
- * falls OUTSIDE the content box (the caller then treats the click as a
- * commit / re-target) or the transform is singular.
- *
- * NOTE: this assumes a ZERO text-inset — the same assumption the C-1
- * consumer makes when it sizes a scene layer to the full frame bounds. A
- * nonzero frame inset would shift the content origin by `(ins_left,
- * ins_top)`; threading the inset through `ElementGeometryItem` is the
- * documented residual (it is not exposed on the geometry read today).
- */
 /** One wheel "line" (DOM_DELTA_LINE) in CSS pixels — Firefox's mouse
  *  wheel reports lines; the others report pixels. */
 const WHEEL_LINE_PX = 16;
-
-function pageToContentPoint(
-  geom: ElementGeometryItem,
-  pageLocal: [number, number],
-): [number, number] | null {
-  const m = geom.itemTransform;
-  let bx = pageLocal[0];
-  let by = pageLocal[1];
-  if (m) {
-    const [a, b, c, d, e, f] = m;
-    const det = a * d - b * c;
-    if (Math.abs(det) < 1e-9) return null;
-    const px = pageLocal[0] - e;
-    const py = pageLocal[1] - f;
-    bx = (d * px - c * py) / det;
-    by = (-b * px + a * py) / det;
-  }
-  const [top, left, bottom, right] = geom.bounds;
-  const cx = bx - left;
-  const cy = by - top;
-  if (cx < 0 || cy < 0 || cx > right - left || cy > bottom - top) return null;
-  return [cx, cy];
-}
 
 export function ViewportCanvas(props: ViewportCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -1087,6 +1047,9 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
                 const owned = await tryEnterOwnedContent({
                   element: hit.element,
                   groupChain: [],
+                  // W-19 — the click is the entering point.
+                  pageId,
+                  pagePoint: docPoint,
                 });
                 if (owned) return;
               }
@@ -1414,13 +1377,14 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       const containing = findContainingPage(rects, props.pageIds, docX, docY);
       if (!containing) return;
       const [pageId, pageRect] = containing;
+      const pagePoint: [number, number] = [docX - pageRect.x, docY - pageRect.y];
       void (async () => {
         try {
           const reply = await props.client.send({
             kind: "hitTest",
             payload: {
               pageId,
-              docPoint: [docX - pageRect.x, docY - pageRect.y],
+              docPoint: pagePoint,
               filter: "any",
             },
           });
@@ -1434,6 +1398,9 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
           const claimed = await tryEnterEditContext({
             element,
             groupChain: chain,
+            // W-19 — the entered context's onEnter gets the point too.
+            pageId,
+            pagePoint,
           });
           if (claimed) return;
           if (chain.length > 0) {
