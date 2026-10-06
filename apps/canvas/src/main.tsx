@@ -99,6 +99,7 @@ import { imageBundle } from "@paged-media/image";
 import { publishBundle } from "@paged-media/publish";
 import { pdfBundle } from "@paged-media/pdf";
 import { docBundle } from "@paged-media/doc";
+import { slideBundle } from "@paged-media/slide";
 import { createEditorAssetSource } from "./plugin-asset-source";
 import { createEditorBlobStore } from "./plugin-blob-store";
 import { createEditorClipboardBackend } from "./plugin-clipboard";
@@ -1479,6 +1480,11 @@ function PluginBundles() {
       // open; the docx→native standalone producer is deferred). Save-back
       // export needs the v54/v55 doors — degrades to verbatim on older hosts.
       loadIf(docBundle),
+      // paged.slide — PowerPoint: a .pptx/.ppsx/.potx opens as native slides
+      // (the bundle writes the whole deck as one IDML package with
+      // PowerPoint's inheritance resolved, opened via
+      // host.nativeDocument.open; the source deck rides along as a part).
+      loadIf(slideBundle),
     ].filter((l): l is NonNullable<typeof l> => l !== null);
     return () => {
       for (const l of loaded) l.dispose();

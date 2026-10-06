@@ -30,6 +30,7 @@
     "@paged-media/client": "workspace:*",
     "@paged-media/data": "0.1.0-canary.10",
     "@paged-media/doc": "0.1.0-canary.0",
+    "@paged-media/slide": "0.1.0-canary.0",
     "@paged-media/draw": "0.1.0-canary.15",
     "@paged-media/image": "0.1.0-canary.17",
     "@paged-media/pdf": "0.2.5-canary.0",

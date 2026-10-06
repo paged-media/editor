@@ -19,6 +19,7 @@ signal.
 | `sheet-14-textstyles.xlsx` | `plugin-sheets/corpus/xlsx-corpus/14-textstyles.xlsx` | see below |
 | `doc-memo.docx` | `plugin-doc/docx-conformance/src/lib.rs` → `memo_docx()` | re-emit from that fn |
 | `data-people.csv` | authored here (plain CSV, no generator) | edit in place |
+| `slide-deck.pptx` | `plugin-slide/slide-conformance/fixtures/placeholders.pptx` (authored in PowerPoint: one slide per built-in layout) | copy again |
 
 All four `.xlsx` are byte-identical to their source as of 2026-08-19,
 only renamed with a `sheet-` prefix. To refresh after

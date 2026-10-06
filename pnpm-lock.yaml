@@ -7,6 +7,7 @@ settings:
 overrides:
   esbuild@>=0.27.3 <0.28.1: ^0.28.1
   '@paged-media/doc': link:../plugins/plugin-doc/packages/doc-bundle
+  '@paged-media/slide': link:../plugins/plugin-slide/packages/slide-bundle
 
 importers:
 
@@ -66,6 +67,9 @@ importers:
       '@paged-media/shell':
         specifier: workspace:*
         version: link:../../packages/shell
+      '@paged-media/slide':
+        specifier: link:../../../plugins/plugin-slide/packages/slide-bundle
+        version: link:../../../plugins/plugin-slide/packages/slide-bundle
       '@paged-media/tools':
         specifier: workspace:*
         version: link:../../packages/tools

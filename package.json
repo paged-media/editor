@@ -33,7 +33,8 @@
   "pnpm": {
     "overrides": {
       "esbuild@>=0.27.3 <0.28.1": "^0.28.1",
-      "@paged-media/doc": "link:../plugins/plugin-doc/packages/doc-bundle"
+      "@paged-media/doc": "link:../plugins/plugin-doc/packages/doc-bundle",
+      "@paged-media/slide": "link:../plugins/plugin-slide/packages/slide-bundle"
     }
   }
 }
