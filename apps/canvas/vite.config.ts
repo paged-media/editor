@@ -19,7 +19,7 @@
 
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { resolve } from "node:path";
+import { resolve, sep } from "node:path";
 import { createReadStream, readFileSync, readdirSync, statSync } from "node:fs";
 
 // Resolve a corpus subdir, preferring a copy colocated in the editor
@@ -463,8 +463,9 @@ function duckdbDistRoute(): import("vite").Plugin {
  * `dist/bin/`. The bundle loads its engines with runtime-relative URLs
  * (`new URL("../bin/<file>", import.meta.url)` — data_js.js + data_js_bg.wasm,
  * and DuckDB's duckdb-browser.mjs, duckdb-browser-eh.worker.js,
- * duckdb-engine.wasm). Vite cannot see those (they are computed, not literal),
- * so it bundles the code into `dist/assets/*.js` and leaves the files behind;
+ * duckdb-engine.wasm, and the json/parquet extensions in duckdb-ext/<engine>/
+ * <platform>/). Vite cannot see those (they are computed, not literal), so it
+ * bundles the code into `dist/assets/*.js` and leaves the files behind;
  * from `assets/`, `../bin/` is `dist/bin/`. Without this a built editor has no
  * data engine and no DuckDB at all — the dev route above only covers `vite dev`.
  *
@@ -485,7 +486,10 @@ function dataBundleBin(): import("vite").Plugin {
     generateBundle() {
       let names: string[] = [];
       try {
-        names = readdirSync(DATA_BIN).filter((n) => !n.endsWith(".d.ts"));
+        // Recursive: DuckDB's extensions live in bin/duckdb-ext/<engine>/<platform>/.
+        names = (readdirSync(DATA_BIN, { recursive: true }) as string[])
+          .map((n) => n.split(sep).join("/"))
+          .filter((n) => !n.endsWith(".d.ts"));
       } catch {
         this.warn(`@paged-media/data has no bin/ at ${DATA_BIN} — paged.data will not boot in this build`);
         return;
@@ -496,6 +500,9 @@ function dataBundleBin(): import("vite").Plugin {
         this.emitFile({ type: "asset", fileName: `bin/${name}`, source: readFileSync(abs) });
       }
       const missing = DUCKDB_FILES.filter((f) => !names.includes(f));
+      for (const ext of ["json", "parquet"])
+        if (!names.some((n) => n.startsWith("duckdb-ext/") && n.endsWith(`/${ext}.duckdb_extension.wasm`)))
+          missing.push(`duckdb-ext/…/${ext}.duckdb_extension.wasm`);
       if (missing.length)
         this.warn(
           `@paged-media/data ships no ${missing.join(", ")} — DuckDB will report duckdb-missing in this build ` +
