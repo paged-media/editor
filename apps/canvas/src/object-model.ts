@@ -36,6 +36,7 @@
 // until one is set.
 
 import {
+  answerHostObjects,
   CORE_PATHS,
   createCoreObjects,
   createObjectRegistry,
@@ -60,6 +61,13 @@ let currentEditor: PagedEditor | null = null;
  *  the same handle every bundle host's `getEditor()` returns). */
 export function setObjectModelEditor(editor: PagedEditor | null): void {
   currentEditor = editor;
+  // ADR 323 — Boa scripts reach plugin objects: the engine client answers
+  // a suspended script's `plugin:` calls through THIS registry (the same
+  // one the panels and every bundle host use).
+  const client = editor?.client as unknown as
+    | { setHostObjects?: (answer: ((calls: never[]) => Promise<unknown[]>) | null) => void }
+    | undefined;
+  client?.setHostObjects?.((calls) => answerHostObjects(objectRegistry, calls) as Promise<unknown[]>);
 }
 
 const getEditor = (): PagedEditor => {
