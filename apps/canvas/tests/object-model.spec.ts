@@ -197,4 +197,30 @@ test.describe("ADR 323 — object model in the editor", () => {
     await expect(page.locator(FIELD)).toHaveAttribute("data-bound", "");
     await expect(page.locator(`${FIELD} [data-badge="bound"]`)).toBeVisible();
   });
+  test("OM-4 — editor.* automation: set/get/query/schema/batch over host.objects; refusals surface with a code @feat:scripting.property-readwrite @feat:round-tripping.undo-redo @level:happy", async ({
+    page,
+  }) => {
+    const run = (source: string) =>
+      page.evaluate(
+        (src) =>
+          (globalThis as unknown as { __demo: { run(s: string): Promise<{ ok: boolean; error?: string }> } }).__demo.run(src),
+        source,
+      );
+    const r = await run(`
+      const rows = await editor.schema("${ADDRESS}");
+      if (!rows.some((r) => r.path === "frameStrokeWeight" && r.type.kind === "length")) throw new Error("schema");
+      const hits = await editor.query("frame");
+      if (!hits.includes("${ADDRESS}")) throw new Error("query " + JSON.stringify(hits));
+      await editor.set("${ADDRESS}", "frameStrokeWeight", 5);
+      const v = await editor.get("${ADDRESS}", "frameStrokeWeight");
+      if (v.value !== 5) throw new Error("get " + JSON.stringify(v));
+      const b = await editor.batch([{ op: "set", address: "${ADDRESS}", path: "frameStrokeWeight", value: 6 }]);
+      if (!b.applied || b.undoSteps !== 1) throw new Error("batch " + JSON.stringify(b));
+    `);
+    expect(r).toEqual({ ok: true });
+    await expect.poll(() => readWeight(page)).toBe(6);
+    const refused = await run(`await editor.get("${ADDRESS}", "noSuchPath");`);
+    expect(refused.ok).toBe(false);
+    expect(refused.error).toMatch(/^unknownPath: /);
+  });
 });
