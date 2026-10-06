@@ -35,9 +35,10 @@
 //     exactly InDesign's record texts;
 //   · MERGE AGAIN: the first run is replaced, not added to (InDesign's texts
 //     again, on the same 3 pages);
-//   · UNDO: two steps take the re-merge back (the first merge is there), one
-//     more takes the first merge's content back, and the last one its pages:
-//     the template, as InDesign left it.
+//   · UNDO: on engine protocol 69 a merge is one undo step (pages and content
+//     in one batch): one undo takes the re-merge back (the first merge is
+//     there), one more the first merge — the template, as InDesign left it.
+//     Before 69 a merge is two steps (pages, then content), so four undos.
 //
 // Gate: under REQUIRE_REAL_DUCKDB=1 a DuckDB that does not boot FAILS the
 // journey (data-duckdb-gate.ts); otherwise it skips and says why.
