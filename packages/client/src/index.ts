@@ -27,6 +27,9 @@
 export {
   CanvasClient,
   type CanvasClientOptions,
+  type HostObjectAnswerWire,
+  type HostObjectCallWire,
+  type HostObjectsAnswerer,
   type JournalDrain,
 } from "./client";
 

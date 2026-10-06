@@ -195,6 +195,23 @@ function sceneImageApplied(
   return { pageIds: p.pageIds ?? [] };
 }
 
+/** One call a suspended script makes on the host's object registry
+ *  (engine protocol 71 `HostObjectCall`). */
+export type HostObjectCallWire =
+  | { op: "get"; address: string; path: string }
+  | { op: "batch"; ops: unknown[] }
+  | { op: "query"; selector: string }
+  | { op: "schema"; target: string };
+
+/** The answer to one call (`HostObjectAnswer`). */
+export interface HostObjectAnswerWire {
+  value?: unknown;
+  error?: { code: string; reason: string; index?: number } | null;
+}
+
+/** Answers every call, in order (the plugin SDK's `answerHostObjects`). */
+export type HostObjectsAnswerer = (calls: HostObjectCallWire[]) => Promise<HostObjectAnswerWire[]>;
+
 export class CanvasClient {
   private readonly worker: Worker;
   private nextSeq = 1;
@@ -230,6 +247,8 @@ export class CanvasClient {
    *  layout mismatch, worker error, disposed). Every pending request was
    *  rejected with it, and every later request rejects with it at once. */
   private fatal: Error | null = null;
+  /** ADR 323 — answers a suspended script's `plugin:` calls. */
+  private hostObjects: HostObjectsAnswerer | null = null;
 
   constructor(options: CanvasClientOptions) {
     this.defaultFontProvider = options.defaultFontProvider;
@@ -1305,17 +1324,40 @@ export class CanvasClient {
   async executeScript(
     source: string,
   ): Promise<{ output: string[]; error: string | null }> {
-    const reply = await this.send({
+    const answer = this.hostObjects;
+    let reply = (await this.send({
       kind: "executeScript",
-      payload: { source },
-    });
+      payload: { source, ...(answer ? { hostObjects: true } : {}) },
+    } as MainToWorkerKind)) as { kind: string; payload?: unknown };
+    // Engine protocol 71 (ADR 323): a script that names a `plugin:`
+    // address suspends; answer its calls through the host's object
+    // registry until the worker replies with the result.
+    while (reply.kind === "requestHostObjects" && answer) {
+      const { session, calls } = reply.payload as { session: number; calls: HostObjectCallWire[] };
+      const answers = await answer(calls);
+      reply = (await this.send({
+        kind: "hostObjectsResult",
+        payload: { session, answers },
+      } as unknown as MainToWorkerKind)) as { kind: string; payload?: unknown };
+    }
     if (reply.kind === "scriptResult") {
-      return {
-        output: reply.payload.output,
-        error: reply.payload.error ?? null,
-      };
+      const p = reply.payload as { output: string[]; error?: string | null };
+      return { output: p.output, error: p.error ?? null };
     }
     throw new Error(`unexpected reply: ${reply.kind}`);
+  }
+
+  /**
+   * Object model (ADR 323) — install the answerer for a script's
+   * `plugin:` calls: the app passes the plugin SDK's `answerHostObjects`
+   * over its ONE shared object registry. With one installed,
+   * `executeScript` arms the engine's host bridge, so `paged.get/set/
+   * batch/query/schema` reach plugin objects and a script's core and
+   * plugin writes undo as one step. `null` uninstalls it (a `plugin:`
+   * address then throws `noHost` in the script).
+   */
+  setHostObjects(answer: HostObjectsAnswerer | null): void {
+    this.hostObjects = answer;
   }
 
   /**
