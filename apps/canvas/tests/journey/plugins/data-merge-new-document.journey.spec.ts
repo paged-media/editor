@@ -17,28 +17,22 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// Journey: InDesign Data Merge through the real editor (paged.data, campaign
-// Wave 5), checked against what InDesign 2025 itself produced.
+// Journey: Data Merge into a NEW document (InDesign's "Create Merged
+// Document"), through the documents door (D-26, editor ADR 219).
 //
-// The fixture is paged.data's `long-record-set` oracle
-// (conformance/indesign-merge in plugin-data, copied to
-// tests/e2e/harness/data-merge/): a US Letter template that InDesign wrote,
-// whose one text frame holds `<<name>>`, `SKU: <<sku>>`, `Stock: <<stock>>`,
-// a 57-record CSV in no column's sort order, and InDesign's own merge of it
-// (Multiple Records, columns first, 6 pt row and 12 pt column spacing):
-// 3 pages, 26 + 26 + 5 records.
+//   · TEMPLATE + DATA — open InDesign's long-record-set template, import its
+//     CSV.
+//   · MERGE INTO A NEW DOCUMENT — the merge row's "into a new document": the
+//     plugin copies the open document, the editor opens the copy (asking
+//     keep/discard first if the open document has unsaved edits; here it is
+//     discarded), the data session follows the switch and restores the
+//     copy's session, and the merge consumes the template page there.
+//   · RESULT — InDesign's pages and texts; the new document is named
+//     "<template> (merged)"; one undo (engine protocol 69: pages and content
+//     in one batch) takes the merge back to the template.
 //
-//   · OPEN the template (File ▸ Open, the .idml InDesign saved);
-//   · IMPORT the CSV in the Sources panel (DuckDB boots and sniffs it);
-//   · MERGE from the Bindings panel's Data Merge row (Multiple records,
-//     columns first, the template page consumed): 3 pages, and on every page
-//     exactly InDesign's record texts;
-//   · MERGE AGAIN: the first run is replaced, not added to (InDesign's texts
-//     again, on the same 3 pages);
-//   · UNDO: two steps take the re-merge back (the first merge is there), one
-//     more takes the first merge's content back, and the last one its pages:
-//     the template, as InDesign left it.
-//
+// Needs plugin-api/plugin-sdk 0.2.41 (host.documents); on an older contract
+// the checkbox is disabled and the journey skips, saying why.
 // Gate: under REQUIRE_REAL_DUCKDB=1 a DuckDB that does not boot FAILS the
 // journey (data-duckdb-gate.ts); otherwise it skips and says why.
 
@@ -51,7 +45,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { openPanel } from "../../fidelity/canvas-driver";
 import { Designer } from "../driver/designer";
 import { skipWithoutDuckDB } from "./data-duckdb-gate";
-import { ONE_STEP_MERGE } from "./data-engine";
+import { ENGINE_PROTOCOL } from "./data-engine";
 
 const HARNESS = pathResolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -149,7 +143,7 @@ async function importCsv(page: Page, designer: Designer): Promise<void> {
   }
 }
 
-async function merge(page: Page): Promise<void> {
+async function mergeToNewDocument(page: Page): Promise<void> {
   await openPanel(page, BINDINGS_PANEL);
   const row = page.locator("[data-data-merge]");
   await expect(row).toBeVisible({ timeout: 10_000 });
@@ -158,6 +152,7 @@ async function merge(page: Page): Promise<void> {
   await row.getByLabel(/row spacing/).fill("6");
   await row.getByLabel(/column spacing/).fill("12");
   await row.getByLabel(/keep template/).uncheck();
+  await row.locator("[data-data-merge-new-doc]").check();
   await row.locator("[data-data-merge-run]").click();
   await expect(page.locator("[data-data-merge-msg]")).toContainText(
     "merged 57 record(s) onto 3 page(s)",
@@ -165,8 +160,8 @@ async function merge(page: Page): Promise<void> {
   );
 }
 
-test.describe("journey · paged.data Data Merge", () => {
-  test("merge InDesign's long-record-set template: pages and texts match the InDesign recording @feat:data.lower.content @feat:data.plugin.bundle @level:happy", async ({
+test.describe("journey · paged.data merge into a new document", () => {
+  test("merge InDesign's long-record-set template into a new document @feat:data.lower.content @feat:data.plugin.bundle @level:happy", async ({
     page,
   }) => {
     test.setTimeout(240_000);
@@ -175,42 +170,37 @@ test.describe("journey · paged.data Data Merge", () => {
     await openTemplate(page, designer);
     await importCsv(page, designer);
 
-    // ── MERGE — InDesign's pages and texts ────────────────────────────────
-    await merge(page);
+    await openPanel(page, BINDINGS_PANEL);
+    const newDoc = page.locator("[data-data-merge-new-doc]");
+    await expect(newDoc).toBeVisible({ timeout: 10_000 });
+    test.skip(await newDoc.isDisabled(), "this editor's plugin contract has no documents door (D-26, plugin-api 0.2.41)");
+
+    // ── MERGE INTO A NEW DOCUMENT ─────────────────────────────────────────
+    const run = mergeToNewDocument(page);
+    // The open document may carry unsaved edits (the imported session):
+    // the editor asks; discard it, the merged document replaces it.
+    const ask = page.getByTestId("replace-document-dialog");
+    await Promise.race([
+      ask.waitFor({ state: "visible", timeout: 15_000 }).then(
+        () => page.getByTestId("replace-document-discard").click(),
+        () => undefined,
+      ),
+      run,
+    ]);
+    await run;
     const expected = RECORDED.merged.pages.map((p) =>
       p.text_frames.map((t) => normalise(t.text)).sort(),
     );
     await expect.poll(async () => pageTexts(page), { timeout: 30_000 }).toEqual(expected);
+    // The editor shows the name the plugin asked for: "<template> (merged)".
+    await expect(page.getByText(/\(merged\)/).first()).toBeVisible({ timeout: 10_000 });
 
-    // ── MERGE AGAIN — replaces the first run ──────────────────────────────
-    await merge(page);
-    await expect.poll(async () => pageTexts(page), { timeout: 30_000 }).toEqual(expected);
-
-    // ── UNDO — one step per merge on engine protocol 69 (pages and content
-    // in one batch), two before (pages, then content) ──────────────────────
-    // Undoing the re-merge brings the first merge's output back.
-    for (let i = 0; i < (ONE_STEP_MERGE ? 1 : 2); i++) {
+    // ── UNDO — the copy starts with an empty history; the merge undoes back
+    // to the template (one step on protocol 69, two before).
+    for (let i = 0; i < (ENGINE_PROTOCOL >= 69 ? 1 : 2); i++) {
       await designer.runCommand(CMD.undo);
       await page.waitForTimeout(250);
     }
-    await expect.poll(async () => pageTexts(page), { timeout: 30_000 }).toEqual(expected);
-    if (ONE_STEP_MERGE) {
-      // One more undo takes the first merge back whole: the template page.
-      await designer.runCommand(CMD.undo);
-      await expect
-        .poll(async () => (await pageTexts(page)).flat(), { timeout: 30_000 })
-        .toEqual(["<<name>>\nSKU: <<sku>>\nStock: <<stock>>"]);
-      return;
-    }
-    // One more takes the first merge's content back: its pages stay, empty.
-    await designer.runCommand(CMD.undo);
-    await expect
-      .poll(async () => (await pageTexts(page)).map((p) => p.length), { timeout: 30_000 })
-      .toEqual([0, 0, 0]);
-    // And the last one, the first merge's pages: the template is back — one
-    // page, its one frame, its placeholders (D-29: the editor used to bring
-    // the first merge's 57 frames back here).
-    await designer.runCommand(CMD.undo);
     await expect
       .poll(async () => (await pageTexts(page)).flat(), { timeout: 30_000 })
       .toEqual(["<<name>>\nSKU: <<sku>>\nStock: <<stock>>"]);
