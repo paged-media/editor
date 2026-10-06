@@ -70,13 +70,32 @@ when paged.data reports a property binding on the path
 | Object / Transform | opacity; W/H over `frameBounds`, rotation, scale X/Y, flip H (bespoke) | X/Y (the transformed footprint; written by the nudge's translation plan) |
 | Attributes | 5 | — |
 | Inspector | every row whose path has a schema row | rows without one (marked `data-schema="none"`) |
-| Table | 19 cell paths on `cell:<table>/<r>,<c>`, 3 table paths on `table:<id>` | row/column/span/header/footer (ops, not properties) |
-| Layers | visible, locked, printable, name on `layer:<id>`; delete; item → layer (`itemLayer`) | move, insert (ops) |
-| Paragraph / Character / Object Styles | the applied style (`ref`) | new / delete style (collection ops) |
+| Table | 22 cell paths on `cell:<table>/<r>,<c>` (fill tint and row / column span as schema fields), 3 table paths on `table:<id>` | row/column/header/footer (ops, not properties) |
+| Layers | visible, locked, printable, name on `layer:<id>` (row toggles and the Layer Options fields); delete; item → layer (`itemLayer`) | move, insert (ops) |
+| Paragraph / Character / Object Styles | the applied style (`ref`), built in each family's panel; "Style Options…" | new / delete style (collection ops) |
+| Cell / Table Styles | "Options…" per style | apply (from the Table panel) |
+| Style Options (new) | the paragraph, character, object, cell and table style definitions on `style:<family>/<id>`: every catalog row of the family, in InDesign's sections; next style and region / bullet / number styles as refs | based on (shown, not edited) |
+| Document Setup (new) | bleed, slug, defaults, colour management, proof setup, active condition set on `doc` | — |
+| Margins and Columns (new) | page bounds, margins, columns, master on `page:<id>`; "All pages" = one batch | — |
+| Swatch Options (new) | the colour as one write of `swatch.color`; name, type, tint, alpha, alternate, ink settings | — |
+| Text Variables, Numbering & Section Options, Guides (new) | every row of `textVariable:` / `section:` / `guide:` | create / delete (ops) |
+| Object Options (new) | corner options, arrowheads, dashes, gradient angle / length / feather, transforms, flip V, name, layer, object style, image link, labels on the selection | — |
+| Anchored Object | all ten anchored paths (bespoke controls in `ObjectFieldFrame`s) | — |
 | Align | the typed command `paged.align.objects` `{ kind, targets }` (one batch) | — |
 | Control, Properties | reuse the migrated compositions | — |
 
-Not migrated yet: Tabs (`paragraphTabStops` has no schema row) and the collection panels
+Each options panel lays out paths only: a field's type, range and widget come from the target's
+schema row, and rows the schema adds that no section names appear under "More" (for a style, only
+rows whose `appliesTo` names the family). "Bind to data…" on a document-level object (a style, a
+swatch, a page, `doc`, …) binds the address itself, whose IDML Self id round-trips; page items
+keep the name or `x-paged:oid` target.
+
+Engine gaps the specs record as expected failures (protocol 71 local build): undo does not
+restore colour settings written through `doc.renderingIntent` (`setColorSettings`), and
+`cell.cellFillTint` has no read arm in core's `Get`.
+
+Not migrated yet: Tabs (`paragraphTabStops` has no schema row), the paragraph rules (whole-struct
+`paragraphRule`), the story's page-growth rows (`flowGrow*`) and the collection panels
 (pages, links, hyperlinks, conditions, colour groups, master pages, …), whose rows are
 documents' collections rather than properties. Plugin panels migrate in their own repos.
 

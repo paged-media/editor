@@ -144,7 +144,7 @@ test.describe("ADR 323 — structure panels over host.objects", () => {
     await page.mouse.click(pt.x, pt.y);
     await openPanel(page, "paged.table");
     await expect(page.locator('[data-table-panel="ready"]')).toBeVisible();
-    const address = `cell:${encodeURIComponent(cell!.tableId)}/${cell!.row},${cell!.col}`;
+    const address = `cell:${cell!.tableId}/${cell!.row},${cell!.col}`;
     const field = fieldOf(page.locator('[data-table-panel="ready"]'), "cellInsetTop");
     await expect(field).toHaveAttribute("data-binding-state", "value");
     const before = await objGet(page, address, "cellInsetTop");
@@ -167,7 +167,7 @@ test.describe("ADR 323 — structure panels over host.objects", () => {
       return (await c.client.layers()).find((l) => l.name === "OM")?.selfId ?? null;
     });
     expect(id).not.toBeNull();
-    const address = `layer:${encodeURIComponent(id!)}`;
+    const address = `layer:${id!}`;
     expect(await objGet(page, address, "layerVisible")).toBe(true);
     await page.locator(`[data-list-row="${id}"] [data-list-action="paged.layers.toggleVisible"]`).click();
     await expect.poll(() => objGet(page, address, "layerVisible")).toBe(false);
