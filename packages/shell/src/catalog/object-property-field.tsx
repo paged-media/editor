@@ -112,6 +112,12 @@ export function useFieldTargets(
     return elementSelection.map((id) => ({ address: model.addressOf(id), element: id }));
   }, [scopedToKind, model, elementSelection]);
   const hostsKey = hosts.map((h) => h.address).join("\n");
+  // Every selected object as a possible host (for `{ bind }` addresses).
+  const selectionHosts = useMemo(
+    (): { address: string; element: ElementId }[] =>
+      model ? elementSelection.map((id) => ({ address: model.addressOf(id), element: id })) : [],
+    [model, elementSelection],
+  );
 
   // Query-resolved forms: a selector, or the selection scoped to a kind.
   const [queried, setQueried] = useState<{ list: string[]; hostOf: Map<string, number> }>({
@@ -158,7 +164,17 @@ export function useFieldTargets(
     if (typeof address === "object" && "addresses" in address) {
       return { targets: [...address.addresses], bindScope: undefined };
     }
-    if (bindName) return { targets: bound, bindScope: undefined };
+    if (bindName) {
+      // A published address (the picked layer): durable through the
+      // selected object that hosts it, when one does.
+      return {
+        targets: bound,
+        bindScope: (a: string): BindScope | null => {
+          const m = /^(plugin:[^/]+\/[^/]+)\//.exec(a);
+          return m && selectionHosts.length ? { kind: m[1], hostCandidates: selectionHosts } : null;
+        },
+      };
+    }
     if (isSelector) {
       const selector = address as string;
       return {
@@ -176,7 +192,7 @@ export function useFieldTargets(
       },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressKey, kind, bindName, bound, isSelector, queried, hosts]);
+  }, [addressKey, kind, bindName, bound, isSelector, queried, hosts, selectionHosts]);
 }
 
 export interface ObjectPropertyFieldProps {

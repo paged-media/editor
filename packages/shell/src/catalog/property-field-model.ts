@@ -550,6 +550,10 @@ export function checkArgs(type: ShellValueType, value: unknown, at = "args"): st
 export interface BindScope {
   selector?: string;
   host?: { address: string; element: unknown };
+  /** Hosts that MAY hold the object (the selection, for a field whose
+   *  address came from a published binding): the first whose
+   *  `<host> > kind` selects it is used as `host`. */
+  hostCandidates?: readonly { address: string; element: unknown }[];
   kind?: string;
 }
 
@@ -586,8 +590,18 @@ export async function scopedBindTarget(
     const hit = await narrowTo(objects, scope.selector, address);
     if (hit) return hit;
   }
-  if (scope.host && scope.kind) {
-    const host = await hostTarget(scope.host);
+  let chosen = scope.host;
+  if (!chosen && scope.kind && scope.hostCandidates) {
+    for (const h of scope.hostCandidates) {
+      const hits = await objects.query(`${h.address} > ${scope.kind}`).catch(() => [] as string[]);
+      if (hits.includes(address)) {
+        chosen = h;
+        break;
+      }
+    }
+  }
+  if (chosen && scope.kind) {
+    const host = await hostTarget(chosen);
     const selector = `${host.selector} > ${scope.kind}`;
     // A dry run (no oid written yet) cannot resolve; the shape is still
     // the one the binding will store.

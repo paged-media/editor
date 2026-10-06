@@ -42,7 +42,7 @@
 // Reverse path direction, then canary.14's Knife, Scissors (any point),
 // Reflect, Transform again, Create outlines and the Dashes…/Reflect…
 // sections):
-//   21 tools · 11 panels · 107 commands · 1 importer · 1 exporter ·
+//   21 tools · 12 panels · 107 commands · 1 importer · 1 exporter ·
 //   7 partTypes · 1 editContext  =  149 contributions.
 //
 // THE ID LISTS BELOW ARE TRANSCRIBED FROM THAT MANIFEST ON PURPOSE.
@@ -98,6 +98,7 @@ const PANELS = [
   "media.paged.draw.panel.blend",
   "media.paged.draw.panel.objectsOnPath",
   "media.paged.draw.panel.pathOptions",
+  "media.paged.draw.panel.properties",
 ] as const;
 
 const COMMANDS = [
@@ -275,6 +276,8 @@ const PANEL_MARKER: Record<string, string> = {
   "media.paged.draw.panel.blend": "[data-draw-blend-panel]",
   "media.paged.draw.panel.objectsOnPath": "[data-draw-onpath-panel]",
   "media.paged.draw.panel.pathOptions": "[data-draw-pathopts-panel]",
+  // ADR 323 — object properties as host PropertyFields (a schema panel).
+  "media.paged.draw.panel.properties": '[data-schema-panel="media.paged.draw.panel.properties"]',
 };
 
 // ── helpers ─────────────────────────────────────────────────────────
@@ -542,7 +545,7 @@ test.describe("plugin surface · paged.draw", () => {
 
     // And the totals the campaign quotes, so a silent shrink is loud.
     expect(TOOLS).toHaveLength(21);
-    expect(PANELS).toHaveLength(11);
+    expect(PANELS).toHaveLength(12);
     expect(COMMANDS).toHaveLength(107);
   });
 
@@ -591,7 +594,7 @@ test.describe("plugin surface · paged.draw", () => {
 
   // ── 3. the panels ─────────────────────────────────────────────────
 
-  test("all 11 panels open as dock tabs and mount their body @feat:plugin-platform.panel-registration @feat:plugin-platform.bundle-lifecycle @level:happy", async ({
+  test("all 12 panels open as dock tabs and mount their body @feat:plugin-platform.panel-registration @feat:plugin-platform.bundle-lifecycle @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
