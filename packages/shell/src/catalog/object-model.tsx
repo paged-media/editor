@@ -63,8 +63,10 @@ import type {
   ShellObjectModelHost,
   ShellObjectWriteResult,
   ShellPropertySchema,
+  ShellValueEdit,
 } from "./object-model-types";
 import {
+  applyValueEdit,
   probeBound,
   reduceValues,
   setOps,
@@ -106,6 +108,11 @@ export interface ObjectProperty {
   elementOf(address: string): ElementId | null;
   /** `null` = nothing to write to (no target, read-only, refused). */
   commit: ((value: unknown) => Promise<ShellObjectWriteResult>) | null;
+  /** §12.8 — one list / struct edit (add, remove, move, item / field set)
+   *  over every target as ONE batch = one undo step: through the host's
+   *  `editValue` (plugin-sdk) when it has one, else applied here to the
+   *  shown value and written whole. `null` exactly when `commit` is. */
+  edit: ((e: ShellValueEdit) => Promise<ShellObjectWriteResult>) | null;
   /** The last refused commit, cleared by the next successful one. */
   error: string | null;
   /** A paged.data binding targets this path on (one of) the targets —
@@ -289,6 +296,32 @@ export function useObjectProperty(req: ObjectPropertyRequest): ObjectProperty {
     };
   }, [claimed, providerHost, wire, model, addresses, readOnly, req.path, scope]);
 
+  const edit = useMemo(() => {
+    if (!commit || !row) return null;
+    const type = row.type;
+    return async (e: ShellValueEdit): Promise<ShellObjectWriteResult> => {
+      if (!claimed && model?.editValue) {
+        const r = await model.editValue(addresses, req.path, e, { label: req.path });
+        setError(r.applied ? null : `${r.code ?? "failed"}: ${r.reason ?? "refused"}`);
+        return r;
+      }
+      // No editValue door (or an edit-context provider answers the
+      // path): apply to the one shown value and write it whole.
+      if (state.state !== "value" && state.state !== "absent") {
+        const reason = state.state === "mixed" ? "the targets differ (mixed)" : "nothing to edit";
+        setError(`invalidValue: ${reason}`);
+        return { applied: false, undoSteps: 0, code: "invalidValue", reason };
+      }
+      const current = state.state === "value" ? state.value : (row.default ?? null);
+      const next = applyValueEdit(current, e, type);
+      if (!next.ok) {
+        setError(`invalidValue: ${next.reason}`);
+        return { applied: false, undoSteps: 0, code: "invalidValue", reason: next.reason };
+      }
+      return commit(next.value);
+    };
+  }, [commit, row, claimed, model, addresses, req.path, state]);
+
   const shown: FieldState = claimed
     ? claimed.read.kind === "value"
       ? { state: "value", value: (claimed.read.value as { value?: unknown }).value ?? null }
@@ -303,6 +336,7 @@ export function useObjectProperty(req: ObjectPropertyRequest): ObjectProperty {
     addresses,
     elementOf,
     commit,
+    edit,
     error,
     bound,
     provider: claimed ? claimed.provider : null,

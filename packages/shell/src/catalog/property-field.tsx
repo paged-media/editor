@@ -54,17 +54,25 @@ import {
   ToggleSwitchLeaf,
 } from "./leaves";
 import { Badges, ObjectFieldFrame, useObjectField, type BindScopeOf } from "./object-field";
-import type { ShellPropertySchema, ShellValueType } from "./object-model-types";
+import type { ShellObjectWriteResult, ShellPropertySchema, ShellValueEdit, ShellValueType } from "./object-model-types";
 import {
   formatValue,
+  itemTitle,
+  listAffordances,
+  listItems,
   optionsFor,
   parseInput,
+  subFieldsOf,
   widgetFor,
   type FieldPresentation,
   type FieldState,
+  type ListPresentation,
+  type SubFieldPresentation,
 } from "./property-field-model";
 
 export interface PropertyFieldProps extends FieldPresentation {
+  // `fields` (a struct row) and `items` (a list row) come with
+  // FieldPresentation (§12.8).
   /** The ADR 132 path on the target's address kind. */
   path: string;
   label?: string;
@@ -207,6 +215,247 @@ function TypedTextField({
   );
 }
 
+// ------------------------------------------- list / struct values (§12.8)
+
+/** One value of a known type as its widget, outside a schema row: a
+ *  struct's field, a list's scalar item. Commits the raw value. */
+function ValueControl({
+  type,
+  presentation,
+  value,
+  onCommit,
+  label,
+  chromeProps,
+}: {
+  type: ShellValueType;
+  presentation: FieldPresentation;
+  value: unknown;
+  onCommit: ((value: unknown) => void) | null;
+  label?: string;
+  chromeProps?: Record<string, unknown>;
+}) {
+  const widget = widgetFor(type, presentation);
+  const chrome: Record<string, unknown> = {
+    ...(chromeProps ?? {}),
+    ...(label ? { label, labelPosition: "left" } : {}),
+  };
+  if (widget === "number" && type.kind === "number" && type.unit && !chrome.suffix) {
+    const suffix = UNIT_SUFFIX[type.unit];
+    if (suffix) chrome.suffix = suffix;
+  }
+  if (widget === "select" || widget === "segments") chrome.options = optionsFor(type, presentation);
+  if (widget === "collection") {
+    chrome.collectionName = presentation.collection;
+    chrome.valueType = type.kind === "color" ? "colorRef" : "text";
+  }
+  const leafProps: LeafProps = {
+    value: leafValue(type, widget, value),
+    onCommit: onCommit ? (v: Value) => onCommit((v as { value?: unknown }).value ?? null) : undefined,
+    props: chrome,
+  };
+  switch (widget) {
+    case "length":
+      return <LengthLeaf {...leafProps} />;
+    case "number":
+      return <NumericScrubLeaf {...leafProps} />;
+    case "color":
+      return <ColorSwatchLeaf {...leafProps} />;
+    case "collection":
+      return <CollectionSelectLeaf {...leafProps} />;
+    case "toggle":
+      return <ToggleSwitchLeaf {...leafProps} />;
+    case "bounds":
+      return <BoundsLeaf {...leafProps} />;
+    case "select":
+      return <SelectLeaf {...leafProps} />;
+    case "segments":
+      return <ToggleGroupLeaf {...leafProps} />;
+    default:
+      return (
+        <LabelledRow label={label} adornment={null}>
+          <TypedTextField
+            type={type}
+            row={null}
+            state={value === undefined ? { state: "none" } : { state: "value", value }}
+            onCommit={onCommit}
+            disabled={!onCommit}
+          />
+        </LabelledRow>
+      );
+  }
+}
+
+type Edit = ((e: ShellValueEdit) => Promise<ShellObjectWriteResult>) | null;
+
+/** The fields of ONE struct value, each committing a field edit. */
+function StructFields({
+  type,
+  value,
+  fields,
+  onField,
+}: {
+  type: ShellValueType;
+  value: unknown;
+  fields?: readonly (string | SubFieldPresentation)[];
+  onField: ((field: string, v: unknown) => void) | null;
+}) {
+  const rec = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  return (
+    <div className="flex flex-col gap-1">
+      {subFieldsOf(type, fields, value).map((f) => (
+        <div key={f.field} data-struct-field={f.field}>
+          <ValueControl
+            type={f.type}
+            presentation={f.presentation}
+            value={rec[f.field] ?? null}
+            label={f.label}
+            chromeProps={f.props}
+            onCommit={onField ? (v) => onField(f.field, v) : null}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const iconButton =
+  "h-[22px] min-w-[22px] rounded-[4px] border border-input px-1 text-[11px] leading-none disabled:opacity-40";
+
+/** A LIST value: its items (struct items as their fields, scalars as one
+ *  widget), with add / remove / reorder. Every change is ONE edit = one
+ *  batch = one undo step. */
+function ItemsField({
+  path,
+  type,
+  state,
+  edit,
+  items,
+  label,
+  adornment,
+}: {
+  path: string;
+  type: ShellValueType;
+  state: FieldState;
+  edit: Edit;
+  items?: ListPresentation;
+  label?: string;
+  adornment: React.ReactNode;
+}) {
+  const of: ShellValueType = type.kind === "list" ? type.of : { kind: "text" };
+  const value = state.state === "value" ? state.value : state.state === "absent" ? [] : null;
+  const shown = value === null ? [] : listItems(value, items);
+  const length = Array.isArray(value) ? value.length : 0;
+  const can = listAffordances(type, length, edit !== null && value !== null, items);
+  const run = (e: ShellValueEdit) => {
+    if (edit) void edit(e);
+  };
+  return (
+    <div
+      className="flex flex-col gap-1"
+      data-property-list={path}
+      data-list-length={value === null ? undefined : length}
+      data-mixed={state.state === "mixed" || state.state === "none" ? "" : undefined}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs" style={{ color: "var(--pg-muted-fg)" }}>
+          {label}
+          {adornment}
+        </span>
+        {can.add ? (
+          <button
+            type="button"
+            className={iconButton}
+            data-list-add=""
+            title="Add an item"
+            onClick={() => run({ edit: "add", ...(items?.newItem !== undefined ? { item: structuredClone(items.newItem) } : {}) })}
+          >
+            +
+          </button>
+        ) : null}
+      </div>
+      {value === null ? (
+        <span className="text-xs" data-list-empty="">
+          —
+        </span>
+      ) : shown.length === 0 ? (
+        <span className="text-xs" style={{ color: "var(--pg-muted-fg)" }} data-list-empty="">
+          No items
+        </span>
+      ) : (
+        shown.map(({ index, item }, pos) => {
+          const above = pos > 0 ? shown[pos - 1]!.index : null;
+          const below = pos < shown.length - 1 ? shown[pos + 1]!.index : null;
+          return (
+            <div
+              key={index}
+              data-list-item={index}
+              className="flex flex-col gap-1 rounded-[6px] border border-input p-1"
+            >
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[11px] font-medium" data-list-item-title="">
+                  {itemTitle(item, index, items)}
+                </span>
+                <span className="flex gap-1">
+                  {can.reorder ? (
+                    <>
+                      <button
+                        type="button"
+                        className={iconButton}
+                        data-list-move-up=""
+                        title="Move up"
+                        disabled={above === null}
+                        onClick={() => above !== null && run({ edit: "move", from: index, to: above })}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className={iconButton}
+                        data-list-move-down=""
+                        title="Move down"
+                        disabled={below === null}
+                        onClick={() => below !== null && run({ edit: "move", from: index, to: below })}
+                      >
+                        ↓
+                      </button>
+                    </>
+                  ) : null}
+                  {can.remove ? (
+                    <button
+                      type="button"
+                      className={iconButton}
+                      data-list-remove=""
+                      title="Remove"
+                      onClick={() => run({ edit: "remove", index })}
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </span>
+              </div>
+              {of.kind === "struct" ? (
+                <StructFields
+                  type={of}
+                  value={item}
+                  fields={items?.fields}
+                  onField={edit ? (field, v) => run({ edit: "itemSet", index, field, value: v }) : null}
+                />
+              ) : (
+                <ValueControl
+                  type={of}
+                  presentation={{}}
+                  value={item}
+                  onCommit={edit ? (v) => run({ edit: "itemSet", index, value: v }) : null}
+                />
+              )}
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 // ------------------------------------------------------- the field
 
 export function PropertyField(props: PropertyFieldProps) {
@@ -287,6 +536,40 @@ export function PropertyField(props: PropertyFieldProps) {
     case "segments":
       control = <ToggleGroupLeaf {...leafProps} />;
       break;
+    case "items":
+      control = (
+        <ItemsField
+          path={path}
+          type={type}
+          state={state}
+          edit={write ? field.edit : null}
+          items={props.items}
+          label={label}
+          adornment={adornment}
+        />
+      );
+      break;
+    case "struct":
+      control = (
+        <LabelledRow label={label} adornment={adornment}>
+          <div
+            data-property-struct={path}
+            data-mixed={state.state === "mixed" || state.state === "none" ? "" : undefined}
+          >
+            <StructFields
+              type={type}
+              value={state.state === "value" ? state.value : null}
+              fields={props.fields}
+              onField={
+                write && field.edit && state.state !== "mixed"
+                  ? (f, v) => void field.edit!({ edit: "fieldSet", field: f, value: v })
+                  : null
+              }
+            />
+          </div>
+        </LabelledRow>
+      );
+      break;
     default:
       control = (
         <LabelledRow label={label} adornment={adornment}>
@@ -350,6 +633,8 @@ export function PropertyFieldLeaf({ props }: LeafProps) {
     style,
     bindable,
     collectionName,
+    fields,
+    items,
     ...chrome
   } = props as Record<string, unknown>;
   if (typeof path !== "string") {
@@ -373,6 +658,8 @@ export function PropertyFieldLeaf({ props }: LeafProps) {
       }
       collection={typeof collectionName === "string" ? collectionName : undefined}
       bindable={typeof bindable === "boolean" ? bindable : undefined}
+      fields={Array.isArray(fields) ? (fields as FieldPresentation["fields"]) : undefined}
+      items={items && typeof items === "object" ? (items as ListPresentation) : undefined}
       chrome={chrome}
     />
   );

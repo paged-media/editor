@@ -72,6 +72,70 @@ test("a text row with presentation options renders as a select; enum members win
   );
 });
 
+// ───────────────────────────────────────────── list / struct values (§12.8)
+
+const FILL = {
+  kind: "struct",
+  fields: {
+    color: { kind: "color" },
+    tint: { kind: "number", unit: "percent" },
+    opacity: { kind: "number", unit: "percent" },
+    blendMode: { kind: "enum", members: ["Normal", "Multiply"] },
+  },
+};
+const FILLS = { kind: "list", of: FILL, maxItems: 3 };
+
+test("a list of records is an item editor, a struct with fields shows its fields", () => {
+  assert.equal(M.widgetFor(FILLS), "items");
+  assert.equal(M.widgetFor({ kind: "list", of: { kind: "length" } }), "list", "scalars stay typed text");
+  assert.equal(M.widgetFor({ kind: "list", of: { kind: "length" } }, { items: {} }), "items", "unless presented as items");
+  assert.equal(M.widgetFor(FILL), "struct");
+  assert.equal(M.widgetFor({ kind: "struct", fields: {} }), "json");
+  assert.equal(M.widgetFor({ kind: "struct", fields: {}, open: true }, { fields: ["stopColor"] }), "struct");
+});
+
+test("list edits: add (default item), remove, move, itemSet of a field — validated, never coerced", () => {
+  const one = [{ color: "Color/Red", tint: 100, opacity: 100, blendMode: "Normal" }];
+  const added = M.applyValueEdit(one, { edit: "add" }, FILLS);
+  assert.equal(added.ok, true);
+  assert.deepEqual(added.value[1], { color: "Color/Black", tint: 0, opacity: 0, blendMode: "Normal" });
+  const moved = M.applyValueEdit(added.value, { edit: "move", from: 1, to: 0 }, FILLS);
+  assert.equal(moved.value[0].color, "Color/Black");
+  const set = M.applyValueEdit(moved.value, { edit: "itemSet", index: 1, field: "tint", value: 40 }, FILLS);
+  assert.equal(set.value[1].tint, 40);
+  assert.equal(set.value[1].color, "Color/Red", "the other fields stay");
+  assert.equal(M.applyValueEdit(one, { edit: "itemSet", index: 0, field: "tint", value: "40" }, FILLS).ok, false);
+  assert.equal(M.applyValueEdit(one, { edit: "itemSet", index: 0, field: "hue", value: 1 }, FILLS).ok, false);
+  assert.equal(M.applyValueEdit(one, { edit: "remove", index: 3 }, FILLS).ok, false);
+  const removed = M.applyValueEdit(one, { edit: "remove", index: 0 }, FILLS);
+  assert.deepEqual(removed.value, []);
+  const full = [one[0], one[0], one[0]];
+  assert.equal(M.applyValueEdit(full, { edit: "add" }, FILLS).ok, false, "maxItems");
+  assert.deepEqual(M.listAffordances(FILLS, 3, true), { add: false, remove: true, reorder: true });
+  assert.deepEqual(M.listAffordances(FILLS, 1, true, { remove: false }), { add: true, remove: false, reorder: false });
+  assert.deepEqual(M.listAffordances(FILLS, 2, false), { add: false, remove: false, reorder: false });
+});
+
+test("a stack lists top-first when reversed, but edits still name value indices", () => {
+  const v = ["a", "b", "c"];
+  assert.deepEqual(M.listItems(v).map((x) => x.index), [0, 1, 2]);
+  assert.deepEqual(M.listItems(v, { reversed: true }).map((x) => [x.index, x.item]), [[2, "c"], [1, "b"], [0, "a"]]);
+  assert.equal(M.itemTitle({ name: "Shadow" }, 0, { itemLabel: "name" }), "Shadow");
+  assert.equal(M.itemTitle({}, 1, { itemLabel: "name" }), "#2");
+});
+
+test("struct sub-fields follow the presentation; an open struct types its fields off the value", () => {
+  assert.deepEqual(M.subFieldsOf(FILL, undefined).map((f) => f.field), ["color", "tint", "opacity", "blendMode"]);
+  const two = M.subFieldsOf(FILL, ["blendMode", { field: "tint", label: "Tint" }]);
+  assert.deepEqual(two.map((f) => [f.field, f.label, f.type.kind]), [["blendMode", "blendMode", "enum"], ["tint", "Tint", "number"]]);
+  // A gradient stop as the catalog may describe it: an open struct.
+  const stop = { kind: "struct", fields: {}, open: true };
+  const inferred = M.subFieldsOf(stop, ["stopColor", "locationPct"], { stopColor: "Color/Red", locationPct: 50 });
+  assert.deepEqual(inferred.map((f) => f.type), [{ kind: "color" }, { kind: "number", unit: "percent" }]);
+  const fs = M.applyValueEdit({ x: 1 }, { edit: "fieldSet", field: "x", value: 2 }, { kind: "struct", fields: { x: { kind: "number" } } });
+  assert.deepEqual(fs, { ok: true, value: { x: 2 } });
+});
+
 // ───────────────────────────────────────────── parse + format
 
 test("parseInput coerces text against the type, never silently", () => {
@@ -492,10 +556,12 @@ test("cell / table schema rows route through the app's table seam", async () => 
   assert.ok((await editorObjectModel.objects.schema("table:t1")).some((r) => r.path === "appliedTableStyle"));
 });
 
-test("layer addresses escape a self id with a slash", async () => {
+test("layer addresses are core's grammar: the self id runs to the end, unescaped (ADR 131)", async () => {
   const { layerAddress } = await import(APP);
   assert.equal(layerAddress("u0"), "layer:u0");
-  assert.equal(layerAddress("Layer/u0"), "layer:Layer%2Fu0");
+  // `<rest>` runs to the end of the address, so a self id with a slash
+  // needs no escaping (protocol 71); `%` escapes only before a delimiter.
+  assert.equal(layerAddress("Layer/u0"), "layer:Layer/u0");
 });
 
 const ALIGN = await import(

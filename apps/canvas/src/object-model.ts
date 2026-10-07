@@ -40,6 +40,7 @@ import {
   CORE_PATHS,
   createCoreObjects,
   createObjectRegistry,
+  editValue,
   formatAddress,
   fromElementId,
   parseAddress,
@@ -208,6 +209,10 @@ export const editorObjectModel: ShellObjectModelHost = {
   isInferred: (row: ShellPropertySchema) =>
     !(row.addressKind ?? "").startsWith("plugin:") && coreRow(row.path)?.inferred === true,
   wireOf: (path) => wireOfPath(path),
+  // §12.8 — a list / struct edit lowered by the SDK (read, apply,
+  // validate, `set`) and committed as ONE batch = one undo step.
+  editValue: (addresses, path, edit, opts) =>
+    editValue(objectRegistry, addresses, path, edit as never, opts) as never,
   elementIdOf: (address) => {
     const a = parseAddress(address);
     if (!a) return null;

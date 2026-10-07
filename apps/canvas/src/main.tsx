@@ -1444,6 +1444,11 @@ function PluginBundles() {
     const sharedHostOptions = {
       shell,
       widgets,
+      // §12.8 — the PropertyField renders LIST and STRUCT values (`items` /
+      // `fields`), editing through plugin-sdk `editValue`: flips
+      // supports("widgets.propertyField.values@1") true. Rides inert on a
+      // plugin-sdk that does not know the option.
+      propertyFieldValues: true,
       toolSettings,
       willSave,
       assetSource,

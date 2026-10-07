@@ -70,6 +70,7 @@
 
 import { expect, test, type Page } from "@playwright/test";
 import { fitFirstPage } from "../fidelity/canvas-driver";
+import { readFileSync } from "node:fs";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -89,6 +90,7 @@ const DATA_PANELS = [
   "media.paged.data.panel.sources",
   "media.paged.data.panel.bindings",
   "media.paged.data.panel.dataset",
+  "media.paged.data.panel.query",
 ] as const;
 
 const DATA_COMMANDS = [
@@ -96,9 +98,27 @@ const DATA_COMMANDS = [
   "media.paged.data.command.defineBinding",
   "media.paged.data.command.resolveBindings",
   "media.paged.data.command.lowerBinding",
+  "media.paged.data.command.mergeRecords",
   "media.paged.data.command.openDataset",
   "media.paged.data.command.captureDataSet",
   "media.paged.data.command.applyDataSet",
+  "media.paged.data.command.editQuery",
+  "media.paged.data.bindProperty",
+] as const;
+
+// File ▸ Import / drop for data files. JSON and Parquet only: the
+// spreadsheet types (.csv, .xlsx) stay with paged.sheet's importers.
+const DATA_IMPORTER = "media.paged.data.importer.table";
+
+// The manifest's part types: the session spec plus one source format each.
+// A source over 64 KiB is stored as a content-addressed part
+// `data/<hash>.<format>`; smaller ones stay inline in the session.
+const DATA_PART_TYPES = [
+  { type: "session", role: "spec", format: "json" },
+  { type: "data", role: "source", format: "csv" },
+  { type: "data-json", role: "source", format: "json" },
+  { type: "data-parquet", role: "source", format: "parquet" },
+  { type: "data-xlsx", role: "source", format: "xlsx" },
 ] as const;
 
 const DOC_PANEL = "media.paged.doc.panel.outline";
@@ -297,12 +317,12 @@ test.describe("plugin surface · paged.data", () => {
       };
     });
 
-    // PANELS — three, all registered.
+    // PANELS — four, all registered.
     for (const id of DATA_PANELS) {
       expect(live.panels, `${id} is registered`).toContain(id);
     }
 
-    // COMMANDS — seven, all registered, all filed under "Data" so the
+    // COMMANDS — ten, all registered, all filed under "Data" so the
     // palette groups them together (contrast paged.doc, below).
     for (const id of DATA_COMMANDS) {
       const cmd = live.commands.find((c) => c.id === id);
@@ -329,20 +349,50 @@ test.describe("plugin surface · paged.data", () => {
       "paged.data registers no objectType (see the D3 defect below)",
     ).not.toContain("dataBinding");
 
-    // paged.data injects nothing else: no tools, no importers, no
-    // exporters, no menu items. Its ONLY chrome presence is hardcoded by
-    // the HOST (cockpit-modes.ts) — see the host-chrome describe below.
+    // paged.data's I/O: ONE importer (data files through File ▸ Import and
+    // drop), no exporters, and its own menu entries. The importer claims
+    // JSON and Parquet by extension and MIME, and leaves .csv and .xlsx to
+    // paged.sheet, so the Open door's resolution does not change for them.
     const dataIo = await page.evaluate(() => {
       const r = (globalThis as unknown as CanvasProbe).__canvas.registries;
       return {
-        importers: r.importers.list().map((i) => i.id),
+        importers: r.importers.list().map((i) => ({
+          id: i.id,
+          extensions: i.extensions ?? [],
+          mimeTypes: i.mimeTypes ?? [],
+        })),
+        resolved: {
+          json: r.importers.resolve("catalog.json")?.id ?? null,
+          ndjson: r.importers.resolve("events.ndjson")?.id ?? null,
+          jsonl: r.importers.resolve("events.jsonl")?.id ?? null,
+          parquet: r.importers.resolve("PRODUCTS.PARQUET")?.id ?? null,
+          parquetMime: r.importers.resolve("no-extension", "application/vnd.apache.parquet")?.id ?? null,
+          csv: r.importers.resolve("table.csv")?.id ?? null,
+          xlsx: r.importers.resolve("book.xlsx")?.id ?? null,
+        },
         exporters: r.exporters.list().map((e) => e.id),
         menus: r.menus.list().map((m) => m.command),
       };
     });
-    expect(dataIo.importers.filter((i) => i.startsWith("media.paged.data"))).toEqual(
-      [],
+    expect(
+      dataIo.importers.filter((i) => i.id.startsWith("media.paged.data")).map((i) => i.id),
+    ).toEqual([DATA_IMPORTER]);
+    const tableImporter = dataIo.importers.find((i) => i.id === DATA_IMPORTER)!;
+    expect(tableImporter.extensions).toEqual(
+      expect.arrayContaining([".json", ".ndjson", ".jsonl", ".parquet"]),
     );
+    expect(tableImporter.extensions).not.toContain(".csv");
+    expect(tableImporter.extensions).not.toContain(".xlsx");
+    expect(tableImporter.mimeTypes).toEqual(
+      expect.arrayContaining(["application/json", "application/vnd.apache.parquet"]),
+    );
+    expect(dataIo.resolved.json).toBe(DATA_IMPORTER);
+    expect(dataIo.resolved.ndjson).toBe(DATA_IMPORTER);
+    expect(dataIo.resolved.jsonl).toBe(DATA_IMPORTER);
+    expect(dataIo.resolved.parquet).toBe(DATA_IMPORTER);
+    expect(dataIo.resolved.parquetMime).toBe(DATA_IMPORTER);
+    expect(dataIo.resolved.csv, ".csv stays with paged.sheet").not.toBe(DATA_IMPORTER);
+    expect(dataIo.resolved.xlsx, ".xlsx stays with paged.sheet").not.toBe(DATA_IMPORTER);
     expect(dataIo.exporters.filter((e) => e.startsWith("media.paged.data"))).toEqual(
       [],
     );
@@ -371,7 +421,7 @@ test.describe("plugin surface · paged.data", () => {
     ).toBe(1);
   });
 
-  test("all three panels open and render their real body @feat:data.plugin.bundle @feat:editor-shell.panel-rail @level:happy", async ({
+  test("all four panels open and render their real body @feat:data.plugin.bundle @feat:editor-shell.panel-rail @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -402,6 +452,11 @@ test.describe("plugin surface · paged.data", () => {
       [
         "media.paged.data.panel.dataset",
         (p) => p.getByText(/No queries yet/i).first(),
+      ],
+      [
+        // The query panel: the SQL field the builders write into.
+        "media.paged.data.panel.query",
+        (p) => p.locator("[data-data-query-sql]").first(),
       ],
     ];
 
@@ -466,7 +521,7 @@ test.describe("plugin surface · paged.data", () => {
     await (await realChooser).setFiles([]); // cancel — no ingest here
   });
 
-  test("all seven commands are invocable through the registry @feat:data.plugin.bundle @level:happy", async ({
+  test("all ten commands are invocable through the registry @feat:data.plugin.bundle @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -522,12 +577,46 @@ test.describe("plugin surface · paged.data", () => {
       ["media.paged.data.command.defineBinding", "media.paged.data.panel.bindings"],
       ["media.paged.data.command.openDataset", "media.paged.data.panel.dataset"],
       ["media.paged.data.command.importData", "media.paged.data.panel.sources"],
+      ["media.paged.data.command.editQuery", "media.paged.data.panel.query"],
     ] as const) {
       await invoke(page, cmd);
       await expect
         .poll(async () => (await panelState(page)).active, { timeout: 10_000 })
         .toBe(panel);
     }
+  });
+
+  test("the resolved manifest declares the session part and one source part type per format @feat:data.plugin.bundle @feat:data.source.adapters @level:happy", async ({
+    page,
+  }) => {
+    // The manifest THE APP RESOLVES, not the plugin repo's copy.
+    const manifest = JSON.parse(
+      readFileSync(
+        pathResolve(HERE, "../../node_modules/@paged-media/data/manifest.json"),
+        "utf8",
+      ),
+    ) as {
+      contributes: {
+        partTypes: Array<{ type: string; role: string; format: string }>;
+        importers: string[];
+      };
+    };
+    expect(
+      manifest.contributes.partTypes.map(({ type, role, format }) => ({ type, role, format })),
+    ).toEqual([...DATA_PART_TYPES]);
+    expect(manifest.contributes.importers).toEqual([DATA_IMPORTER]);
+
+    // Like every bundle's part types (see paged.doc and paged.sheet), these
+    // are declarations: the shell has no partType registry, and the bundle
+    // writes its parts through `host.parts` itself.
+    const designer = new Designer(page);
+    await designer.open();
+    const registryNames = await page.evaluate(() =>
+      Object.keys(
+        (globalThis as unknown as { __canvas: { registries: object } }).__canvas.registries,
+      ),
+    );
+    expect(registryNames).not.toContain("partTypes");
   });
 
   // DELIBERATELY UNTAGGED — a defect characterisation is evidence of the

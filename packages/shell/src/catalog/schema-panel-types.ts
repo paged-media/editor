@@ -40,6 +40,7 @@
 // needs them — that is a plugin-sdk change, and the superset rule is
 // what lets the two land out of step.
 
+import type { ListPresentation, SubFieldPresentation } from "./property-field-model";
 import type { PropertyPath, Value } from "@paged-media/client";
 
 export type WidgetValueBinding =
@@ -330,6 +331,10 @@ export interface PanelSchemaPropertyRow {
   style?: "select" | "segments" | "collection";
   options?: readonly { value: string; label?: string; icon?: string }[];
   bindable?: boolean;
+  /** §12.8 — a STRUCT path: the fields shown, in order. */
+  fields?: readonly (string | SubFieldPresentation)[];
+  /** §12.8 — a LIST path: item presentation and the offered edits. */
+  items?: ListPresentation;
   props?: Record<string, unknown>;
   visible?: SchemaGate;
   enabled?: SchemaGate;

@@ -33,6 +33,7 @@ import type {
   ShellObjectOp,
   ShellObjectValue,
   ShellPropertySchema,
+  ShellValueEdit,
   ShellValueType,
 } from "./object-model-types";
 
@@ -52,6 +53,8 @@ export type FieldWidget =
   | "point"
   | "ref"
   | "list"
+  | "items"
+  | "struct"
   | "json";
 
 export interface FieldOption {
@@ -71,6 +74,32 @@ export interface FieldPresentation {
    *  what is written (`color` → a swatch ref). */
   style?: "select" | "segments" | "collection";
   collection?: string;
+  /** A STRUCT row: the fields to show, in order (plugin-api
+   *  `PanelSchemaPropertyRow.fields`). Absent = every declared field. */
+  fields?: readonly (string | SubFieldPresentation)[];
+  /** A LIST row: item presentation and the offered edits (plugin-api
+   *  `PropertyListPresentation`). */
+  items?: ListPresentation;
+}
+
+/** One sub-field of a struct value (plugin-api `PropertySubField`). */
+export interface SubFieldPresentation {
+  field: string;
+  label?: string;
+  style?: "select" | "segments" | "collection";
+  options?: readonly FieldOption[];
+  props?: Record<string, unknown>;
+}
+
+/** How a list row presents its items (plugin-api `PropertyListPresentation`). */
+export interface ListPresentation {
+  fields?: readonly (string | SubFieldPresentation)[];
+  itemLabel?: string;
+  add?: boolean;
+  remove?: boolean;
+  reorder?: boolean;
+  reversed?: boolean;
+  newItem?: unknown;
 }
 
 export function widgetFor(
@@ -106,7 +135,14 @@ export function widgetFor(
     case "point":
       return "point";
     case "list":
-      return "list";
+      // A list of records (an appearance stack, gradient stops) — or any
+      // list the panel gave an item presentation — is an item editor; a
+      // list of scalars stays the typed text field ("0, 4, 2").
+      return type.of.kind === "struct" || presentation?.items ? "items" : "list";
+    case "struct":
+      return Object.keys(type.fields).length > 0 || (presentation?.fields?.length ?? 0) > 0
+        ? "struct"
+        : "json";
     default:
       return "json";
   }
@@ -531,11 +567,17 @@ export function checkArgs(type: ShellValueType, value: unknown, at = "args"): st
         return `${at} must be a record`;
       }
       const rec = value as Record<string, unknown>;
-      for (const k of Object.keys(rec)) {
-        if (!(k in type.fields)) return `${at} has an extra field "${k}"`;
+      if (!type.open) {
+        for (const k of Object.keys(rec)) {
+          if (!(k in type.fields)) return `${at} has an extra field "${k}"`;
+        }
       }
       for (const [k, t] of Object.entries(type.fields)) {
-        if (!(k in rec)) return `${at}.${k} is missing`;
+        if (!(k in rec) || rec[k] === undefined) {
+          if (t.optional) continue;
+          return `${at}.${k} is missing`;
+        }
+        if (rec[k] === null && t.optional) continue;
         const e = checkArgs(t, rec[k], `${at}.${k}`);
         if (e) return e;
       }
@@ -637,3 +679,189 @@ export async function scopedBindTarget(
   return null;
 }
 
+
+// ------------------------------------------- list / struct values (§12.8)
+
+/** The value a new item / an unset field starts from — the SDK's
+ *  `defaultValueOf` (struct field defaults, the first enum member, 0, "",
+ *  false, []). */
+export function defaultValueOf(type: ShellValueType, row?: { default?: unknown; range?: { min?: number } }): unknown {
+  if (row?.default !== undefined) return structuredClone(row.default);
+  switch (type.kind) {
+    case "bool":
+      return false;
+    case "number":
+      return row?.range?.min !== undefined && row.range.min > 0 ? row.range.min : 0;
+    case "length":
+      return 0;
+    case "color":
+      return "Color/Black";
+    case "enum":
+      return type.members[0] ?? "";
+    case "bounds":
+      return [0, 0, 0, 0];
+    case "transform":
+      return [1, 0, 0, 1, 0, 0];
+    case "point":
+      return [0, 0];
+    case "list":
+      return [];
+    case "map":
+      return {};
+    case "struct": {
+      const out: Record<string, unknown> = {};
+      for (const [name, f] of Object.entries(type.fields)) {
+        if (f.default !== undefined) out[name] = structuredClone(f.default);
+        else if (!f.optional) out[name] = defaultValueOf(f);
+      }
+      return out;
+    }
+    default:
+      return "";
+  }
+}
+
+type EditResult = { ok: true; value: unknown } | { ok: false; reason: string };
+
+function withField(item: unknown, type: ShellValueType, field: string, value: unknown): EditResult {
+  if (type.kind !== "struct") return { ok: false, reason: `a ${type.kind} has no fields` };
+  const f = type.fields[field];
+  if (!f && !type.open) {
+    return { ok: false, reason: `no field "${field}" (${Object.keys(type.fields).join(", ")})` };
+  }
+  if (f && !(value === null && f.optional)) {
+    const why = checkArgs(f, value, field);
+    if (why) return { ok: false, reason: why };
+  }
+  const base = item && typeof item === "object" && !Array.isArray(item) ? (item as Record<string, unknown>) : {};
+  return { ok: true, value: { ...base, [field]: value } };
+}
+
+const isIndex = (n: unknown, len: number): n is number =>
+  Number.isInteger(n) && (n as number) >= 0 && (n as number) < len;
+
+/** Apply one edit to a list (or, for `fieldSet`, a struct) value — the
+ *  host-side twin of plugin-sdk `applyValueEdit`, used when the host has
+ *  no `editValue` door. Pure. */
+export function applyValueEdit(current: unknown, edit: ShellValueEdit, type: ShellValueType): EditResult {
+  if (edit.edit === "fieldSet") {
+    if (type.kind !== "struct") return { ok: false, reason: `fieldSet needs a struct, not ${type.kind}` };
+    return withField(current ?? defaultValueOf(type), type, edit.field, edit.value);
+  }
+  if (type.kind !== "list") return { ok: false, reason: `${edit.edit} needs a list, not ${type.kind}` };
+  const list = Array.isArray(current) ? [...current] : current == null ? [] : null;
+  if (!list) return { ok: false, reason: "the current value is not a list" };
+  switch (edit.edit) {
+    case "add": {
+      if (type.maxItems !== undefined && list.length >= type.maxItems) {
+        return { ok: false, reason: `the list is full (maxItems ${type.maxItems})` };
+      }
+      const at = edit.index ?? list.length;
+      if (!Number.isInteger(at) || at < 0 || at > list.length) return { ok: false, reason: `add: index ${at} is outside 0..${list.length}` };
+      list.splice(at, 0, edit.item !== undefined ? edit.item : defaultValueOf(type.of));
+      return { ok: true, value: list };
+    }
+    case "remove":
+      if (!isIndex(edit.index, list.length)) return { ok: false, reason: `remove: no item ${edit.index}` };
+      list.splice(edit.index, 1);
+      return { ok: true, value: list };
+    case "move": {
+      if (!isIndex(edit.from, list.length) || !isIndex(edit.to, list.length)) {
+        return { ok: false, reason: `move: ${edit.from} → ${edit.to} is outside 0..${list.length - 1}` };
+      }
+      const [item] = list.splice(edit.from, 1);
+      list.splice(edit.to, 0, item);
+      return { ok: true, value: list };
+    }
+    case "itemSet": {
+      if (!isIndex(edit.index, list.length)) return { ok: false, reason: `itemSet: no item ${edit.index}` };
+      if (edit.field === undefined) {
+        list[edit.index] = edit.value;
+        return { ok: true, value: list };
+      }
+      const r = withField(list[edit.index], type.of, edit.field, edit.value);
+      if (!r.ok) return r;
+      list[edit.index] = r.value;
+      return { ok: true, value: list };
+    }
+  }
+}
+
+/** The items a list field shows, in DISPLAY order, each with its VALUE
+ *  index (edits always name value indices). */
+export function listItems(value: unknown, items?: ListPresentation): { index: number; item: unknown }[] {
+  const list = Array.isArray(value) ? value : [];
+  const out = list.map((item, index) => ({ index, item }));
+  return items?.reversed ? out.reverse() : out;
+}
+
+/** One rendered sub-field of a struct value. */
+export interface SubField {
+  field: string;
+  label: string;
+  type: ShellValueType;
+  presentation: FieldPresentation;
+  props?: Record<string, unknown>;
+}
+
+/** A field type for an OPEN struct's undeclared field, read off a value. */
+function inferredType(field: string, sample: unknown): ShellValueType {
+  if (typeof sample === "boolean") return { kind: "bool" };
+  if (typeof sample === "number") return /pct$|percent$/i.test(field) ? { kind: "number", unit: "percent" } : { kind: "number" };
+  if (typeof sample === "string" && (/color$/i.test(field) || sample.startsWith("Color/"))) return { kind: "color" };
+  return { kind: "text" };
+}
+
+/** The sub-fields a struct value (or a struct list item) shows: the
+ *  presentation's `fields` in order, else every declared field. An open
+ *  struct's undeclared field is typed from the value it holds. */
+export function subFieldsOf(
+  type: ShellValueType,
+  fields: readonly (string | SubFieldPresentation)[] | undefined,
+  sample?: unknown,
+): SubField[] {
+  if (type.kind !== "struct") return [];
+  const declared = type.fields;
+  const names = fields ?? Object.keys(declared).map((f) => f as string | SubFieldPresentation);
+  const rec = sample && typeof sample === "object" && !Array.isArray(sample) ? (sample as Record<string, unknown>) : {};
+  const out: SubField[] = [];
+  for (const entry of names) {
+    const p: SubFieldPresentation = typeof entry === "string" ? { field: entry } : entry;
+    const t = declared[p.field] ?? (type.open || !Object.keys(declared).length ? inferredType(p.field, rec[p.field]) : null);
+    if (!t) continue;
+    out.push({
+      field: p.field,
+      label: p.label ?? p.field,
+      type: t,
+      presentation: { options: p.options, style: p.style, collection: typeof p.props?.collectionName === "string" ? p.props.collectionName : undefined },
+      props: p.props,
+    });
+  }
+  return out;
+}
+
+/** The text that titles one list item: its `itemLabel` field, else "#n". */
+export function itemTitle(item: unknown, index: number, items?: ListPresentation): string {
+  const key = items?.itemLabel;
+  if (key && item && typeof item === "object") {
+    const v = (item as Record<string, unknown>)[key];
+    if (v !== undefined && v !== null && v !== "") return String(v);
+  }
+  return `#${index + 1}`;
+}
+
+/** Which list edits a field offers: each defaults to on for a writable
+ *  row; `add` also stops at `maxItems`. */
+export function listAffordances(
+  type: ShellValueType,
+  length: number,
+  writable: boolean,
+  items?: ListPresentation,
+): { add: boolean; remove: boolean; reorder: boolean } {
+  const full = type.kind === "list" && type.maxItems !== undefined && length >= type.maxItems;
+  return {
+    add: writable && items?.add !== false && !full,
+    remove: writable && items?.remove !== false,
+    reorder: writable && items?.reorder !== false && length > 1,
+  };
+}

@@ -51,7 +51,27 @@ export type ShellValueType =
   | { kind: "asset" }
   | { kind: "list"; of: ShellValueType; maxItems?: number }
   | { kind: "map"; of: ShellValueType; keyPattern?: string }
-  | { kind: "struct"; fields: Readonly<Record<string, ShellValueType>> };
+  | {
+      kind: "struct";
+      fields: Readonly<Record<string, ShellStructField>>;
+      /** Fields beyond the declared ones are allowed (plugin-api 0.2.45). */
+      open?: boolean;
+    };
+
+/** A struct field: its type, plus whether it may be absent and the value
+ *  a new item starts from (plugin-api `StructField`). */
+export type ShellStructField = ShellValueType & { optional?: boolean; default?: unknown };
+
+/** One edit of a LIST or STRUCT value (plugin-api `ValueEdit`, §12.8): a
+ *  list field adds, removes, reorders or edits ONE item; a struct field
+ *  edits one field. The host lowers it to `set` ops (one batch, one undo
+ *  step). Indices are VALUE indices, whatever order the UI lists items. */
+export type ShellValueEdit =
+  | { edit: "add"; index?: number; item?: unknown }
+  | { edit: "remove"; index: number }
+  | { edit: "move"; from: number; to: number }
+  | { edit: "itemSet"; index: number; field?: string; value: unknown }
+  | { edit: "fieldSet"; field: string; value: unknown };
 
 /** One ADR 132 schema row (plugin-api `PropertySchema`, mirrored). */
 export interface ShellPropertySchema {
@@ -152,4 +172,14 @@ export interface ShellObjectModelHost {
    *  come from the selection (a table cell, a layer): "Bind to data…"
    *  labels it. Absent / null: the label write is refused. */
   elementIdOf?(address: string): ElementId | null;
+  /** §12.8 — apply one list / struct edit to `path` on every address as
+   *  ONE batch (plugin-sdk `editValue`: read, apply, validate, `set`).
+   *  Absent: the field applies the edit itself and writes the whole new
+   *  value through its ordinary commit (also one batch). */
+  editValue?(
+    addresses: readonly string[],
+    path: string,
+    edit: ShellValueEdit,
+    opts?: { label?: string },
+  ): Promise<ShellObjectWriteResult>;
 }

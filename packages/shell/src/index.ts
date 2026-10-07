@@ -628,6 +628,8 @@ export type {
   ShellObjectWriteResult,
   ShellPropertySchema,
   ShellValueType,
+  ShellStructField,
+  ShellValueEdit,
 } from "./catalog/object-model-types";
 
 // Live-demo / playground scripting surface (the demo build + the docs playground

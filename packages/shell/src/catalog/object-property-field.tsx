@@ -46,6 +46,7 @@ import { useSelection } from "../state/selection-context";
 import { ObjectFieldFrame, useObjectField, type BindScope, type BindScopeOf } from "./object-field";
 import { useObjectModel } from "./object-model";
 import { PropertyField } from "./property-field";
+import type { ListPresentation, SubFieldPresentation } from "./property-field-model";
 import type { BindingsSurface, PanelSchemaPropertyRow, PropertyFieldAddress } from "./schema-panel-types";
 
 /** What a resolved address hands the field. `targets: undefined` = the
@@ -204,6 +205,10 @@ export interface ObjectPropertyFieldProps {
   options?: readonly { value: string; label?: string; icon?: string }[];
   bindable?: boolean;
   disabled?: boolean;
+  /** §12.8 — a struct path's fields / a list path's item presentation
+   *  (`widgets.propertyField.values@1`). */
+  fields?: readonly (string | SubFieldPresentation)[];
+  items?: ListPresentation;
   props?: Record<string, unknown>;
   /** The bundle's published bindings (schema rows naming `{ bind }`). */
   bindings?: BindingsSurface;
@@ -224,6 +229,8 @@ export function ObjectPropertyField(p: ObjectPropertyFieldProps) {
       style={p.style}
       bindable={p.bindable}
       bindScope={bindScope}
+      fields={p.fields}
+      items={p.items}
       chrome={p.props}
     />
   );
@@ -263,6 +270,8 @@ export function SchemaPropertyRow({
       style={row.style}
       options={row.options}
       bindable={row.bindable}
+      fields={row.fields}
+      items={row.items}
       props={row.props}
       bindings={bindings}
       disabled={disabled}
