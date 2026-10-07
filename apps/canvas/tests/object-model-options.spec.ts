@@ -198,10 +198,8 @@ test.describe("ADR 323 — core options panels over host.objects", () => {
   test("OM-OPT-6b — Document Setup: an enum colour setting writes through doc and undoes in one step @feat:editor-shell.panels.color-settings @feat:round-tripping.undo-redo @level:happy", async ({
     page,
   }) => {
-    // Core 71 gap: `Set doc.renderingIntent` lowers to setColorSettings,
-    // reports `undoSteps: 1`, but undo does not restore the previous
-    // colour settings (the write lands; the undo step is empty).
-    test.fail(true, "core 71: undo does not restore setColorSettings");
+    // (Core 71 final: a `Set` that lowers to setColorSettings is one undo
+    // step that restores the previous settings.)
     await loadIdml(page, fixture("layout"));
     await openPanel(page, "paged.document-setup");
     const panel = page.locator('[data-document-setup-panel="ready"]');
