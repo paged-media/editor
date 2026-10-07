@@ -27,6 +27,7 @@ import { Icon, displayName, useCollection } from "@paged-media/shell";
 import type { CellStyleSummary } from "@paged-media/client";
 
 import { StyleOptionsButton } from "./style-options-panel";
+import { CoreCommandButton } from "../core-command-dialog";
 
 export function CellStylesPanel() {
   const items = useCollection<CellStyleSummary>("cellStyles");
@@ -42,6 +43,16 @@ export function CellStylesPanel() {
   }
   return (
     <div className="p-3" data-cell-styles-panel="ready">
+      {/* ADR 323 §4 — create / delete through the typed core commands
+          (core.createCellStyle / core.deleteCellStyle), one undo step. */}
+      <div className="mb-2 flex gap-[5px]" data-cell-style-actions="">
+        <CoreCommandButton
+          op="createCellStyle"
+          label="New cell style…"
+          testId="cell-style-new"
+          prefill={{ selfId: `CellStyle/u${Date.now().toString(36)}`, name: "New cell style" }}
+        />
+      </div>
       {items.length === 0 ? (
         <div className="text-xs text-muted-foreground" data-empty-cell-styles>
           No cell styles.
@@ -103,6 +114,12 @@ export function CellStylesPanel() {
                   </span>
                 ) : null}
                 <StyleOptionsButton family="cell" selfId={s.selfId} />
+                <CoreCommandButton
+                  op="deleteCellStyle"
+                  label="Delete"
+                  testId="cell-style-delete"
+                  args={{ styleId: `style:cell/${s.selfId}` }}
+                />
               </div>
             ))}
           </div>

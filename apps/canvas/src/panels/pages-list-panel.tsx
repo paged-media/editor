@@ -51,6 +51,7 @@ import {
 } from "@paged-media/shell";
 import type { PageSummary } from "@paged-media/client";
 
+import { invokeCoreCommand } from "../core-command-dialog";
 import { fitCamera, layoutPages } from "../ui/layout";
 import { useAnimatedCamera } from "../ui/useAnimatedCamera";
 
@@ -120,6 +121,20 @@ export function PagesListPanel() {
       }
     : undefined;
 
+  // ADR 323 §4 — reorder through the typed core command `core.movePage`
+  // (the page lands AFTER `after`; no `after` = first). One invoke = one
+  // undo step.
+  const at = selectedPage ? items.indexOf(selectedPage) : -1;
+  const movePage = (after: PageSummary | null) => {
+    if (!selectedPage) return;
+    void invokeCoreCommand("movePage", {
+      page: `page:${selectedPage.selfId}`,
+      ...(after ? { after: `page:${after.selfId}` } : {}),
+    }).catch(() => {});
+  };
+  const onMoveUp = at > 0 ? () => movePage(at >= 2 ? items[at - 2]! : null) : undefined;
+  const onMoveDown = at >= 0 && at < items.length - 1 ? () => movePage(items[at + 1]!) : undefined;
+
   return (
     <div data-pages-list-panel="ready">
       <PanelToolbar>
@@ -137,6 +152,18 @@ export function PagesListPanel() {
             selectedPage ? "Duplicate page" : "Duplicate page (select one first)"
           }
           onClick={onDuplicate}
+        />
+        <ToolbarBtn
+          icon="ui-chevron-left"
+          testId="move-page-earlier"
+          label={onMoveUp ? "Move page earlier" : "Move page earlier (select one first)"}
+          onClick={onMoveUp}
+        />
+        <ToolbarBtn
+          icon="ui-chevron-right"
+          testId="move-page-later"
+          label={onMoveDown ? "Move page later" : "Move page later (select one first)"}
+          onClick={onMoveDown}
         />
       </PanelToolbar>
       {items.length === 0 ? (

@@ -31,8 +31,8 @@
 //   - applied cell style    → setElementProperty(appliedCellStyle)
 //   - applied table style   → setElementProperty(appliedTableStyle) on
 //                             the containing Table NodeId
-//   - row height / col width→ setRowHeight / setColumnWidth at the
-//                             selected row / col
+//   - row height / col width→ PropertyFields on the table's indexed
+//                             rows[i].height / columns[i].width
 //   - insert / delete row   → insertTableRow / deleteTableRow at row
 //   - insert / delete column→ insertTableColumn / deleteTableColumn at col
 //
@@ -103,6 +103,7 @@ import type {
 } from "@paged-media/client";
 
 import { addressOfElement } from "../object-model";
+import { CoreCommandButton } from "../core-command-dialog";
 
 /** IDML `<Cell VerticalJustification>` values (same enum as the text
  *  frame preference). */
@@ -299,38 +300,6 @@ export function TablePanel() {
     [client, cell],
   );
 
-  const setRowHeight = useCallback(
-    (height: number) => {
-      if (!cell) return;
-      void client.mutate({
-        op: "setRowHeight",
-        args: {
-          storyId: cell.storyId,
-          tableId: cell.tableId,
-          row: cell.row,
-          height,
-        },
-      });
-    },
-    [client, cell],
-  );
-
-  const setColumnWidth = useCallback(
-    (width: number) => {
-      if (!cell) return;
-      void client.mutate({
-        op: "setColumnWidth",
-        args: {
-          storyId: cell.storyId,
-          tableId: cell.tableId,
-          col: cell.col,
-          width,
-        },
-      });
-    },
-    [client, cell],
-  );
-
   // ── Spans (v35 setCellSpan). No read-back path on the cell surface
   //    (probed), so the inputs are write-forward: seed 1×1 on each fresh
   //    cell selection, reflect the last applied span. Undo restores the
@@ -471,20 +440,25 @@ export function TablePanel() {
       </CockpitSection>
 
       <CockpitSection title="Row & column">
-        <CockpitRow label="Row height">
-          <NumberCommit
-            testId="row-height"
-            placeholder="At least…"
-            onCommit={setRowHeight}
+        {/* ADR 323 §4 — the selected row's height and column's width as
+            INDEXED table rows (`rows[i].height`, `columns[i].width` on
+            the table address): read back, one undo step, Bind to data…. */}
+        <div className="flex flex-col gap-1.5 pb-1" data-table-indexed-fields={tableAddress ?? ""}>
+          <PropertyField
+            key={`row-${cell.row}`}
+            path={`rows[${cell.row}].height`}
+            label="Row height"
+            targets={tableAddress ? [tableAddress] : NO_TARGETS}
+            schemaKind={tableAddress ?? "table"}
           />
-        </CockpitRow>
-        <CockpitRow label="Column width">
-          <NumberCommit
-            testId="column-width"
-            placeholder="Width…"
-            onCommit={setColumnWidth}
+          <PropertyField
+            key={`col-${cell.col}`}
+            path={`columns[${cell.col}].width`}
+            label="Column width"
+            targets={tableAddress ? [tableAddress] : NO_TARGETS}
+            schemaKind={tableAddress ?? "table"}
           />
-        </CockpitRow>
+        </div>
         <div className="flex gap-[5px] px-3 pb-1 pt-1">
           <CockpitBtn
             sm
@@ -514,6 +488,14 @@ export function TablePanel() {
           >
             − Col
           </CockpitBtn>
+        </div>
+        <div className="flex gap-[5px] px-3 pb-1 pt-1">
+          <CoreCommandButton
+            op="deleteTable"
+            label="Delete table"
+            testId="delete-table"
+            args={{ storyId: `story:${cell.storyId}`, tableId: tableAddress ?? cell.tableId }}
+          />
         </div>
       </CockpitSection>
 

@@ -67,14 +67,17 @@
 import {
   Icon,
   ObjectFieldFrame,
+  PropertyField,
   ReferencePointGrid,
   useObjectBindings,
+  useSelection,
 } from "@paged-media/shell";
 import { LengthInput, NumberInput, SmartDialMicro } from "@paged-media/ui";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Value } from "@paged-media/client";
 
 import { usePagePosition } from "./page-position";
+import { addressOfElement } from "../object-model";
 
 const BINDINGS = {
   bounds: { scope: "element" as const, path: "frameBounds" },
@@ -407,6 +410,26 @@ export function ObjectTransformPanel() {
           )}
         </div>
       </div>
+      <GroupTransformField />
+    </div>
+  );
+}
+
+/** ADR 323 §4 — a GROUP's own transform (`group:<id>` groupTransform:
+ *  the matrix its children are drawn through) as a PropertyField on the
+ *  selected groups — one batch = one undo step, "Bind to data…". */
+function GroupTransformField() {
+  const { elementSelection } = useSelection();
+  const groups = elementSelection.filter((id) => id.kind === "group");
+  const key = groups.map((id) => JSON.stringify(id)).join("|");
+  const targets = useMemo(
+    () => (key ? key.split("|").map((j) => addressOfElement(JSON.parse(j))) : []),
+    [key],
+  );
+  if (!targets.length) return null;
+  return (
+    <div className="flex flex-col gap-[9px]" data-section="Group" data-group-transform={targets.join(" ")}>
+      <PropertyField path="groupTransform" label="Group transform" targets={targets} schemaKind="group" />
     </div>
   );
 }

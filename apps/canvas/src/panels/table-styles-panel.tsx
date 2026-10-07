@@ -27,6 +27,7 @@ import { Icon, displayName, useCollection } from "@paged-media/shell";
 import type { TableStyleSummary } from "@paged-media/client";
 
 import { StyleOptionsButton } from "./style-options-panel";
+import { CoreCommandButton } from "../core-command-dialog";
 
 const PARTS = ["Header", "Body", "Alt", "Border"];
 
@@ -44,6 +45,16 @@ export function TableStylesPanel() {
   }
   return (
     <div className="p-3" data-table-styles-panel="ready">
+      {/* ADR 323 §4 — create / delete through the typed core commands
+          (core.createTableStyle / core.deleteTableStyle), one undo step. */}
+      <div className="mb-2 flex gap-[5px]" data-table-style-actions="">
+        <CoreCommandButton
+          op="createTableStyle"
+          label="New table style…"
+          testId="table-style-new"
+          prefill={{ selfId: `TableStyle/u${Date.now().toString(36)}`, name: "New table style" }}
+        />
+      </div>
       {items.length === 0 ? (
         <div className="text-xs text-muted-foreground" data-empty-table-styles>
           No table styles.
@@ -99,6 +110,12 @@ export function TableStylesPanel() {
               >
                 <span className="flex-1">{displayName(s.name)}</span>
                 <StyleOptionsButton family="table" selfId={s.selfId} />
+                <CoreCommandButton
+                  op="deleteTableStyle"
+                  label="Delete"
+                  testId="table-style-delete"
+                  args={{ styleId: `style:table/${s.selfId}` }}
+                />
               </div>
             ))}
             <div

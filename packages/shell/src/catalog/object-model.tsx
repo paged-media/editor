@@ -75,6 +75,17 @@ import {
 
 const Context = createContext<ShellObjectModelHost | null>(null);
 
+/** The schema row of a path. An INDEXED path (`rows[2].height`,
+ *  `labels[x-paged:acme]`) matches its family row (`rows[i].height` /
+ *  `rows[].height`, `labels[key]`). */
+export function findSchemaRow<R extends { path: string }>(rows: readonly R[], path: string): R | null {
+  const exact = rows.find((r) => r.path === path);
+  if (exact || !path.includes("[")) return exact ?? null;
+  const family = (p: string) => p.replace(/\[[^\]]*\]/g, "[]");
+  const want = family(path);
+  return rows.find((r) => r.path.includes("[") && family(r.path) === want) ?? null;
+}
+
 export function ObjectModelProvider({
   host,
   children,
@@ -196,7 +207,7 @@ export function useObjectProperty(req: ObjectPropertyRequest): ObjectProperty {
     void model.objects
       .schema(schemaKey)
       .then((rows) => {
-        if (!cancelled) setRow(rows.find((r) => r.path === req.path) ?? null);
+        if (!cancelled) setRow(findSchemaRow(rows, req.path));
       })
       .catch(() => {
         if (!cancelled) setRow(null);

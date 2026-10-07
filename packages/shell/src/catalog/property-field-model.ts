@@ -481,6 +481,12 @@ const SELF_ID_KINDS = new Set([
   "section",
   "guide",
   "hyperlink",
+  // A story's Self id round-trips too, and carries no label of its own
+  // (page growth, story-level paths); a text field is its story plus the
+  // marker's offset — the address core resolves, with no element to
+  // label.
+  "story",
+  "field",
 ]);
 
 export interface BindTargetDeps {

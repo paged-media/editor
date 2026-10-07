@@ -34,14 +34,22 @@
 // PropertyEntry the binding reads null → the pill shows the mixed
 // (em-dash) sentinel, disabled.
 
+import { useMemo, useState } from "react";
+
 import {
   Icon,
   ObjectFieldFrame,
+  PropertyField,
   TogglePill,
   useObjectBindings,
+  useObjectField,
+  useObjectModel,
+  useSelection,
   type ObjectField,
 } from "@paged-media/shell";
 import type { Value } from "@paged-media/client";
+
+import { addressOfElement } from "../object-model";
 
 // ADR 323 — every pill is an object-model field: reads/writes through
 // `host.objects` (one batch over a multi-selection = one undo step),
@@ -192,6 +200,95 @@ export function AttributesPanel() {
           />
         </span>
       </div>
+      <LabelsSection />
+    </div>
+  );
+}
+
+/** A new label starts as an empty envelope (plugin-sdk's label shape). */
+const EMPTY_ENVELOPE = '{"v":1,"data":{}}';
+const LABEL_NS = "x-paged:";
+
+/**
+ * ADR 323 §4 — the element's script labels (`labels[key]`, IDML
+ * `Properties/Label` KeyValuePairs). Every label is READ (the `labels`
+ * map); only the `x-paged:` namespace is WRITTEN — core refuses any
+ * other key, so a foreign label (InDesign's own, another tool's) stays
+ * read-only here rather than offering a write that cannot land. Each
+ * value is a PropertyField on `labels[<key>]` (one write = one undo
+ * step, "Bind to data…").
+ */
+function LabelsSection() {
+  const { elementSelection } = useSelection();
+  const model = useObjectModel();
+  const first = elementSelection.length === 1 ? elementSelection[0] : null;
+  const address = useMemo(() => (first ? addressOfElement(first) : null), [first]);
+  const targets = useMemo(() => (address ? [address] : []), [address]);
+  const map = useObjectField({ path: "labels", targets, schemaKind: address ?? "frame" });
+  const [draft, setDraft] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  if (!address) return null;
+  const labels =
+    map.state.state === "value" && map.state.value && typeof map.state.value === "object"
+      ? Object.keys(map.state.value as Record<string, unknown>).sort()
+      : [];
+  const add = async () => {
+    const key = draft.startsWith(LABEL_NS) ? draft : `${LABEL_NS}${draft}`;
+    if (!model || draft.trim() === "") return;
+    const r = await model.objects.set(address, `labels[${key}]`, EMPTY_ENVELOPE, { label: "labels" });
+    setError(r.applied ? null : `${r.code ?? "failed"}: ${r.reason ?? "refused"}`);
+    if (r.applied) setDraft("");
+  };
+  return (
+    <div className="-mx-3 mt-2 border-t border-input px-3 pt-2" data-section="Labels" data-labels-target={address}>
+      <div className="pg-label mb-1">Labels</div>
+      {labels.length === 0 ? (
+        <div className="pb-1 text-xs" style={{ color: "var(--pg-muted-fg)" }} data-labels-empty="">
+          No labels on this object.
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1.5 pb-1" data-labels-list="">
+          {labels.map((key) =>
+            key.startsWith(LABEL_NS) ? (
+              <PropertyField
+                key={key}
+                path={`labels[${key}]`}
+                label={key.slice(LABEL_NS.length)}
+                labelPosition="stack"
+                targets={targets}
+                schemaKind={address}
+              />
+            ) : (
+              <div key={key} className="text-xs" data-label-readonly={key} title="Only x-paged: labels are written here">
+                <span className="font-mono">{key}</span>
+              </div>
+            ),
+          )}
+        </div>
+      )}
+      <div className="flex items-center gap-[5px] pb-1">
+        <input
+          data-label-new-key=""
+          placeholder="x-paged:plugin.id"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          className="h-[26px] flex-1 rounded-[6px] border border-input bg-background px-2 font-mono text-[11px]"
+        />
+        <button
+          type="button"
+          data-label-add=""
+          disabled={draft.trim() === ""}
+          onClick={() => void add()}
+          className="h-[26px] rounded-[6px] border border-input px-2 text-[11px]"
+        >
+          Add label
+        </button>
+      </div>
+      {error && (
+        <div data-label-error="" className="text-[10.5px]" style={{ color: "var(--status-error, var(--pg-destructive))" }}>
+          {error}
+        </div>
+      )}
     </div>
   );
 }

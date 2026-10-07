@@ -38,7 +38,7 @@
 // field writes through `host.objects`, offers "Bind to data…" and shows
 // the binding badge.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import {
   CockpitBtn,
@@ -47,6 +47,7 @@ import {
   ObjectFieldFrame,
   displayName,
   useCollection,
+  useDocument,
   useObjectField,
   useObjectModel,
 } from "@paged-media/shell";
@@ -54,6 +55,7 @@ import { formatAddress } from "@paged-media/plugin-sdk";
 import type { SectionSummary, SwatchSummary } from "@paged-media/client";
 
 import { SchemaSections, type SectionSpec } from "./schema-sections";
+import { CoreCommandButton, newMasterPrefill } from "../core-command-dialog";
 
 const SELECT =
   "h-[28px] w-full rounded-[6px] border border-input bg-background px-2 text-[12px]";
@@ -268,12 +270,16 @@ function AddressListPanel({
   selector,
   sections,
   empty,
+  actions,
 }: {
   title: string;
   testId: string;
   selector: string;
   sections: readonly SectionSpec[];
   empty: string;
+  /** Create / delete / … buttons over typed core commands (the picked
+   *  address, or null when the list is empty). */
+  actions?: (address: string | null) => ReactNode;
 }) {
   const list = useQuery(selector);
   const [pick, setPick] = useState("");
@@ -282,6 +288,11 @@ function AddressListPanel({
   return (
     <div data-object-options-panel={list ? testId : "loading"} data-options-target={address ?? ""}>
       <CockpitPanelHeader title={title} />
+      {actions && (
+        <div className="flex flex-wrap gap-[5px] px-3.5 pb-2" data-options-actions={testId}>
+          {actions(address)}
+        </div>
+      )}
       {address ? (
         <>
           <div className="px-3.5 pb-2">
@@ -311,6 +322,18 @@ export function TextVariablesPanel() {
       selector="textVariable"
       sections={TEXT_VARIABLE_SECTIONS}
       empty="No text variables (or this engine does not list them yet)."
+      actions={(address) => (
+        <>
+          <CoreCommandButton op="createTextVariable" label="New…" testId="text-variable-new" prefill={{ name: "New variable", contents: "" }} />
+          <CoreCommandButton
+            op="deleteTextVariable"
+            label="Delete"
+            testId="text-variable-delete"
+            disabled={!address}
+            args={address ? { variableId: address } : undefined}
+          />
+        </>
+      )}
     />
   );
 }
@@ -353,6 +376,33 @@ export function GradientOptionsPanel() {
       selector="gradient"
       sections={GRADIENT_SECTIONS}
       empty="This document has no gradients."
+      actions={(address) => (
+        <>
+          <CoreCommandButton
+            op="createGradient"
+            label="New…"
+            testId="gradient-new"
+            prefill={{
+              spec: {
+                selfId: `Gradient/u${Date.now().toString(36)}`,
+                name: "New gradient",
+                kind: "Linear",
+                stops: [
+                  { stopColor: "Color/Paper", locationPct: 0 },
+                  { stopColor: "Color/Black", locationPct: 100 },
+                ],
+              },
+            }}
+          />
+          <CoreCommandButton
+            op="deleteGradient"
+            label="Delete"
+            testId="gradient-delete"
+            disabled={!address}
+            args={address ? { gradientId: address } : undefined}
+          />
+        </>
+      )}
     />
   );
 }
@@ -396,6 +446,14 @@ export function SectionOptionsPanel() {
             </CockpitRow>
           </div>
           <SchemaSections key={address} targets={targets} sections={SECTION_SECTIONS} testId="section" />
+          <div className="px-3.5 pb-2">
+            <CoreCommandButton
+              op="deleteSection"
+              label="Delete section"
+              testId="section-delete"
+              args={{ sectionId: address }}
+            />
+          </div>
         </>
       ) : (
         <Empty>This document has no numbering sections.</Empty>
@@ -418,6 +476,150 @@ export function GuidesPanel() {
       selector="guide"
       sections={GUIDE_SECTIONS}
       empty="No ruler guides (or this engine does not list them yet)."
+    />
+  );
+}
+
+// ------------------------------------------- named document objects
+//
+// ADR 323 §4 — the address kinds that had a schema but no panel: colour
+// groups, numbering lists, conditions, master spreads and text fields
+// (Data Merge placeholders). Each is the same AddressListPanel: a picker
+// over `host.objects.query(<kind>)` and SchemaSections on the picked
+// address, so every row the kind's schema names (and any it gains) is a
+// PropertyField with "Bind to data…".
+
+const COLOR_GROUP_SECTIONS: readonly SectionSpec[] = [
+  {
+    title: "Color group",
+    fields: [
+      { path: "name", label: "Name" },
+      { path: "members", label: "Swatches" },
+    ],
+  },
+];
+
+export function ColorGroupOptionsPanel() {
+  return (
+    <AddressListPanel
+      title="Color Group Options"
+      testId="colorGroup"
+      selector="colorGroup"
+      sections={COLOR_GROUP_SECTIONS}
+      empty="This document has no color groups."
+    />
+  );
+}
+
+const NUMBERING_LIST_SECTIONS: readonly SectionSpec[] = [
+  {
+    title: "Numbering list",
+    fields: [
+      { path: "name", label: "Name" },
+      { path: "continueAcrossStories", label: "Continue across stories" },
+      { path: "continueAcrossDocuments", label: "Continue across documents" },
+    ],
+  },
+];
+
+export function NumberingListOptionsPanel() {
+  return (
+    <AddressListPanel
+      title="Numbering List Options"
+      testId="numberingList"
+      selector="numberingList"
+      sections={NUMBERING_LIST_SECTIONS}
+      empty="This document has no numbering lists."
+    />
+  );
+}
+
+const CONDITION_SECTIONS: readonly SectionSpec[] = [
+  { title: "Condition", fields: [{ path: "visible", label: "Visible" }] },
+];
+
+export function ConditionOptionsPanel() {
+  return (
+    <AddressListPanel
+      title="Condition Options"
+      testId="condition"
+      selector="condition"
+      sections={CONDITION_SECTIONS}
+      empty="This document has no conditions."
+    />
+  );
+}
+
+const MASTER_SECTIONS: readonly SectionSpec[] = [
+  { title: "Master", fields: [{ path: "name", label: "Name" }] },
+];
+
+export function MasterOptionsPanel() {
+  const pageSize = useDocument().handle?.pageSizesPt[0] ?? null;
+  return (
+    <AddressListPanel
+      title="Master Options"
+      testId="master"
+      selector="master"
+      sections={MASTER_SECTIONS}
+      empty="This document has no master spreads."
+      actions={(address) => (
+        <>
+          <CoreCommandButton
+            op="createMaster"
+            label="New…"
+            testId="master-new"
+            prefill={newMasterPrefill(pageSize)}
+          />
+          <CoreCommandButton
+            op="renameMaster"
+            label="Rename…"
+            testId="master-rename"
+            disabled={!address}
+            prefill={address ? { master: address } : undefined}
+          />
+          <CoreCommandButton
+            op="deleteMaster"
+            label="Delete"
+            testId="master-delete"
+            disabled={!address}
+            args={address ? { master: address } : undefined}
+          />
+        </>
+      )}
+    />
+  );
+}
+
+const FIELD_SECTIONS: readonly SectionSpec[] = [
+  { title: "Field", fields: [{ path: "value", label: "Value" }] },
+];
+
+export function FieldOptionsPanel() {
+  return (
+    <AddressListPanel
+      title="Text Fields"
+      testId="field"
+      selector="field"
+      sections={FIELD_SECTIONS}
+      empty="No text fields (Insert ▸ Field adds a placeholder)."
+      actions={(address) => {
+        // `field:<story>@<offset>` — the command addresses the marker by
+        // its story and offset.
+        const m = address ? /^field:(.+)@(\d+)$/.exec(address) : null;
+        return (
+          <>
+            <CoreCommandButton op="insertField" label="Insert…" testId="field-insert" prefill={{ field: { placeholder: { plugin: "media.paged.data", key: "field", value: "" } } }} />
+            <CoreCommandButton
+              op="setFieldValue"
+              label="Set value…"
+              testId="field-set-value"
+              disabled={!m}
+              prefill={m ? { storyId: `story:${m[1]}`, offset: Number(m[2]) } : undefined}
+            />
+          </>
+        );
+      }}
     />
   );
 }

@@ -32,12 +32,33 @@ import {
 import { appCatalogRegistry } from "./catalog-registry";
 import { gradientsComposition } from "./gradients.composition";
 import { GradientEditor } from "./gradient-editor";
+import { CoreCommandButton } from "../core-command-dialog";
 
 export function GradientsPanel() {
   return (
     <CatalogRegistryProvider registry={appCatalogRegistry()}>
       <div className="p-3" data-gradients-panel="ready">
         <CompositionRenderer composition={gradientsComposition} />
+        {/* ADR 323 §4 — a new gradient through core.createGradient (the
+            generated form; delete lives on Gradient Options). */}
+        <div className="mb-2 flex gap-[5px]" data-gradient-actions="">
+          <CoreCommandButton
+            op="createGradient"
+            label="New gradient…"
+            testId="gradient-new"
+            prefill={{
+              spec: {
+                selfId: `Gradient/u${Date.now().toString(36)}`,
+                name: "New gradient",
+                kind: "Linear",
+                stops: [
+                  { stopColor: "Color/Paper", locationPct: 0 },
+                  { stopColor: "Color/Black", locationPct: 100 },
+                ],
+              },
+            }}
+          />
+        </div>
         {/* Concept 2 — the ramp editor (expert child). */}
         <GradientEditor />
       </div>

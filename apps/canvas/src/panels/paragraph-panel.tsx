@@ -42,49 +42,36 @@
 //
 // ADR 323 — the composition fields (align, indents, spacing, drop cap,
 // hyphenation, keep options, span columns: 21 paths) are migrated
-// `PropertyField`s (paragraph.composition.ts). The rule rows STAY on the
-// selection binding: `paragraphRuleAbove` / `paragraphRuleBelow` are
-// whole-struct `Value::ParagraphRule` writes with NO schema row in the
-// core catalog (no `type` — a schema gap for core: a `struct` of weight,
-// colour, tint, offset, indents, width), so `host.objects` has nothing
-// to validate them against.
+// `PropertyField`s (paragraph.composition.ts). The rule rows keep their
+// bespoke toggle + weight / offset UI (a `ParagraphRuleSpec` struct is
+// opaque in the schema), but read and write through `host.objects`
+// (`useObjectField` on the text selection's `storyRange`): one write =
+// one undo step, wrapped in `ObjectFieldFrame` for "Bind to data…" and
+// the badges. An edit context that owns the selection (a sheet cell)
+// still answers the field — `absent` there is a seam, never core's
+// answer for some other paragraph.
 
 import {
   CatalogRegistryProvider,
   CompositionRenderer,
   Icon,
+  ObjectFieldFrame,
   TogglePill,
-  useBindings,
+  useObjectField,
 } from "@paged-media/shell";
 import { NumberInput } from "@paged-media/ui";
-import type { ParagraphRuleSpec, Value } from "@paged-media/client";
+import type { ParagraphRuleSpec } from "@paged-media/client";
 
 import { appCatalogRegistry } from "./catalog-registry";
 import { paragraphComposition } from "./paragraph.composition";
 
-const RULE_BINDINGS = {
-  above: {
-    kind: "selectionProperty" as const,
-    scope: "content" as const,
-    path: "paragraphRuleAbove" as const,
-  },
-  below: {
-    kind: "selectionProperty" as const,
-    scope: "content" as const,
-    path: "paragraphRuleBelow" as const,
-  },
-};
-
-function unwrapRule(v: Value | null): ParagraphRuleSpec | null {
-  if (!v || v.type !== "paragraphRule") return null;
-  return v.value;
-}
-
-/** A rule with `on: false` is "present but off"; `null` is "no rule
- *  at all". The pill treats both as off and toggles to a sensible
- *  default-on spec / clears to null. */
+/** A rule with `on: false` is "present but off"; `null` — or, through
+ *  host.objects, a spec whose every field is null — is "no rule at all".
+ *  The pill treats both as off and toggles to a sensible default-on spec
+ *  / clears to null. */
 function ruleIsOn(spec: ParagraphRuleSpec | null): boolean {
-  return spec != null && spec.on !== false;
+  if (spec == null || spec.on === false) return false;
+  return spec.on === true || spec.weight != null;
 }
 
 const DEFAULT_RULE: ParagraphRuleSpec = {
@@ -102,38 +89,31 @@ function RuleRow({
   name,
   testId,
   path,
-  spec,
-  disabled,
-  source,
-  state,
-  onCommit,
 }: {
   name: string;
   testId: string;
-  path: string;
-  spec: ParagraphRuleSpec | null;
-  disabled?: boolean;
-  source?: string | null;
-  state?: string;
-  onCommit?: (next: Value) => void;
+  path: "paragraphRuleAbove" | "paragraphRuleBelow";
 }) {
+  const field = useObjectField({ path, scope: "content" });
+  const spec =
+    field.state.state === "value" && field.state.value && typeof field.state.value === "object"
+      ? (field.state.value as ParagraphRuleSpec)
+      : null;
+  const disabled = field.commit == null;
+  const write = (next: ParagraphRuleSpec | null) => void field.commit?.(next);
   const on = ruleIsOn(spec);
   const patch = (delta: Partial<ParagraphRuleSpec>) => {
     const base = spec ?? DEFAULT_RULE;
-    onCommit?.({
-      type: "paragraphRule",
-      value: { ...base, on: true, ...delta },
-    } as Value);
+    write({ ...base, on: true, ...delta });
   };
+  const absent = field.bindingState === "absent";
   return (
-    <div
+    <ObjectFieldFrame
+      field={field}
       data-rule-row={testId}
-      data-control={path}
-      data-binding-source={source ?? "core"}
-      data-binding-state={state}
-      data-seam={state === "absent" ? "true" : undefined}
-      style={{ opacity: state === "absent" ? 0.55 : 1 }}
+      data-seam={absent ? "true" : undefined}
     >
+      <div style={{ opacity: absent ? 0.55 : 1 }}>
       <div className="flex items-center gap-[9px] py-[5px]">
         <TogglePill
           checked={on}
@@ -141,14 +121,7 @@ function RuleRow({
           testId={testId}
           onToggle={(next) => {
             // On → write the spec; off → clear the whole rule (null).
-            if (next) {
-              onCommit?.({
-                type: "paragraphRule",
-                value: spec ? { ...spec, on: true } : DEFAULT_RULE,
-              } as Value);
-            } else {
-              onCommit?.({ type: "paragraphRule", value: null } as Value);
-            }
+            write(next ? (spec ? { ...spec, on: true } : DEFAULT_RULE) : null);
           }}
         />
         <span
@@ -190,14 +163,12 @@ function RuleRow({
           />
         </div>
       )}
-    </div>
+      </div>
+    </ObjectFieldFrame>
   );
 }
 
 export function ParagraphPanel() {
-  const rules = useBindings(RULE_BINDINGS);
-  const above = unwrapRule(rules.above.value);
-  const below = unwrapRule(rules.below.value);
 
   return (
     <CatalogRegistryProvider registry={appCatalogRegistry()}>
@@ -208,26 +179,8 @@ export function ParagraphPanel() {
           data-section="Paragraph rules"
         >
           <div className="pg-label mb-1">Paragraph rules</div>
-          <RuleRow
-            name="Rule above"
-            testId="rule-above"
-            path="paragraphRuleAbove"
-            spec={above}
-            disabled={rules.above.onCommit == null}
-            source={rules.above.provider}
-            state={rules.above.state}
-            onCommit={rules.above.onCommit}
-          />
-          <RuleRow
-            name="Rule below"
-            testId="rule-below"
-            path="paragraphRuleBelow"
-            spec={below}
-            disabled={rules.below.onCommit == null}
-            source={rules.below.provider}
-            state={rules.below.state}
-            onCommit={rules.below.onCommit}
-          />
+          <RuleRow name="Rule above" testId="rule-above" path="paragraphRuleAbove" />
+          <RuleRow name="Rule below" testId="rule-below" path="paragraphRuleBelow" />
         </div>
       </div>
     </CatalogRegistryProvider>

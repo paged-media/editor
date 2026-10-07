@@ -20,19 +20,34 @@
 // SDK Phase 5 / panel-gallery pass — Conditions panel.
 //
 // Gallery list shape over every `<Condition>` in the document:
-// visibility-toned dot + name + mono indicator method. The per-row
-// eye toggle stays an honest seam until
-// `Operation::SetConditionVisible` ships; the New/filter toolbar
-// likewise.
+// visibility-toned dot + name + mono indicator method. The per-row eye
+// toggles visibility through the typed core command
+// `core.setConditionVisible` (one invoke = one undo step); the New /
+// filter toolbar stays a seam.
+//
+// ADR 323 §4 — Conditional Text: the conditions applied to the TEXT
+// selection (`storyRange` `appliedConditions`) as a PropertyField, so it
+// writes through host.objects and offers "Bind to data…".
 
 import {
+  CockpitSection,
   Icon,
   ListRows,
   PanelToolbar,
+  PropertyField,
   ToolbarBtn,
   useCollection,
 } from "@paged-media/shell";
 import type { ConditionSummary } from "@paged-media/client";
+
+import { invokeCoreCommand } from "../core-command-dialog";
+
+function toggleVisible(cond: ConditionSummary): void {
+  void invokeCoreCommand("setConditionVisible", {
+    condition: `condition:${cond.selfId}`,
+    visible: !cond.visible,
+  }).catch(() => {});
+}
 
 export function ConditionsPanel() {
   const conditions = useCollection<ConditionSummary>("conditions");
@@ -70,24 +85,41 @@ export function ConditionsPanel() {
               dot: cond.visible ? ("ok" as const) : ("draft" as const),
               primary: cond.name,
               secondary: cond.indicatorMethod ?? undefined,
-              // Visibility toggle — awaiting SetConditionVisible.
               trail: (
-                <span
+                <button
+                  type="button"
                   data-condition-visible={cond.visible ? "true" : "false"}
-                  data-seam
-                  title="Toggle visibility — awaiting engine support"
-                  style={{ opacity: 0.45, display: "inline-flex" }}
+                  data-condition-toggle={cond.selfId}
+                  title={cond.visible ? "Hide condition" : "Show condition"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleVisible(cond);
+                  }}
+                  className="inline-flex cursor-pointer border-0 bg-transparent p-0"
+                  style={{ color: "var(--pg-fg)" }}
                 >
                   <Icon
                     name={cond.visible ? "ui-eye" : "ui-eye-off"}
                     size={14}
                   />
-                </span>
+                </button>
               ),
             }))}
           />
         </div>
       )}
+      <CockpitSection title="Conditional text">
+        <div className="flex flex-col gap-1.5 pb-2" data-conditional-text="">
+          <PropertyField
+            path="appliedConditions"
+            label="Applied to selection"
+            scope="content"
+            schemaKind="storyRange"
+            style="collection"
+            collection="conditions"
+          />
+        </div>
+      </CockpitSection>
     </div>
   );
 }

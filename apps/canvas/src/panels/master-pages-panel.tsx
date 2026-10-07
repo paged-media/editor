@@ -20,14 +20,20 @@
 // SDK Phase 5 / panel-gallery pass — Master Pages panel.
 //
 // Gallery list shape over every master spread referenced via
-// `AppliedMaster`. The per-master Apply trail button is an honest
-// seam until `Operation::ApplyMasterToPage` ships.
+// `AppliedMaster`. ADR 323 §4 — the toolbar and the per-master trail run
+// the typed core commands: New (`core.createMaster`), Apply to a page
+// (`core.applyMasterToPage`), Rename (`core.renameMaster`) and Delete
+// (`core.deleteMaster`) — each one invoke = one undo step; the ones that
+// need a name or a page open the generated form.
 
-import { CockpitBtn, ListRows, useCollection } from "@paged-media/shell";
+import { ListRows, useCollection, useDocument } from "@paged-media/shell";
 import type { MasterPageSummary } from "@paged-media/client";
+
+import { CoreCommandButton, newMasterPrefill } from "../core-command-dialog";
 
 export function MasterPagesPanel() {
   const items = useCollection<MasterPageSummary>("masterPages");
+  const pageSize = useDocument().handle?.pageSizesPt[0] ?? null;
   if (items === null) {
     return (
       <div
@@ -40,6 +46,14 @@ export function MasterPagesPanel() {
   }
   return (
     <div data-master-pages-panel="ready">
+      <div className="flex gap-[5px] px-3 pb-1 pt-2" data-master-actions="">
+        <CoreCommandButton
+          op="createMaster"
+          label="New master…"
+          testId="master-new"
+          prefill={newMasterPrefill(pageSize)}
+        />
+      </div>
       {items.length === 0 ? (
         <div
           className="p-3 text-xs text-muted-foreground"
@@ -56,9 +70,26 @@ export function MasterPagesPanel() {
               primary: m.label,
               secondary: `${m.pageCount} page${m.pageCount === 1 ? "" : "s"}`,
               trail: (
-                <CockpitBtn sm tone="soft" disabled>
-                  Apply
-                </CockpitBtn>
+                <span className="flex gap-[4px]" data-master-row={m.selfId}>
+                  <CoreCommandButton
+                    op="applyMasterToPage"
+                    label="Apply…"
+                    testId="master-apply"
+                    prefill={{ master: `master:${m.selfId}` }}
+                  />
+                  <CoreCommandButton
+                    op="renameMaster"
+                    label="Rename…"
+                    testId="master-rename"
+                    prefill={{ master: `master:${m.selfId}`, name: m.label }}
+                  />
+                  <CoreCommandButton
+                    op="deleteMaster"
+                    label="Delete"
+                    testId="master-delete"
+                    args={{ master: `master:${m.selfId}` }}
+                  />
+                </span>
               ),
             }))}
           />

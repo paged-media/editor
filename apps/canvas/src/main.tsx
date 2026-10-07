@@ -126,6 +126,8 @@ import { createEditorDocuments } from "./plugin-documents";
 import { DocumentReplaceDialog } from "./DocumentReplaceDialog";
 import { createEditorSecretStore } from "./plugin-secret-store";
 import { SecretPromptDialog } from "./SecretPromptDialog";
+import { CoreCommandDialog } from "./core-command-dialog";
+import { buildCoreCommandEntries, CORE_COMMAND_MENU_ITEMS } from "./core-command-entries";
 import { createEditorNativeDocumentBackend } from "./plugin-native-document";
 import { pickFiles } from "./shell-file-picker";
 import { saveFileBytes } from "./shell-file-saver";
@@ -208,6 +210,11 @@ import { DocumentSetupPanel, MarginsColumnsPanel } from "./panels/document-setup
 import { ObjectOptionsPanel } from "./panels/object-options-panel";
 import {
   GradientOptionsPanel,
+  ColorGroupOptionsPanel,
+  NumberingListOptionsPanel,
+  ConditionOptionsPanel,
+  MasterOptionsPanel,
+  FieldOptionsPanel,
   GuidesPanel,
   SectionOptionsPanel,
   SwatchOptionsPanel,
@@ -568,6 +575,41 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     id: "paged.text-variables",
     title: "Text Variables",
     component: TextVariablesPanel,
+    defaultDock: "right",
+    defaultGroup: "structure",
+  },
+  {
+    id: "paged.color-group-options",
+    title: "Color Group Options",
+    component: ColorGroupOptionsPanel,
+    defaultDock: "right",
+    defaultGroup: "styles",
+  },
+  {
+    id: "paged.numbering-list-options",
+    title: "Numbering List Options",
+    component: NumberingListOptionsPanel,
+    defaultDock: "right",
+    defaultGroup: "styles",
+  },
+  {
+    id: "paged.condition-options",
+    title: "Condition Options",
+    component: ConditionOptionsPanel,
+    defaultDock: "right",
+    defaultGroup: "structure",
+  },
+  {
+    id: "paged.master-options",
+    title: "Master Options",
+    component: MasterOptionsPanel,
+    defaultDock: "right",
+    defaultGroup: "structure",
+  },
+  {
+    id: "paged.text-fields",
+    title: "Text Fields",
+    component: FieldOptionsPanel,
     defaultDock: "right",
     defaultGroup: "structure",
   },
@@ -2014,11 +2056,14 @@ function CanvasAppIntegration() {
       ...objectCommands,
       ...insertCommands,
       ...alignCommands,
+      // ADR 323 §4 — the typed core commands' menu / palette doors.
+      ...buildCoreCommandEntries(),
     ].map((c) => registries.commands.register(c));
     const menuDisposables = [
       ...APP_MENU_ITEMS,
       ...OBJECT_MENU_ITEMS,
       ...INSERT_MENU_ITEMS,
+      ...CORE_COMMAND_MENU_ITEMS,
       ...COCKPIT_MENU_SEAMS,
     ]
       // Solo keeps only the host menus its profile names. Whole-menu
@@ -2124,6 +2169,7 @@ function CanvasAppRoot() {
       <ConsentDialog controller={editorConsent.controller} />
       <DocumentReplaceDialog controller={editorDocuments.controller} />
       <SecretPromptDialog controller={editorSecrets.controller} />
+      <CoreCommandDialog />
       {/* The live-demo playground UI — only in the `demo` build, only when a
           ?script= is present (renders null otherwise). */}
       {(import.meta.env.MODE === "demo" || !import.meta.env.PROD) && (

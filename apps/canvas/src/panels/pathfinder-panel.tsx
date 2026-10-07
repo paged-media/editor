@@ -51,6 +51,9 @@
 import { useState } from "react";
 
 import { useCanvasClient, useSelection, Icon } from "@paged-media/shell";
+
+import { CoreCommandButton } from "../core-command-dialog";
+import { CORE_COMMAND_ENTRIES } from "../core-command-entries";
 import { KitSelect } from "@paged-media/ui";
 import type {
   ElementId,
@@ -217,6 +220,8 @@ function refusalOf(reply: WorkerToMain): string | null {
   return (tail ? tail[1] : what).trim();
 }
 
+const PATH_ENTRIES = CORE_COMMAND_ENTRIES.filter((e) => e.group === "path" || e.group === "mask");
+
 export function PathfinderPanel() {
   const client = useCanvasClient();
   const { elementSelection } = useSelection();
@@ -328,6 +333,24 @@ export function PathfinderPanel() {
           {status}
         </div>
       )}
+      {/* ADR 323 §4 — the path verbs as typed core commands: point
+          edits, close / join, outline stroke, offset, faces, type on a
+          path, opacity masks, step and repeat. Each opens the generated
+          form prefilled from the selection; Run = one undo step. */}
+      <div className="pg-label pt-2 border-t border-input">Paths</div>
+      <div className="flex flex-wrap gap-[5px]" data-path-commands="">
+        {PATH_ENTRIES.map((e) => (
+          <CoreCommandButton
+            key={e.op}
+            op={e.op}
+            label={e.title.replace(/^[^:]+:\s*/, "").replace(/…$/, "")}
+            title={e.title}
+            testId={`path-${e.op}`}
+            disabled={!elementSelection.length}
+            prefill={e.prefill}
+          />
+        ))}
+      </div>
       {/* Engine gap — no convert-shape / corner-option Operations. */}
       <div className="pg-label pt-2 border-t border-input">Convert shape</div>
       <div className="flex gap-[5px]" data-convert-shape-seam>

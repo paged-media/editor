@@ -72,6 +72,13 @@ export function setObjectModelEditor(editor: PagedEditor | null): void {
   client?.setHostObjects?.((calls) => answerHostObjectsRound(objectRegistry, calls));
 }
 
+/** The live editor the registry reads (null before the shell mounts) —
+ *  the typed-command dialog prefills its arguments from its selection
+ *  and caret. */
+export function objectModelEditor(): PagedEditor | null {
+  return currentEditor;
+}
+
 const getEditor = (): PagedEditor => {
   if (!currentEditor) throw new Error("the editor has not mounted yet");
   return currentEditor;
