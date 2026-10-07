@@ -5,7 +5,7 @@
   "counts": {
     "clientMembers": 75,
     "wireKinds": 52,
-    "exports": 70
+    "exports": 71
   },
   "wireKinds": [
     "beginGesture",
@@ -546,6 +546,12 @@
           "name": "HostObjectsAnswerer",
           "kind": "type",
           "signature": "HostObjectsAnswerer",
+          "summary": null
+        },
+        {
+          "name": "HostObjectsRound",
+          "kind": "type",
+          "signature": "HostObjectsRound",
           "summary": null
         },
         {
