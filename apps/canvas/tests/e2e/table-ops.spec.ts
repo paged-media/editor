@@ -355,9 +355,14 @@ test.describe("W3.A2 — Table panel op sandwiches", () => {
       });
     });
 
-    // Type a row height into the panel input + commit (Enter).
-    const input = page.locator('[data-num-input="row-height"]');
-    await input.fill("42");
+    // Type a row height into the panel's indexed field (`rows[i].height`
+    // on the table address, ADR 323) + commit (Enter).
+    const input = page
+      .locator('[data-table-panel="ready"] [data-property-field^="rows["] input')
+      .first();
+    await input.click({ clickCount: 3 });
+    await input.press("ControlOrMeta+a");
+    await input.pressSequentially("42");
     await input.press("Enter");
 
     await expect.poll(() => replies.filter((r) => r === "mutationApplied").length).toBeGreaterThan(0);
