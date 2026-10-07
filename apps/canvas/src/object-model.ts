@@ -36,7 +36,7 @@
 // until one is set.
 
 import {
-  answerHostObjects,
+  answerHostObjectsRound,
   CORE_PATHS,
   createCoreObjects,
   createObjectRegistry,
@@ -64,11 +64,12 @@ export function setObjectModelEditor(editor: PagedEditor | null): void {
   currentEditor = editor;
   // ADR 323 — Boa scripts reach plugin objects: the engine client answers
   // a suspended script's `plugin:` calls through THIS registry (the same
-  // one the panels and every bundle host use).
+  // one the panels and every bundle host use), and reports the writes it
+  // committed answering them so they fold into the script's undo step.
   const client = editor?.client as unknown as
-    | { setHostObjects?: (answer: ((calls: never[]) => Promise<unknown[]>) | null) => void }
+    | { setHostObjects?: (answer: ((calls: never[]) => Promise<unknown>) | null) => void }
     | undefined;
-  client?.setHostObjects?.((calls) => answerHostObjects(objectRegistry, calls) as Promise<unknown[]>);
+  client?.setHostObjects?.((calls) => answerHostObjectsRound(objectRegistry, calls));
 }
 
 const getEditor = (): PagedEditor => {

@@ -30,6 +30,7 @@ export {
   type HostObjectAnswerWire,
   type HostObjectCallWire,
   type HostObjectsAnswerer,
+  type HostObjectsRound,
   type JournalDrain,
 } from "./client";
 

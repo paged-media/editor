@@ -157,4 +157,79 @@ test.describe("ADR 323 — Boa scripts reach plugin objects", () => {
     expect(r.error).toBeNull();
     expect(r.output).toEqual(["[log] refused invalidValue", "[log] refused unknownAddress"]);
   });
+
+  test("SB-3 — a UI edit made while a script waits on the host stays its OWN undo step; the script's plugin + core writes stay one @feat:scripting.property-readwrite @feat:round-tripping.undo-redo @level:edge", async ({
+    page,
+  }) => {
+    // A second test kind whose read PARKS the script until the test lets
+    // it go, so a UI edit can land while the script is suspended.
+    await page.evaluate((plugin) => {
+      const c = (globalThis as unknown as { __canvas: Canvas }).__canvas;
+      const g = globalThis as unknown as { __gate?: { parked: boolean; release?: () => void } };
+      g.__gate = { parked: false };
+      c.objects!.register({
+        plugin: `${plugin}.gate`,
+        model: {
+          kinds: [
+            {
+              kind: "gate",
+              title: "Gate",
+              schema: [{ path: "open", type: { kind: "bool" } }],
+              list: () => [`plugin:${plugin}.gate/gate/1`],
+              get: () =>
+                new Promise((resolve) => {
+                  g.__gate!.parked = true;
+                  g.__gate!.release = () => resolve({ kind: "value", value: true });
+                }),
+            },
+          ],
+        },
+      });
+    }, PLUGIN);
+    const GATE = `plugin:${PLUGIN}.gate/gate/1`;
+    const weightBefore = await read(page, ADDRESS, "frameStrokeWeight");
+    const weight = weightBefore === 6 ? 8 : 6;
+    const opacityBefore = await read(page, ADDRESS, "frameOpacity");
+    const opacity = opacityBefore === 40 ? 60 : 40;
+
+    // The script parks on the host FIRST, then writes a plugin and a core
+    // property. (Its records must be contiguous to fold: a script record
+    // made BEFORE a foreign edit cannot join a step that ends after it —
+    // the engine keeps that one as its own step.)
+    const script = page.evaluate(
+      async ({ src }) => (globalThis as unknown as { __canvas: Canvas }).__canvas.client.executeScript(src),
+      {
+        src: `await paged.get(${JSON.stringify(GATE)}, "open");
+              paged.set(${JSON.stringify(NOTE)}, "text", "scripted");
+              paged.set(${JSON.stringify(ADDRESS)}, "frameStrokeWeight", ${weight});`,
+      },
+    );
+    await expect
+      .poll(() => page.evaluate(() => (globalThis as unknown as { __gate: { parked: boolean } }).__gate.parked))
+      .toBe(true);
+    // The UI edit, through the same registry a panel field writes with.
+    const ui = await page.evaluate(
+      async ({ address, opacity }) =>
+        (globalThis as unknown as { __canvas: { objects: { set(a: string, p: string, v: unknown): Promise<{ applied: boolean }> } } })
+          .__canvas.objects.set(address, "frameOpacity", opacity),
+      { address: ADDRESS, opacity },
+    );
+    expect(ui.applied).toBe(true);
+    await page.evaluate(() => (globalThis as unknown as { __gate: { release(): void } }).__gate.release());
+    const r = await script;
+    expect(r.error).toBeNull();
+    expect(await read(page, NOTE, "text")).toBe("scripted");
+    expect(await read(page, ADDRESS, "frameStrokeWeight")).toBe(weight);
+    expect(await read(page, ADDRESS, "frameOpacity")).toBe(opacity);
+
+    // Undo once: the SCRIPT's step — both its writes, the plugin one
+    // included (reported as committed) — and nothing of the UI edit.
+    await page.evaluate(() => (globalThis as unknown as { __canvas: Canvas }).__canvas.client.undo());
+    expect(await read(page, NOTE, "text")).toBe("");
+    expect(await read(page, ADDRESS, "frameStrokeWeight")).toBe(weightBefore);
+    expect(await read(page, ADDRESS, "frameOpacity")).toBe(opacity);
+    // Undo again: the UI edit, on its own.
+    await page.evaluate(() => (globalThis as unknown as { __canvas: Canvas }).__canvas.client.undo());
+    expect(await read(page, ADDRESS, "frameOpacity")).toBe(opacityBefore);
+  });
 });

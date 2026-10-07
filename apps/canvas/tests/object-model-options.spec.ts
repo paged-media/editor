@@ -325,7 +325,7 @@ test.describe("ADR 323 — core options panels over host.objects", () => {
     await roundTrip(page, panel, address, "itemName", "Headline box");
   });
 
-  test("OM-OPT-13 — Table ▸ Cell options: fill tint on the cell address → one undo @feat:editor-shell.panels.table @feat:tables.borders-strokes @feat:round-tripping.undo-redo @level:happy", async ({
+  test("OM-OPT-13 — Table ▸ Cell options: the span on the cell address → one undo; no fill tint field (the engine stores no per-cell tint) @feat:editor-shell.panels.table @feat:tables.model @feat:round-tripping.undo-redo @level:happy", async ({
     page,
   }) => {
     const fx = await loadViaReactPath(page, "tables");
@@ -350,13 +350,25 @@ test.describe("ADR 323 — core options panels over host.objects", () => {
     await page.mouse.click(pt.x, pt.y);
     await openPanel(page, "paged.table");
     const panel = page.locator('[data-table-panel="ready"]');
-    // Core 71 gap: `Get cell.cellFillTint` answers unknownPath ("no such
-    // readable path on a cell") although the schema row is readWrite.
-    test.fail(true, "core 71: cellFillTint has no read arm on a cell");
     const fields = panel.locator("[data-cell-schema-fields]");
     await expect(fields).toHaveAttribute("data-cell-schema-fields", /^cell:/);
     const address = (await fields.getAttribute("data-cell-schema-fields"))!;
-    const before = await objGet(page, address, "cellFillTint");
-    await roundTrip(page, fields, address, "cellFillTint", before === 40 ? 70 : 40);
+    // KNOWN GAP (core 71): no per-cell tint is modelled — a read answers
+    // null, the seam refuses the write as read-only, and the panel offers
+    // no field for it.
+    await expect(fieldOf(fields, "cellFillTint")).toHaveCount(0);
+    expect(await objGet(page, address, "cellFillTint")).toBeNull();
+    const refused = await page.evaluate(
+      (a) =>
+        (globalThis as unknown as {
+          __canvas: { objects: { set(a: string, p: string, v: unknown): Promise<{ applied: boolean; code?: string }> } };
+        }).__canvas.objects.set(a, "cellFillTint", 40),
+      address,
+    );
+    expect(refused).toMatchObject({ applied: false, code: "readOnly" });
+    // The span is the cell's live schema field.
+    const span = await objGet(page, address, "columnSpan");
+    expect(typeof span).toBe("number");
+    await expect(fieldOf(fields, "columnSpan")).toHaveAttribute("data-value-type", /.+/);
   });
 });

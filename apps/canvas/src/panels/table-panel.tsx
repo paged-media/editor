@@ -178,10 +178,14 @@ const CELL_PATHS = [
 ] as const;
 
 /** Cell paths with no bespoke control: schema-driven `PropertyField`s on
- *  the cell address (tint, and the span — core's `Set` lowers `rowSpan` /
- *  `columnSpan` to `setCellSpan`). */
+ *  the cell address (the span — core's `Set` lowers `rowSpan` /
+ *  `columnSpan` to `setCellSpan`).
+ *
+ *  KNOWN GAP — no "Fill tint": the engine models no per-cell tint
+ *  (`cellFillTint` reads null, a write is accepted and dropped, the SDK
+ *  seam marks the row read-only). A field here would offer an edit that
+ *  does nothing; it returns when core stores the tint. */
 const CELL_SCHEMA_FIELDS: ReadonlyArray<{ path: string; label: string }> = [
-  { path: "cellFillTint", label: "Fill tint" },
   { path: "rowSpan", label: "Row span" },
   { path: "columnSpan", label: "Column span" },
 ];

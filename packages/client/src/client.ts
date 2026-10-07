@@ -210,8 +210,19 @@ export interface HostObjectAnswerWire {
   error?: { code: string; reason: string; index?: number } | null;
 }
 
-/** Answers every call, in order (the plugin SDK's `answerHostObjects`). */
-export type HostObjectsAnswerer = (calls: HostObjectCallWire[]) => Promise<HostObjectAnswerWire[]>;
+/** One answered round: the answers, in call order, and `committed` — the
+ *  engine `appliedSeq` of every write the host made ANSWERING these calls
+ *  (the plugin SDK's `answerHostObjectsRound`). */
+export interface HostObjectsRound {
+  answers: HostObjectAnswerWire[];
+  committed?: number[];
+}
+
+/** Answers every call, in order. Returning only the answers (the plugin
+ *  SDK's `answerHostObjects`) reports no committed writes. */
+export type HostObjectsAnswerer = (
+  calls: HostObjectCallWire[],
+) => Promise<HostObjectAnswerWire[] | HostObjectsRound>;
 
 export class CanvasClient {
   private readonly worker: Worker;
@@ -1335,10 +1346,15 @@ export class CanvasClient {
     // registry until the worker replies with the result.
     while (reply.kind === "requestHostObjects" && answer) {
       const { session, calls } = reply.payload as { session: number; calls: HostObjectCallWire[] };
-      const answers = await answer(calls);
+      const round = await answer(calls);
+      const { answers, committed = [] } = Array.isArray(round) ? { answers: round } : round;
+      // Protocol 71 folds only a script's OWN undo records into its step:
+      // the writes made answering this round are named by their applied
+      // seqs, so they join it; a UI edit made while the script waits is
+      // never named and stays its own step.
       reply = (await this.send({
         kind: "hostObjectsResult",
-        payload: { session, answers },
+        payload: { session, answers, ...(committed.length > 0 ? { committed } : {}) },
       } as unknown as MainToWorkerKind)) as { kind: string; payload?: unknown };
     }
     if (reply.kind === "scriptResult") {
