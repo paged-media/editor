@@ -136,6 +136,32 @@ test("struct sub-fields follow the presentation; an open struct types its fields
   assert.deepEqual(fs, { ok: true, value: { x: 2 } });
 });
 
+test("a nullable enum row keeps the panel's clear option first; a non-nullable one offers members only", () => {
+  const type = { kind: "enum", members: ["Anywhere", "NextPage"] };
+  const pres = { options: [{ value: "", label: "[Style default]" }, { value: "NextPage", label: "On next page" }] };
+  assert.deepEqual(M.optionsFor(type, pres, true), [
+    { value: "", label: "[Style default]" },
+    { value: "Anywhere", label: "Anywhere" },
+    { value: "NextPage", label: "On next page" },
+  ]);
+  assert.deepEqual(M.optionsFor(type, pres).map((o) => o.value), ["Anywhere", "NextPage"]);
+});
+
+test("a number row the panel names values for is a select; numeric options write numbers, the clear option null", () => {
+  const count = { kind: "number", integer: true };
+  const pres = { options: [{ value: "", label: "[Style default]" }, { value: "All" }, { value: "2" }] };
+  assert.equal(M.widgetFor(count, pres), "select");
+  assert.equal(M.widgetFor(count), "number");
+  assert.deepEqual(M.optionsFor(count, pres, true).map((o) => o.value), ["", "All", "2"]);
+  assert.deepEqual(M.optionsFor(count, pres, false).map((o) => o.value), ["All", "2"]);
+  assert.equal(M.optionValue(count, "2", true), 2);
+  assert.equal(M.optionValue(count, "", true), null);
+  assert.equal(M.optionValue(count, "All", true), "All", "a keyword is written as picked; the row validates it");
+  assert.equal(M.optionValue({ kind: "enum", members: ["A"] }, "", true), null);
+  assert.equal(M.optionValue({ kind: "enum", members: ["A"] }, "", false), "");
+  assert.equal(M.optionValue({ kind: "text" }, "", true), "", "a text row writes the empty string itself");
+});
+
 // ───────────────────────────────────────────── parse + format
 
 test("parseInput coerces text against the type, never silently", () => {
@@ -508,9 +534,12 @@ test("the app model maps selections to canonical addresses and flags inferred co
     editorObjectModel.addressOf({ kind: "storyRange", id: { story_id: "u9", start: 0, end: 4 } }),
     "storyRange:u9@0..4",
   );
-  assert.equal(editorObjectModel.isInferred({ path: "layerVisible", type: { kind: "bool" } }), true);
+  // Protocol 71: core publishes the schema rows, so the layer paths are
+  // typed by the engine now; only the table counts stay inferred.
+  assert.equal(editorObjectModel.isInferred({ path: "layerVisible", type: { kind: "bool" } }), false);
+  assert.equal(editorObjectModel.isInferred({ path: "tableRowCount", type: { kind: "number" } }), true);
   assert.equal(editorObjectModel.isInferred({ path: "frameStrokeWeight", type: { kind: "length" } }), false);
-  assert.equal(editorObjectModel.isInferred({ addressKind: "plugin:x/y", path: "layerVisible", type: { kind: "bool" } }), false);
+  assert.equal(editorObjectModel.isInferred({ addressKind: "plugin:x/y", path: "tableRowCount", type: { kind: "number" } }), false);
   assert.equal(editorObjectModel.wireOf("frameStrokeWeight"), "length");
   assert.equal(editorObjectModel.wireOf("framePath"), null);
 });

@@ -109,9 +109,11 @@ export function widgetFor(
   if (presentation?.style === "collection" && presentation.collection) {
     if (type.kind === "color" || type.kind === "ref" || type.kind === "text") return "collection";
   }
+  // A text / ref row — or a number row (a span count: 2…6, the engine's
+  // "All") — the panel offers named values for is a select over them.
   const offered =
     type.kind === "enum" ||
-    ((type.kind === "text" || type.kind === "ref") &&
+    ((type.kind === "text" || type.kind === "ref" || type.kind === "number") &&
       (presentation?.options?.length ?? 0) > 0);
   if (offered) return presentation?.style === "segments" ? "segments" : "select";
   switch (type.kind) {
@@ -153,13 +155,34 @@ export function widgetFor(
 export function optionsFor(
   type: ShellValueType,
   presentation?: FieldPresentation,
+  nullable?: boolean,
 ): FieldOption[] {
   const given = presentation?.options ?? [];
+  if (type.kind === "number" && !nullable) {
+    return given.filter((o) => o.value !== CLEAR_OPTION).map((o) => ({ value: o.value, label: o.label ?? o.value }));
+  }
   if (type.kind !== "enum") return given.map((o) => ({ value: o.value, label: o.label ?? o.value }));
-  return type.members.map((m) => ({
+  const members = type.members.map((m) => ({
     value: m,
     label: given.find((o) => o.value === m)?.label ?? m,
   }));
+  // A NULLABLE enum row can also be cleared (a paragraph back to its
+  // style's value): the panel's empty-valued option names that, and the
+  // field writes it as null (see CLEAR_OPTION).
+  const clear = nullable ? given.find((o) => o.value === CLEAR_OPTION) : undefined;
+  return clear ? [{ value: CLEAR_OPTION, label: clear.label ?? "[Default]" }, ...members] : members;
+}
+
+/** The option value that clears a nullable row (writes `null`). */
+export const CLEAR_OPTION = "";
+
+/** What picking `option` in a select writes: the clear option of a
+ *  nullable row is null; a number row's numeric option is the number
+ *  (anything else is written as picked and the row's validation answers). */
+export function optionValue(type: ShellValueType, option: string, nullable: boolean): unknown {
+  if (option === CLEAR_OPTION && nullable && (type.kind === "enum" || type.kind === "number")) return null;
+  if (type.kind === "number" && option.trim() !== "" && Number.isFinite(Number(option))) return Number(option);
+  return option;
 }
 
 // ------------------------------------------------------ parse / format

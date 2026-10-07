@@ -60,6 +60,7 @@ import {
   itemTitle,
   listAffordances,
   listItems,
+  optionValue,
   optionsFor,
   parseInput,
   subFieldsOf,
@@ -472,7 +473,7 @@ export function PropertyField(props: PropertyFieldProps) {
   // nominal widget, disabled — never a guessed type that might write.
   const type: ShellValueType = row?.type ?? { kind: "text" };
   const widget = widgetFor(type, props);
-  const options = optionsFor(type, props);
+  const options = optionsFor(type, props, row?.nullable === true);
   const state = field.state;
 
   // ADR 023: `absent` is a SEAM only when an edit-context provider says
@@ -483,7 +484,14 @@ export function PropertyField(props: PropertyFieldProps) {
   const write = row && field.commit && !seam ? field.commit : null;
   const commitLeaf = write
     ? (v: Value) => {
-        void write((v as { value?: unknown }).value ?? null);
+        const raw = (v as { value?: unknown }).value ?? null;
+        // A select's option: the clear option of a nullable row writes
+        // null, a number row's numeric option the number.
+        void write(
+          (widget === "select" || widget === "segments") && typeof raw === "string"
+            ? optionValue(type, raw, row?.nullable === true)
+            : raw,
+        );
       }
     : undefined;
 

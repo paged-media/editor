@@ -31,9 +31,15 @@
 
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-import { openPanel } from "./fidelity/canvas-driver";
+import { dirname, resolve as pathResolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { loadIdml, openCanvas, openPanel } from "./fidelity/canvas-driver";
 import { Designer } from "./journey/driver/designer";
 import { objGet, objQuery, undoOnce } from "./e2e/harness/objects";
+
+const ROOT = pathResolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+const fixture = (name: string) => `${ROOT}/corpus/idml/generated/${name}.idml`;
 
 type Stop = { stopColor: string; locationPct: number; midpointPct?: number | null };
 
@@ -65,14 +71,37 @@ test.describe("ADR 323 §12.8 — list and struct values in PropertyField", () =
   test("OM-VAL-1 — Gradient Options lists the stops; add, edit, reorder and remove a stop, each ONE undo step @feat:color-swatches.gradients @feat:editor-shell.panels.gradients @feat:round-tripping.undo-redo @level:happy", async ({
     page,
   }) => {
-    const designer = new Designer(page);
-    await designer.open();
-    await designer.newDocument();
+    await openCanvas(page);
+    await loadIdml(page, fixture("swatches"));
     const swatches = await swatchIds(page);
-    const colors = swatches.filter((s) => s.startsWith("Color/") && s !== "Color/Black");
-    expect(colors.length, "the blank document carries process colours").toBeGreaterThan(1);
-    const gradient = await designer.createGradient("Ramp", [colors[0]!, colors[1]!]);
-    expect(gradient).not.toBe("");
+    const colors = swatches.filter((s) => s.startsWith("Color/") && !/\/(Black|Paper|Registration|None)$/.test(s));
+    expect(colors.length, "the swatches fixture carries colours").toBeGreaterThan(1);
+    const gradient = await page.evaluate(async (stops) => {
+      const c = (globalThis as unknown as {
+        __canvas: {
+          client: {
+            mutate(m: unknown): Promise<unknown>;
+            collection(n: string): Promise<Array<{ selfId: string; name?: string }>>;
+          };
+        };
+      }).__canvas.client;
+      const before = new Set((await c.collection("gradients")).map((g) => g.selfId));
+      await c.mutate({
+        op: "createGradient",
+        args: {
+          spec: {
+            name: "OM Ramp",
+            kind: "Linear",
+            stops: [
+              { stopColor: stops[0], locationPct: 0, midpointPct: 50 },
+              { stopColor: stops[1], locationPct: 100 },
+            ],
+          },
+        },
+      });
+      return (await c.collection("gradients")).find((g) => !before.has(g.selfId))?.selfId ?? "";
+    }, [colors[0]!, colors[1]!]);
+    expect(gradient, "created a gradient").not.toBe("");
 
     await openPanel(page, "paged.gradient-options");
     const panel = page.locator('[data-object-options-panel="gradient"]');
@@ -80,8 +109,7 @@ test.describe("ADR 323 §12.8 — list and struct values in PropertyField", () =
     const address = (await panel.getAttribute("data-options-target"))!;
     expect(address).toMatch(/^gradient:/);
     // Pick the one this test made (a blank document may carry others).
-    const picker = panel.locator("select").first();
-    await picker.selectOption(`gradient:${gradient}`).catch(() => undefined);
+    await panel.locator(`[data-options-picker="gradient"]`).selectOption(`gradient:${gradient}`);
     const target = `gradient:${gradient}`;
     await expect(panel).toHaveAttribute("data-options-target", target);
 
@@ -195,5 +223,40 @@ test.describe("ADR 323 §12.8 — list and struct values in PropertyField", () =
       .toBeGreaterThan(0);
     await expect(strokes.locator('[data-struct-field="weight"]').first()).toBeVisible();
     await expect(strokes.locator('[data-struct-field="tint"]')).toHaveCount(0);
+  });
+
+  test("OM-VAL-3 — clearing a nullable enum (a paragraph's Start paragraph back to its style) is ONE write of null, one undo @feat:editor-shell.panels.paragraph @feat:round-tripping.undo-redo @level:edge", async ({
+    page,
+  }) => {
+    await openCanvas(page);
+    await loadIdml(page, fixture("text"));
+    const r = await page.evaluate(async () => {
+      const c = (globalThis as unknown as {
+        __canvas: {
+          client: { executeScript(s: string): Promise<{ output: string[] }> };
+          objects: {
+            set(a: string, p: string, v: unknown): Promise<{ applied: boolean; reason?: string }>;
+            get(a: string, p: string): Promise<{ kind: string; value?: unknown }>;
+          };
+        };
+      }).__canvas;
+      const stories = JSON.parse((await c.client.executeScript("paged.stories()")).output.join("")) as Array<{
+        selfId?: string;
+        id?: string;
+      }>;
+      const a = `storyRange:${stories[0]!.selfId ?? stories[0]!.id}@0..3`;
+      const original = await c.objects.get(a, "paragraphStartParagraph");
+      const set = await c.objects.set(a, "paragraphStartParagraph", "NextPage");
+      const afterSet = await c.objects.get(a, "paragraphStartParagraph");
+      const cleared = await c.objects.set(a, "paragraphStartParagraph", null);
+      const afterClear = await c.objects.get(a, "paragraphStartParagraph");
+      return { a, original, set, afterSet, cleared, afterClear };
+    });
+    expect(r.set.applied, r.set.reason).toBe(true);
+    expect(r.afterSet).toEqual({ kind: "value", value: "NextPage" });
+    expect(r.cleared.applied, r.cleared.reason).toBe(true);
+    expect(r.afterClear, "the style's value again").toEqual(r.original);
+    await undoOnce(page);
+    await expect.poll(() => objGet(page, r.a, "paragraphStartParagraph")).toBe("NextPage");
   });
 });
