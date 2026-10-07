@@ -366,7 +366,7 @@ test.describe("ADR 323 — plugin object properties through PropertyField", () =
       await expect(sheetName(page).locator('[data-property-field="name"]')).toHaveAttribute("data-value-type", "text");
     });
 
-    test("PP-SHEET-1 — sheet.name set through its property field lands via host.objects; ONE undo step @feat:plugin-sheets.object-model @feat:editor-shell.plugin-bundles @feat:round-tripping.undo-redo @level:happy", async ({
+    test("PP-SHEET-1 — sheet.name set through its property field lands via host.objects; ONE undo step @feat:sheet.edit.ops @feat:editor-shell.plugin-bundles @feat:round-tripping.undo-redo @level:happy", async ({
       page,
     }) => {
       const before = await objGet(page, sheetAddress, "name");
@@ -382,7 +382,7 @@ test.describe("ADR 323 — plugin object properties through PropertyField", () =
       await expect.poll(() => objGet(page, sheetAddress, "name")).toBe(before);
     });
 
-    test("PP-SHEET-2 — Bind to data… on a sheet field opens with a selector that selects that sheet @feat:plugin-sheets.object-model @feat:data.bind.authoring @level:happy", async ({
+    test("PP-SHEET-2 — Bind to data… on a sheet field opens with a selector that selects that sheet @feat:sheet.edit.ops @feat:data.bind.authoring @level:happy", async ({
       page,
     }) => {
       const field = sheetName(page).locator('[data-property-field="name"]');

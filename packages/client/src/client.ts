@@ -58,6 +58,7 @@ import {
   type SceneTreeNode,
   type MainToWorker,
   type MainToWorkerKind,
+  type FontScope,
   type Mutation,
   type PageId,
   type ParagraphBounds,
@@ -1615,24 +1616,30 @@ export class CanvasClient {
    * loadDocument calls; the renderer's `BytesResolver` will route any
    * `AppliedFont` matching `family` (+ optional `style`) to these
    * bytes. Mirrors `paged-inspect --font-family "Family=path"`.
+   * `scope` (v70) picks the registry: `document` (the default) or
+   * `sceneLayer`, consulted by plugin scene-layer text only.
    */
   async registerFont(
     family: string,
     bytes: Uint8Array,
     style: string | null = null,
+    scope?: FontScope,
   ): Promise<void> {
     const reply = await this.send({
       kind: "registerFont",
-      payload: { family, style, bytes: Array.from(bytes) },
+      payload: { family, style, bytes: Array.from(bytes), ...(scope ? { scope } : {}) },
     });
     if (reply.kind !== "fontRegistered") {
       throw new Error(`unexpected reply: ${reply.kind}`);
     }
   }
 
-  /** Drop every previously-registered font. */
-  async clearFontRegistry(): Promise<void> {
-    const reply = await this.send({ kind: "clearFontRegistry" });
+  /**
+   * Drop every previously-registered font. The payload is optional on the
+   * wire (v70); without a scope the engine clears the document registry.
+   */
+  async clearFontRegistry(scope?: FontScope): Promise<void> {
+    const reply = await this.send({ kind: "clearFontRegistry", payload: scope ? { scope } : null });
     if (reply.kind !== "fontRegistryCleared") {
       throw new Error(`unexpected reply: ${reply.kind}`);
     }
