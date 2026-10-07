@@ -89,6 +89,26 @@ test.describe("journey · paged.slide plugin", () => {
       expect(Math.round(h)).toBe(540);
     }
 
+    // Exporting the deck untouched gives back the very file that was opened.
+    const exported = await page.evaluate(async () => {
+      const reg = (
+        globalThis as unknown as {
+          __canvas: {
+            registries: {
+              exporters?: {
+                list: () => { id: string; export: () => Promise<{ bytes: Uint8Array; fileName: string } | null> }[];
+              };
+            };
+          };
+        }
+      ).__canvas.registries.exporters;
+      const ex = reg?.list().find((e) => e.id === "media.paged.slide.exporter.pptx");
+      const out = ex ? await ex.export() : null;
+      return out ? { bytes: Array.from(out.bytes), fileName: out.fileName } : null;
+    });
+    expect(exported, "the PowerPoint exporter answered").not.toBeNull();
+    expect(Buffer.from(exported!.bytes).equals(readFileSync(PPTX_FIXTURE)), "byte-identical").toBe(true);
+
     // The first slide (title layout) draws its title and subtitle: its
     // snapshot is not a blank page.
     const png = await designer.renderBytes({ widthPx: 960 });
