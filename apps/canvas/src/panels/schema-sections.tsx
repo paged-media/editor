@@ -44,6 +44,7 @@ import {
   CockpitSection,
   PropertyField,
   useObjectModel,
+  type FieldPresentation,
   type ShellPropertySchema,
 } from "@paged-media/shell";
 import type { CollectionName } from "@paged-media/client";
@@ -53,6 +54,9 @@ export interface FieldSpec {
   label: string;
   /** A ref / colour picked from a document collection. */
   collection?: CollectionName;
+  /** §12.8 — a struct path's fields / a list path's item presentation. */
+  fields?: FieldPresentation["fields"];
+  items?: FieldPresentation["items"];
 }
 
 export interface SectionSpec {
@@ -141,6 +145,8 @@ export function SchemaSections({
                 schemaKind={schemaKind}
                 style={f.collection ? "collection" : undefined}
                 collection={f.collection}
+                fields={f.fields}
+                items={f.items}
               />
             ))}
           </div>

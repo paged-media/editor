@@ -26,7 +26,7 @@
 // object commands keep writing their own gestures — this is where the
 // same paths are visible, typed and bindable.
 
-import { CockpitPanelHeader } from "@paged-media/shell";
+import { CockpitPanelHeader, CockpitSection, ObjectPropertyField } from "@paged-media/shell";
 
 import { SchemaSections, type SectionSpec } from "./schema-sections";
 
@@ -98,6 +98,57 @@ export function ObjectOptionsPanel() {
     <div data-object-options-panel="ready">
       <CockpitPanelHeader title="Object Options" />
       <SchemaSections schemaKind="frame" sections={OBJECT_OPTION_SECTIONS} testId="frame" />
+      <AppearanceStacks />
     </div>
+  );
+}
+
+/** paged.draw's appearance kind (ADR 323): the extra fill and stroke
+ *  layers on the selected path. */
+const DRAW_APPEARANCE = "plugin:media.paged.draw/appearance";
+
+/** One appearance layer as the stack lists it (painted bottom → top, so
+ *  the list reads top-first like a layers panel; edits still name value
+ *  indices). */
+const STACK_FIELDS = (weight: boolean) => [
+  { field: "color", label: "Colour", style: "collection" as const, props: { collectionName: "swatches" } },
+  ...(weight ? [{ field: "weight", label: "Weight" }] : [{ field: "tint", label: "Tint" }]),
+  { field: "opacity", label: "Opacity" },
+  { field: "blendMode", label: "Blend" },
+];
+
+/** The selected path's appearance stacks — LIST rows over paged.draw's
+ *  object model, through the host's one PropertyField (§12.8): add,
+ *  remove, reorder and edit a layer, each ONE batch = one undo step. */
+function AppearanceStacks() {
+  return (
+    <CockpitSection title="Appearance" defaultOpen={false}>
+      <div className="flex flex-col gap-1.5 pb-2" data-options-section="Appearance">
+        <ObjectPropertyField
+          address="selection"
+          kind={DRAW_APPEARANCE}
+          path="fills"
+          label="Fills"
+          items={{
+            reversed: true,
+            itemLabel: "color",
+            fields: STACK_FIELDS(false),
+            newItem: { color: "Color/Black", tint: 100, opacity: 100, blendMode: "Normal" },
+          }}
+        />
+        <ObjectPropertyField
+          address="selection"
+          kind={DRAW_APPEARANCE}
+          path="strokes"
+          label="Strokes"
+          items={{
+            reversed: true,
+            itemLabel: "color",
+            fields: STACK_FIELDS(true),
+            newItem: { color: "Color/Black", weight: 1, opacity: 100, blendMode: "Normal" },
+          }}
+        />
+      </div>
+    </CockpitSection>
   );
 }

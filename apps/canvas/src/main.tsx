@@ -207,6 +207,7 @@ import { StyleOptionsPanel, STYLE_OPTIONS_PANEL } from "./panels/style-options-p
 import { DocumentSetupPanel, MarginsColumnsPanel } from "./panels/document-setup-panel";
 import { ObjectOptionsPanel } from "./panels/object-options-panel";
 import {
+  GradientOptionsPanel,
   GuidesPanel,
   SectionOptionsPanel,
   SwatchOptionsPanel,
@@ -553,6 +554,13 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     id: "paged.swatch-options",
     title: "Swatch Options",
     component: SwatchOptionsPanel,
+    defaultDock: "right",
+    defaultGroup: "styles",
+  },
+  {
+    id: "paged.gradient-options",
+    title: "Gradient Options",
+    component: GradientOptionsPanel,
     defaultDock: "right",
     defaultGroup: "styles",
   },

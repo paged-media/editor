@@ -315,6 +315,48 @@ export function TextVariablesPanel() {
   );
 }
 
+// ------------------------------------------------------ gradient options
+
+/** A gradient's ramp (`gradient:<id>`, ADR 132 virtual paths over
+ *  `editGradient`): its name, type and STOPS. The stops are a list of
+ *  records — the PropertyField's item editor adds, removes, reorders and
+ *  edits one stop at a time, each edit ONE `set` of the whole ramp = one
+ *  undo step (§12.8). */
+const GRADIENT_SECTIONS: readonly SectionSpec[] = [
+  {
+    title: "Gradient",
+    fields: [
+      { path: "name", label: "Name" },
+      { path: "kind", label: "Type" },
+      {
+        path: "stops",
+        label: "Stops",
+        items: {
+          itemLabel: "stopColor",
+          fields: [
+            { field: "stopColor", label: "Colour", style: "collection", props: { collectionName: "swatches" } },
+            { field: "locationPct", label: "Location" },
+            { field: "midpointPct", label: "Midpoint" },
+          ],
+          newItem: { stopColor: "Color/Black", locationPct: 100 },
+        },
+      },
+    ],
+  },
+];
+
+export function GradientOptionsPanel() {
+  return (
+    <AddressListPanel
+      title="Gradient Options"
+      testId="gradient"
+      selector="gradient"
+      sections={GRADIENT_SECTIONS}
+      empty="This document has no gradients."
+    />
+  );
+}
+
 // ------------------------------------------------------ section options
 
 const SECTION_SECTIONS: readonly SectionSpec[] = [
