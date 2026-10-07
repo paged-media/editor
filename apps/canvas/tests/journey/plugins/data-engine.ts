@@ -78,15 +78,45 @@ export async function partText(page: Page, path: string): Promise<string | null>
 }
 
 /** This plugin's placeholder fields, freshly read from the engine. */
+/** paged.data's lowered variable fields, freshly read from the engine, on
+ *  BOTH carriers: the placeholder fields (protocol < 71, and documents made
+ *  with them), and — from protocol 71 — the custom TEXT VARIABLES named
+ *  `paged:<binding key>` whose contents are the value (ADR 559: InDesign
+ *  keeps a text variable through a save, where it drops a placeholder). */
 export async function dataFields(page: Page): Promise<{ plugin: string; key: string; value: string | null }[]> {
   const items = await page.evaluate(async () => {
     const c = (
       globalThis as unknown as {
-        __canvas: { client: { send(m: { kind: string }): Promise<{ kind: string; payload: { items?: unknown[] } }> } };
+        __canvas: {
+          client: { send(m: { kind: string }): Promise<{ kind: string; payload: { items?: unknown[] } }> };
+          objects?: {
+            query(selector: string): Promise<string[]>;
+            get(address: string, path: string): Promise<{ kind: string; value?: unknown }>;
+          } | null;
+        };
       }
     ).__canvas;
     const reply = await c.client.send({ kind: "requestDocumentPlaceholders" });
-    return reply.kind === "documentPlaceholders" ? (reply.payload.items ?? []) : [];
+    const out = (reply.kind === "documentPlaceholders" ? (reply.payload.items ?? []) : []) as {
+      plugin: string;
+      key: string;
+      value: string | null;
+    }[];
+    const o = c.objects;
+    if (o) {
+      const vars = await o.query('textVariable[name^="paged:"]').catch(() => [] as string[]);
+      for (const address of vars) {
+        const name = await o.get(address, "textVariableName");
+        const contents = await o.get(address, "textVariableContents");
+        if (name.kind !== "value" || typeof name.value !== "string") continue;
+        out.push({
+          plugin: "media.paged.data",
+          key: name.value.slice("paged:".length),
+          value: contents.kind === "value" && typeof contents.value === "string" ? contents.value : null,
+        });
+      }
+    }
+    return out;
   });
-  return (items as { plugin: string; key: string; value: string | null }[]).filter((f) => f.plugin === "media.paged.data");
+  return items.filter((f) => f.plugin === "media.paged.data");
 }

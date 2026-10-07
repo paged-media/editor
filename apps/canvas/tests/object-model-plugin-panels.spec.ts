@@ -292,7 +292,7 @@ test.describe("ADR 323 — plugin object properties through PropertyField", () =
       }, `plugin:${D}/graphicStyle`);
       expect(created.applied, created.reason).toBe(true);
       const style =
-        created.created?.[0] ?? (await objQuery(page, `plugin:${D}/graphicStyle[name="Before"]`))[0]!;
+        created.created?.[0] || (await objQuery(page, `plugin:${D}/graphicStyle[name="Before"]`))[0]!;
       expect(style).toMatch(/^plugin:media\.paged\.draw\/graphicStyle\//);
       expect(await objGet(page, style, "name")).toBe("Before");
 

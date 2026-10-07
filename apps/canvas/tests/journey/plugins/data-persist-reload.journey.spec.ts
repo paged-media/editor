@@ -58,7 +58,7 @@ import { readZipText, zipEntryNames } from "../../e2e/harness/read-zip";
 import { openPanel } from "../../fidelity/canvas-driver";
 import { Designer } from "../driver/designer";
 import { skipWithoutDuckDB } from "./data-duckdb-gate";
-import { ENGINE_PROTOCOL, sessionLabel } from "./data-engine";
+import { dataFields as engineDataFields, ENGINE_PROTOCOL, sessionLabel } from "./data-engine";
 
 const CSV_FIXTURE = pathResolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -81,27 +81,9 @@ interface Field {
   value: string | null;
 }
 
-/** This plugin's placeholder fields, freshly read from the engine. */
-async function dataFields(page: Page): Promise<Field[]> {
-  const items = await page.evaluate(async () => {
-    const c = (
-      globalThis as unknown as {
-        __canvas: {
-          client: {
-            send(m: {
-              kind: string;
-            }): Promise<{ kind: string; payload: { items?: unknown[] } }>;
-          };
-        };
-      }
-    ).__canvas;
-    const reply = await c.client.send({ kind: "requestDocumentPlaceholders" });
-    return reply.kind === "documentPlaceholders"
-      ? (reply.payload.items ?? [])
-      : [];
-  });
-  return (items as Field[]).filter((f) => f.plugin === "media.paged.data");
-}
+/** This plugin's lowered fields (placeholder or text variable), freshly
+ *  read from the engine. */
+const dataFields = (page: Page): Promise<Field[]> => engineDataFields(page);
 
 async function partText(page: Page, path: string): Promise<string | null> {
   return page.evaluate(async (p) => {

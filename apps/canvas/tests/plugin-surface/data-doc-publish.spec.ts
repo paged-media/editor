@@ -450,13 +450,14 @@ test.describe("plugin surface · paged.data", () => {
         (p) => p.locator("[data-data-bind-author]").first(),
       ],
       [
-        "media.paged.data.panel.dataset",
-        (p) => p.getByText(/No queries yet/i).first(),
-      ],
-      [
         // The query panel: the SQL field the builders write into.
         "media.paged.data.panel.query",
         (p) => p.locator("[data-data-query-sql]").first(),
+      ],
+      [
+        // Last, so its locale control (asserted below) is the one in view.
+        "media.paged.data.panel.dataset",
+        (p) => p.getByText(/No queries yet/i).first(),
       ],
     ];
 
