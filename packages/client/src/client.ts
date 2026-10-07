@@ -202,7 +202,12 @@ export type HostObjectCallWire =
   | { op: "get"; address: string; path: string }
   | { op: "batch"; ops: unknown[] }
   | { op: "query"; selector: string }
-  | { op: "schema"; target: string };
+  | { op: "schema"; target: string }
+  /** `paged.invoke(id, args)` / an `{ op: "invoke" }` batch op's command:
+   *  a typed command (`core.<op>` or a plugin's) run by the registry. */
+  | { op: "invoke"; id: string; args?: unknown }
+  /** `paged.commands(owner?)`: the typed commands on offer. */
+  | { op: "commands"; owner?: string };
 
 /** The answer to one call (`HostObjectAnswer`). */
 export interface HostObjectAnswerWire {
@@ -1369,7 +1374,8 @@ export class CanvasClient {
    * `plugin:` calls: the app passes the plugin SDK's `answerHostObjects`
    * over its ONE shared object registry. With one installed,
    * `executeScript` arms the engine's host bridge, so `paged.get/set/
-   * batch/query/schema` reach plugin objects and a script's core and
+   * batch/query/schema` reach plugin objects, `paged.invoke/commands`
+   * reach typed commands (core's and plugins'), and a script's core and
    * plugin writes undo as one step. `null` uninstalls it (a `plugin:`
    * address then throws `noHost` in the script).
    */

@@ -53,6 +53,7 @@ interface Canvas {
   };
   objects: {
     get(address: string, path: string): Promise<ObjectValue>;
+    query(selector: string): Promise<string[]>;
     register(r: unknown): { dispose(): void };
   } | null;
 }
@@ -75,6 +76,17 @@ async function registerNoteKind(page: Page) {
       c.objects!.register({
         plugin,
         model: {
+          // A typed plugin command: its handler writes through the registry
+          // view it is handed (the script bridge's tracked view under Boa).
+          commands: [
+            {
+              id: `${plugin}.annotate`,
+              title: "Annotate",
+              args: { kind: "struct", fields: { text: { kind: "text" } } },
+              handler: async (ctx: { objects: { set(a: string, p: string, v: unknown): Promise<{ applied: boolean }> } }, args: { text: string }) =>
+                (await ctx.objects.set(`plugin:${plugin}/note/1`, "text", args.text)).applied,
+            },
+          ],
           kinds: [
             {
               kind: "note",
@@ -107,6 +119,15 @@ const run = (page: Page, source: string) =>
     const c = (globalThis as unknown as { __canvas: Canvas }).__canvas;
     return c.client.executeScript(s);
   }, source);
+
+const query = (page: Page, selector: string) =>
+  page.evaluate(
+    async (sel) => (globalThis as unknown as { __canvas: Canvas }).__canvas.objects!.query(sel),
+    selector,
+  );
+
+const undo = (page: Page) =>
+  page.evaluate(() => (globalThis as unknown as { __canvas: Canvas }).__canvas.client.undo());
 
 const read = (page: Page, address: string, path: string) =>
   page.evaluate(
@@ -231,5 +252,59 @@ test.describe("ADR 323 — Boa scripts reach plugin objects", () => {
     // Undo again: the UI edit, on its own.
     await page.evaluate(() => (globalThis as unknown as { __canvas: Canvas }).__canvas.client.undo());
     expect(await read(page, ADDRESS, "frameOpacity")).toBe(opacityBefore);
+  });
+  test("SB-4 — paged.invoke runs a CORE command and a PLUGIN command from a script; ONE undo step @feat:scripting.property-readwrite @feat:round-tripping.undo-redo @level:happy", async ({
+    page,
+  }) => {
+    const [pageAddress] = await query(page, "page");
+    const framesBefore = (await query(page, "frame")).length;
+    const r = await run(
+      page,
+      `const made = JSON.parse(await paged.invoke("core.insertFrame", { pageId: ${JSON.stringify(pageAddress)}, bounds: [20, 20, 80, 120] }));
+       console.log(made.created.length, made.undoSteps);
+       console.log(JSON.parse(await paged.invoke("${PLUGIN}.annotate", { text: "invoked" })));
+       try { await paged.invoke("${PLUGIN}.nothing", {}); } catch (e) { console.log("refused", e.code); }`,
+    );
+    expect(r.error).toBeNull();
+    expect(r.output).toEqual(["[log] 1 1", "[log] true", "[log] refused unknownCommand"]);
+    expect((await query(page, "frame")).length).toBe(framesBefore + 1);
+    expect(await read(page, NOTE, "text")).toBe("invoked");
+
+    // ONE undo: the core command AND the plugin command's write (reported
+    // as committed by the bridge's tracked view).
+    await undo(page);
+    expect((await query(page, "frame")).length).toBe(framesBefore);
+    expect(await read(page, NOTE, "text")).toBe("");
+  });
+
+  test("SB-5 — paged.commands lists core and plugin commands; an invoke op inside paged.batch shares its ONE undo step @feat:scripting.property-readwrite @feat:round-tripping.undo-redo @level:edge", async ({
+    page,
+  }) => {
+    const [pageAddress] = await query(page, "page");
+    const framesBefore = (await query(page, "frame")).length;
+    const before = await read(page, ADDRESS, "frameStrokeWeight");
+    const next = before === 6 ? 8 : 6;
+    const r = await run(
+      page,
+      `const all = JSON.parse(await paged.commands());
+       console.log(all[0].owner, all.some(c => c.id === "core.insertFrame"), JSON.parse(await paged.commands("${PLUGIN}")).map(c => c.id).join());
+       console.log(await paged.batch([
+         { op: "set", address: ${JSON.stringify(NOTE)}, path: "text", value: "batched" },
+         { op: "invoke", id: "core.insertFrame", args: { pageId: ${JSON.stringify(pageAddress)}, bounds: [20, 20, 80, 120] }, handle: "box" },
+         { op: "set", address: "$h:box", path: "frameStrokeWeight", value: 5 },
+         { op: "set", address: ${JSON.stringify(ADDRESS)}, path: "frameStrokeWeight", value: ${next} },
+       ]));`,
+    );
+    expect(r.error).toBeNull();
+    expect(r.output[0]).toBe(`[log] core true ${PLUGIN}.annotate`);
+    expect(JSON.parse(r.output[1]!.replace("[log] ", ""))).toEqual([{ ok: true }, { ok: true }, { ok: true }, { ok: true }]);
+    expect((await query(page, "frame")).length).toBe(framesBefore + 1);
+    expect(await read(page, NOTE, "text")).toBe("batched");
+    expect(await read(page, ADDRESS, "frameStrokeWeight")).toBe(next);
+
+    await undo(page);
+    expect((await query(page, "frame")).length).toBe(framesBefore);
+    expect(await read(page, NOTE, "text")).toBe("");
+    expect(await read(page, ADDRESS, "frameStrokeWeight")).toBe(before);
   });
 });

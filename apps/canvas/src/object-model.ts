@@ -129,38 +129,17 @@ function tableElementId(a: Parsed): ElementId | null {
 
 type Read = Awaited<ReturnType<CoreObjects["get"]>>;
 
-/** The element's property entries over the wire (`requestElementProperties`),
- *  or null when it has none / the editor is not up. */
-async function elementEntries(
-  id: ElementId,
-): Promise<{ path: string; value: unknown }[] | null> {
-  const reply = (await getEditor()
-    .client.send({ kind: "requestElementProperties", payload: { id } } as never)
-    .catch(() => null)) as
-    | { kind: string; payload?: { result?: { entries: { path: string; value: unknown }[] } | null } }
-    | null;
-  return reply?.kind === "elementProperties" ? (reply.payload?.result?.entries ?? null) : null;
-}
-
 /**
- * Protocol 71 — core's `Get` on a page item or a story range answers ONE
- * error ("no such readable path on a <kind>") for two different facts:
- * the element carries no such entry (a text frame has no end cap → the
- * em-dash), and the entry exists with NO single value (a range over two
- * font sizes → MIXED; `collapse_uniform` → None). Only the element's own
- * property entries tell them apart, so a core path the catalog knows is
- * asked again there: present and null = mixed, present = its value,
- * absent = absent. Anything else keeps the refusal.
+ * Protocol 71 (final) — core's `Get` answers a range whose runs disagree
+ * with `mixed: true` (the SDK reads it as `{ kind: "mixed" }`) and keeps
+ * `noSuchPath` for an element that carries no such entry (a text frame
+ * has no end cap → the em-dash). So a `unknownPath` refusal of a core
+ * path on an element address is `absent`; anything else keeps the
+ * refusal. (No second `requestElementProperties` read any more.)
  */
-async function disambiguate(a: Parsed, path: string, refusal: Read): Promise<Read> {
+function notCarried(a: Parsed, path: string, refusal: Read): Read {
   if (!coreRow(path)) return refusal;
-  const id = toElementId(a) as ElementId | null;
-  if (!id) return refusal;
-  const entries = await elementEntries(id);
-  if (!entries) return refusal;
-  const e = entries.find((x) => x.path === path);
-  if (!e) return { kind: "absent" };
-  return e.value == null ? { kind: "mixed" } : { kind: "value", value: (e.value as { value: unknown }).value };
+  return toElementId(a) ? { kind: "absent" } : refusal;
 }
 
 function withTableSeam(core: CoreObjects): CoreObjects {
@@ -172,7 +151,7 @@ function withTableSeam(core: CoreObjects): CoreObjects {
     async get(a, path) {
       if (!isTable(a)) {
         const read = await core.get(a, path);
-        return read.kind === "refused" && read.code === "unknownPath" ? disambiguate(a, path, read) : read;
+        return read.kind === "refused" && read.code === "unknownPath" ? notCarried(a, path, read) : read;
       }
       // Protocol 71: the SDK seam reaches cells and tables through core's
       // `Get` — use it, and fall back only while it answers `unmapped`.
@@ -195,25 +174,9 @@ function withTableSeam(core: CoreObjects): CoreObjects {
       return e.value == null ? { kind: "mixed" } : { kind: "value", value: (e.value as { value: unknown }).value };
     },
     async planSet(a, path, value, ...rest) {
-      if (!isTable(a)) {
-        const plan = await core.planSet(a, path, value, ...rest);
-        // Clearing a nullable TEXT-wire path (a paragraph's "[Style
-        // default]"): the registry validated the null against the row, but
-        // the engine's text setters spell "no override" as the empty
-        // string (`None ⇒ ""`) and refuse a null. Send that spelling.
-        if (plan.ok && value === null && wireOfPath(path) === "text") {
-          const id = toElementId(a) as ElementId | null;
-          if (id) {
-            return {
-              ok: true,
-              mutations: [
-                { op: "setElementProperty", args: { elementId: id, path, value: { type: "text", value: "" } } } as never,
-              ],
-            };
-          }
-        }
-        return plan;
-      }
+      // A null on a nullable row clears it: the final protocol-71 `Set`
+      // takes `{ type, value: null }` itself (no "" spelling needed).
+      if (!isTable(a)) return core.planSet(a, path, value, ...rest);
       const viaCore = await core.planSet(a, path, value, ...rest);
       if (viaCore.ok || viaCore.code !== "unmapped") return viaCore;
       const scope = a.kind;
