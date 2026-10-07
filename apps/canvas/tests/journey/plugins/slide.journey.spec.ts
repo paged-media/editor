@@ -127,6 +127,16 @@ test.describe("journey · paged.slide plugin", () => {
     await fourth.locator("button").first().click();
     await expect(fourth).toHaveAttribute("data-active", "true", { timeout: 10_000 });
 
+    // New slide from a layout: inserted right after the current slide
+    // (slide 4) and brought into view.
+    await panel.locator("[data-new-slide] button").click();
+    await expect(panel.locator("[data-slide]")).toHaveCount(11, { timeout: 20_000 });
+    await expect(panel.locator("[data-slide]").nth(4)).toHaveAttribute("data-active", "true", {
+      timeout: 10_000,
+    });
+    await panel.locator("[data-slide]").nth(3).locator("button").first().click();
+    await expect(fourth).toHaveAttribute("data-active", "true", { timeout: 10_000 });
+
     // Notes typed for the slide land on its page as plugin metadata.
     await designer.openPanel("media.paged.slide.panel.notes");
     const notes = page.locator("[data-notes-text]");
