@@ -91,3 +91,51 @@ export const pagesBackend = {
     };
   },
 };
+
+// ── `host.viewport.revealText` (plugin-sdk `TextRevealBackend`) ─────────
+//
+// Same hand-off: the canvas registers how it takes the user to a range of
+// text (camera onto the range, optionally select it); the backend every
+// plugin host gets calls it.
+
+export interface TextRange {
+  storyId: string;
+  start: number;
+  end: number;
+}
+
+type Reveal = (range: TextRange, select: boolean) => Promise<boolean>;
+
+let reveal: Reveal | null = null;
+
+/** The canvas registers how it reveals a text range (null: none). */
+export function setTextReveal(fn: Reveal | null): void {
+  reveal = fn;
+}
+
+/** The backend every plugin host gets (plugin-sdk `TextRevealBackend`). */
+export const textRevealBackend = {
+  revealText(range: TextRange, select: boolean): Promise<boolean> | boolean {
+    return reveal ? reveal(range, select) : false;
+  },
+};
+
+/** The camera, at `scale`, that centres page-local point (`xPt`, `yPt`) of
+ *  page `index` in the viewport. */
+export function cameraCentredOn(
+  pageSizesPt: ReadonlyArray<readonly [number, number]>,
+  index: number,
+  xPt: number,
+  yPt: number,
+  scale: number,
+  viewportWidthPx: number,
+  viewportHeightPx: number,
+): Camera | null {
+  const rect = layoutPages(pageSizesPt)[index];
+  if (!rect || viewportWidthPx <= 0 || viewportHeightPx <= 0 || !(scale > 0)) return null;
+  return {
+    scale,
+    tx: viewportWidthPx / 2 - (rect.x + xPt) * scale,
+    ty: viewportHeightPx / 2 - (rect.y + yPt) * scale,
+  };
+}
