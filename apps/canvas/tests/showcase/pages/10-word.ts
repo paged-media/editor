@@ -19,7 +19,7 @@
 
 // Spread 10 — paged.doc: a Word document placed into the open layout.
 //
-// WHAT THIS PAGE DEMONSTRATES. "Place Word document…" picks a `.docx`
+// WHAT THIS PAGE DEMONSTRATES. "Insert Word document…" picks a `.docx`
 // through the host file picker, the bundle's OOXML engine lowers it to
 // a `LoweredDoc` IR, and `placeEmbedded` pours that IR into the OPEN
 // document as NATIVE stories — real paragraphs, real character runs,

@@ -1655,7 +1655,7 @@ function PluginBundles() {
       // paged.pdf — Phase 0: opens a .pdf as full-page image frames (pdf.js
       // raster -> inline-image IDML -> host.nativeDocument.open).
       loadIf(pdfBundle),
-      // paged.doc — Word/DOCX: .docx/.dotx importer + "Place Word document…"
+      // paged.doc — Word/DOCX: .docx/.dotx importer + "Insert Word document…"
       // places lowered native stories into the OPEN document (no destructive
       // open; the docx→native standalone producer is deferred). Save-back
       // export needs the v54/v55 doors — degrades to verbatim on older hosts.
