@@ -223,7 +223,10 @@ jobs:
     # wasm 25 min — so a hang still reports as a hang at the step that
     # hung, and this number only buys the tests room to finish. Re-measure
     # and bring it back down once a green run says what the suite costs.
-    timeout-minutes: 75
+    # Measured 2026-10-11: shard 1 (lean surface + GPU journeys + baseline
+    # seeding) runs 77-80 min with every step green, and the 75 cut it
+    # off in its last uploads. 90 gives it room.
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
