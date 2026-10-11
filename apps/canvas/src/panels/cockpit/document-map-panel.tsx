@@ -652,11 +652,11 @@ function PageChips({
         <span
           data-page-chip="overset-seam"
           title={
-            "Overset can't be attributed to a page over the current wire " +
-            "(StorySummary.overset is per-story with no story→page map). " +
+            "Overset text cannot be traced to a page yet: it is only known " +
+            "per story, not per page. " +
             `${oversetStories} overset stor${
               oversetStories === 1 ? "y" : "ies"
-            } in the document. Needs a per-story (or per-frame) page read.`
+            } in the document.`
           }
           style={chipStyle("var(--pg-muted-fg)", true)}
         >
@@ -667,11 +667,11 @@ function PageChips({
         <span
           data-page-chip="fonts-seam"
           title={
-            "Missing fonts can't be attributed to a page over the current " +
-            "wire (FontSummary carries no host attribution). " +
+            "Missing fonts cannot be traced to a page yet: they are only " +
+            "known for the whole document. " +
             `${missingFonts} missing font${
               missingFonts === 1 ? "" : "s"
-            } in the document. Needs per-page font usage on the wire.`
+            } in the document.`
           }
           style={chipStyle("var(--pg-muted-fg)", true)}
         >
