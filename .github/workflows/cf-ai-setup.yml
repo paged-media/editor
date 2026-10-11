@@ -7,7 +7,9 @@ name: cf-ai-setup
 #   1. a KV namespace for the proxy's counters (created once, found after);
 #   2. bound to paged-playground as AI_USAGE (production + preview);
 #   3. AI_DAILY_BUDGET_USD / AI_IP_TURNS_PER_HOUR as plain variables;
-#   4. ANTHROPIC_API_KEY as an encrypted Pages secret — copied from this
+#   4. ANTHROPIC_WORKSPACE_ID from the repository VARIABLE of that name, when
+#      set — needed only for a key that is not scoped to a workspace;
+#   5. ANTHROPIC_API_KEY as an encrypted Pages secret — copied from this
 #      repository's ANTHROPIC_API_KEY Actions secret, and skipped while that
 #      secret is not set (the proxy then keeps answering 503).
 #
@@ -35,6 +37,7 @@ jobs:
           T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           A: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WORKSPACE: ${{ vars.ANTHROPIC_WORKSPACE_ID }}
           BUDGET: ${{ inputs.daily_budget_usd }}
           TURNS: ${{ inputs.ip_turns_per_hour }}
         run: |
@@ -61,6 +64,9 @@ jobs:
               "AI_DAILY_BUDGET_USD": {"type": "plain_text", "value": budget},
               "AI_IP_TURNS_PER_HOUR": {"type": "plain_text", "value": turns},
           }
+          ws = os.environ.get("WORKSPACE", "")
+          if ws:
+              env["ANTHROPIC_WORKSPACE_ID"] = {"type": "plain_text", "value": ws}
           key = os.environ.get("KEY", "")
           if key:
               env["ANTHROPIC_API_KEY"] = {"type": "secret_text", "value": key}

@@ -36,6 +36,9 @@ export interface ProxyUsage {
 
 export interface AiProxyOptions {
   apiKey: string;
+  /** For an API key that is not scoped to a workspace: the workspace to
+   *  bill (sent as `anthropic-workspace-id`). */
+  workspaceId?: string;
   catalog: ApiCatalog;
   model?: string;
   /** Turnstile, rate limit, spend cap: return a Response to refuse the
@@ -139,7 +142,11 @@ export async function handleAiProxy(request: Request, options: AiProxyOptions): 
   const messages = validateMessages(body.messages, options.maxMessages ?? 160);
   if (typeof messages === "string") return errorResponse(400, "invalid_request_error", messages);
 
-  const client = new Anthropic({ apiKey: options.apiKey, ...(options.fetch ? { fetch: options.fetch } : {}) });
+  const client = new Anthropic({
+    apiKey: options.apiKey,
+    ...(options.workspaceId ? { defaultHeaders: { "anthropic-workspace-id": options.workspaceId } } : {}),
+    ...(options.fetch ? { fetch: options.fetch } : {}),
+  });
   const params = buildRequest({ mode, messages, catalog: options.catalog, model: options.model });
   let upstream: Response;
   try {
