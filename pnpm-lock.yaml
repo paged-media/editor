@@ -231,8 +231,8 @@ importers:
         specifier: 0.128.0
         version: 0.128.0
       '@paged-media/plugin-api':
-        specifier: 0.2.48-canary.0
-        version: 0.2.48-canary.0
+        specifier: 0.2.49-canary.0
+        version: 0.2.49-canary.0
     devDependencies:
       typescript:
         specifier: ^5.9.3
