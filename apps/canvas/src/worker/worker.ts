@@ -294,6 +294,22 @@ function assertSabContract(mod: CanvasWasmModule): string | null {
   return drift.length === 0 ? null : drift.join("; ");
 }
 
+// The engine wasm, or its gzip twin. Cloudflare Pages refuses any file over
+// 25 MiB and the engine is ~27 MiB, so the playground deploy ships
+// `<asset>.wasm.gz` in its place (playground.yml) and the plain URL answers
+// with the SPA's index.html. Decompress here — a few hundred ms once — rather
+// than lose the engine. A host that already decoded the gzip is fine too.
+async function engineWasmSource(url: string): Promise<Response | ArrayBuffer> {
+  const res = await fetch(url);
+  if (res.ok && (res.headers.get("content-type") ?? "").includes("wasm")) return res;
+  const gz = await fetch(`${url}.gz`);
+  if (!gz.ok) return res;
+  const bytes = new Uint8Array(await gz.arrayBuffer());
+  if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) return bytes.buffer;
+  const inflated = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return new Response(inflated).arrayBuffer();
+}
+
 async function init() {
   // Decision-B package boundary — the wasm-bindgen loader is the
   // published `@paged-media/canvas-wasm` package (no longer the
@@ -305,7 +321,7 @@ async function init() {
     (await import("@paged-media/canvas-wasm")) as unknown as CanvasWasmModule;
   // Object form (`{ module_or_path }`) — the bare-URL positional form is
   // deprecated by current wasm-bindgen loaders and logs a warning.
-  await mod.default({ module_or_path: canvasWasmUrl });
+  await mod.default({ module_or_path: await engineWasmSource(canvasWasmUrl) });
   worker = new mod.CanvasWorker();
   if (worker.protocolVersion !== PROTOCOL_VERSION) {
     postBack({

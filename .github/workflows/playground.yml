@@ -70,16 +70,26 @@ jobs:
         working-directory: editor
         run: pnpm --filter paged-canvas build:demo
 
-      # Cloudflare Pages refuses any file over 25 MiB, and paged.data's DuckDB
-      # engine (bin/duckdb-engine.wasm, ~34 MiB) is one. Ship without it: the data
-      # plugin reports `duckdb-missing` honestly instead of the whole deploy
-      # failing. Follow-up: serve DuckDB from object storage or a CDN.
-      - name: drop files over the Pages size limit
+      # Cloudflare Pages refuses any file over 25 MiB. The ENGINE wasm is one
+      # (~27 MiB): ship it gzipped as `<file>.gz` (~7 MiB), which the worker
+      # falls back to (worker.ts engineWasmSource). paged.data's DuckDB
+      # (bin/duckdb-engine.wasm, ~34 MiB) has no such fallback yet, so it is
+      # dropped and the plugin reports `duckdb-missing`. Any other oversized
+      # file fails the deploy rather than vanishing.
+      - name: fit files to the Pages size limit
         working-directory: editor/apps/canvas/dist-demo
         run: |
           find . -type f -size +25M -print | while read -r f; do
-            echo "::warning::not deployed (over 25 MiB): $f"
-            rm -f "$f"
+            case "$f" in
+              ./assets/paged_canvas_wasm_bg-*.wasm)
+                gzip -9 -c "$f" > "$f.gz" && rm -f "$f"
+                echo "::notice::gzipped for the size limit: $f ($(du -h "$f.gz" | cut -f1))" ;;
+              ./bin/duckdb-engine.wasm)
+                rm -f "$f"
+                echo "::warning::not deployed (over 25 MiB): $f" ;;
+              *)
+                echo "::error::$f is over Cloudflare Pages' 25 MiB limit"; exit 1 ;;
+            esac
           done
 
       - name: deploy to Cloudflare Pages
