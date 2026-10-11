@@ -84,8 +84,9 @@ bounds cost; Turnstile would only reduce how fast an abuser reaches it.
   works otherwise unchanged. Local development uses a dev-only middleware with the
   developer's own `ANTHROPIC_API_KEY`.
 - The deploy now runs from `apps/canvas` so wrangler picks up `functions/`.
-- `@paged-media/ai` is consumed by `link:` until its first canary publishes; the release swaps it
-  for a pin, like every other `@paged-media` package.
+- `@paged-media/ai` is vendored in `packages/ai` (a byte-for-byte copy of plugin-sdk `97d40f5`)
+  until its first npm publish; then the copy is deleted and the package pinned like every other
+  `@paged-media` package (`packages/ai/README.md` says how). Change it upstream, never here.
 - Haiku 5.5 has no server-side refusal fallback: a declined request ends the run, and each
   surface says Claude declined.
 
