@@ -406,10 +406,11 @@ export async function clickLower(page: Page): Promise<void> {
 
 /** Author one binding through the panel's authoring row (kind picker +
  *  field/expression input + Add). Image/barcode kinds bind the SELECTED
- *  rectangle — the caller selects it first. */
+ *  rectangle — the caller selects it first; a table takes its columns as
+ *  a comma-separated list. */
 export async function addAuthoredBinding(
   page: Page,
-  kind: "variable" | "image" | "barcode",
+  kind: "variable" | "image" | "barcode" | "table",
   fieldExpr: string,
   symbology?: "ean13" | "upca" | "code128" | "qr",
 ): Promise<void> {

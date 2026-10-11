@@ -43,7 +43,6 @@ import { STYLE, p } from "../../names-annual";
 import { ConsoleTap, captureDownload, settle } from "../../plugin-support";
 import type { PageContext, PageReport } from "../../types";
 import {
-  GRID_PANEL,
   SHEET_CMD,
   WORKBOOK_PANEL,
   listParts,
@@ -82,6 +81,11 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   const range = page.locator("[data-sheet-range]");
   await expect(range).toBeVisible({ timeout: 120_000 });
   await range.fill("A1:A2");
+  // The Sort range section is collapsed by default (2026-10-11).
+  const sortSection = page.locator('[data-sheet-section="sort"]');
+  if (!(await sortSection.evaluate((d) => (d as HTMLDetailsElement).open))) {
+    await sortSection.locator(":scope > summary").click();
+  }
   await page.locator("[data-sheet-sort-key]").fill("1");
   await page.locator("[data-sheet-sort-dir]").selectOption("desc");
   await page.locator("[data-sheet-sort]").click();
@@ -104,16 +108,19 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   }
 
   // ── FIND & REPLACE — the dependent recalculates ──────────────────
+  // The command opens the Grid panel with its find field focused; replace
+  // sits under "Replace and options".
   await doc.runCommand(`${SHEET_CMD}.findReplace`);
+  await expect(page.locator('[data-sheet-panel="grid"]')).toBeVisible({ timeout: 120_000 });
   await page.locator("[data-sheet-find-needle]").fill("Sum");
   await page.locator("[data-sheet-find]").click();
   const findMsg = page.locator("[data-sheet-find-msg]");
   await expect(findMsg).toBeVisible({ timeout: 8_000 });
-  await expect(findMsg).not.toContainText("0 hits", { timeout: 8_000 });
+  await expect(findMsg).toHaveText(/^[1-9]\d* match(es)?\.$/, { timeout: 8_000 });
+  await page.locator("[data-sheet-replace-section] > summary").click();
   await page.locator("[data-sheet-find-replacement]").fill("Total");
   await page.locator("[data-sheet-replace-all]").click();
   await expect(findMsg).toContainText("Replaced", { timeout: 8_000 });
-  await openPanel(page, GRID_PANEL);
   const svg = page.locator("[data-grid-svg-root]");
   await expect(
     svg,

@@ -34,12 +34,13 @@
 //     live cross-plugin consume is the sheet-dataset journey (S-15).
 //   • data.i18n.display — the locale select (en/de) drives the §9.1 display
 //     kernels (NUMBER/CURRENCY/PERCENT/DATEFMT formatting locale).
-//   • data.query.seam — the catalog refresh re-runs the DuckDB query (the
+//   • data.query.seam — "Preview rows" re-runs the DuckDB query (the
 //     CSV→Arrow→RecordSet seam) before materializing.
 //
-// The dataset panel shows "No queries yet" until a query is defined in the
-// bindings panel, so this journey wires the demo binding first (it adds the
-// `q_all` query), then opens the dataset panel and drives its controls.
+// The dataset panel shows "No queries yet" until a query exists, so this
+// journey first adds a variable binding in the bindings panel over "All rows
+// of data_people" (which defines that query), then opens the dataset panel
+// and drives its controls.
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -49,6 +50,7 @@ import { Designer } from "../driver/designer";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { skipWithoutDuckDB } from "./data-duckdb-gate";
+import { addBindingThroughPanel } from "./data-engine";
 
 const CSV_FIXTURE = pathResolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -119,12 +121,11 @@ test.describe("journey · paged.data dataset panel", () => {
     }
     await expect(page.getByText(/data_people/).first()).toBeVisible({ timeout: 6_000 });
 
-    // ── 2. DEFINE A QUERY — the dataset panel materializes a query; the demo
-    //    binding adds the `q_all` query (SELECT * FROM the source). ──
+    // ── 2. DEFINE A QUERY — the dataset panel materializes a query; a binding
+    //    over "All rows of data_people" defines it (SELECT * FROM the source). ──
     await openPanel(page, BINDINGS_PANEL);
     await expect(page.locator("[data-data-bind-author]")).toBeVisible({ timeout: 10_000 });
-    await page.getByRole("button", { name: /wire demo binding/i }).click();
-    await page.waitForTimeout(300);
+    await addBindingThroughPanel(page, "variable", "name");
 
     // ── 3. OPEN THE DATASET PANEL via the openDataset command (the menu/
     //    palette entry). It mounts and shows the query selector (no longer the
@@ -133,15 +134,20 @@ test.describe("journey · paged.data dataset panel", () => {
     // data canary.6 (U12): the v-header body text is gone — anchor the
     // mounted panel on its stable variables block, then the query selector.
     await expect(page.locator("[data-data-variables]")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/^query:/).last()).toBeVisible({ timeout: 8_000 });
+    await expect(page.locator("[data-data-dataset-empty]")).toHaveCount(0);
+    await expect(page.getByText(/^Query/).last()).toBeVisible({ timeout: 8_000 });
 
-    // ── 4. CATALOG (§7) — "Refresh + catalog" re-runs the DuckDB query
+    // ── 4. CATALOG (§7) — "Preview rows" re-runs the DuckDB query
     //    (data.query.seam) and materializes the resolved schema: the panel
-    //    headlines the column count of the imported source's records. The CSV
-    //    fixture has 2 columns (name, role). ──
-    await page.getByRole("button", { name: /refresh \+ catalog/i }).click();
-    await expect(page.getByText(/catalog:\s*\d+\s*cols/i)).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/catalog:\s*2\s*cols/i)).toBeVisible({ timeout: 6_000 });
+    //    headlines the column count of the imported source's records and
+    //    shows its first rows. The CSV fixture has 2 columns (name, role)
+    //    and 3 records. ──
+    await page.getByRole("button", { name: /preview rows/i }).click();
+    await expect(page.getByText(/^\d+ columns? · \d+ documented/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/^2 columns · /)).toBeVisible({ timeout: 6_000 });
+    const rows = page.locator("[data-data-dataset-rows]");
+    await expect(rows).toHaveAttribute("data-data-dataset-rows", "3");
+    await expect(rows).toContainText("Ada Lovelace");
 
     // ── 5. LOCALE (§9.1, data.i18n.display) — switch the display locale en→de.
     //    The select drives the engine's formatting kernels; the panel reflects

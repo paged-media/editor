@@ -22,8 +22,9 @@
 // in-frame grid.
 //
 // A designer enters the lowered frame, selects A1:B1 with the keyboard,
-// presses B and Fill in the workbook panel's Format section, and leaves the
-// sheet. Leaving refreshes the placed table from the engine's styled range
+// follows the workbook panel's Format pointer to Sheet properties (the one
+// home for cell formatting since 2026-10-11), turns Bold on and types a Fill
+// for the selected range there, and leaves the sheet. Leaving refreshes the placed table from the engine's styled range
 // door, so the exported document must carry:
 //   · the yellow fill on both header cells (a minted RGB swatch), and only
 //     there;
@@ -31,6 +32,8 @@
 //   · the values unchanged.
 
 import { expect, test } from "@playwright/test";
+
+const PROPERTIES_PANEL = "media.paged.sheet.panel.properties";
 
 import { openPanel } from "../../fidelity/canvas-driver";
 import { Designer } from "../driver/designer";
@@ -67,11 +70,26 @@ test.describe("journey · paged.sheet cell formatting", () => {
     await page.keyboard.press(`${MOD}+Home`);
     await page.keyboard.press("Shift+ArrowRight");
     await openPanel(page, WORKBOOK_PANEL);
+    // The Workbook's sections are collapsed except "Place on page".
+    await page.locator('[data-sheet-section="format"] > summary').click();
     const section = page.locator("[data-sheet-format-section]");
     await expect(section).toContainText("A1:B1");
-    await page.locator("[data-sheet-fmt-bold]").click();
-    await page.locator("[data-sheet-fmt-fill]").fill("#ffff00");
-    await page.locator("[data-sheet-fmt-fill-apply]").click();
+    // Number format, font, fill… live in Sheet properties; the Format
+    // section points there.
+    await section.locator("[data-sheet-open-properties]").click();
+    const range = page.locator(
+      `[data-schema-panel="${PROPERTIES_PANEL}"] [data-schema-section="Selected range"]`,
+    );
+    await expect(range).toBeVisible({ timeout: 10_000 });
+    const bold = range.locator('[data-plugin-property-field="bold"] [role="switch"]');
+    await expect(bold).toHaveAttribute("aria-checked", "false");
+    await bold.click();
+    await expect(bold).toHaveAttribute("aria-checked", "true");
+    const fill = range.locator('[data-plugin-property-field="fill"] input').first();
+    await fill.fill("#FFFF00");
+    await fill.press("Enter");
+    // The workbook's own readout of the range's style agrees.
+    await openPanel(page, WORKBOOK_PANEL);
     await expect(section).toContainText("bold");
     await expect(section).toContainText(/fill #FFFF00/i);
     await exitSheet(page);

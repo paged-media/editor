@@ -25,8 +25,9 @@
 // This drives the two engine-backed rows that surface THROUGH the bindings
 // panel (NOT left to the in-repo suite alone):
 //   • data.bind.engine — the salsa-shaped ResolutionEngine: define → resolve →
-//     sync states (Linked/Stale). The "Wire demo binding" button defines a
-//     variable + table binding against the imported query; "Lower to document"
+//     sync states (Linked/Stale). The panel's authoring row ("Add binding")
+//     defines a variable + a table binding against the records picked under
+//     "Records from" (all rows of the imported source); "Lower to document"
 //     refreshes the data through DuckDB and commits the resolved content.
 //   • data.expr.engine — the binding-expression DSL. The field-mapping wizard
 //     ("Map fields…") asks the Rust engine for column → variable-binding
@@ -53,6 +54,7 @@ import { Designer } from "../driver/designer";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { skipWithoutDuckDB } from "./data-duckdb-gate";
+import { addBindingThroughPanel } from "./data-engine";
 
 const CSV_FIXTURE = pathResolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -134,14 +136,16 @@ test.describe("journey · paged.data binding engine + expression DSL", () => {
     await expect(page.getByText(/data_people/).first()).toBeVisible({ timeout: 6_000 });
 
     // ── 2. BIND ENGINE — open the bindings panel and DEFINE bindings against
-    //    the imported source. "Wire demo binding" defines a query + a variable
-    //    binding + a single-region table binding on the Rust ResolutionEngine
+    //    the imported source. The authoring row defines a variable binding
+    //    and a table binding over "All rows of data_people" (which defines
+    //    that query on first use) on the Rust ResolutionEngine
     //    (data.bind.engine). ──
     await openPanel(page, BINDINGS_PANEL);
     await expect(page.locator("[data-data-bind-author]")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("[data-data-bind-query-pick]")).toHaveValue("s:data_people");
 
-    await page.getByRole("button", { name: /wire demo binding/i }).click();
-    await page.waitForTimeout(300);
+    await addBindingThroughPanel(page, "variable", "name");
+    await addBindingThroughPanel(page, "table", "name, role");
     // The panel's snapshot now lists the wired bindings (the engine accepted
     // the define_binding calls — the resolution graph has nodes).
     await expect(page.getByText(/bindings:\s*(?!none)/i).first()).toBeVisible({ timeout: 6_000 });

@@ -46,9 +46,10 @@
 //
 //     · paged.sheet contributes ZERO tools, ZERO menu items and ZERO
 //       keybindings, so a spreadsheet can only be created from Cmd+K;
-//     · getting one onto the page is TWO palette commands in sequence,
-//       the second called "Lower selection to frame" — "lower" being
-//       compiler vocabulary, not something a designer would search for;
+//     · getting one onto the page is TWO palette commands in sequence
+//       (the second was called "Lower selection to frame" — compiler
+//       vocabulary; FIXED 2026-10-11, it now reads "Place selection on
+//       page");
 //     · ADR-024's `panelBelongsHere` DISABLES Window ▸ Workbook until a
 //       sheet context is already active, while leaving Window ▸ Grid and
 //       Window ▸ Datasets live and unlabelled in every document — so the
@@ -527,23 +528,25 @@ test.describe("plugin surface · paged.sheet", () => {
     await expect(page.locator('[data-sheet-panel="datasets"]')).toBeVisible({ timeout: 15_000 });
 
     // "Sort range…" and "Find & replace…" carry the ellipsis that means
-    // "this opens a dialog". Neither does — both just raise the Workbook
-    // panel. Worse, from a cold document (the state a user is in when
-    // they search Cmd+K for "sort") the panel they land on does not even
-    // CONTAIN a sort or find control: those render only once a workbook
-    // is open. So the verb answers a search with an empty room.
+    // "this opens a dialog". Neither does — each raises the panel its
+    // control lives in: Sort range the Workbook, Find & replace (since
+    // 2026-10-11, the one home for find) the Grid, focusing its find
+    // field. From a cold document (the state a user is in when they
+    // search Cmd+K for "sort") neither panel CONTAINS the control yet:
+    // they render only once a workbook is open. So the verb answers a
+    // search with a room whose only content is the first step.
     const CONTROLS = [
-      ["media.paged.sheet.command.sortRange", "[data-sheet-sort]"],
-      ["media.paged.sheet.command.findReplace", "[data-sheet-find]"],
+      ["media.paged.sheet.command.sortRange", "workbook", "[data-sheet-sort]"],
+      ["media.paged.sheet.command.findReplace", "grid", "[data-sheet-find]"],
     ] as const;
 
-    for (const [id, control] of CONTROLS) {
-      await openPanel(page, GRID_PANEL); // move away first
-      await expect(page.locator('[data-sheet-panel="grid"]')).toBeVisible();
+    for (const [id, panel, control] of CONTROLS) {
+      await openPanel(page, DATASETS_PANEL); // move away first
+      await expect(page.locator('[data-sheet-panel="datasets"]')).toBeVisible();
       await invoke(page, id);
       await expect(
-        page.locator('[data-sheet-panel="workbook"]'),
-        `${id} raises the Workbook panel`,
+        page.locator(`[data-sheet-panel="${panel}"]`),
+        `${id} raises the ${panel} panel`,
       ).toBeVisible({ timeout: 15_000 });
       await expect(
         page.locator('[role="dialog"]'),
@@ -554,28 +557,36 @@ test.describe("plugin surface · paged.sheet", () => {
         `DEFECT: ${id} lands on a panel with no ${control} in it while no workbook is open`,
       ).toHaveCount(0);
     }
+    // The cold Grid panel at least names the first step instead of
+    // sitting blank.
+    await expect(page.locator('[data-sheet-panel="grid"] [data-grid-empty]')).toContainText(
+      "Open or create a workbook",
+    );
 
     // Once a workbook exists the controls are there — so the commands
     // are not broken, they are just useless at the moment a user reaches
     // for them, and say nothing about why.
     await importWorkbook(page);
-    for (const [id, control] of CONTROLS) {
-      await openPanel(page, GRID_PANEL);
+    for (const [id, panel, control] of CONTROLS) {
+      await openPanel(page, DATASETS_PANEL);
       await invoke(page, id);
+      await expect(page.locator(`[data-sheet-panel="${panel}"]`)).toBeVisible({ timeout: 15_000 });
       await expect(
         page.locator(control),
         `${id}'s control appears once a workbook is open`,
       ).toHaveCount(1);
     }
+    // Find & replace puts the caret in the Grid's find field.
+    await expect(page.locator("[data-sheet-find-needle]")).toBeFocused();
 
     test.info().annotations.push({
       type: "surface-finding",
       description:
         "DEFECT: paged.sheet's 'Sort range…' and 'Find & replace…' are titled with the ellipsis " +
-        "that means 'opens a dialog' and open none — they raise the Workbook panel. On a " +
+        "that means 'opens a dialog' and open none — they raise the Workbook and Grid panels. On a " +
         "document with no workbook loaded (the state a user searching Cmd+K for 'sort' is in) " +
-        "that panel contains NO sort and NO find control at all: the command answers the search " +
-        "by opening an empty room and saying nothing. Both controls only render after an import.",
+        "those panels contain NO sort and NO find control at all, only the first step (open or " +
+        "create a workbook). Both controls only render after an import or a new workbook.",
     });
   });
 
@@ -839,6 +850,7 @@ test.describe("plugin surface · paged.sheet", () => {
     // creation steps. The second, `lowerToFrame`, is what actually puts
     // the sheet on the page and is still reachable only from Cmd+K under
     // a name ("Lower selection to frame") no designer would search for.
+    // (That title itself became "Place selection on page" on 2026-10-11.)
     // UPDATED 2026-08-23 (F1). This read `.toEqual(["Object/Insert
     // spreadsheet…"])` — one entry, owned by the HOST — and the comment
     // above still describes why `lowerToFrame` was the gap. That half is
@@ -975,7 +987,7 @@ test.describe("plugin surface · paged.sheet", () => {
     });
   });
 
-  test("AUDIT — putting a spreadsheet on the page is two palette commands in sequence, and step two is called 'Lower selection to frame'", async ({
+  test("FIXED 2026-10-11 — step two of putting a spreadsheet on the page is called 'Place selection on page' (it was 'Lower selection to frame'); it is still two palette commands in sequence", async ({
     page,
   }) => {
     const before = await countKind(page, "textFrame");
@@ -1005,21 +1017,20 @@ test.describe("plugin surface · paged.sheet", () => {
       };
     });
     expect(titles.step1).toBe("Import workbook (.xlsx)");
-    expect(titles.step2).toBe("Lower selection to frame");
-    // "lower" never appears in the first command's title, in the panel
-    // button the picker leads to, or anywhere a user would look before
-    // they already knew the word.
+    // FIXED 2026-10-11: step two is named for what a designer does, the
+    // same words as the panel's button and the Sheet menu row.
+    expect(titles.step2).toBe("Place selection on page");
+    expect(titles.step2!.toLowerCase()).not.toContain("lower");
     expect(titles.step1!.toLowerCase()).not.toContain("lower");
 
     test.info().annotations.push({
       type: "surface-finding",
       description:
-        "DEFECT (creation path): a spreadsheet reaches the page only via TWO palette commands in " +
-        "sequence — 'Import workbook (.xlsx)' then 'Lower selection to frame'. Step one changes " +
-        "nothing on the canvas, so there is no feedback that a second step exists; step two is " +
-        "named with compiler vocabulary ('lower' = the IR-to-frame step) that no designer would " +
-        "type into Cmd+K. The panel does carry a [data-sheet-lower] button, but the panel it " +
-        "lives in is the one the Window menu disables (see the Window-menu audit above).",
+        "FIXED 2026-10-11 (naming): step two was 'Lower selection to frame' (compiler vocabulary); " +
+        "it is now 'Place selection on page', matching the panel's 'Place on page' button. STILL " +
+        "OPEN (creation path): a spreadsheet reaches the page only via TWO commands in sequence — " +
+        "'Import workbook (.xlsx)' then 'Place selection on page'. Step one changes nothing on the " +
+        "canvas, so there is no feedback that a second step exists.",
     });
   });
 });

@@ -25,7 +25,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 const require = createRequire(import.meta.url);
 
@@ -119,4 +119,51 @@ export async function dataFields(page: Page): Promise<{ plugin: string; key: str
     return out;
   });
   return items.filter((f) => f.plugin === "media.paged.data");
+}
+
+/** The kinds the Bindings panel's authoring row offers (`[data-data-bind-kind]`). */
+export type BindKind = "variable" | "image" | "barcode" | "table" | "visibility" | "rule" | "recordFlow";
+
+/** What the panel says once each kind's binding is defined. */
+const DEFINED: Record<BindKind, RegExp> = {
+  variable: /^variable binding \S+/,
+  image: /^image binding \S+ → the selected rectangle/,
+  barcode: /^barcode binding \S+ → the selected rectangle/,
+  table: /^table binding \S+ \(\d+ column\(s\)\)/,
+  visibility: /^show\/hide binding \S+/,
+  rule: /^style rule \S+/,
+  recordFlow: /^record flow \S+/,
+};
+
+/** Define a binding the way a designer does: in the open Bindings panel pick
+ *  the kind, type the field(s), press "Add binding", and read the panel's own
+ *  confirmation. Returns the binding id the panel names. (The demo-binding
+ *  buttons this replaces were removed in the 2026-10-11 panel pass; the
+ *  authoring row covers every kind they wired, with real expressions.) */
+export async function addBindingThroughPanel(
+  page: Page,
+  kind: BindKind,
+  field: string,
+  opts: { symbology?: string } = {},
+): Promise<string> {
+  const author = page.locator("[data-data-bind-author]");
+  await expect(author).toBeVisible({ timeout: 10_000 });
+  await author.locator("[data-data-bind-kind]").selectOption(kind);
+  if (opts.symbology) {
+    await author
+      .locator("select")
+      .filter({ has: page.locator(`option[value="${opts.symbology}"]`) })
+      .selectOption(opts.symbology);
+  }
+  await author.locator("[data-data-bind-field]").fill(field);
+  const msg = page.locator("[data-data-bind-msg]");
+  const read = async (): Promise<string> =>
+    (await msg.count()) > 0 ? ((await msg.first().textContent()) ?? "").trim() : "";
+  const before = await read();
+  await author.locator("[data-data-bind-add]").click();
+  await expect.poll(read, { timeout: 10_000 }).not.toBe(before);
+  const said = await read();
+  expect(said, `the panel confirmed the ${kind} binding`).toMatch(DEFINED[kind]);
+  // Every confirmation reads "<kind words> <id> …" with the id third.
+  return said.split(/\s+/)[2];
 }

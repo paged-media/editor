@@ -19,7 +19,7 @@
 
 // Journey: the paged.doc plugin workflow through the editor host.
 //
-// Host-integration smoke for the Word/DOCX bundle: "Place Word document…"
+// Host-integration smoke for the Word/DOCX bundle: "Insert Word document…"
 // picks a .docx, the bundle lowers it (docx wasm → Lowered IR) and pours
 // native stories into the OPEN document (placeEmbedded — no destructive
 // open), raises the outline panel, and the exporter re-emits .docx bytes.

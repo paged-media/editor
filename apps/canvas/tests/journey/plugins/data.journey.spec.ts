@@ -162,8 +162,12 @@ test.describe("journey · paged.data plugin", () => {
     // stable mount anchor is its import affordance.
     await expect(page.locator("[data-data-import-csv]")).toBeVisible({ timeout: 10_000 });
 
+    // Before any source exists the bindings panel mounts its empty state,
+    // which offers the next step instead of controls that cannot work
+    // (2026-10-11); the authoring row appears once a source is imported
+    // (asserted after the import below).
     await openPanel(page, BINDINGS_PANEL);
-    await expect(page.locator("[data-data-bind-author]")).toBeVisible({
+    await expect(page.locator("[data-data-bind-empty] [data-data-bind-open-sources]")).toBeVisible({
       timeout: 10_000,
     });
 
@@ -234,6 +238,11 @@ test.describe("journey · paged.data plugin", () => {
     //    With no defined binding these are no-ops, but they exercise the
     //    session lanes end-to-end when the engine booted. ──
     if (importDrove) {
+      // With a source, the bindings panel trades its empty state for the
+      // authoring row, reading "All rows of data_people" (HARD).
+      await openPanel(page, BINDINGS_PANEL);
+      await expect(page.locator("[data-data-bind-author]")).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator("[data-data-bind-query-pick]")).toHaveValue("s:data_people");
       try {
         await invokeCommand(page, RESOLVE_COMMAND);
         await invokeCommand(page, LOWER_COMMAND);

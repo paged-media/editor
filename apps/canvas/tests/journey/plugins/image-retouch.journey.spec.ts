@@ -91,8 +91,15 @@ test.describe("journey · paged.image retouching", () => {
     //    seams across a ramp; the gradient-domain solve removed that
     //    limit and the warning went with it, because keeping it would be
     //    its own kind of lie. What is left is the real edge case. ──
+    //    Since the 2026-10-11 panel pass the longer statement sits in the
+    //    section's collapsed "About" block; the designer opens it to read.
     const limit = page.locator("[data-image-heal-limit]");
-    await expect(limit).toContainText("gradient domain");
+    await page
+      .locator("[data-image-retouch-section] details", { has: limit })
+      .locator("summary")
+      .click();
+    await expect(limit).toBeVisible();
+    await expect(limit).toContainText("mismatch around the dab");
     await expect(limit).toContainText("follows a ramp");
     await expect(limit).toContainText("falls back to a plain clone");
 
@@ -102,12 +109,15 @@ test.describe("journey · paged.image retouching", () => {
     const caf = page.locator("[data-image-content-aware-fill]");
     await expect(caf).toBeVisible();
     await expect(caf).toBeDisabled();
-    await expect(page.getByText("select an area first")).toBeVisible();
+    await expect(page.getByText("Select an area first.")).toBeVisible();
 
-    // Its two real limits are stated where a retoucher will read them.
+    // What it does and its real limit are stated where a retoucher will
+    // read them: the one-line note, then the collapsed About behind it.
     const note = page.locator("[data-image-caf-note]");
-    await expect(note).toContainText("copied from real image data");
-    await expect(note).toContainText("coarse to fine");
+    await expect(note).toContainText("texture copied from elsewhere in the image");
+    await note.locator("summary", { hasText: "About" }).click();
+    await expect(note.getByText("half resolution")).toBeVisible();
+    await expect(note).toContainText("limited to a window");
 
     // With a selection it becomes available — the CPU search needs no
     // device, so this holds on the lane that actually runs in CI.

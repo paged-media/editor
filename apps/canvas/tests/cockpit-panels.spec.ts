@@ -152,7 +152,12 @@ test.describe("Cockpit — Publication health + stubs", () => {
     await page.evaluate(() => window.__canvas.setMode("data"));
     // Data mode seeds the LIVE paged.data bindings panel (the mapping
     // ComingSoon stub is off the mode surface, Window-menu only).
-    await expect(page.locator('text="Wire demo binding"')).toBeVisible();
+    // With no data source yet its body is the empty state, which offers
+    // the next step ("Open Data sources") rather than dead controls.
+    await expect(page.locator("[data-data-bind-empty]")).toBeVisible();
+    await expect(page.locator("[data-data-bind-open-sources]")).toHaveText(
+      "Open Data sources",
+    );
 
     await page.evaluate(() => window.__canvas.setMode("design"));
   });

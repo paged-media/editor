@@ -317,10 +317,15 @@ test.describe("plugin surface · paged.web", () => {
     // With nothing selected the panel mounts its EMPTY state — an honest
     // surface rather than a blank tab.
     await openPanel(page, SOURCE_PANEL);
-    await expect(page.locator("[data-web-panel]")).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-web-panel="empty"]')).toBeVisible({ timeout: 15_000 });
+    // …and the empty state offers the verb itself (2026-10-11 panel pass):
+    // "Insert web frame" right where the designer is looking.
+    const insertButton = page.locator('[data-web-panel="empty"] [data-web-insert]');
+    await expect(insertButton).toHaveText("Insert web frame");
 
-    // With a web frame selected it mounts the source editors.
-    await invoke(page, INSERT);
+    // With a web frame selected it mounts the source editors. The empty
+    // state's button inserts one and selects it.
+    await insertButton.click();
     await expect(page.locator('[data-web-panel="source"]')).toBeVisible({ timeout: 15_000 });
     await expect(page.locator("[data-web-html] [data-code-input]")).toBeVisible();
     await expect(page.locator("[data-web-css] [data-code-input]")).toBeVisible();
@@ -681,7 +686,7 @@ test.describe("plugin surface · paged.web", () => {
     });
   });
 
-  test("FIXED 2026-10-11 — Plugins ▸ Web offers 'Web frame' before you are inside one (it was disabled until you already were)", async ({
+  test("FIXED 2026-10-11 — Plugins ▸ Web offers 'Web source' before you are inside one (it was disabled until you already were)", async ({
     page,
   }) => {
     // A plugin's panels live in Plugins ▸ <plugin> (they left Window).
@@ -692,7 +697,7 @@ test.describe("plugin surface · paged.web", () => {
         .getByRole("button", { name: "Plugins" })
         .click();
       await page.locator('[data-menu-submenu="Web"]').hover();
-      await expect(page.getByRole("menuitem", { name: "Web frame", exact: true })).toHaveCount(1);
+      await expect(page.getByRole("menuitem", { name: "Web source", exact: true })).toHaveCount(1);
     };
 
     await openWindowMenu();
@@ -700,8 +705,8 @@ test.describe("plugin surface · paged.web", () => {
     // context, but offered at the document root — the panel is how a
     // user learns this content type exists.
     await expect(
-      page.getByRole("menuitem", { name: "Web frame", exact: true }),
-      "Plugins ▸ Web ▸ Web frame is live at the document root",
+      page.getByRole("menuitem", { name: "Web source", exact: true }),
+      "Plugins ▸ Web ▸ Web source is live at the document root",
     ).not.toHaveAttribute("aria-disabled", "true");
     await page.keyboard.press("Escape");
 
@@ -738,8 +743,8 @@ test.describe("plugin surface · paged.web", () => {
 
     await openWindowMenu();
     await expect(
-      page.getByRole("menuitem", { name: "Web frame", exact: true }),
-      "inside the webFrame context Plugins ▸ Web ▸ Web frame is live",
+      page.getByRole("menuitem", { name: "Web source", exact: true }),
+      "inside the webFrame context Plugins ▸ Web ▸ Web source is live",
     ).not.toHaveAttribute("aria-disabled", "true");
 
     test.info().annotations.push({

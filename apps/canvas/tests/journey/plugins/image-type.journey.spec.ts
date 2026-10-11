@@ -78,19 +78,28 @@ test.describe("journey · paged.image raster type", () => {
 
     // ── 3. THE SCOPE SENTENCE. The one thing a designer must learn
     //    BEFORE they set a headline in here and later try to edit it. ──
+    //    The one-line note says what a click does; the longer scope
+    //    statement lives in the section's collapsed "About" block, which
+    //    the designer opens to read it (2026-10-11 panel pass).
     const note = page.locator("[data-image-type-note]");
-    await expect(note).toContainText("BASELINE");
-    await expect(note).toContainText("shaped by the font");
+    await expect(note).toContainText("baseline");
+    await expect(note).toBeVisible();
+    const typeSection = page.locator("[data-image-type-section]");
+    const about = typeSection.locator("details", {
+      has: page.locator("summary", { hasText: "About" }),
+    });
+    await about.locator("summary").click();
+    await expect(about.getByText("shaped by the font")).toBeVisible();
 
     await expect(
-      page.getByText("paints PIXELS, not a text object"),
+      about.getByText("paints pixels, not a text object"),
     ).toBeVisible();
-    await expect(page.getByText("use the host's text frame")).toBeVisible();
+    await expect(about.getByText("use a text frame")).toBeVisible();
 
     // ── 4. WHERE FACES COME FROM. The offline-by-construction promise,
     //    said on screen and not only in a commit message. ──
     await expect(
-      page.getByText("nothing is ever fetched from the network"),
+      about.getByText("nothing is fetched from the network"),
     ).toBeVisible();
   });
 

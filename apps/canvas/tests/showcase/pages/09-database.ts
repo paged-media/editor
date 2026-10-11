@@ -104,6 +104,8 @@ const BOUND_COLUMN = "name";
 /** The column left UNCHECKED in the mapping wizard, so the record card
  *  carries exactly one field and stays readable. */
 const UNMAPPED_COLUMN = "role";
+/** The bound table's columns (the authoring row's comma-separated list). */
+const TABLE_COLUMNS = "name, role";
 
 const CARD: Bounds = [204, 72, 244, 300];
 const BARCODE_BOX: Bounds = [204, 330, 316, 540];
@@ -305,11 +307,11 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     );
 
     // ── 4. THE TABLE BINDING, PASS TWO ──────────────────────────────
-    // A table binding has no authoring path — the kind picker offers
-    // variable / image / barcode only — so the panel's one-click demo
-    // wiring is the only way to define one. It also defines a SECOND
-    // variable binding with an EMPTY expression, which resolves to an
-    // error token and would land wherever the caret is. So the caret is
+    // The table binding goes through the same authoring row as the
+    // barcode: kind "table", the columns, "Add binding". (The one-click
+    // demo wiring this used to need was removed on 2026-10-11; the row
+    // covers the table kind now.) Lowering again re-lowers EVERY binding,
+    // and a variable field lands wherever the caret is, so the caret is
     // parked in a throwaway frame for this pass and the frame is thrown
     // away after it, leaving the record card above untouched.
     //
@@ -321,8 +323,12 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     const beforeTablePolys = await sceneRefs(page, "polygon");
     await withActivePage(page, pageId, async () => {
       await doc.designer.placeCaret(throwawayStory, 0);
-      await page.getByRole("button", { name: /wire demo binding/i }).click();
-      await page.waitForTimeout(300);
+      await page.locator("[data-data-bind-kind]").selectOption("table");
+      await page.locator("[data-data-bind-field]").fill(TABLE_COLUMNS);
+      await page.locator("[data-data-bind-add]").click();
+      await expect(page.locator("[data-data-bind-msg]")).toContainText(/^table binding /, {
+        timeout: 10_000,
+      });
       await page.getByRole("button", { name: /^lower to document$/i }).click();
       await settle(
         page,

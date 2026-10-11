@@ -296,7 +296,12 @@ test.describe("Cockpit — per-mode REAL context-toolbar pills (W2.8)", () => {
     // REAL, observable focus state (`data-on` + the panel body present).
     await mapping.click();
     await expect(mapping).toHaveAttribute("data-on", "");
-    await expect(page.locator('text="Wire demo binding"')).toBeVisible();
+    // With no data source yet its body is the empty state, which offers
+    // the next step ("Open Data sources") rather than dead controls.
+    await expect(page.locator("[data-data-bind-empty]")).toBeVisible();
+    await expect(page.locator("[data-data-bind-open-sources]")).toHaveText(
+      "Open Data sources",
+    );
     // Connect source / Generate are REAL pills now (they raise the live
     // sources / dataset panels), not ComingSoon seams.
     await expect(

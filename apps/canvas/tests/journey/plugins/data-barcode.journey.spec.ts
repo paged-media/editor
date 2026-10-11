@@ -22,9 +22,10 @@
 // lowers; the engine clean-room-encodes the symbology and emits native VECTOR
 // modules (insertPath filled rects) scaled to the bound frame's content box.
 //
-// data.barcode.symbology is editor-surface: the bindings panel exposes a
-// "Bind barcode →" button + a symbology <select> (EAN-13 / UPC-A / Code-128 /
-// QR). Binding requires a SELECTED rectangle (the symbol's frame). This journey
+// data.barcode.symbology is editor-surface: the bindings panel's authoring row
+// offers the "barcode / QR" kind + a symbology <select> (EAN-13 / UPC-A /
+// Code-128 / QR) + the field to encode, and "Add binding". Binding requires a
+// SELECTED rectangle (the symbol's frame). This journey
 // drives that surface end to end: draw + select a rectangle, choose Code-128
 // (a general 1D symbology that encodes arbitrary text), bind the barcode, and
 // lower. The engine encodes the modules in Rust and the lower lane reaches the
@@ -48,6 +49,7 @@ import { Designer } from "../driver/designer";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { skipWithoutDuckDB } from "./data-duckdb-gate";
+import { addBindingThroughPanel } from "./data-engine";
 
 const CSV_FIXTURE = pathResolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -117,7 +119,7 @@ test.describe("journey · paged.data barcode symbology", () => {
     await expect(page.getByText(/data_people/).first()).toBeVisible({ timeout: 6_000 });
 
     // ── 2. SELECT A FRAME — the barcode's symbol frame. Draw a rectangle and
-    //    select it (the bindings panel's "Bind barcode →" needs a selected
+    //    select it (the bindings panel's barcode binding needs a selected
     //    rectangle as the target the symbol fills). ──
     const rect = await designer.drawRectangle({ x0: 150, y0: 150, x1: 360, y1: 290 });
     expect(rect, "drew the barcode frame").not.toBe("");
@@ -125,8 +127,9 @@ test.describe("journey · paged.data barcode symbology", () => {
     await fitFirstPage(page);
 
     // ── 3. PICK A SYMBOLOGY + BIND — open the bindings panel, choose Code-128
-    //    (encodes arbitrary text → modules), then "Bind barcode →" defines the
-    //    barcode binding bound to the selected rectangle (the engine will encode
+    //    (encodes arbitrary text → modules), name the field to encode, then
+    //    "Add binding" defines the barcode binding bound to the selected
+    //    rectangle (the engine will encode
     //    the symbology + scale the module grid to the frame's content box). ──
     await openPanel(page, BINDINGS_PANEL);
     await expect(page.locator("[data-data-bind-author]")).toBeVisible({ timeout: 10_000 });
@@ -141,10 +144,12 @@ test.describe("journey · paged.data barcode symbology", () => {
     await expect(symbology).toBeVisible({ timeout: 6_000 });
     await symbology.selectOption("code128");
 
-    await page.getByRole("button", { name: /bind barcode/i }).click();
-    await page.waitForTimeout(300);
-    // The binding registered (the panel's bindings list now carries bc_demo).
-    await expect(page.getByText(/bindings:.*bc_demo/i).first()).toBeVisible({ timeout: 6_000 });
+    const id = await addBindingThroughPanel(page, "barcode", "name");
+    await expect(page.locator("[data-data-bind-msg]")).toContainText("(code128)");
+    // The binding registered (the panel's bindings list now carries it).
+    await expect(
+      page.getByText(new RegExp(`bindings:.*${id}`)).first(),
+    ).toBeVisible({ timeout: 6_000 });
 
     // ── 4. LOWER — "Lower to document" resolves the value, the engine encodes
     //    the Code-128 modules, and the lower lane drives the per-module

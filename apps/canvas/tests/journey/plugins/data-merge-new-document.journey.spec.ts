@@ -148,7 +148,10 @@ async function mergeToNewDocument(page: Page): Promise<void> {
   const row = page.locator("[data-data-merge]");
   await expect(row).toBeVisible({ timeout: 10_000 });
   await row.locator("[data-data-merge-mode]").selectOption("multiple");
-  await row.locator("select").nth(2).selectOption("columns");
+  // The merge reads the records picked under "Records from" (the one
+  // imported source's rows, the default).
+  await expect(page.locator("[data-data-bind-query-pick]")).toHaveValue(/^s:/);
+  await row.locator("[data-data-merge-arrange]").selectOption("columns");
   await row.getByLabel(/row spacing/).fill("6");
   await row.getByLabel(/column spacing/).fill("12");
   await row.getByLabel(/keep template/).uncheck();
