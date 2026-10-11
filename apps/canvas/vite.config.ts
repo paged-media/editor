@@ -155,6 +155,52 @@ const networkConnectSrcPolicy = {
 };
 
 /**
+ * Dev only: the Claude proxy at /api/ai (ADR 221), the same handler the
+ * Pages Function mounts in production (functions/api/ai). Active when the
+ * dev server is started with ANTHROPIC_API_KEY set; otherwise /api/ai
+ * answers 503 as an unconfigured deployment does. No spend cap here — it
+ * is your key.
+ */
+function aiProxyDev(): import("vite").Plugin {
+  return {
+    name: "paged-ai-proxy-dev",
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url || !req.url.startsWith("/api/ai/")) return next();
+        const apiKey = process.env.ANTHROPIC_API_KEY;
+        if (!apiKey) {
+          res.statusCode = 503;
+          res.setHeader("content-type", "application/json");
+          return res.end(JSON.stringify({ type: "error", error: { type: "ai_unavailable", message: "Start the dev server with ANTHROPIC_API_KEY set to use Claude." } }));
+        }
+        try {
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) chunks.push(chunk as Buffer);
+          const headers = new Headers();
+          for (const [k, v] of Object.entries(req.headers)) if (typeof v === "string") headers.set(k, v);
+          const origin = `http://${req.headers.host}`;
+          const request = new Request(new URL(req.url, origin), {
+            method: req.method,
+            headers,
+            ...(req.method === "POST" ? { body: Buffer.concat(chunks) } : {}),
+          });
+          const { handleAiProxy } = (await server.ssrLoadModule("@paged-media/ai/proxy")) as typeof import("@paged-media/ai/proxy");
+          const { default: catalog } = (await server.ssrLoadModule("@paged-media/ai/catalog")) as typeof import("@paged-media/ai/catalog");
+          const response = await handleAiProxy(request, { apiKey, catalog });
+          res.statusCode = response.status;
+          response.headers.forEach((value, key) => res.setHeader(key, value));
+          if (!response.body) return res.end();
+          for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) res.write(chunk);
+          res.end();
+        } catch (err) {
+          next(err);
+        }
+      });
+    },
+  };
+}
+
+/**
  * Serve `/fonts/<name>` from `<repo>/corpus/fonts/<name>`. Lets the
  * canvas auto-fetch a default font when the user drops an IDML so
  * the editor demo shows real glyphs in dev. Path traversal blocked
@@ -545,6 +591,7 @@ export default defineConfig({
     react(),
     crossOriginIsolation,
     networkConnectSrcPolicy,
+    aiProxyDev(),
     fontsRoute(),
     corpusIdmlRoute(),
     duckdbDistRoute(),

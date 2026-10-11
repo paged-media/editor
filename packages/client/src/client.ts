@@ -1336,11 +1336,12 @@ export class CanvasClient {
    * mutation routes through the standard Operation channel, so
    * undo/redo + the inspector + the canvas re-render all work
    * identically to UI-driven changes. Returns the captured
-   * console.* output + any thrown error.
+   * console.* output, any thrown error, and which runtime budget (if
+   * any) stopped it.
    */
   async executeScript(
     source: string,
-  ): Promise<{ output: string[]; error: string | null }> {
+  ): Promise<{ output: string[]; error: string | null; budgetKind: string | null }> {
     const answer = this.hostObjects;
     let reply = (await this.send({
       kind: "executeScript",
@@ -1363,8 +1364,8 @@ export class CanvasClient {
       } as unknown as MainToWorkerKind)) as { kind: string; payload?: unknown };
     }
     if (reply.kind === "scriptResult") {
-      const p = reply.payload as { output: string[]; error?: string | null };
-      return { output: p.output, error: p.error ?? null };
+      const p = reply.payload as { output: string[]; error?: string | null; budgetKind?: string | null };
+      return { output: p.output, error: p.error ?? null, budgetKind: p.budgetKind ?? null };
     }
     throw new Error(`unexpected reply: ${reply.kind}`);
   }

@@ -60,6 +60,8 @@ import {
   writeToOpenFile,
   setChromeStorageScope,
   ALWAYS_IN_PALETTE,
+  AI_ASK_COMMAND,
+  requestAiAsk,
 } from "@paged-media/shell";
 import "@paged-media/shell/styles/globals.css";
 
@@ -1027,8 +1029,9 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultGroup: "console",
   },
   {
+    // A designer surface since the Ask bar (ADR 221): Claude writes the
+    // script, so it no longer takes a developer to use it.
     id: "paged.script-editor",
-    devOnly: true,
     title: "Script",
     component: ScriptEditorPanel,
     defaultDock: "bottom",
@@ -2128,8 +2131,23 @@ function CanvasAppIntegration() {
           runAlign(objectRegistry, payload as { kind: AlignKind; targets: string[] }),
       },
     ];
+    // ADR 221 — the palette's "Ask Claude" row: open the Script panel and
+    // hand it the request (the panel's Ask bar runs the agent).
+    const aiCommands = [
+      {
+        id: AI_ASK_COMMAND,
+        title: "Ask Claude",
+        category: "Assistant",
+        args: { kind: "text" } as const,
+        handler: async (_paged: unknown, payload?: unknown) => {
+          requestAiAsk(String(payload ?? ""));
+          await registries.commands.invoke("paged.panel.show.paged.script-editor");
+        },
+      },
+    ];
     const cmdDisposables = [
       ...commands,
+      ...aiCommands,
       ...objectCommands,
       ...insertCommands,
       ...alignCommands,

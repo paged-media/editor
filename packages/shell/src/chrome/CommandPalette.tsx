@@ -28,6 +28,8 @@ import {
   CommandList,
   CommandSeparator,
 } from "../components/ui/command";
+import { AI_ASK_COMMAND } from "../ai/editor-ai";
+import { PoweredByClaude } from "../ai/powered-by-claude";
 import { Icon } from "../icons";
 import type { CommandContribution } from "../registries";
 import { useRegistries } from "../state/registries-context";
@@ -277,17 +279,20 @@ export function CommandPalette() {
             <CommandGroup heading="Assistant">
               <CommandItem
                 value={`assistant ${query}`}
-                disabled
-                data-palette-ai-seam
+                onSelect={() => {
+                  setOpen(false);
+                  void commands.invoke(AI_ASK_COMMAND, query);
+                }}
+                data-palette-ai
               >
                 <Icon
                   name="ui-wand"
                   size={15}
                   style={{ color: "var(--pg-primary)", marginRight: 8 }}
                 />
-                <span>“{query}”</span>
-                <span className="ml-auto text-xs opacity-60">
-                  assistant coming soon
+                <span>Ask Claude: “{query}”</span>
+                <span className="ml-auto">
+                  <PoweredByClaude size={9} />
                 </span>
               </CommandItem>
             </CommandGroup>
@@ -387,11 +392,12 @@ export function CommandPalette() {
         <span>
           <kbd style={kbdStyle}>↑↓</kbd> navigate
         </span>
-        {/* E8 — the footer used to claim "AI-assisted" beside a
-              disabled assistant row. A promise the app does not keep is
-              not a seam; a seam SAYS it is unbuilt, and this asserted the
-              opposite. The assistant row itself already reads
-              "assistant coming soon", which is the honest form. */}
+        {/* E8 — the footer once claimed "AI-assisted" beside a
+              disabled assistant row. The row is live now (ADR 221), so
+              the attribution is true and sits where the claim was. */}
+        <span style={{ marginLeft: "auto" }}>
+          <PoweredByClaude size={9} />
+        </span>
       </div>
     </CommandDialog>
   );

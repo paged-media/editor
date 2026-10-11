@@ -35,6 +35,7 @@ and 024 predate that scheme and keep their numbers. Records 200–217 were writt
 | [217](217-showcase-reference-document.md) | The showcase: one reference document built through the real editor | Accepted, recorded retroactively 2026-10-02 |
 | [219](219-plugin-documents-door.md) | A plugin may replace the open document, and the editor asks first | Accepted, 2026-10-06 |
 | [220](220-wasm-modules-are-hosted.md) | Wasm modules are hosted, not deployed | Accepted, 2026-10-11 |
+| [221](221-claude-through-a-same-origin-proxy.md) | Claude reaches the editor through one same-origin proxy | Accepted 2026-10-11 |
 
 Decisions made in other repositories that this editor's code rests on are listed in
 [`../README.md`](../README.md). Comments in the source also cite ADR 025 (the journal) and

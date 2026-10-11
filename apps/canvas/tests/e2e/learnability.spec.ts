@@ -115,7 +115,6 @@ test.describe("Phase E — learnability", () => {
     // indistinguishable from ninety real panels.
     for (const dev of [
       "paged.panel.show.paged.repl",
-      "paged.panel.show.paged.script-editor",
       "paged.panel.show.paged.schema-list-demo",
       "paged.panel.show.paged.schema-tree-demo",
     ]) {
@@ -124,6 +123,10 @@ test.describe("Phase E — learnability", () => {
         `${dev} is a developer surface and must not be in the Window menu`,
       ).not.toContain(dev);
     }
+
+    // The Script panel left this list with its Ask Claude bar (ADR 221):
+    // a designer can use it now, so the Window menu offers it.
+    expect(windowItems.map((i) => i.command)).toContain("paged.panel.show.paged.script-editor");
 
     // …and they are still reachable, which is the half that makes the
     // above safe rather than a removal.

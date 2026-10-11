@@ -27,3 +27,12 @@ ICC profiles: no CMYK working-space profiles are currently bundled
 eciCMYK are the intended candidates; they are freely
 redistributable per ECI's terms once obtained from eci.org). Users
 can register their own profiles via Document Colour Settings.
+
+Claude logo ("Powered by Claude" attribution)
+   packages/shell/src/ai/powered-by-claude.tsx
+   The Claude mark is a trademark of Anthropic, PBC, shown to attribute
+   the AI features to the Claude service that provides them. The path
+   data comes from Wikimedia Commons, File:Claude_AI_logo.svg
+   (https://commons.wikimedia.org/wiki/File:Claude_AI_logo.svg); the
+   wordmark is drawn in the interface's text colour so it stays legible
+   on the dark theme. It is not covered by this repository's licence.
