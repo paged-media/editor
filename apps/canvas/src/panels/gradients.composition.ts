@@ -30,11 +30,14 @@
 //
 // Reads:  `documentCollection:gradients`
 // Writes: `selectionProperty:frameFillColor` (ColorRef payload
-//         carrying a `Gradient/<self_id>`)
+//         carrying a `Gradient/<self_id>`), `frameGradientFillAngle`,
+//         `frameGradientFillLength`
 
 import type { CompositionNode } from "@paged-media/catalog";
 import {
   PAGED_INPUT_COLLECTION_SELECT,
+  PAGED_INPUT_LENGTH,
+  PAGED_INPUT_NUMERIC_SCRUB,
   PAGED_LAYOUT_SECTION,
   asPropertyFields,
 } from "@paged-media/shell";
@@ -60,6 +63,32 @@ export const gradientsComposition: CompositionNode = asPropertyFields({
           kind: "selectionProperty",
           scope: "element",
           path: "frameFillColor",
+        },
+      },
+    },
+    // The applied gradient's direction and reach on this object — the
+    // rows paged.draw's separate "Vector fill" panel carried (merged
+    // here). Core answers them for any frame; they only show an effect
+    // while the fill is a gradient.
+    {
+      catalogId: PAGED_INPUT_NUMERIC_SCRUB,
+      props: { label: "Angle", suffix: "°" },
+      bindings: {
+        value: {
+          kind: "selectionProperty",
+          scope: "element",
+          path: "frameGradientFillAngle",
+        },
+      },
+    },
+    {
+      catalogId: PAGED_INPUT_LENGTH,
+      props: { label: "Length" },
+      bindings: {
+        value: {
+          kind: "selectionProperty",
+          scope: "element",
+          path: "frameGradientFillLength",
         },
       },
     },

@@ -146,7 +146,7 @@ export function MenuBar() {
   );
   const keptByMode = modes.get(mode)?.menus ?? [];
   const showContextMenu = (label: string, nodes: MenuNode[]) => {
-    if (keptByMode.includes(label)) return true;
+    if (keptByMode.includes(label) || keptByMode.includes("*")) return true;
     if (!someLeaf(nodes, applies)) return false;
     const own = [...framed].filter((ns) =>
       someLeaf(nodes, (l) => commandNamespaceIs(l.command, ns)),

@@ -163,3 +163,43 @@ export function useSelectionEditContext(): EditContextContribution | null {
 
   return resolved;
 }
+
+/**
+ * The edit context whose plugin OWNS the current single selection by
+ * metadata — the element carries that context's `x-paged:<plugin>`
+ * envelope (draw-made artwork: a repeat, a blend, a styled path). Unlike
+ * `useSelectionEditContext` (which also answers a kind claim — any path is
+ * "vectorGraphic"), this answers only for objects a plugin actually made
+ * or annotated, so the Properties panel can show that plugin's surface for
+ * them without showing it for every rectangle.
+ */
+export function useSelectionMetadataOwner(): EditContextContribution | null {
+  const client = useCanvasClient();
+  const { elementSelection } = useSelection();
+  const { editContexts } = useRegistries();
+  const [owner, setOwner] = useState<EditContextContribution | null>(null);
+  const requestRef = useRef(0);
+
+  useEffect(() => {
+    const req = ++requestRef.current;
+    const keyed = editContexts.list().filter((c) => c.metadataKey && c.panelIds?.length);
+    if (elementSelection.length !== 1 || keyed.length === 0) {
+      setOwner(null);
+      return;
+    }
+    const element = elementSelection[0];
+    void (async () => {
+      let entries: ReadonlyArray<{ value?: unknown }> = [];
+      try {
+        const props = await client.elementProperties(element);
+        if (props) entries = props.entries as ReadonlyArray<{ value?: unknown }>;
+      } catch {
+        // Unreadable — no owner.
+      }
+      if (req !== requestRef.current) return;
+      setOwner(keyed.find((c) => readEnvelope(entries, c.metadataKey!) !== null) ?? null);
+    })();
+  }, [elementSelection, client, editContexts]);
+
+  return owner;
+}

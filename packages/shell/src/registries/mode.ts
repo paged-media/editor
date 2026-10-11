@@ -80,7 +80,8 @@ export interface ModeContribution {
   /** Command ids surfaced as "Suggested in <Mode>" in the palette. */
   paletteSuggestions?: string[];
   /** Context menus this mode keeps on the menu bar regardless of the
-   *  selection (Data layout keeps "Data"). By top-level label. */
+   *  selection (Data layout keeps "Data"). By top-level label; `"*"`
+   *  keeps every one (a solo app, whose one plugin is the product). */
   menus?: string[];
 }
 

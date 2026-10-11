@@ -292,6 +292,7 @@ export {
 export {
   useSelectionObjectType,
   useSelectionEditContext,
+  useSelectionMetadataOwner,
   type SelectionObjectType,
 } from "./state/use-selection-object-type";
 
