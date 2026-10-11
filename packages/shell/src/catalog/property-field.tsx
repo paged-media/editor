@@ -519,12 +519,23 @@ export function PropertyField(props: PropertyFieldProps) {
       ? leafValue(
           type,
           widget,
-          // Unset (a definite null) on a row with a numeric default shows
-          // the default — an untouched frame's opacity is 100 %, and the
-          // length leaf drew the null as "0 %".
-          state.value === null && typeof row?.default === "number" ? row.default : state.value,
+          // Unset (a definite null) on a row with a default shows the
+          // default — an untouched frame's opacity is 100 % (the length
+          // leaf drew the null as "0 %"), an unset arrowhead is "None".
+          // An enum core reports unset as "" (no member) reads the same.
+          (state.value === null || (state.value === "" && type.kind === "enum")) &&
+            row?.default !== undefined &&
+            row.default !== null
+            ? row.default
+            : state.value,
         )
-      : null;
+      : // Unset and writable (core answers `absent` for a property the
+        // object has never had set): the default too — the same reading
+        // the Design control bar gives. A refusal or a provider seam is
+        // not this case (`write` is null for both).
+        state.state === "absent" && write && row?.default !== undefined && row.default !== null
+        ? leafValue(type, widget, row.default)
+        : null;
   const leafProps: LeafProps = { value, onCommit: commitLeaf, props: chrome };
 
   let control: React.ReactNode;
