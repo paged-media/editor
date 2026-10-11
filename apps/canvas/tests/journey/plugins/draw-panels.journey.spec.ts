@@ -17,78 +17,184 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// Journey: paged.draw SCHEMA PANELS — the Stroke + Fill declarative
-// panels mount from the catalog and a control drives.
+// Journey: paged.draw's stroke and fill rows, through the HOST panels.
 //
-// The bundle registers its Stroke + Fill panels as SchemaPanelContributions
-// (pure data, NO React across the boundary); the editor renders them from
-// the catalog with row enablement + section visibility driven by the
-// bundle's PUBLISHED bindings. This journey opens each panel through the
-// real panel-rail path (Designer.openPanel → cockpit openPanel), asserts
-// it mounts (`[data-schema-panel="<id>"]`), drives a control (the stroke
-// weight scrub), and proves the binding-gated dash section flips with the
-// selection (a rectangle without a path-anchor table hides it; a real
-// PATH shows it) — the load-bearing B-01 mechanism, through the UI.
+// paged.draw used to contribute two schema panels of its own, "Vector
+// stroke" (`media.paged.draw.panel.stroke`) and "Vector fill"
+// (`media.paged.draw.panel.fill`). Every row they carried is a core frame
+// property, so the draw build from ux/panels-2026-10 (a0947ef) stopped
+// contributing them and the host carries the rows instead: weight, colour,
+// cap, dashes and arrowheads in the Stroke panel (`paged.stroke`, its
+// "Dashes & arrows" section), corners in Object Options, the gradient's
+// angle and length in Gradients (`paged.gradients`). Two panels for one
+// stroke read as two different things.
+//
+// This journey proves the SAME user value the old one did, through the
+// panels a designer now reaches:
+//
+//   1. on a Pen-drawn open path, an end arrowhead and a dash pattern set in
+//      Stroke ▸ Dashes & arrows land in the model (read back through
+//      `host.objects`), each as ONE undo step;
+//   2. after applying a gradient, its angle set in the Gradients panel
+//      lands in the model as one undo step;
+//   3. the retired panels are gone from the registry, and draw's context
+//      panel is "Draw settings" (`media.paged.draw.panel.properties`),
+//      which still mounts from the catalog.
+//
+// Rows are addressed by the host's DOM hooks: every composition field
+// renders `[data-property-field="<path>"]` (object-field.tsx), and a
+// collapsible section is `[data-section="<title>"]` with a
+// `[data-section-toggle]` header (leaves.tsx).
 
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { Designer } from "../driver/designer";
+import { objGet, undoOnce } from "../../e2e/harness/objects";
 
-const STROKE_PANEL = "media.paged.draw.panel.stroke";
-const FILL_PANEL = "media.paged.draw.panel.fill";
+const RETIRED = ["media.paged.draw.panel.stroke", "media.paged.draw.panel.fill"];
+const DRAW_SETTINGS = "media.paged.draw.panel.properties";
 
-test.describe("journey · paged.draw schema panels", () => {
-  test("a designer opens the stroke + fill schema panels and drives a control @feat:plugin-draw.stroke-schema-panel @feat:plugin-platform.bundle-lifecycle @level:happy", async ({
+const field = (page: Page, panel: string, path: string) =>
+  page.locator(`${panel} [data-property-field="${path}"]`).first();
+
+/** An unset arrowhead reads as nothing (null / "") or core's "None". */
+const isNone = (v: unknown) => v === null || v === "" || v === "None";
+
+test.describe("journey · paged.draw stroke + fill rows in the host panels", () => {
+  test("a designer sets an arrowhead and a dash pattern on a path in Stroke ▸ Dashes & arrows @feat:editor-shell.panels.stroke @feat:frames-paths.arrowheads @feat:frames-paths.stroke-dashed @feat:round-tripping.undo-redo @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);
     await designer.open();
     await designer.newDocument();
 
-    // ── 1. AUTHOR — a real PATH (the Pen authors an open polygon, which
-    //    exposes a path-anchor table → the dash section's visibility
-    //    binding publishes true). ──
+    // ── 1. AUTHOR — an open path with the Pen, stroked so it shows. ──
     const pathId = await designer.drawPath([
       [180, 420],
       [320, 420],
       [250, 500],
     ]);
     expect(pathId, "authored a path").not.toBe("");
-
-    // ── 2. STROKE PANEL mounts from the catalog schema (not bundle
-    //    React). Select the path so the panel resolves values. ──
+    await designer.applyStroke("polygon", pathId, "Color/Black", 3);
     await designer.selectElement("polygon", pathId);
-    await designer.openPanel(STROKE_PANEL);
-    const strokePanel = page.locator(`[data-schema-panel="${STROKE_PANEL}"]`);
-    await expect(strokePanel, "the stroke schema panel mounts").toBeVisible({
-      timeout: 6_000,
-    });
-    // A real control renders through the catalog leaf (a number scrub).
-    const weightInput = strokePanel.locator("input").first();
-    await expect(weightInput, "the stroke weight control renders").toBeVisible();
+    const address = `polygon:${pathId}`;
 
-    // ── 3. DRIVE a control — type a stroke weight and commit. The schema
-    //    leaf is the same primitive the editor's own panels use; driving
-    //    it proves the panel is interactive, not a static mount. ──
-    await weightInput.fill("5");
-    await weightInput.press("Enter");
-    await expect(weightInput).toHaveValue(/5/);
+    // ── 2. The host Stroke panel, its Dashes & arrows section opened. ──
+    await designer.openPanel("paged.stroke");
+    const STROKE = '[data-stroke-panel="ready"]';
+    await expect(page.locator(STROKE)).toBeVisible({ timeout: 6_000 });
+    const section = page.locator(`${STROKE} [data-section="Dashes & arrows"]`);
+    await expect(section).toBeVisible();
+    const toggle = section.locator("[data-section-toggle]");
+    if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
 
-    // ── 4. DASH SECTION binding gate — a real PATH exposes a path-anchor
-    //    table, so the bundle publishes dashControlsVisible=true and the
-    //    host SHOWS the dash section (the load-bearing B-01 mechanism: a
-    //    binding-driven section, not a static schema node). ──
-    const dashSection = strokePanel.locator('[data-schema-section="Dashes"]');
-    await expect(dashSection, "dash section shown for a path").toBeVisible({
-      timeout: 6_000,
-    });
+    // ── 3. END ARROWHEAD — pick "Triangle"; the model holds core's enum
+    //    member, and one undo takes it back off. ──
+    const end = field(page, STROKE, "frameStrokeEndArrowhead");
+    await expect(end).toHaveAttribute("data-value-type", "enum");
+    expect(isNone(await objGet(page, address, "frameStrokeEndArrowhead"))).toBe(true);
+    await end.locator("select").selectOption({ label: "Triangle" });
+    await expect
+      .poll(() => objGet(page, address, "frameStrokeEndArrowhead"))
+      .toBe("TriangleArrowHead");
+    await undoOnce(page);
+    await expect
+      .poll(async () => isNone(await objGet(page, address, "frameStrokeEndArrowhead")))
+      .toBe(true);
+    // Set it again so the path keeps an arrowhead through the dash edit.
+    await end.locator("select").selectOption("TriangleArrowHead");
+    await expect
+      .poll(() => objGet(page, address, "frameStrokeEndArrowhead"))
+      .toBe("TriangleArrowHead");
 
-    // ── 5. FILL PANEL — the second schema panel mounts from the catalog
-    //    too (Phase 2d, B-03). ──
-    await designer.openPanel(FILL_PANEL);
-    const fillPanel = page.locator(`[data-schema-panel="${FILL_PANEL}"]`);
-    await expect(fillPanel, "the fill schema panel mounts").toBeVisible({
-      timeout: 6_000,
-    });
+    // ── 4. DASH PATTERN — a list of lengths (dash, gap … in pt), typed
+    //    into the row and committed with Enter: one write, one undo. ──
+    const dash = field(page, STROKE, "frameStrokeDashArray");
+    await expect(dash).toHaveAttribute("data-value-type", "list");
+    const dashInput = dash.locator("input").first();
+    await dashInput.fill("6, 3");
+    await dashInput.press("Enter");
+    await expect.poll(() => objGet(page, address, "frameStrokeDashArray")).toEqual([6, 3]);
+    await undoOnce(page);
+    await expect
+      .poll(async () => {
+        const v = await objGet(page, address, "frameStrokeDashArray");
+        return v === null || (Array.isArray(v) && v.length === 0);
+      })
+      .toBe(true);
+    // The undo took ONLY the dash edit: the arrowhead stays.
+    expect(await objGet(page, address, "frameStrokeEndArrowhead")).toBe("TriangleArrowHead");
+  });
+
+  test("a designer applies a gradient and sets its angle in the Gradients panel @feat:editor-shell.panels.gradients @feat:color-swatches.gradients @feat:round-tripping.undo-redo @level:happy", async ({
+    page,
+  }) => {
+    const designer = new Designer(page);
+    await designer.open();
+    await designer.newDocument();
+
+    const rectId = await designer.drawRectangle({ x0: 150, y0: 150, x1: 380, y1: 320 });
+    expect(rectId, "drew a rectangle").not.toBe("");
+    const gradient = await designer.createGradient("journey-grad", ["Color/Black", "Color/Paper"]);
+    expect(gradient).toMatch(/^Gradient\//);
+    await designer.applyFill("rectangle", rectId, gradient);
+    await designer.selectElement("rectangle", rectId);
+    const address = `rectangle:${rectId}`;
+    await expect.poll(() => objGet(page, address, "frameFillColor")).toBe(gradient);
+
+    await designer.openPanel("paged.gradients");
+    const GRADIENTS = '[data-gradients-panel="ready"]';
+    await expect(page.locator(GRADIENTS)).toBeVisible({ timeout: 6_000 });
+
+    // ── ANGLE — the row draw's Vector fill panel carried, now in
+    //    Gradients next to the applied gradient. ──
+    const angle = field(page, GRADIENTS, "frameGradientFillAngle");
+    await expect(angle).toHaveAttribute("data-value-type", "number");
+    await expect(field(page, GRADIENTS, "frameGradientFillLength")).toHaveAttribute(
+      "data-value-type",
+      "length",
+    );
+    const before = await objGet(page, address, "frameGradientFillAngle");
+    const next = before === 45 ? 30 : 45;
+    const input = angle.locator("input").first();
+    await input.click();
+    await input.press("ControlOrMeta+a");
+    await input.pressSequentially(String(next));
+    await input.press("Enter");
+    await expect.poll(() => objGet(page, address, "frameGradientFillAngle")).toBe(next);
+    await undoOnce(page);
+    await expect.poll(() => objGet(page, address, "frameGradientFillAngle")).toBe(before);
+    // The fill is still the gradient: the undo took only the angle.
+    expect(await objGet(page, address, "frameFillColor")).toBe(gradient);
+  });
+
+  test("Vector stroke and Vector fill are gone; draw's context panel is Draw settings, rendered from the catalog @feat:editor-shell.panels.stroke @feat:plugin-platform.bundle-lifecycle @level:happy", async ({
+    page,
+  }) => {
+    const designer = new Designer(page);
+    await designer.open();
+    await designer.newDocument();
+
+    const panels = await page.evaluate(() =>
+      (
+        globalThis as unknown as {
+          __canvas: { registries: { panels: { list: () => Array<{ id: string }> } } };
+        }
+      ).__canvas.registries.panels.list().map((p) => p.id),
+    );
+    expect(panels.filter((id) => RETIRED.includes(id)), "retired panels are not registered").toEqual([]);
+    expect(panels).toContain(DRAW_SETTINGS);
+
+    const pathId = await designer.drawPath([
+      [180, 420],
+      [320, 420],
+      [250, 500],
+    ]);
+    await designer.selectElement("polygon", pathId);
+    await designer.openPanel(DRAW_SETTINGS);
+    const settings = page.locator(`[data-schema-panel="${DRAW_SETTINGS}"]`);
+    await expect(settings, "Draw settings mounts from the catalog").toBeVisible({ timeout: 6_000 });
+    await expect(settings.locator('[data-schema-section="Path"]')).toBeVisible();
   });
 });

@@ -62,7 +62,7 @@
 //                  re-raised the tab in their specs to work around it.
 //                  The shell now withholds the raise when the entering
 //                  context's providers SERVE what is on screen, and only
-//                  then: with Character up instead, Stroke still raises.
+//                  then: with Character up instead, Draw settings still raises.
 //   AC-NO-DISPLACE-2  a shared panel that is genuinely NOT on screen
 //                  retargets on its next mount. Resolution is pull-based,
 //                  so an unmounted panel cannot error and cannot go
@@ -247,12 +247,13 @@ async function elementScreenCenter(
  *
  *  NO RE-RAISE. An earlier revision of this helper clicked the Layers tab
  *  back after entering, because `EditContextContribution.panelIds` raised
- *  paged.draw's Stroke panel into the same one-panel-at-a-time dock and
+ *  paged.draw's context panel (then Vector stroke, now "Draw settings")
+ *  into the same one-panel-at-a-time dock and
  *  took Layers off screen at the exact moment it retargets. That is now
  *  fixed in the shell rather than worked around here: a context does not
  *  displace a panel its own binding providers SERVE (draw declares
  *  `collections: ["layers"]`, the panel on screen is bound to `layers`,
- *  so the raise is withheld and Stroke opens as a background tab). If the
+ *  so the raise is withheld and Draw settings opens as a background tab). If the
  *  fix regresses, every test below fails on the panel not being visible —
  *  which is the point of not papering over it here. AC-NO-DISPLACE-1
  *  asserts it directly. */
@@ -384,7 +385,9 @@ test.describe("E2E layers-retarget (ADR 023 — one panel, many providers)", () 
     // went off screen at the exact moment it retargeted — the one moment
     // ADR 023 exists to produce. All three phase-C slices hit it and all
     // three worked around it by re-raising the tab in the spec.
-    const STROKE_TAB = `${DRAW_PLUGIN}.panel.stroke`;
+    // The panel draw's vectorGraphic context raises: "Draw settings" (it
+    // was the retired Vector stroke panel, merged into the host's Stroke).
+    const CONTEXT_TAB = `${DRAW_PLUGIN}.panel.properties`;
     await expect(
       page.locator(`[data-dock-tab="${PANEL_ID}"][data-active]`),
     ).toBeVisible();
@@ -393,7 +396,7 @@ test.describe("E2E layers-retarget (ADR 023 — one panel, many providers)", () 
 
     // The context's own panel DID open — the emphasis is not discarded,
     // only the RAISE is withheld. It is one click away in the tab strip.
-    await expect(page.locator(`[data-dock-tab="${STROKE_TAB}"]`)).toBeVisible({
+    await expect(page.locator(`[data-dock-tab="${CONTEXT_TAB}"]`)).toBeVisible({
       timeout: 5_000,
     });
     // …and Layers is still the panel on screen, retargeted in place.
@@ -410,7 +413,7 @@ test.describe("E2E layers-retarget (ADR 023 — one panel, many providers)", () 
     // otherwise the panel-set swap would simply be dead. With a panel on
     // screen that draw's providers answer NOTHING for (Character binds
     // `character*` paths; draw declares `layers` + `layerVisible` /
-    // `layerLocked`), the same enter raises Stroke exactly as before.
+    // `layerLocked`), the same enter raises Draw settings exactly as before.
     await page.keyboard.press("Escape");
     await expect(list(page)).toHaveAttribute("data-list-provider", "core", {
       timeout: 5_000,
@@ -428,7 +431,7 @@ test.describe("E2E layers-retarget (ADR 023 — one panel, many providers)", () 
       ),
     ).toBeVisible({ timeout: 5_000 });
     await expect(
-      page.locator(`[data-dock-tab="${STROKE_TAB}"][data-active]`),
+      page.locator(`[data-dock-tab="${CONTEXT_TAB}"][data-active]`),
     ).toBeVisible({ timeout: 5_000 });
   });
 
@@ -440,7 +443,9 @@ test.describe("E2E layers-retarget (ADR 023 — one panel, many providers)", () 
     // mount, not a push to a subscriber — so an unmounted panel cannot
     // error, cannot go stale, and cannot silently show core rows the user
     // reads as a broken retarget. It resolves the instant it is mounted.
-    const STROKE_TAB = `${DRAW_PLUGIN}.panel.stroke`;
+    // The panel draw's vectorGraphic context raises: "Draw settings" (it
+    // was the retired Vector stroke panel, merged into the host's Stroke).
+    const CONTEXT_TAB = `${DRAW_PLUGIN}.panel.properties`;
     await enterVectorGraphic(page);
     await expect(list(page)).toHaveAttribute(
       "data-list-provider",
@@ -451,7 +456,7 @@ test.describe("E2E layers-retarget (ADR 023 — one panel, many providers)", () 
 
     // Take Layers off screen entirely (the tab stays, the panel unmounts —
     // this dock renders only the active one), then bring it back.
-    await page.locator(`[data-dock-tab="${STROKE_TAB}"]`).click();
+    await page.locator(`[data-dock-tab="${CONTEXT_TAB}"]`).click();
     await expect(page.locator(`[data-schema-panel="${PANEL_ID}"]`)).toHaveCount(
       0,
     );
