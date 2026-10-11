@@ -220,6 +220,8 @@ export {
   type ToolId,
   type ToolGroupId,
   type ToolSectionId,
+  type ToolClusterId,
+  BUILT_IN_TOOL_CLUSTERS,
   type ToolStatus,
   type ToolRegistry,
   type ToolRegistryEvent,
@@ -289,6 +291,8 @@ export {
 } from "./state/use-edit-context-entry";
 export {
   useSelectionObjectType,
+  useSelectionEditContext,
+  useSelectionMetadataOwner,
   type SelectionObjectType,
 } from "./state/use-selection-object-type";
 
@@ -365,7 +369,7 @@ export {
 
 // ── Chrome ─────────────────────────────────────────────────────
 export { CommandPalette } from "./chrome/CommandPalette";
-export { MenuBar } from "./chrome/MenuBar";
+export { MenuBar, CORE_MENUS, nativeKey, prettyKey } from "./chrome/MenuBar";
 
 // ── Icons (Concept 1 — shared tool + panel glyph resolver) ─────
 export {

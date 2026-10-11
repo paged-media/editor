@@ -69,7 +69,10 @@ export function LengthInput(props: LengthInputProps) {
   );
 
   return (
-    <div className="inline-flex items-stretch gap-1 min-w-0">
+    // `max-w-full` + `min-w-0` on both boxes: in a narrow cell (a 2-up
+    // metric grid in a 320 px dock) the field shrinks to the cell rather
+    // than holding the input's intrinsic ~160 px and running off the edge.
+    <div className="inline-flex items-stretch gap-1 min-w-0 max-w-full">
       <NumberInput
         {...rest}
         suffix={suffix ?? (showUnit && !unitPicker ? unit : undefined)}

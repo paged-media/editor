@@ -263,7 +263,6 @@ test.describe("ADR 323 — plugin object properties through PropertyField", () =
 
   test.describe("paged.draw", () => {
     const PROPS = "media.paged.draw.panel.properties";
-    const STROKE = "media.paged.draw.panel.stroke";
     const D = "media.paged.draw";
     let pathAddress = "";
 
@@ -310,12 +309,21 @@ test.describe("ADR 323 — plugin object properties through PropertyField", () =
       await expect.poll(() => objGet(page, style, "name")).toBe("Before");
     });
 
-    test("PP-DRAW-2 — the Stroke panel's weight is a core property row: one write through host.objects, ONE undo step @feat:plugin-draw.stroke-schema-panel @feat:round-tripping.undo-redo @level:happy", async ({
+    // PP-DRAW-2 drove the weight row of draw's "Vector stroke" schema
+    // panel. That panel is retired (draw a0947ef): its rows were all core
+    // frame properties and now live in the host Stroke panel, and "Draw
+    // settings" carries plugin kinds only. So the claim is checked where
+    // the row lives now: the host Stroke panel's weight on a draw path is
+    // a core property row, one write through host.objects, one undo step.
+    test("PP-DRAW-2 — a draw path's stroke weight is a core property row in the host Stroke panel: one write through host.objects, ONE undo step @feat:editor-shell.panels.stroke @feat:scripting.property-readwrite @feat:round-tripping.undo-redo @level:happy", async ({
       page,
     }) => {
-      await openPanel(page, STROKE);
-      const field = pluginField(page, STROKE, "frameStrokeWeight");
-      await expect(field.locator('[data-property-field="frameStrokeWeight"]')).toHaveAttribute("data-value-type", "length");
+      await openPanel(page, "paged.stroke");
+      const strokePanel = page.locator('[data-stroke-panel="ready"]');
+      await expect(strokePanel).toBeVisible();
+      const field = strokePanel.locator('[data-property-field="frameStrokeWeight"]').first();
+      await expect(field).toHaveAttribute("data-value-type", "length");
+      await expect(field).toHaveAttribute("data-binding-source", "core");
       const before = await objGet(page, pathAddress, "frameStrokeWeight");
       const next = before === 6 ? 7 : 6;
       const input = field.locator("input").first();

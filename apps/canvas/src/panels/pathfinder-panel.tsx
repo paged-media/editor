@@ -220,7 +220,11 @@ function refusalOf(reply: WorkerToMain): string | null {
   return (tail ? tail[1] : what).trim();
 }
 
-const PATH_ENTRIES = CORE_COMMAND_ENTRIES.filter((e) => e.group === "path" || e.group === "mask");
+// The path verbs plus opacity mask and step-and-repeat (their menu groups
+// split when the Object menu got real submenus).
+const PATH_ENTRIES = CORE_COMMAND_ENTRIES.filter(
+  (e) => e.group === "path" || e.group === "clip" || e.group === "duplicate",
+);
 
 export function PathfinderPanel() {
   const client = useCanvasClient();

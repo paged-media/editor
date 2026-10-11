@@ -37,17 +37,17 @@ import { KitSelect } from "@paged-media/ui";
 
 import { ALIGN_COMMAND, type AlignKind } from "../align-plan";
 
-// Glyphs per the deep1 card (icon clusters with a divider —
-// ui-rows/ui-cols-2/ui-rows are the kit's vertical stand-ins).
-const ALIGN_H: Array<{ kind: AlignKind; icon: string; hint: string }> = [
-  { kind: "left", icon: "ui-align-left", hint: "Align left" },
-  { kind: "centerH", icon: "ui-align-center", hint: "Center horizontally" },
-  { kind: "right", icon: "ui-align-right", hint: "Align right" },
+// Object-alignment glyphs (objects against a key edge), shared with the
+// control bar.
+export const ALIGN_H: Array<{ kind: AlignKind; icon: string; hint: string }> = [
+  { kind: "left", icon: "ui-obj-align-left", hint: "Align left" },
+  { kind: "centerH", icon: "ui-obj-align-center-h", hint: "Center horizontally" },
+  { kind: "right", icon: "ui-obj-align-right", hint: "Align right" },
 ];
-const ALIGN_V: Array<{ kind: AlignKind; icon: string; hint: string }> = [
-  { kind: "top", icon: "ui-rows", hint: "Align top" },
-  { kind: "centerV", icon: "ui-cols-2", hint: "Center vertically" },
-  { kind: "bottom", icon: "ui-rows", hint: "Align bottom" },
+export const ALIGN_V: Array<{ kind: AlignKind; icon: string; hint: string }> = [
+  { kind: "top", icon: "ui-obj-align-top", hint: "Align top" },
+  { kind: "centerV", icon: "ui-obj-align-center-v", hint: "Center vertically" },
+  { kind: "bottom", icon: "ui-obj-align-bottom", hint: "Align bottom" },
 ];
 
 const DISTRIBUTE_BUTTONS: Array<{

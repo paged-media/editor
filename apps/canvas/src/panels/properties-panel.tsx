@@ -45,6 +45,7 @@ import {
   useDocument,
   useOptionalCockpitState,
   useSelection,
+  useSelectionMetadataOwner,
   useSelectionObjectType,
   useOptionalThreading,
 } from "@paged-media/shell";
@@ -67,6 +68,10 @@ export function PropertiesPanel() {
   // inspector — previously object types were consulted only on
   // double-click (the edit-context entry chain).
   const owned = useSelectionObjectType();
+  // Artwork a plugin made or annotated without an object type of its own
+  // (paged.draw's repeats, blends, styled paths): that plugin's surface,
+  // inline — the "Draw settings" panel used to be a separate tab only.
+  const metadataOwner = useSelectionMetadataOwner();
 
   const hasElement = elementSelection.length > 0;
   const hasContent = !!contentSelection;
@@ -213,6 +218,14 @@ export function PropertiesPanel() {
                   in place.
                 </div>
               )}
+            </div>
+          ) : null}
+          {kind === "frame" && !owned && metadataOwner?.panelIds?.[0] ? (
+            <div
+              data-properties-section="plugin-owned"
+              data-properties-owner={metadataOwner.type}
+            >
+              <PanelHost id={metadataOwner.panelIds[0]} />
             </div>
           ) : null}
           {hasElement ? (

@@ -92,6 +92,21 @@ export interface MenuItemContribution {
    *  whole point of a fallback: it is not deleted when the door opens,
    *  it is deleted when someone walks through it. */
   fallbackFor?: string;
+
+  /** Icon name for the item's leading column (the shared icon
+   *  registries). Optional: panel-show and tool-activate items take the
+   *  panel's / tool's own icon without declaring one. */
+  icon?: string;
+
+  /** A key combo to SHOW when the command's real binding lives outside
+   *  the KeybindingRegistry (Undo/Redo are handled by the text-editing
+   *  hook). Display only — it binds nothing. A registered binding for
+   *  the command wins over it. */
+  accelerator?: string;
+
+  /** `"label"` renders a muted, non-interactive line (Help's version
+   *  line). Its `command` is still the dedupe identity, never invoked. */
+  kind?: "item" | "label";
 }
 
 export type MenuRegistryEvent =

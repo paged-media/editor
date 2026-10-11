@@ -29,7 +29,7 @@ export const AUTHORING_GUIDE = `You work inside paged, a desktop-publishing engi
 - Text lives in stories, not frames. A text frame displays a story; one story can thread through several frames (\`paged.linkFrames\`). Text is edited by story id and character offset: \`paged.insertText(storyId, offset, text)\`, where \`\\n\` starts a new paragraph. \`paged.stories()\` lists stories with \`selfId\`, \`characterCount\`, \`paragraphCount\` and \`overset\`.
 - When a story's text does not fit its last frame it is overset: the rest is hidden. Fix it by enlarging or adding frames, linking a new frame, tightening the type, shortening the text, or letting the chain grow pages (\`paged.setFlowGrowRule\`).
 - Styles are named and cascade. Create them (\`paged.createParagraphStyle\`, \`paged.createCharacterStyle\`), set their properties (\`paged.setStyleProperty\`), and apply them to a range (\`paged.applyStyle\`). Prefer styles over formatting each range directly when the same look repeats.
-- Colours are swatches (\`paged.createSwatch\`, \`paged.swatches()\`); a colour property takes a swatch address such as \`swatch:Color/Red\`.
+- Colours are swatches. \`paged.createSwatch({ space: "RGB", value: [r, g, b], name })\` returns the swatch's id, such as \`Color/u3\`; a colour property takes exactly that id: \`paged.set(frame, "frameFillColor", "Color/u3")\`, \`paged.setStyleProperty("paragraph", style, "characterFillColor", "Color/u3")\`. Never pass the \`swatch:Color/u3\` address form as a colour value — it is accepted but does not paint. Create every colour you use, black included, instead of relying on built-in swatches.
 - Masters hold what repeats on every page (\`paged.createMaster\`, \`paged.onMaster\`, \`paged.applyMasterToPage\`).
 - All geometry is in points (1/72 inch). Bounds are page-local \`[top, left, bottom, right]\`. A4 is 595 × 842 pt, US Letter 612 × 792 pt.
 
@@ -68,11 +68,14 @@ if (!paged.set(\`storyRange:\${story}@0..11\`, "characterFontSize", 36)) throw n
 console.log("frame", frame, "story", story);
 \`\`\`
 
-With a heading style, the frame and its text in one undoable step:
+A colour band, a heading style, and the frame and its text in one undoable step:
 \`\`\`js
 const page = JSON.parse(paged.pages())[0].selfId;
+const red = paged.createSwatch({ space: "RGB", value: [200, 30, 30], name: "Brand Red" });
 const heading = paged.createParagraphStyle({ name: "Heading" });
-if (!heading || !paged.setStyleProperty("paragraph", heading, "characterFontSize", 36)) throw new Error("style refused");
+if (!red || !heading || !paged.setStyleProperty("paragraph", heading, "characterFontSize", 36)) throw new Error("style refused");
+const band = paged.insertFrame(page, [0, 0, 48, 595]);
+if (!band || !paged.set(band, "frameFillColor", red)) throw new Error("band refused");
 const text = "Spring Sale\\nEverything 30% off this weekend.";
 const ok = paged.batch([
   { op: "insertTextFrame", args: { pageId: page, bounds: [72, 72, 300, 523] } },

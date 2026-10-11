@@ -143,3 +143,62 @@
 [fill="var(--status-approved)"] {
   fill: var(--status-approved);
 }
+
+/* ── Panel baseline for NATIVE controls ─────────────────────────────
+   Host panels use the kit's components. Plugin panels mostly draw raw
+   <input>/<select>/<button> with a few inline styles; this gives those
+   the theme's look so a plugin panel does not read as a foreign page.
+   It targets only class-less controls (the kit's all carry classes) and
+   loses to any inline style a plugin does set. Disabled is the one rule
+   that must win over inline styles: a disabled button styled with an
+   inline colour and pointer cursor looked exactly like a live one. */
+[data-panel-host] :is(select, textarea, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"])):not([class]) {
+  background: var(--pg-muted);
+  color: var(--pg-fg);
+  border: 1px solid var(--chrome-divider);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  min-height: 26px;
+  padding: 0 6px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+[data-panel-host] button:not([class]) {
+  background: transparent;
+  color: var(--pg-fg);
+  border: 1px solid var(--chrome-divider);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  min-height: 24px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+[data-panel-host] button:not([class]):hover:not(:disabled) {
+  background: var(--hover);
+}
+[data-panel-host] :is(input[type="checkbox"], input[type="radio"], input[type="range"]) {
+  accent-color: var(--pg-primary);
+}
+[data-panel-host] :is(button, select, input, textarea):disabled {
+  opacity: 0.45;
+  cursor: default !important;
+}
+
+/* A schema panel section whose rows all resolved to no target (see
+   ObjectPropertyField) says so instead of rendering a bare heading. */
+[data-schema-rows]:empty::after {
+  content: "Nothing to edit here yet.";
+  display: block;
+  padding-bottom: 8px;
+  font-size: 11.5px;
+  color: var(--pg-muted-fg);
+}
+
+/* Plugin panels only: an inline-styled flex row that runs out of width
+   wraps instead of running off the dock (paged.image's button rows did,
+   26 controls past the edge at 320 px). A row that fits is unchanged. */
+[data-panel-host]:not([data-panel-source="host"]) [style*="display: flex"]:not([style*="flex-wrap"]):not([style*="flex-direction: column"]) {
+  flex-wrap: wrap;
+}

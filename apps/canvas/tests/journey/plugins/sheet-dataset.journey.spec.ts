@@ -93,8 +93,8 @@ test.describe("journey · paged.sheet data-provider consumer", () => {
       await expect(sourceBtn).toBeVisible();
       await sourceBtn.click();
       await page.waitForTimeout(500);
-      // The row reflects the sourced state ("· sourced") — the consumer ran.
-      await expect(datasetRows.first()).toContainText(/sourced|update available/, {
+      // The row reflects the sourced state ("· in use") — the consumer ran.
+      await expect(datasetRows.first()).toContainText(/in use|update available/, {
         timeout: 8_000,
       });
     } else {

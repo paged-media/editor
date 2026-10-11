@@ -166,22 +166,11 @@ test.describe("Cockpit — per-mode panel sets + toolbars (D3-D4)", () => {
     page,
   }) => {
     await openCanvas(page);
-    // Design: live tool pills — clicking Type activates the tool.
-    await expect(
-      page.locator('[data-cockpit-action="tool:paged.tool.type"]'),
-    ).toBeVisible();
-    await page.locator('[data-cockpit-action="tool:paged.tool.type"]').click();
-    await expect
-      .poll(() =>
-        page.evaluate(
-          () =>
-            (globalThis as unknown as { __canvas: { activeTool: string } })
-              .__canvas.activeTool,
-        ),
-      )
-      // __canvas.activeTool surfaces the LEGACY key the canvas spine
-      // routes on ("text" for the type tool), not the registry id.
-      .toBe("text");
+    // Design: the selection-aware control bar (it replaced five pills
+    // that repeated the rail's tools). With nothing open it says how to
+    // start; the Preview toggle is always there.
+    await expect(page.locator('[data-control-bar="document"]')).toBeVisible();
+    await expect(page.locator('[data-cockpit-action="preview-toggle"]')).toBeVisible();
 
     // Export: the real PDF button.
     await page.evaluate(() => window.__canvas.setMode("export"));
@@ -307,7 +296,12 @@ test.describe("Cockpit — per-mode REAL context-toolbar pills (W2.8)", () => {
     // REAL, observable focus state (`data-on` + the panel body present).
     await mapping.click();
     await expect(mapping).toHaveAttribute("data-on", "");
-    await expect(page.locator('text="Wire demo binding"')).toBeVisible();
+    // With no data source yet its body is the empty state, which offers
+    // the next step ("Open Data sources") rather than dead controls.
+    await expect(page.locator("[data-data-bind-empty]")).toBeVisible();
+    await expect(page.locator("[data-data-bind-open-sources]")).toHaveText(
+      "Open Data sources",
+    );
     // Connect source / Generate are REAL pills now (they raise the live
     // sources / dataset panels), not ComingSoon seams.
     await expect(

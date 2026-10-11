@@ -24,8 +24,8 @@
 // `ChartKind` (importer-validated in plugin-sheets conformance). Each
 // is lowered through the bundle's own surfaces — the FIRST through the
 // `lowerChartToFrame` command (which takes the workbook's first chart),
-// the other nine through the workbook panel's per-chart "Lower to
-// frame" buttons — and every lowering runs the chart subsystem
+// the other nine through the workbook panel's per-chart "Place on page"
+// buttons (once "Lower to frame") — and every lowering runs the chart subsystem
 // (plotters over a custom paged.draw DrawingBackend) to a frozen
 // ChartGeometry IR that the bundle writes out as paths and text frames.
 // Nothing on these two pages is a picture of a chart.
@@ -121,17 +121,33 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   );
 
   // ── the panel's chart list is the wall's label source ────────────
+  // The list sits in the Workbook's "Charts" section, collapsed by
+  // default since 2026-10-11 — open it first.
+  const chartsSection = page.locator('[data-sheet-section="charts"]');
+  if (!(await chartsSection.evaluate((d) => (d as HTMLDetailsElement).open))) {
+    await chartsSection.locator(":scope > summary").click();
+  }
   const list = page.locator("[data-sheet-chart-list]");
   await expect(list, "the workbook's charts enumerated").toBeVisible({
     timeout: 120_000,
   });
-  const rowTexts = await page
-    .locator("[data-sheet-chart-list] > div")
-    .allInnerTexts();
+  // Each row: "<title> · <Kind>, N series" or "<Kind> chart · N series",
+  // and its "Place on page" button carries the chart's index.
+  const rows = await page.locator("[data-sheet-chart-list] > div").evaluateAll((els) =>
+    els.map((el) => ({
+      index: el.querySelector("[data-sheet-chart-lower]")?.getAttribute("data-sheet-chart-lower") ?? "",
+      text: (el.querySelector("span")?.textContent ?? "").replace(/\s+/g, " ").trim(),
+    })),
+  );
   const charts: ChartRow[] = [];
-  for (const t of rowTexts) {
-    const m = /^#(\d+)\s+(\S+)/.exec(t.trim());
-    if (m) charts.push({ index: Number(m[1]), kind: m[2] });
+  for (const r of rows) {
+    const titled = /·\s*([^,·]+),\s*\d+ series$/.exec(r.text);
+    const untitled = /^(\S+) chart · \d+ series$/.exec(r.text);
+    const label = titled?.[1]?.trim() ?? untitled?.[1];
+    if (r.index !== "" && label) {
+      // The panel shows the engine's kind in sentence case.
+      charts.push({ index: Number(r.index), kind: label[0].toLowerCase() + label.slice(1) });
+    }
   }
   expect(
     charts.length,
@@ -161,6 +177,11 @@ export async function build(ctx: PageContext): Promise<PageReport> {
         // The command lane — `lowerChartToFrame` lowers the FIRST chart.
         await doc.runCommand(`${SHEET_CMD}.lowerChartToFrame`);
       } else {
+        // The per-chart "Place on page" button, in the Charts section
+        // (re-opened if the panel re-mounted it collapsed).
+        if (!(await chartsSection.evaluate((d) => (d as HTMLDetailsElement).open))) {
+          await chartsSection.locator(":scope > summary").click();
+        }
         await page.locator(`[data-sheet-chart-lower="${chart.index}"]`).click();
       }
       fresh = await settleNewElements(page, before);

@@ -22,8 +22,8 @@
 // reference). REAL where the engine delivers — every pill drives a
 // live action against an already-shipped capability:
 //
-//   • Design   — live tool stack + the screen-mode preview toggle
-//                (reflects the real screen mode).
+//   • Design   — the selection-aware control bar (page · geometry ·
+//                text formatting) + the Preview toggle.
 //   • Content  — selection-aware quick-raises of the Character /
 //                Paragraph formatting docks; the style-apply tabs;
 //                a live caret/range readout (honest-disabled with a
@@ -57,7 +57,6 @@ import {
   useOptionalCockpitState,
   useScreenMode,
   type ModeToolbarProps,
-  type PagedEditor,
 } from "@paged-media/shell";
 
 import {
@@ -69,7 +68,7 @@ import { setSelectedExportTarget } from "../panels/cockpit/export-targets";
 
 // ── tiny shared primitives (kit Pill/Chip styling) ─────────────
 
-function ToolPill(props: {
+export function ToolPill(props: {
   icon: string;
   title: string;
   on?: boolean;
@@ -113,7 +112,7 @@ function ToolPill(props: {
   );
 }
 
-function Chip(props: {
+export function Chip(props: {
   icon?: string;
   children: ReactNode;
   disabled?: boolean;
@@ -172,7 +171,7 @@ function Chip(props: {
   );
 }
 
-function Sep() {
+export function Sep() {
   return (
     <span
       style={{
@@ -198,7 +197,6 @@ function Soon({ children, icon }: { children: ReactNode; icon?: string }) {
   );
 }
 
-const asEditor = (paged: unknown) => paged as PagedEditor | null;
 
 /** Raise a registered panel into the active right dock — activates
  *  the tab if the mode already seeds it, otherwise opens it as a new
@@ -249,51 +247,13 @@ function RaisePill(props: {
   );
 }
 
-// ── Design — live tool pills + screen-mode preview toggle ──────
+// ── Design — the selection-aware control bar (control-bar.tsx) ──
+//
+// It repeated five of the rail's tools here; the row now carries the
+// selection's numbers instead. Re-exported under the old name so the
+// mode table and its readers keep one identifier.
 
-const DESIGN_TOOLS: ReadonlyArray<{ id: string; icon: string; title: string }> =
-  [
-    { id: "paged.tool.select", icon: "tool-select", title: "Select (V)" },
-    { id: "paged.tool.type", icon: "tool-type", title: "Type (T)" },
-    {
-      id: "paged.tool.rectangleFrame",
-      icon: "tool-rectangleFrame",
-      title: "Rectangle frame (F)",
-    },
-    { id: "paged.tool.pen", icon: "tool-pen", title: "Pen (P)" },
-    { id: "paged.tool.line", icon: "tool-line", title: "Line (\\)" },
-  ];
-
-export function DesignToolbar({ paged }: ModeToolbarProps) {
-  const editor = asEditor(paged);
-  const active = editor?.tool.effectiveTool;
-  const screenMode = useScreenMode();
-  const previewOn = screenMode.screenMode === "preview";
-  return (
-    <>
-      {DESIGN_TOOLS.map((t) => (
-        <ToolPill
-          key={t.id}
-          icon={t.icon}
-          title={t.title}
-          on={active === t.id}
-          testId={`tool:${t.id}`}
-          onClick={() => editor?.tool.setBaseTool(t.id)}
-        />
-      ))}
-      <Sep />
-      <Chip
-        icon={previewOn ? "ui-eye-off" : "ui-eye"}
-        on={previewOn}
-        testId="preview-toggle"
-        title={previewOn ? "Back to normal view (W)" : "Preview (W)"}
-        onClick={() => screenMode.togglePreview()}
-      >
-        Preview
-      </Chip>
-    </>
-  );
-}
+export { DesignControlBar as DesignToolbar } from "./control-bar";
 
 // ── Content — selection-aware formatting raises + live readout ──
 
@@ -472,44 +432,44 @@ export function PrepressToolbar(_props: ModeToolbarProps) {
 // ── Data layout — REAL mapping raise + honest source/generate ──
 
 export function DataToolbar(_props: ModeToolbarProps) {
-  // All three pills raise the LIVE paged.data bundle panels (the mode's
-  // ComingSoon era is over): bindings = field mapping, sources = connect,
-  // dataset = the batch-generate catalog.
-  const mapping = usePanelRaise("media.paged.data.panel.bindings");
+  // The three pills raise the LIVE paged.data panels, in the order the
+  // work goes (sources → bindings → data sets), named as the panels are
+  // named. They were "Field mapping", "Connect source" and "Generate" —
+  // and the last generates no pages.
   const sources = usePanelRaise("media.paged.data.panel.sources");
+  const mapping = usePanelRaise("media.paged.data.panel.bindings");
   const dataset = usePanelRaise("media.paged.data.panel.dataset");
   return (
     <>
-      <Chip
-        icon="ui-database"
-        testId="data-mapping"
-        on={mapping.active}
-        disabled={!mapping.raise}
-        title="Field mapping"
-        onClick={mapping.raise}
-      >
-        Field mapping
-      </Chip>
-      <Sep />
       <Chip
         icon="ui-flow"
         testId="data-sources"
         on={sources.active}
         disabled={!sources.raise}
-        title="Connect source"
+        title="Data sources — import a file or connect a remote source"
         onClick={sources.raise}
       >
-        Connect source
+        Data sources
+      </Chip>
+      <Chip
+        icon="ui-database"
+        testId="data-mapping"
+        on={mapping.active}
+        disabled={!mapping.raise}
+        title="Bindings — map fields to frames"
+        onClick={mapping.raise}
+      >
+        Bindings
       </Chip>
       <Chip
         icon="ui-bolt"
         testId="data-generate"
         on={dataset.active}
         disabled={!dataset.raise}
-        title="Generate"
+        title="Dataset preview — data sets and the batch plan"
         onClick={dataset.raise}
       >
-        Generate
+        Dataset preview
       </Chip>
     </>
   );

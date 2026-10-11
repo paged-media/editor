@@ -32,8 +32,9 @@
 // removed (+ counts) WITHOUT driving the sync-state machine. The panel's "What
 // changed?" button refreshes the data then renders the change list.
 //
-// This journey drives both surfaces THROUGH the panel: import a CSV, wire the
-// demo binding (which defines the `q_all` query the stepper walks), step the
+// This journey drives both surfaces THROUGH the panel: import a CSV, add a
+// variable binding over "All rows of data_people" (which defines the query the
+// stepper walks), step the
 // preview across records and assert the "N / M" position advances, then run the
 // change report and assert it surfaces (the first diff reports the bindings as
 // the baseline). DuckDB-WASM boot is the unblocked gateway; this SKIPS with the
@@ -47,6 +48,7 @@ import { Designer } from "../driver/designer";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { skipWithoutDuckDB } from "./data-duckdb-gate";
+import { addBindingThroughPanel } from "./data-engine";
 
 const CSV_FIXTURE = pathResolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -115,13 +117,13 @@ test.describe("journey · paged.data preview stepper + change report", () => {
     }
     await expect(page.getByText(/data_people/).first()).toBeVisible({ timeout: 6_000 });
 
-    // ── 2. WIRE — define the demo binding (it adds the `q_all` query the
-    //    stepper walks + a variable binding), then refresh the data so the
-    //    records are ingested (the stepper's "of N" bound). ──
+    // ── 2. WIRE — add a variable binding through the authoring row (it
+    //    defines the all-rows query the stepper walks on first use), then
+    //    refresh the data so the records are ingested (the stepper's "of N"
+    //    bound). ──
     await openPanel(page, BINDINGS_PANEL);
     await expect(page.locator("[data-data-bind-author]")).toBeVisible({ timeout: 10_000 });
-    await page.getByRole("button", { name: /wire demo binding/i }).click();
-    await page.waitForTimeout(200);
+    await addBindingThroughPanel(page, "variable", "name");
     await page.getByRole("button", { name: /refresh data/i }).click();
     await page.waitForTimeout(500);
 

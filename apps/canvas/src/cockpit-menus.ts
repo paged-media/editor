@@ -40,6 +40,20 @@ const soon = (
   disabled: true,
 });
 
+/** A menu item that raises a registered panel (the registry derives a
+ *  `paged.panel.show.<id>` command for every panel). */
+const panel = (
+  path: string,
+  id: string,
+  order: number,
+  group?: string,
+): MenuItemContribution => ({
+  path,
+  command: `paged.panel.show.${id}`,
+  order,
+  group,
+});
+
 export const COCKPIT_MENU_SEAMS: MenuItemContribution[] = [
   // ── File (kit FILE_MENU; New document… + Open IDML… + Export PDF… are real) ──
   { path: "File/New document…", command: PAGED_FILE_NEW, order: 5, group: "open" },
@@ -59,16 +73,23 @@ export const COCKPIT_MENU_SEAMS: MenuItemContribution[] = [
   // on the collision, so the stub is gone rather than duplicated.
   soon("File/Package…", 60, "produce"),
   soon("File/Print…", 61, "produce"),
-  // ── Layout ──
-  soon("Layout/Margins and columns…", 10),
-  soon("Layout/Ruler guides…", 20),
-  soon("Layout/Create guides…", 21),
-  soon("Layout/Numbering and section options…", 30),
-  // ── Type ──
-  soon("Type/Character…", 10),
-  soon("Type/Paragraph…", 11),
-  soon("Type/Tabs…", 20),
-  soon("Type/Insert special character", 30),
+  // ── Layout ── (pages are real, from insert-commands; these three
+  //    groups stay honest seams until their dialogs land)
+  soon("Layout/Margins and columns…", 20, "page-setup"),
+  soon("Layout/Ruler guides…", 30, "guides"),
+  soon("Layout/Create guides…", 31, "guides"),
+  soon("Layout/Numbering and section options…", 40, "numbering"),
+  // ── Type ── all four were `soon` seams while the panels they name
+  //    were registered and working; a whole top-level menu of dead
+  //    items. They raise those panels now.
+  panel("Type/Character…", "paged.character", 10, "format"),
+  panel("Type/Paragraph…", "paged.paragraph", 11, "format"),
+  panel("Type/Tabs…", "paged.tabs", 12, "format"),
+  panel("Type/Bullets and numbering…", "paged.bullets-numbering", 13, "format"),
+  panel("Type/Paragraph styles", "paged.paragraph-styles", 20, "styles"),
+  panel("Type/Character styles", "paged.character-styles", 21, "styles"),
+  panel("Type/Glyphs…", "paged.glyphs", 30, "insert"),
+  panel("Type/Text variables", "paged.text-variables", 31, "insert"),
   // ── Object ──
   //
   // `Arrange` and `Group` were seams here until the `paged.object.*`

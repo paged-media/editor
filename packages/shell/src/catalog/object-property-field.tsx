@@ -218,6 +218,13 @@ export interface ObjectPropertyFieldProps {
  *  `PropertyField`. This is the host's `widgets.PropertyField`. */
 export function ObjectPropertyField(p: ObjectPropertyFieldProps) {
   const { targets, bindScope } = useFieldTargets(p.address, p.kind, p.bindings);
+  // An explicit address that resolves to NOTHING (the selected entry of an
+  // empty list, the current cell with no workbook open) has nothing to
+  // edit. Rendering it drew "No entries" above a block of dead inputs —
+  // ~30 of them in Sheet properties. A selection-scoped row (`targets`
+  // undefined) still renders: with nothing selected it reads as the host
+  // panels do.
+  if (targets !== undefined && targets.length === 0) return null;
   const field = (
     <PropertyField
       path={p.path}

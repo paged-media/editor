@@ -356,6 +356,7 @@ export function PagedShell({
 const WINDOW_MENU_CATEGORIES: ReadonlyArray<readonly [string, string]> = [
   ["cockpit", "Workspace"],
   ["chrome", "Workspace"],
+  ["workspace", "Workspace"],
   ["structure", "Structure"],
   ["styles", "Styles"],
   ["text", "Text"],
@@ -379,13 +380,20 @@ function windowMenuGroup(p: PanelContribution): {
     ? WINDOW_MENU_CATEGORIES.find(([g]) => g === p.defaultGroup)?.[1]
     : undefined;
   const label =
-    (typeof source === "string" && source.trim()) || fromTable || "Plugins";
+    (typeof source === "string" && source.trim()) || fromTable || "Other";
   if (!source) {
     const idx = WINDOW_MENU_LABEL_ORDER.indexOf(label);
     if (idx >= 0) return { label, order: idx * 10 };
   }
   const c = (i: number) => (label.toUpperCase().charCodeAt(i) || 0) & 0x7f;
   return { label, order: 1000 + c(0) * 0x4000 + c(1) * 0x80 + c(2) };
+}
+
+/** "paged.draw" / "media.paged.draw" → "Draw"; a display name passes. */
+function pluginDisplayName(source: string): string {
+  if (!/^[a-z0-9.-]+$/.test(source)) return source;
+  const last = source.split(".").filter(Boolean).pop() ?? source;
+  return last.charAt(0).toUpperCase() + last.slice(1);
 }
 
 /**
@@ -555,6 +563,12 @@ function ShellChrome({
     };
   }, [registries, tools]);
 
+  // The host's own tools — every other rail tool came from a bundle.
+  const hostToolIds = useMemo(
+    () => new Set((tools ?? []).map((t) => t.id)),
+    [tools],
+  );
+
   // The fixed cockpit layout is the only work area — apps supply the
   // viewport component (the canvas is a SLOT, not a panel).
   const cockpitActive = Boolean(canvasComponent);
@@ -598,17 +612,28 @@ function ShellChrome({
       // U11 — group by category (defaultGroup table / plugin source)
       // instead of one flat "panels" bucket; see windowMenuGroup.
       const { label, order } = windowMenuGroup(p);
+      // The Workspace panels stay one click deep; every other category
+      // is a submenu (Window ▸ Styles ▸ Swatches). A plugin's panels live
+      // with the rest of that plugin, in Plugins ▸ <name> (MenuBar folds
+      // the plugin's own menu in beside them). A flat menu of ~110 panels
+      // was taller than the screen.
+      const source = (p as { source?: string }).source;
+      const plugin = typeof source === "string" && source.trim() !== "";
+      const section = plugin ? "panels" : label === "Workspace" ? "Workspace" : "Panels";
+      const path = plugin
+        ? `Plugins/${pluginDisplayName(label)}/${p.title}`
+        : label === "Workspace"
+          ? `Window/${p.title}`
+          : `Window/${label}/${p.title}`;
       try {
         items.set(
           p.id,
           registries.menus.register({
-            path: `Window/${p.title}`,
+            path,
             command: `paged.panel.show.${p.id}`,
-            group: label,
-            // E4 — the heading the user sees. This value was computed
-            // here all along and dropped by MenuBar, so ~90 entries read
-            // as one flat list divided by unlabelled hairlines.
-            groupLabel: label,
+            group: section,
+            // E4 — the heading the user sees above each section.
+            groupLabel: plugin ? "Panels" : section,
             order,
             // ADR 024 — a panel that belongs to a DIFFERENT content type
             // is not offered here.
@@ -944,13 +969,20 @@ function ShellChrome({
       items.register({
         path: "File/Export PDF…",
         command: PAGED_FILE_EXPORT_PDF,
-        order: 41,
-        group: "place",
+        order: 58,
+        group: "produce",
+        icon: "ui-export",
       }),
+      // One menu home for the palette (the header's search field is the
+      // other door). It sat in View as "Toggle command palette" beside
+      // Edit's unrelated "Run command…"; Help ▸ Search is where a user
+      // who cannot find something looks.
       items.register({
-        path: "View/Toggle command palette",
+        path: "Help/Search commands…",
         command: PAGED_PALETTE_TOGGLE,
-        order: 10,
+        order: 5,
+        group: "search",
+        icon: "ui-search",
       }),
     ];
     return () => {
@@ -1232,6 +1264,7 @@ function ShellChrome({
       <div style={bodyRowStyle}>
         {!railHidden && (
           <ToolRail
+            hostToolIds={hostToolIds}
             foot={
               <>
                 <FillStrokeCluster />

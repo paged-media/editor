@@ -25,7 +25,17 @@
 // Document / Active page / Output sections arrive as the meta
 // surface grows (per-page size, colour profile reads).
 
-import { useDocumentMeta } from "@paged-media/shell";
+import { useCollection, useDocumentMeta } from "@paged-media/shell";
+
+/** "Page 3", not the page's IDML id. */
+function pageLabel(
+  id: unknown,
+  pages: ReadonlyArray<{ selfId?: string }> | null,
+): string {
+  if (!id) return "—";
+  const i = pages?.findIndex((p) => p.selfId === String(id)) ?? -1;
+  return i >= 0 ? `Page ${i + 1}` : String(id);
+}
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -43,6 +53,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export function InfoPanel() {
   const meta = useDocumentMeta();
+  const pages = useCollection<{ selfId?: string }>("pages");
   if (!meta) {
     return (
       <div
@@ -59,7 +70,7 @@ export function InfoPanel() {
       <Row label="Pages" value={String(meta.pageCount)} />
       <Row
         label="Active page"
-        value={meta.activePage ? String(meta.activePage) : "—"}
+        value={pageLabel(meta.activePage, pages)}
       />
       <Row label="Units" value={meta.units || "—"} />
       <Row label="Color mode" value={meta.colorMode || "—"} />

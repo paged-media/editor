@@ -235,7 +235,7 @@ test.describe("Concept 1 — tool rail", () => {
     // doing nothing, which reads to the user as a bug in their input.
     await expect(gap).toHaveAttribute("data-tool-status", "planned");
     await expect(gap).toHaveAttribute("aria-disabled", "true");
-    await expect(gap).toHaveAttribute("title", /coming soon/i);
+    await expect(gap).toHaveAttribute("aria-label", /coming soon/i);
 
     // Clicking one does NOT become the active tool. `force` because
     // `aria-disabled` already makes Playwright's actionability check

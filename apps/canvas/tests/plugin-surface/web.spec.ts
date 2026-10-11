@@ -317,10 +317,15 @@ test.describe("plugin surface · paged.web", () => {
     // With nothing selected the panel mounts its EMPTY state — an honest
     // surface rather than a blank tab.
     await openPanel(page, SOURCE_PANEL);
-    await expect(page.locator("[data-web-panel]")).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-web-panel="empty"]')).toBeVisible({ timeout: 15_000 });
+    // …and the empty state offers the verb itself (2026-10-11 panel pass):
+    // "Insert web frame" right where the designer is looking.
+    const insertButton = page.locator('[data-web-panel="empty"] [data-web-insert]');
+    await expect(insertButton).toHaveText("Insert web frame");
 
-    // With a web frame selected it mounts the source editors.
-    await invoke(page, INSERT);
+    // With a web frame selected it mounts the source editors. The empty
+    // state's button inserts one and selects it.
+    await insertButton.click();
     await expect(page.locator('[data-web-panel="source"]')).toBeVisible({ timeout: 15_000 });
     await expect(page.locator("[data-web-html] [data-code-input]")).toBeVisible();
     await expect(page.locator("[data-web-css] [data-code-input]")).toBeVisible();
@@ -681,25 +686,28 @@ test.describe("plugin surface · paged.web", () => {
     });
   });
 
-  test("AUDIT — Window disables 'Web frame' until you are already inside a web frame", async ({
+  test("FIXED 2026-10-11 — Plugins ▸ Web offers 'Web source' before you are inside one (it was disabled until you already were)", async ({
     page,
   }) => {
+    // A plugin's panels live in Plugins ▸ <plugin> (they left Window).
     const openWindowMenu = async () => {
+      await page.keyboard.press("Escape");
       await page
         .locator('nav[aria-label="Main menu"]')
-        .getByRole("button", { name: "Window" })
+        .getByRole("button", { name: "Plugins" })
         .click();
-      await expect(page.getByRole("menuitem", { name: "Layers", exact: true })).toHaveCount(1);
+      await page.locator('[data-menu-submenu="Web"]').hover();
+      await expect(page.getByRole("menuitem", { name: "Web source", exact: true })).toHaveCount(1);
     };
 
     await openWindowMenu();
-    // ADR-024 `panelBelongsHere`: the webFrame context claims the source
-    // panel, the context is not active, so the item is offered dead —
-    // the same inversion paged.sheet's Workbook panel has.
+    // ADR-024 `panelBelongsHere`, revised: claimed by the webFrame
+    // context, but offered at the document root — the panel is how a
+    // user learns this content type exists.
     await expect(
-      page.getByRole("menuitem", { name: "Web frame", exact: true }),
-      "Window ▸ Web frame is disabled outside the webFrame context",
-    ).toHaveAttribute("aria-disabled", "true");
+      page.getByRole("menuitem", { name: "Web source", exact: true }),
+      "Plugins ▸ Web ▸ Web source is live at the document root",
+    ).not.toHaveAttribute("aria-disabled", "true");
     await page.keyboard.press("Escape");
 
     // …yet the palette can open it from anywhere: `paged.panel.show.*`
@@ -735,17 +743,16 @@ test.describe("plugin surface · paged.web", () => {
 
     await openWindowMenu();
     await expect(
-      page.getByRole("menuitem", { name: "Web frame", exact: true }),
-      "inside the webFrame context Window ▸ Web frame is live",
+      page.getByRole("menuitem", { name: "Web source", exact: true }),
+      "inside the webFrame context Plugins ▸ Web ▸ Web source is live",
     ).not.toHaveAttribute("aria-disabled", "true");
 
     test.info().annotations.push({
       type: "surface-finding",
       description:
-        "DEFECT (discoverability inversion): paged.web's single panel is disabled in the Window " +
-        "menu until a webFrame edit context is already active — i.e. until the user has already " +
-        "inserted a web frame and double-clicked it. The panel that would tell a user this " +
-        "content type exists is dark until they no longer need telling.",
+        "FIXED 2026-10-11: paged.web's panel was disabled in the Window menu until a webFrame " +
+        "edit context was already active. It now lives in Plugins ▸ Web and is offered at the " +
+        "document root; only another content type's context withholds it.",
     });
   });
 });

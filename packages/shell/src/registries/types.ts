@@ -113,7 +113,13 @@ export function panelBelongsHere(state: unknown, panelId: string): boolean {
     if (!c.panelIds?.includes(panelId)) continue;
     // Claimed by the active context → offered.
     if (c.type === activeType) return true;
-    // Claimed by a context that is not active → not offered.
+    // Standing in no context → offered. A plugin's frame panel is where
+    // a user STARTS with that plugin (the sheet's Workbook opens or makes
+    // a workbook); greying it until the user is already inside the
+    // feature hid the feature behind itself.
+    if (activeType === null) return true;
+    // Inside ANOTHER content type → not offered (a control for content
+    // that is not on screen).
     return false;
   }
   return true;

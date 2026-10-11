@@ -45,7 +45,10 @@ export const COCKPIT_MODES: ModeContribution[] = [
     blurb: "Composition, typography, grids, components",
     slots: {
       left: "paged.document-map",
-      tabs: ["paged.properties", "paged.component-library", "paged.swatches"],
+      // Layers, not the component library: the library is a "coming
+      // soon" card, and it held the second-most prominent tab of the
+      // default workspace.
+      tabs: ["paged.properties", "paged.swatches", "paged.layers"],
     },
   },
   {
@@ -83,6 +86,9 @@ export const COCKPIT_MODES: ModeContribution[] = [
     icon: "ui-database",
     order: 40,
     blurb: "Structured data → repeatable pages",
+    // The Data menu is a context menu (it shows while a binding is
+    // selected or entered); in this mode it is the workspace's own.
+    menus: ["Data"],
     // The paged.data bundle's LIVE panels, not the ComingSoon stubs the
     // mode shipped with: sources = the record/field intake, bindings = the
     // field mapping. No canvas override — lowered bindings render INTO the
@@ -142,11 +148,6 @@ export const PANEL_RAIL: PanelRailItem[] = [
     title: "Image",
     icon: "panel-frame-fitting",
     inspectorContext: "image",
-  },
-  {
-    panelId: "paged.component-library",
-    title: "Library",
-    icon: "ui-component",
   },
   {
     panelId: "paged.object-styles",

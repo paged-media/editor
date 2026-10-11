@@ -842,61 +842,73 @@ const PLUGIN_INSERT_ENTRIES: {
   command: string;
   order: number;
   fallbackFor?: string;
+  icon?: string;
 }[] =
   [
     {
       path: "Object/Insert web frame…",
       command: "media.paged.web.command.insertWebFrame",
+      icon: "ui-web",
       fallbackFor: "media.paged.web.command.insertWebFrame",
       order: 30,
     },
     {
       path: "Object/Insert spreadsheet…",
       command: "media.paged.sheet.command.importXlsx",
+      icon: "ui-grid",
       fallbackFor: "media.paged.sheet.command.importXlsx",
       order: 31,
     },
     {
       path: "Object/Insert Word document…",
       command: "media.paged.doc.command.placeDoc",
+      icon: "ui-doc",
       fallbackFor: "media.paged.doc.command.placeDoc",
       order: 32,
     },
     {
       path: "Object/Insert data binding…",
       command: "media.paged.data.command.defineBinding",
+      icon: "ui-database",
       fallbackFor: "media.paged.data.command.defineBinding",
       order: 33,
     },
-    // The three Data-menu verbs, replacing `soon(...)` seams whose
-    // labels duplicated three LIVE toolbar pills. Same panels the pills
-    // raise, through the registry-derived panel-show commands.
+    // The three Data-menu entries raise the same panels the Data-mode
+    // pills do, named as the panels are named. They were "Connect
+    // source…", "Field mapping…" and "Generate pages…" — three names for
+    // panels titled Data sources, Bindings and Dataset preview, the last
+    // of which generates no pages.
     {
-      path: "Data/Connect source…",
+      path: "Data/Data sources…",
       command: "paged.panel.show.media.paged.data.panel.sources",
       order: 10,
     },
     {
-      path: "Data/Field mapping…",
+      path: "Data/Bindings…",
       command: "paged.panel.show.media.paged.data.panel.bindings",
       order: 20,
     },
+
     {
-      path: "Help/Keyboard shortcuts",
-      command: "paged.panel.show.paged.keyboard-shortcuts",
-      order: 20,
-    },
-    {
-      path: "Data/Generate pages…",
+      path: "Data/Dataset preview…",
       command: "paged.panel.show.media.paged.data.panel.dataset",
       order: 30,
     },
   ];
 
 export const INSERT_MENU_ITEMS: MenuItemContribution[] = [
+  // Not an insert — it rode in the plugin-courtesy table (group
+  // "insert-plugin") for want of a home. Help's learning group is it.
+  {
+    path: "Help/Keyboard shortcuts",
+    command: "paged.panel.show.paged.keyboard-shortcuts",
+    order: 20,
+    group: "learn",
+  },
   {
     path: "Object/Insert text frame",
     command: PAGED_INSERT_TEXT_FRAME,
+    icon: "tool-type",
     order: 1,
     group: "insert",
     when: insertApplies,
@@ -904,6 +916,7 @@ export const INSERT_MENU_ITEMS: MenuItemContribution[] = [
   {
     path: "Object/Insert rectangle",
     command: PAGED_INSERT_RECTANGLE,
+    icon: "tool-rectangle",
     order: 2,
     group: "insert",
     when: insertApplies,
@@ -911,6 +924,7 @@ export const INSERT_MENU_ITEMS: MenuItemContribution[] = [
   {
     path: "Object/Insert ellipse",
     command: PAGED_INSERT_ELLIPSE,
+    icon: "tool-ellipse",
     order: 3,
     group: "insert",
     when: insertApplies,
@@ -918,6 +932,7 @@ export const INSERT_MENU_ITEMS: MenuItemContribution[] = [
   {
     path: "Object/Insert line",
     command: PAGED_INSERT_LINE,
+    icon: "tool-line",
     order: 4,
     group: "insert",
     when: insertApplies,
@@ -925,6 +940,7 @@ export const INSERT_MENU_ITEMS: MenuItemContribution[] = [
   {
     path: "Object/Insert table",
     command: PAGED_INSERT_TABLE,
+    icon: "ui-grid-cols",
     order: 5,
     group: "insert",
     when: insertApplies,
@@ -932,6 +948,7 @@ export const INSERT_MENU_ITEMS: MenuItemContribution[] = [
   {
     path: "File/Place…",
     command: PAGED_INSERT_PLACE_IMAGE,
+    icon: "tool-rectangleFrame",
     order: 40,
     group: "place",
     when: insertApplies,
@@ -939,13 +956,17 @@ export const INSERT_MENU_ITEMS: MenuItemContribution[] = [
   {
     path: "Layout/Add page",
     command: PAGED_INSERT_NEW_PAGE,
+    icon: "ui-plus",
     order: 5,
+    group: "pages",
     when: insertApplies,
   },
   {
     path: "Layout/Delete page",
     command: PAGED_INSERT_DELETE_PAGE,
+    icon: "ui-minus",
     order: 6,
+    group: "pages",
     when: insertApplies,
   },
   ...PLUGIN_INSERT_ENTRIES.map((e) => ({
@@ -959,6 +980,7 @@ export const INSERT_MENU_ITEMS: MenuItemContribution[] = [
     // and the courtesy entries stayed permanent while every other part
     // of the mechanism worked.
     fallbackFor: e.fallbackFor,
+    icon: e.icon,
   })),
 ];
 

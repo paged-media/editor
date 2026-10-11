@@ -36,18 +36,28 @@ import { useEditContextStack } from "../state/edit-context-stack";
 import { useTool } from "../state/tool-context";
 import { Icon, hasIcon } from "../icons";
 import { ToolOptionsPopover } from "./ToolOptionsPopover";
-import type {
-  ToolContribution,
-  ToolGroupId,
-  ToolSectionId,
+import {
+  BUILT_IN_TOOL_CLUSTERS,
+  type ToolClusterId,
+  type ToolContribution,
+  type ToolGroupId,
+  type ToolSectionId,
 } from "../registries/tool";
+import type { EditContextContribution } from "../registries/edit-context";
 
 // Concept 1 (T4) — the left tool rail. Shell CHROME, rendered as a
 // sibling of the dockview container, NOT a dock panel: fixed, not
 // floatable/serializable. Derives its slots purely from
-// `ToolRegistry.groups()` (one slot per flyout group) and the A–D
-// section dividers from each group's `section`. Reads/writes the
-// effective tool via the ToolContext stack. Zero hardcoded tools.
+// `ToolRegistry.groups()` (one slot per flyout group), laid out two
+// to a row and grouped into named CLUSTERS (`ToolClusterId`) with a
+// divider between them. Reads/writes the effective tool via the
+// ToolContext stack. Zero hardcoded tools.
+//
+// Why two columns and clusters: with the plugins loaded the rail holds
+// ~40 slots, and one column of them is twice the height of a laptop
+// viewport — half the toolbox scrolled out of sight, raster and vector
+// tools interleaved by section. Two columns fit it; clusters say what
+// each run of tools is for.
 //
 // Honest stubs — a contribution with `status: "planned"` renders as a
 // dimmed, non-activating entry (`data-tool-status="planned"`, tooltip
@@ -92,6 +102,96 @@ interface SlotModel {
 interface SectionModel {
   section: ToolSectionId;
   slots: SlotModel[];
+}
+
+interface ClusterModel {
+  cluster: ToolClusterId;
+  label: string;
+  slots: SlotModel[];
+}
+
+/** Where a slot goes when none of its members declares a `cluster`. */
+const SECTION_CLUSTER: Record<ToolSectionId, ToolClusterId> = {
+  selection: "select",
+  drawType: "draw",
+  transform: "transform",
+  modNav: "view",
+};
+
+const CONTEXT_CLUSTER_PREFIX = "context:";
+
+/** "rasterImage" → "Raster image"; "media.paged.x.fooBar" → "Foo bar". */
+function humanize(id: string): string {
+  const last = id.split(/[.:/]/).filter(Boolean).pop() ?? id;
+  const words = last
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[-_]+/g, " ")
+    .toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/**
+ * Bucket the ordered slots into clusters. A slot's cluster is the first
+ * one a member declares; failing that, the edit context whose `toolIds`
+ * claim one of its members (a bundle's context-only tools — the raster
+ * brushes — stay together instead of scattering across sections); and
+ * failing that, its section's. Built-in clusters keep their fixed order
+ * with `view` last; any other cluster sits before `view`, in first-seen
+ * order. Slot order inside a cluster is the section order.
+ */
+function deriveClusters(
+  sections: SectionModel[],
+  contexts: EditContextContribution[],
+): ClusterModel[] {
+  const contextOf = new Map<string, string>();
+  for (const ctx of contexts)
+    for (const id of ctx.toolIds ?? [])
+      if (!contextOf.has(id)) contextOf.set(id, ctx.type);
+
+  const buckets = new Map<ToolClusterId, SlotModel[]>();
+  // Declared slots first, then inferred ones: a bundle that registers
+  // before the built-ins must not push Selection down its own cluster.
+  const ordered = sections
+    .flatMap((sec) => sec.slots.map((slot) => ({ sec, slot })))
+    .map((e, i) => ({
+      ...e,
+      rank: (e.slot.members.some((m) => m.cluster) ? 0 : 1e6) + i,
+    }))
+    .sort((a, b) => a.rank - b.rank);
+  for (const { sec, slot } of ordered) {
+    const declared = slot.members.find((m) => m.cluster)?.cluster;
+    const ctx = slot.members
+      .map((m) => contextOf.get(m.id))
+      .find((t): t is string => t !== undefined);
+    const cluster =
+      declared ??
+      (ctx !== undefined
+        ? CONTEXT_CLUSTER_PREFIX + ctx
+        : SECTION_CLUSTER[sec.section]);
+    const arr = buckets.get(cluster);
+    if (arr) arr.push(slot);
+    else buckets.set(cluster, [slot]);
+  }
+
+  const known = new Map(BUILT_IN_TOOL_CLUSTERS.map((c) => [c.id, c.label]));
+  const head = BUILT_IN_TOOL_CLUSTERS.filter((c) => c.id !== "view").map(
+    (c) => c.id,
+  );
+  const extra = [...buckets.keys()].filter((id) => !known.has(id));
+  const order = [...head, ...extra, "view"];
+  return order
+    .filter((id) => buckets.has(id))
+    .map((id) => ({
+      cluster: id,
+      label:
+        known.get(id) ??
+        humanize(
+          id.startsWith(CONTEXT_CLUSTER_PREFIX)
+            ? id.slice(CONTEXT_CLUSTER_PREFIX.length)
+            : id,
+        ),
+      slots: buckets.get(id)!,
+    }));
 }
 
 /** Build the ordered section → slot model from the registry. */
@@ -139,22 +239,45 @@ function deriveSections(
   }));
 }
 
-export function ToolRail({ foot }: { foot?: ReactNode }) {
-  const { tools } = useRegistries();
+export function ToolRail({
+  foot,
+  hostToolIds,
+}: {
+  foot?: ReactNode;
+  /** The tools the HOST registered (the built-ins). Every other tool came
+   *  from a plugin bundle; one that a bundle's edit context claims in its
+   *  `toolIds` is a frame tool and shows only inside that frame. Absent ⇒
+   *  no tool is treated as a plugin's (nothing is hidden). */
+  hostToolIds?: ReadonlySet<string>;
+}) {
+  const { tools, editContexts: contextRegistry } = useRegistries();
   const { effectiveTool, setBaseTool } = useTool();
 
-  // Re-derive when the tool registry changes (bundles add/remove tools).
+  // Re-derive when the tool or edit-context registry changes (bundles
+  // add/remove tools; a context's `toolIds` decide undeclared clusters).
   const [version, setVersion] = useState(0);
   useEffect(() => {
-    const sub = tools.onChange(() => setVersion((n) => n + 1));
-    return () => sub.dispose();
-  }, [tools]);
+    const bump = () => setVersion((n) => n + 1);
+    const subs = [tools.onChange(bump), contextRegistry.onChange(bump)];
+    return () => subs.forEach((s) => s.dispose());
+  }, [tools, contextRegistry]);
 
   const sections = useMemo(
     () => deriveSections(tools.groups()),
     // `version` bumps on every registry change so the model re-derives.
     [tools, version],
   );
+  const clusters = useMemo(
+    () => deriveClusters(sections, contextRegistry.list()),
+    [sections, contextRegistry, version],
+  );
+  const clusterOf = useMemo(() => {
+    const m = new Map<ToolGroupId, string>();
+    for (const c of clusters) for (const s of c.slots) m.set(s.group, c.label);
+    return m;
+  }, [clusters]);
+
+  const tooltip = useRailTooltip();
 
   // Per-group "last used" face tool. Seeded from the group default;
   // updated whenever a member of the group becomes effective (click,
@@ -265,13 +388,66 @@ export function ToolRail({ foot }: { foot?: ReactNode }) {
     [setBaseTool, restrictedTools, editContexts],
   );
 
+  // Plugin FRAME tools — contributed by a bundle (not the host) and
+  // claimed by one of its edit contexts' `toolIds`, i.e. tools that work
+  // only inside that plugin's frame (the raster brushes inside an
+  // image). Outside every context they leave the rail; inside their
+  // context the restriction below shows them. The tool in hand is never
+  // hidden, whichever way it was picked (shortcut, command palette).
+  const frameTools = useMemo(() => {
+    const ids = new Set<string>();
+    if (!hostToolIds) return ids;
+    for (const ctx of contextRegistry.list())
+      for (const id of ctx.toolIds ?? [])
+        if (!hostToolIds.has(id)) ids.add(id);
+    return ids;
+    // `version` bumps when a bundle registers or drops a context.
+  }, [hostToolIds, contextRegistry, version]);
+
+  const slotVisible = (slot: SlotModel): boolean => {
+    if (slot.members.some((m) => m.id === effectiveTool)) return true;
+    const face = faceToolOf(slot);
+    if (restrictedTools)
+      return applicabilityStyle(
+        applicabilityOf({
+          exists: true,
+          appliesHere: restrictedTools.has(face.id),
+          id: face.id,
+        }),
+        "palette",
+      ).visible;
+    // A slot is a frame slot when one of its members is claimed and none
+    // is the host's: a flyout of plugin tools follows its group, so a
+    // member the context's list leaves out (polygonal lasso beside the
+    // lasso) does not keep the slot on the rail by itself.
+    const frameSlot =
+      slot.members.some((m) => frameTools.has(m.id)) &&
+      !slot.members.some((m) => hostToolIds?.has(m.id));
+    return !frameSlot;
+  };
+
+  // A cluster whose every slot is hidden drops out whole, so it leaves
+  // no orphaned divider behind.
+  const visibleClusters = clusters
+    .map((c) => ({ ...c, slots: c.slots.filter(slotVisible) }))
+    .filter((c) => c.slots.length > 0);
+
   return (
     <nav style={railStyle} aria-label="Tools" data-tool-rail="ready">
-      {sections.map((sec, i) => (
-        <div key={sec.section}>
+      {/* The tools scroll on a short window; the foot (fill/stroke,
+       *  proof, screen mode) stays pinned below them, never scrolled
+       *  out of reach. */}
+      <div style={railToolsStyle} onScroll={tooltip.hide}>
+      {visibleClusters.map((c, i) => (
+        <div
+          key={c.cluster}
+          role="group"
+          aria-label={c.label}
+          data-tool-cluster={c.cluster}
+        >
           {i > 0 && <div style={dividerStyle} aria-hidden />}
-          <div style={sectionStyle}>
-            {sec.slots.map((slot) => (
+          <div style={clusterStyle}>
+            {c.slots.map((slot) => (
               <ToolSlot
                 key={slot.group}
                 slot={slot}
@@ -281,11 +457,24 @@ export function ToolRail({ foot }: { foot?: ReactNode }) {
                 restricted={restrictedTools}
                 onPick={pick}
                 onTearOff={tearOff}
+                onHint={(tool, anchor) =>
+                  tooltip.show({
+                    tool,
+                    cluster: clusterOf.get(slot.group),
+                    more: slot.members.filter(
+                      (m) => m.id !== tool.id && !isPlanned(m),
+                    ).length,
+                    anchor,
+                  })
+                }
+                onUnhint={tooltip.hide}
               />
             ))}
           </div>
         </div>
       ))}
+      </div>
+      {tooltip.node}
       {foot != null && (
         <div style={footStyle}>
           <div style={dividerStyle} aria-hidden />
@@ -406,6 +595,8 @@ function ToolSlot({
   restricted,
   onPick,
   onTearOff,
+  onHint,
+  onUnhint,
 }: {
   slot: SlotModel;
   face: ToolContribution;
@@ -415,6 +606,9 @@ function ToolSlot({
   restricted?: Set<string> | null;
   onPick: (tool: ToolContribution) => void;
   onTearOff?: (group: ToolGroupId, pos: { x: number; y: number }) => void;
+  /** Hover/focus — ask the rail to show this tool's tooltip. */
+  onHint?: (tool: ToolContribution, anchor: RailAnchor) => void;
+  onUnhint?: () => void;
 }) {
   const [flyoutOpen, setFlyoutOpen] = useState(false);
   // Flyout is portalled to <body> so it escapes the rail's overflow
@@ -443,13 +637,15 @@ function ToolSlot({
   };
 
   const openFlyout = useCallback(() => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (rect) setFlyoutPos({ left: rect.right + 4, top: rect.top });
+    const rect = popoverAnchor(containerRef.current);
+    if (rect) setFlyoutPos({ left: rect.left, top: rect.top });
+    onUnhint?.();
     setFlyoutOpen(true);
-  }, []);
+  }, [onUnhint]);
 
   const onPointerDown = useCallback(
     (e: ReactPointerEvent) => {
+      onUnhint?.();
       if (e.button !== 0 || !hasFlyout) return;
       openedByHold.current = false;
       longPressRef.current = window.setTimeout(() => {
@@ -517,7 +713,9 @@ function ToolSlot({
     <div ref={containerRef} style={{ position: "relative" }}>
       <button
         type="button"
-        title={tooltipFor(face)}
+        // The rail tooltip (useRailTooltip) replaces the native `title`:
+        // that one waits ~1 s and can say no more than the name.
+        aria-label={tooltipFor(face)}
         aria-pressed={isActive}
         aria-disabled={isPlanned(face) ? true : undefined}
         data-tool-slot={slot.group}
@@ -547,13 +745,27 @@ function ToolSlot({
         })}
         onPointerDown={onPointerDown}
         onPointerUp={clearTimer}
-        onPointerLeave={clearTimer}
+        onPointerEnter={(e) => {
+          if (e.pointerType === "touch" || flyoutOpen) return;
+          const at = popoverAnchor(containerRef.current);
+          if (at) onHint?.(face, at);
+        }}
+        onPointerLeave={() => {
+          clearTimer();
+          onUnhint?.();
+        }}
+        onFocus={(e) => {
+          const at = popoverAnchor(containerRef.current);
+          if (at && e.currentTarget.matches(":focus-visible"))
+            onHint?.(face, at);
+        }}
+        onBlur={() => onUnhint?.()}
         onClick={onClick}
         onDoubleClick={() => {
           // T8 — double-click opens the tool's options; no-op if none.
           if (!face.options) return;
-          const rect = containerRef.current?.getBoundingClientRect();
-          if (rect) setOptionsPos({ left: rect.right + 4, top: rect.top });
+          const rect = popoverAnchor(containerRef.current);
+          if (rect) setOptionsPos({ left: rect.left, top: rect.top });
           setFlyoutOpen(false);
           setOptionsOpen(true);
         }}
@@ -679,6 +891,110 @@ function ToolSlot({
   );
 }
 
+/** A popover's top-left: just past the rail's right edge (NOT the
+ *  slot's — in two columns the slot's right edge of the left column is
+ *  the right column), level with the slot. */
+interface RailAnchor {
+  left: number;
+  top: number;
+}
+
+function popoverAnchor(el: HTMLElement | null): RailAnchor | null {
+  if (!el) return null;
+  const slot = el.getBoundingClientRect();
+  const rail = el.closest("[data-tool-rail]")?.getBoundingClientRect();
+  return { left: (rail?.right ?? slot.right) + 6, top: slot.top };
+}
+
+const TOOLTIP_DELAY_MS = 350;
+/** After a tooltip closes, the next one within this window opens at
+ *  once — scanning down the rail reads tool after tool, not a wait each. */
+const TOOLTIP_WARM_MS = 500;
+
+interface RailHint {
+  tool: ToolContribution;
+  /** Label of the cluster the slot sits in. */
+  cluster?: string;
+  /** Working tools behind the slot's flyout, besides this one. */
+  more: number;
+  anchor: RailAnchor;
+}
+
+/** One tooltip for the whole rail: delayed on first hover, immediate
+ *  while the pointer moves from slot to slot. */
+function useRailTooltip() {
+  const [hint, setHint] = useState<RailHint | null>(null);
+  const timer = useRef<number | null>(null);
+  const visible = useRef(false);
+  const warmUntil = useRef(0);
+
+  const clear = () => {
+    if (timer.current != null) {
+      window.clearTimeout(timer.current);
+      timer.current = null;
+    }
+  };
+
+  const show = useCallback((h: RailHint) => {
+    clear();
+    if (visible.current || performance.now() < warmUntil.current) {
+      visible.current = true;
+      setHint(h);
+      return;
+    }
+    timer.current = window.setTimeout(() => {
+      visible.current = true;
+      setHint(h);
+    }, TOOLTIP_DELAY_MS);
+  }, []);
+
+  const hide = useCallback(() => {
+    clear();
+    if (visible.current) warmUntil.current = performance.now() + TOOLTIP_WARM_MS;
+    visible.current = false;
+    setHint(null);
+  }, []);
+
+  useEffect(() => clear, []);
+
+  const node = hint ? createPortal(<RailTooltip hint={hint} />, document.body) : null;
+  return { show, hide, node };
+}
+
+function RailTooltip({ hint }: { hint: RailHint }) {
+  const { tool, cluster, more, anchor } = hint;
+  const planned = isPlanned(tool);
+  return (
+    <div
+      role="tooltip"
+      data-tool-tooltip={tool.id}
+      style={{
+        ...tooltipStyle,
+        left: anchor.left,
+        top: anchor.top + SLOT_SIZE / 2,
+      }}
+    >
+      {cluster && <div style={tooltipClusterStyle}>{cluster}</div>}
+      <div style={tooltipHeadStyle}>
+        <span style={tooltipTitleStyle}>{tool.title}</span>
+        {!planned && tool.shortcut && (
+          <kbd style={tooltipKeyStyle}>{formatShortcut(tool.shortcut)}</kbd>
+        )}
+      </div>
+      {planned ? (
+        <div style={tooltipBodyStyle}>Coming soon</div>
+      ) : (
+        tool.description && <div style={tooltipBodyStyle}>{tool.description}</div>
+      )}
+      {more > 0 && (
+        <div style={tooltipMoreStyle}>
+          Hold or right-click for {more} more {more === 1 ? "tool" : "tools"}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Icon if the glyph exists, else the shortcut letter as a fallback. */
 function SlotGlyph({ tool }: { tool: ToolContribution }) {
   if (hasIcon(tool.icon)) return <Icon name={tool.icon} size={18} />;
@@ -702,7 +1018,10 @@ function formatShortcut(s: string): string {
     .join("");
 }
 
-const RAIL_WIDTH = 38;
+const SLOT_SIZE = 28;
+const SLOT_GAP = 2;
+const RAIL_PAD_X = 5;
+const RAIL_WIDTH = 2 * SLOT_SIZE + SLOT_GAP + 2 * RAIL_PAD_X;
 
 const railStyle: CSSProperties = {
   width: RAIL_WIDTH,
@@ -710,19 +1029,25 @@ const railStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  gap: 6,
-  padding: "8px 0",
+  padding: `4px ${RAIL_PAD_X}px 6px`,
+  boxSizing: "border-box",
   borderRight: "1px solid var(--chrome-border)",
   background: "var(--chrome-rail-bg)",
-  overflowY: "auto",
-  overflowX: "visible",
+  overflow: "hidden",
 };
 
-const sectionStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: 2,
+const railToolsStyle: CSSProperties = {
+  flex: "1 1 auto",
+  minHeight: 0,
+  overflowY: "auto",
+  overflowX: "hidden",
+  scrollbarWidth: "none",
+};
+
+const clusterStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: `repeat(2, ${SLOT_SIZE}px)`,
+  gap: SLOT_GAP,
 };
 
 const footStyle: CSSProperties = {
@@ -735,16 +1060,16 @@ const footStyle: CSSProperties = {
 };
 
 const dividerStyle: CSSProperties = {
-  width: 22,
+  width: 2 * SLOT_SIZE + SLOT_GAP - 12,
   height: 1,
-  margin: "6px auto",
+  margin: "4px auto",
   background: "var(--chrome-divider)",
 };
 
 const slotStyle: CSSProperties = {
   position: "relative",
-  width: 30,
-  height: 30,
+  width: SLOT_SIZE,
+  height: SLOT_SIZE,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -876,4 +1201,60 @@ const paletteCloseStyle: CSSProperties = {
   padding: 0,
   fontSize: 12,
   lineHeight: 1,
+};
+
+const tooltipStyle: CSSProperties = {
+  position: "fixed",
+  zIndex: 70,
+  transform: "translateY(-50%)",
+  maxWidth: 240,
+  padding: "7px 9px",
+  borderRadius: 6,
+  border: "1px solid var(--chrome-divider)",
+  background: "var(--elevated)",
+  boxShadow: "var(--shadow-pop)",
+  color: "var(--chrome-menu-text)",
+  pointerEvents: "none",
+  display: "flex",
+  flexDirection: "column",
+  gap: 3,
+};
+
+const tooltipClusterStyle: CSSProperties = {
+  fontSize: 10,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+  color: "var(--chrome-label)",
+};
+
+const tooltipHeadStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "baseline",
+  gap: 10,
+  justifyContent: "space-between",
+};
+
+const tooltipTitleStyle: CSSProperties = {
+  fontSize: 12,
+  fontWeight: 600,
+};
+
+const tooltipKeyStyle: CSSProperties = {
+  fontFamily: "var(--font-mono, ui-monospace, monospace)",
+  fontSize: 11,
+  padding: "0 4px",
+  borderRadius: 3,
+  border: "1px solid var(--chrome-divider)",
+  color: "var(--chrome-label)",
+};
+
+const tooltipBodyStyle: CSSProperties = {
+  fontSize: 11.5,
+  lineHeight: 1.4,
+  opacity: 0.85,
+};
+
+const tooltipMoreStyle: CSSProperties = {
+  fontSize: 11,
+  color: "var(--chrome-label)",
 };

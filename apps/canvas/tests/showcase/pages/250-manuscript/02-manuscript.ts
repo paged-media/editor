@@ -17,7 +17,7 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// The placed manuscript (p116–p117, the spread) — "Place Word
+// The placed manuscript (p116–p117, the spread) — "Insert Word
 // document…" with the PRE-ARMED filechooser feeds annual-report.docx to
 // the bundle's OOXML engine; the lowering pours it into the open layout
 // as NATIVE stories, and the poured content IS the exhibit. Every tier

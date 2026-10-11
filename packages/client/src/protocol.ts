@@ -43,6 +43,10 @@ import canvasWasmPackage from "@paged-media/canvas-wasm/package.json" with { typ
 
 export const PROTOCOL_VERSION: number = protocolFromVersion(canvasWasmPackage.version);
 
+/** The installed engine package's full version (`0.<protocol>.<patch>`),
+ *  for an About line. */
+export const ENGINE_VERSION: string = canvasWasmPackage.version;
+
 /** The protocol a `0.<protocol>.<patch>` package version carries. */
 export function protocolFromVersion(version: string): number {
   const minor = Number(version.split(".")[1]);

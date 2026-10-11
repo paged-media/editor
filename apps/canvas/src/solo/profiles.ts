@@ -159,16 +159,18 @@ const DRAW_PROFILE: SoloProfile = {
     // feeds this panel instead, which is why the illustration app's left
     // column is a host id.
     left: "paged.layers",
+    // The host Stroke panel carries draw's stroke rows (dashes,
+    // arrowheads) since paged.draw's own "Vector stroke" merged into it.
     tabs: [
       "paged.properties",
-      "media.paged.draw.panel.stroke",
+      "paged.stroke",
       "media.paged.draw.panel.appearance",
       "paged.swatches",
     ],
   },
   panelRailIds: [
     "paged.properties",
-    "media.paged.draw.panel.stroke",
+    "paged.stroke",
     "paged.swatches",
     "paged.problems",
   ],

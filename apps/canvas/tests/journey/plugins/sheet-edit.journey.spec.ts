@@ -95,23 +95,27 @@ test.describe("journey · paged.sheet edit ops", () => {
 
     await importWorkbook(page, "A1:B3");
 
-    // ── 1. FIND (HARD) — the fixture's B1 carries the label "Sum". Find it;
-    //    the panel reports ≥1 hit and lists the hit cell button. ──
+    // ── 1. FIND (HARD) — the fixture's B1 carries the label "Sum". Find it
+    //    in the Grid panel (the one home for find since 2026-10-11): "Find
+    //    all" reports the match count and lists the hit cell button. ──
+    await openPanel(page, GRID_PANEL);
     await page.locator("[data-sheet-find-needle]").fill("Sum");
     await page.locator("[data-sheet-find]").click();
     const findMsg = page.locator("[data-sheet-find-msg]");
     await expect(findMsg).toBeVisible({ timeout: 8_000 });
-    await expect(findMsg).not.toContainText("0 hits", { timeout: 8_000 });
+    // "N match(es)." with N ≥ 1 — a zero count would read "0 matches.".
+    await expect(findMsg).toHaveText(/^[1-9]\d* match(es)?\.$/, { timeout: 8_000 });
     await expect(page.locator("[data-sheet-find-hits] [data-sheet-find-hit]").first()).toBeVisible({
       timeout: 8_000,
     });
 
-    // ── 2. REPLACE ALL (HARD) — replace "Sum" with "Total"; the panel reports
-    //    the replaced count and the grid SVG now renders "Total". ──
+    // ── 2. REPLACE ALL (HARD) — under "Replace and options", replace "Sum"
+    //    with "Total"; the panel reports the replaced count and the grid SVG
+    //    now renders "Total". ──
+    await page.locator("[data-sheet-replace-section] > summary").click();
     await page.locator("[data-sheet-find-replacement]").fill("Total");
     await page.locator("[data-sheet-replace-all]").click();
     await expect(findMsg).toContainText("Replaced", { timeout: 8_000 });
-    await openPanel(page, GRID_PANEL);
     await expect(page.locator("[data-grid-svg-root]")).toContainText("Total", {
       timeout: 10_000,
     });
@@ -122,6 +126,8 @@ test.describe("journey · paged.sheet edit ops", () => {
     //    so it succeeds.) ──
     await openPanel(page, WORKBOOK_PANEL);
     await page.locator("[data-sheet-range]").fill("A1:A2"); // the two numeric cells
+    // The Workbook's sections are collapsed except "Place on page".
+    await page.locator('[data-sheet-section="sort"] > summary').click();
     await page.locator("[data-sheet-sort-key]").fill("1");
     await page.locator("[data-sheet-sort-dir]").selectOption("desc");
     await page.locator("[data-sheet-sort]").click();

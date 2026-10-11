@@ -34,7 +34,8 @@
 //   manifests the app resolves and asserts each declared contribution is
 //   REGISTERED, REACHABLE and BEHAVES AS LABELLED.
 //
-// THREE DEFECTS ARE PINNED HERE, DELIBERATELY ASSERTING TODAY'S BEHAVIOUR.
+// THREE DEFECTS WERE PINNED HERE, DELIBERATELY ASSERTING TODAY'S BEHAVIOUR
+// (D1 is fixed and its test now asserts the fixed state).
 //
 //   Each is marked `KNOWN DEFECT`. The assertion states what the editor
 //   does NOW, so the test goes RED when the defect is fixed and whoever
@@ -43,10 +44,11 @@
 //   only shape that keeps a "we know about this" note from rotting into
 //   a permanent excuse.
 //
-//     D1  paged.data's "Import data (.csv)" imports nothing. Its handler
-//         is `host.shell.openPanel(SOURCES_PANEL_ID)` — a panel raise
-//         wearing a file-action label. The REAL import door is the
-//         panel's own button.
+//     D1  FIXED 2026-10-11. paged.data's `importData` was titled "Import
+//         data (.csv)" and imported nothing: its handler is
+//         `host.shell.openPanel(SOURCES_PANEL_ID)`. It is now titled "Data
+//         sources…", which is what it does. The REAL import door is
+//         still the panel's own button.
 //     D2  paged.doc's `placeDoc` declares no `category`, so the palette's
 //         `groupByCategory` (`cmd.category ?? "Other"`) files "Insert Word
 //         document…" under **Other**, while "Place image…" — the same
@@ -439,11 +441,10 @@ test.describe("plugin surface · paged.data", () => {
     //   · 2026-08-23 (F1) — the plugin files its own, via
     //     `contribute.menu()` (plugin-api 0.2.33).
     //
-    // The rows are named for what they DO rather than for their command
-    // titles, and in two cases those differ: `importData` is registered
-    // as "Import data (.csv)" while its handler opens a panel and
-    // imports nothing. Repeating that title in a menu would spread the
-    // claim to a second surface, so the entry reads "Sources…".
+    // Since 2026-10-11 the command titles name the panels they open
+    // ("Data sources…", "Bindings…", "Dataset preview…"), and the plugin
+    // files no second row for the three panels the host's Data menu
+    // already raises by those names.
     const dataMenuCmds = dataIo.menus.filter((m) =>
       m.startsWith("media.paged.data"),
     );
@@ -482,8 +483,10 @@ test.describe("plugin surface · paged.data", () => {
         (p) => p.locator("[data-data-import-csv]").first(),
       ],
       [
+        // No source on a fresh document: the bindings panel's body is its
+        // empty state, which links to Data sources (2026-10-11).
         "media.paged.data.panel.bindings",
-        (p) => p.locator("[data-data-bind-author]").first(),
+        (p) => p.locator("[data-data-bind-empty] [data-data-bind-open-sources]").first(),
       ],
       [
         // The query panel: the SQL field the builders write into.
@@ -493,7 +496,7 @@ test.describe("plugin surface · paged.data", () => {
       [
         // Last, so its locale control (asserted below) is the one in view.
         "media.paged.data.panel.dataset",
-        (p) => p.getByText(/No queries yet/i).first(),
+        (p) => p.locator("[data-data-dataset-empty]").getByText(/No queries yet/i).first(),
       ],
     ];
 
@@ -513,16 +516,26 @@ test.describe("plugin surface · paged.data", () => {
     await expect(page.getByRole("combobox", { name: /Locale/i })).toBeVisible();
   });
 
-  // DELIBERATELY UNTAGGED — see AC-ITEMLAYER-3. A `@feat:` tag is a
-  // COVERAGE claim, and this test passes by proving the capability does
-  // not work. `data.plugin.bundle` is covered four more times in this
-  // file by tests that assert it working.
-  test("KNOWN DEFECT D1 — 'Import data (.csv)' imports nothing; it raises a panel @level:edge", async ({
+  // DELIBERATELY UNTAGGED — see AC-ITEMLAYER-3. This was a KNOWN DEFECT
+  // that asserted the broken state; `data.plugin.bundle` is covered four
+  // more times in this file by tests that assert it working.
+  test("FIXED 2026-10-11 (D1) — the importData command is titled 'Data sources…' and does what it says: it raises the sources panel @level:edge", async ({
     page,
   }) => {
     const designer = new Designer(page);
     await designer.open();
     await designer.newDocument();
+
+    // The label no longer promises a file action. It used to read "Import
+    // data (.csv)" while its handler only raised a panel; it now names the
+    // panel it raises, as the host's Data menu row does.
+    const title = await page.evaluate(
+      () =>
+        (globalThis as unknown as CanvasProbe).__canvas.registries.commands.get(
+          "media.paged.data.command.importData",
+        )?.title ?? null,
+    );
+    expect(title, "D1 fixed: importData is titled for what it does").toBe("Data sources…");
 
     // Start somewhere else so a raise is observable.
     await openPanel(page, "media.paged.data.panel.bindings");
@@ -530,29 +543,18 @@ test.describe("plugin surface · paged.data", () => {
       .poll(async () => (await panelState(page)).active, { timeout: 10_000 })
       .toBe("media.paged.data.panel.bindings");
 
-    // A command whose label reads "Import data (.csv)" must, at minimum,
-    // ASK FOR A FILE. Race the invocation against the filechooser event:
-    // if the command ever reached `host.shell.pickFile`, a chooser fires.
+    // The command raises the sources panel and asks for no file — and
+    // now nothing in its label says it would.
     const chooser = page
       .waitForEvent("filechooser", { timeout: 3_000 })
       .then(() => "filechooser" as const)
       .catch(() => "none" as const);
     await invoke(page, "media.paged.data.command.importData");
     const outcome = await chooser;
-
-    // KNOWN DEFECT — the label promises a file action and delivers a
-    // panel raise (`handler: () => host.shell.openPanel(SOURCES_PANEL_ID)`).
-    // Flip this to "filechooser" when the command learns to pick a file
-    // (or rename it to "Data sources…", which is what it actually does).
-    expect(
-      outcome,
-      "D1: 'Import data (.csv)' never asks for a file — it only raises the sources panel",
-    ).toBe("none");
+    expect(outcome, "'Data sources…' raises a panel; it opens no file picker").toBe("none");
     expect((await panelState(page)).active).toBe("media.paged.data.panel.sources");
 
-    // THE CONTRAST that makes D1 a defect rather than a naming quibble:
-    // the REAL import door is one click further in, inside the panel the
-    // command just raised, and IT does open a picker.
+    // The import door is the panel's own button, and it does open a picker.
     const realChooser = page.waitForEvent("filechooser", { timeout: 10_000 });
     await page.locator("[data-data-import-csv]").first().click();
     await (await realChooser).setFiles([]); // cancel — no ingest here
@@ -989,8 +991,9 @@ test.describe("plugin surface · paged.doc", () => {
       timeout: 10_000,
     });
 
-    // INVOCABLE — unlike paged.data's importData (D1), placeDoc's handler
-    // really does reach `host.shell.pickFile`, so a chooser fires. Cancel
+    // INVOCABLE — unlike paged.data's importData (which raises a panel, as
+    // its title "Data sources…" says), placeDoc's handler really does
+    // reach `host.shell.pickFile`, so a chooser fires. Cancel
     // it: the DOCX ingest itself is doc.journey's job, not this tier's.
     const chooser = page.waitForEvent("filechooser", { timeout: 15_000 });
     const placed = invoke(page, DOC_COMMAND);
@@ -1316,9 +1319,9 @@ test.describe("plugin surface · host-hardcoded chrome", () => {
     // "alone" stopped being the interesting fact the moment the plugin
     // could speak for itself.
     const hostRows = [
-      "Data/Connect source…",
-      "Data/Field mapping…",
-      "Data/Generate pages…",
+      "Data/Data sources…",
+      "Data/Bindings…",
+      "Data/Dataset preview…",
     ];
     for (const row of hostRows) {
       expect(dataMenu.map((m) => m.path), `${row} survives`).toContain(row);
@@ -1344,7 +1347,9 @@ test.describe("plugin surface · host-hardcoded chrome", () => {
       expect(dataMenu.map((m) => m.command)).toContain(cmd);
     }
 
-    // Through the real MenuBar: three items, all greyed, all badged.
+    // Through the real MenuBar. Data is a context menu now (it shows while
+    // a binding is selected or entered); Data layout keeps it on the bar.
+    await page.evaluate(() => (globalThis as unknown as CanvasProbe).__canvas.setMode("data"));
     await page
       .locator('nav[aria-label="Main menu"]')
       .getByRole("button", { name: "Data" })
@@ -1358,8 +1363,8 @@ test.describe("plugin surface · host-hardcoded chrome", () => {
     await page.keyboard.press("Escape");
 
     // ── 2. THE LIVE PILLS THAT DUPLICATE THEM. Data mode's toolbar
-    //    carries "Connect source" / "Field mapping" / "Generate" — the
-    //    same three labels — and each one RAISES a live paged.data panel.
+    //    carries "Data sources" / "Bindings" / "Dataset preview" — the
+    //    panels' own names — and each one RAISES a live paged.data panel.
     //    So the verbs exist; only the menu is dead.
     await page.evaluate(() => (globalThis as unknown as CanvasProbe).__canvas.setMode("data"));
     for (const [action, panel] of [

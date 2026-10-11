@@ -52,6 +52,7 @@ import { Designer } from "../driver/designer";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { skipWithoutDuckDB } from "./data-duckdb-gate";
+import { addBindingThroughPanel } from "./data-engine";
 
 const CSV_FIXTURE = pathResolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -125,8 +126,9 @@ test.describe("journey · paged.data render output", () => {
     // wired (the source row + a query referencing it), so target the first.
     await expect(page.getByText(/data_people/).first()).toBeVisible({ timeout: 6_000 });
 
-    // ── 2. WIRE + LOWER — open the bindings panel, wire the demo binding (a
-    //    query over the imported source + a variable field bound to it), then
+    // ── 2. WIRE + LOWER — open the bindings panel, add bindings through its
+    //    authoring row (a variable field and a table over "All rows of
+    //    data_people", which defines that query on first use), then
     //    lower it to the document. `lowerAll` refreshes the data through DuckDB
     //    and commits the resolved content as native Paged Mutations — the page,
     //    blank before, now carries the data-driven content. ──
@@ -134,8 +136,8 @@ test.describe("journey · paged.data render output", () => {
     await expect(page.locator("[data-data-bind-author]")).toBeVisible({ timeout: 10_000 });
 
     const beforeLower = await designer.renderBytes();
-    await page.getByRole("button", { name: /wire demo binding/i }).click();
-    await page.waitForTimeout(300);
+    await addBindingThroughPanel(page, "variable", "name");
+    await addBindingThroughPanel(page, "table", "name, role");
     await page.getByRole("button", { name: /lower to document/i }).click();
     // The lower lane refreshes data (a DuckDB query) + commits the Mutations;
     // give the worker + the render pipeline a beat to settle.

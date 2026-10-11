@@ -96,7 +96,15 @@ import {
   setObjectModelEditor,
 } from "./object-model";
 import { ALIGN_ARGS, ALIGN_COMMAND, runAlign, type AlignKind } from "./align-plan";
-import { cameraForPage, pagesBackend, publishActivePage, setPageGoTo } from "./plugin-pages";
+import {
+  cameraCentredOn,
+  cameraForPage,
+  pagesBackend,
+  publishActivePage,
+  setPageGoTo,
+  setTextReveal,
+  textRevealBackend,
+} from "./plugin-pages";
 import { resolveSoloProfile } from "./solo/profiles";
 import { soloMode } from "./solo/mode";
 import { drawBundle } from "@paged-media/draw";
@@ -441,6 +449,10 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultDock: "left",
     defaultGroup: "cockpit",
     icon: "ui-database",
+    // No longer OFFERED in Window: "not connected" / "coming soon" beside
+    // the live Data sources panel read as a second, broken data surface.
+    // Still registered and openable (specs, the palette).
+    devOnly: true,
   },
   {
     id: "paged.data-grid",
@@ -449,6 +461,8 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultDock: "center",
     defaultGroup: "cockpit",
     icon: "ui-bolt",
+    // Same: a ComingSoon card that overlapped paged.data's live panels.
+    devOnly: true,
   },
   {
     id: "paged.story-inspector",
@@ -1550,6 +1564,9 @@ function PluginBundles() {
       documents,
       // v70 — page navigation and the active page (`viewport.pages@1`).
       pages: pagesBackend,
+      // Taking the user to a range of text — an outline entry, a find hit
+      // (`viewport.revealText@1`). Inert under an SDK that predates it.
+      text: textRevealBackend,
       diagnosticsSink: problemsSink,
       schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
       // W-19 — the shell's pointer entries (double-click, the Type-tool
@@ -1809,6 +1826,49 @@ function CanvasAppIntegration() {
     // v70 — the same page, for `host.viewport.activePage` and its event.
     publishActivePage(target?.pageId ?? null);
   }, [client, handle, camera, viewportSize]);
+
+  // `host.viewport.revealText`: the camera onto where the range is laid
+  // out (its first line, at the current zoom or a readable one), then —
+  // unless the plugin asked not to — the range as the text selection.
+  useEffect(() => {
+    setTextReveal(async (range, select) => {
+      if (!handle) return false;
+      const sel = { storyId: range.storyId, start: range.start, end: range.end };
+      let at: { pageId: string; xPt: number; yPt: number } | null = null;
+      try {
+        if (range.end > range.start) {
+          const rects = await client.selectionGeometry(sel);
+          const first = rects[0];
+          if (first) {
+            at = {
+              pageId: String(first.pageId),
+              xPt: first.leftPt + Math.min(first.widthPt, 120) / 2,
+              yPt: first.topPt + first.heightPt / 2,
+            };
+          }
+        }
+        if (!at) {
+          const caret = await client.caretGeometry(sel);
+          if (caret) {
+            at = { pageId: String(caret.pageId), xPt: caret.xPt, yPt: caret.topPt + caret.heightPt / 2 };
+          }
+        }
+      } catch {
+        return false; // unknown story, or a range the engine refuses
+      }
+      if (!at) return false; // not laid out (overset)
+      const index = handle.pageIds.indexOf(at.pageId as never);
+      const [vw, vh] = viewportSize;
+      // Keep the user's zoom unless it is too small to read text at.
+      const scale = Math.max(camera.scale, 0.6);
+      const cam = cameraCentredOn(handle.pageSizesPt, index, at.xPt, at.yPt, scale, vw, vh);
+      if (!cam) return false;
+      animateCamera(cam);
+      if (select) setContentSelection(sel);
+      return true;
+    });
+    return () => setTextReveal(null);
+  }, [animateCamera, camera.scale, client, handle, setContentSelection, viewportSize]);
 
   // v70 — `host.viewport.goToPage`: the page by id, fitted whole or by
   // width, with the navigator's animation.

@@ -304,12 +304,12 @@ function StoryInspector({
       <Seam
         label="Words"
         testId="story-seam-words"
-        note="No word count on the wire (StorySummary has characterCount only). Needs a wordCount field or a story-text read to tokenise."
+        note="Word count is not available yet: the editor only knows the character count of a story."
       />
       <Seam
         label="First paragraph"
         testId="story-seam-preview"
-        note="No story-text read on the wire. Needs a storyText / paragraphPreview accessor keyed by story id."
+        note="A preview of the story text is not available yet."
       />
 
       <div
@@ -318,7 +318,7 @@ function StoryInspector({
         data-story-inspector-footer
       >
         Renaming, approval, and comments land with the collaboration backend —
-        a story carries no rename Operation on the wire today.
+        stories cannot be renamed yet.
       </div>
     </div>
   );
@@ -401,7 +401,7 @@ function Seam({
         className="pg-ui-xs"
         style={{ fontStyle: "italic", color: "var(--pg-muted-fg)" }}
       >
-        awaits wire read
+        not available yet
       </span>
     </div>
   );
@@ -507,8 +507,8 @@ function StoryReflow({ storyId }: { storyId: string }) {
         data-story-reflow-note
         style={{ marginTop: 4, fontStyle: "italic", color: "var(--pg-muted-fg)" }}
       >
-        No read-back on the wire: shows this session's last write, unknown
-        after undo or redo.
+        Shows the value last set in this session; the editor cannot read it
+        back, so it is unknown after undo or redo.
       </div>
     </div>
   );

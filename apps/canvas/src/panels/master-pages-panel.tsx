@@ -26,7 +26,7 @@
 // (`core.deleteMaster`) — each one invoke = one undo step; the ones that
 // need a name or a page open the generated form.
 
-import { ListRows, useCollection, useDocument } from "@paged-media/shell";
+import { ListRows, displayName, useCollection, useDocument } from "@paged-media/shell";
 import type { MasterPageSummary } from "@paged-media/client";
 
 import { CoreCommandButton, newMasterPrefill } from "../core-command-dialog";
@@ -67,7 +67,7 @@ export function MasterPagesPanel() {
             rows={items.map((m) => ({
               key: m.selfId,
               icon: "panel-master-pages",
-              primary: m.label,
+              primary: displayName(m.label),
               secondary: `${m.pageCount} page${m.pageCount === 1 ? "" : "s"}`,
               trail: (
                 <span className="flex gap-[4px]" data-master-row={m.selfId}>

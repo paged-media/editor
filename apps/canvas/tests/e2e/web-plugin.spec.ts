@@ -316,7 +316,10 @@ test.describe("E2E web-plugin (paged.web source lane)", () => {
     await expect(badge).toHaveAttribute("data-badge-state", "substituting", {
       timeout: 5_000,
     });
-    await expect(badge).toContainText("substituted in preview");
+    // (Wording since the 2026-10-11 panel pass: "Some fonts are browser
+    // substitutes in the preview. Not in the document: <families>.")
+    await expect(badge).toContainText("browser substitutes in the preview");
+    await expect(badge).toContainText("Helvetica Neue");
 
     // And the sandboxed preview carries NO injected `@font-face`
     // (no object-URL face was composed — the null-path proof). The

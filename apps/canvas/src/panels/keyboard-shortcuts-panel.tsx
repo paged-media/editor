@@ -47,44 +47,13 @@ import { useMemo } from "react";
 import {
   CockpitPanelHeader,
   CockpitSection,
+  nativeKey,
+  prettyKey,
   useRegistries,
   type PanelProps,
 } from "@paged-media/shell";
 
 export const KEYBOARD_SHORTCUTS_PANEL_ID = "paged.keyboard-shortcuts";
-
-/** Named keys that read as a glyph — the same table the menus and the
- *  palette carry, so "Nudge left" shows ← here too, not "Arrowleft". */
-const KEY_GLYPHS: Record<string, string> = {
-  arrowleft: "←",
-  arrowright: "→",
-  arrowup: "↑",
-  arrowdown: "↓",
-  backspace: "⌫",
-  delete: "⌦",
-};
-
-/** `cmd+shift+s` → `⌘⇧S`. Same formatting as the menus and the palette. */
-function prettyKey(combo: string): string {
-  const parts = combo.split("+");
-  const key = parts.pop() ?? "";
-  const mods = parts
-    .map((m) =>
-      m === "cmd" || m === "meta"
-        ? "⌘"
-        : m === "shift"
-          ? "⇧"
-          : m === "alt" || m === "option"
-            ? "⌥"
-            : m === "ctrl" || m === "control"
-              ? "⌃"
-              : m,
-    )
-    .join("");
-  const glyph = KEY_GLYPHS[key];
-  if (glyph) return `${mods}${glyph}`;
-  return `${mods}${key.length === 1 ? key.toUpperCase() : key.charAt(0).toUpperCase() + key.slice(1)}`;
-}
 
 /** The bindings that bypass the KeybindingRegistry entirely.
  *
@@ -93,17 +62,17 @@ function prettyKey(combo: string): string {
  *  them, because a user reading a shortcuts panel reasonably concludes
  *  that what is absent is unbound — and Cmd+Z is not unbound. */
 const AD_HOC: { key: string; what: string; where: string }[] = [
-  { key: "⌘Z", what: "Undo", where: "useTextEditing" },
-  { key: "⌘⇧Z", what: "Redo", where: "useTextEditing" },
-  { key: "⌘0", what: "Fit document", where: "useKeyboardShortcuts" },
-  { key: "⌘1", what: "Zoom to 100%", where: "useKeyboardShortcuts" },
+  { key: prettyKey("cmd+z"), what: "Undo", where: "useTextEditing" },
+  { key: prettyKey("cmd+shift+z"), what: "Redo", where: "useTextEditing" },
+  { key: prettyKey("cmd+0"), what: "Fit document", where: "useKeyboardShortcuts" },
+  { key: prettyKey("cmd+1"), what: "Zoom to 100%", where: "useKeyboardShortcuts" },
   { key: "Home", what: "First page", where: "useKeyboardShortcuts" },
   { key: "End", what: "Last page", where: "useKeyboardShortcuts" },
   { key: "PageUp", what: "Previous page", where: "useKeyboardShortcuts" },
   { key: "PageDown", what: "Next page", where: "useKeyboardShortcuts" },
   { key: "Space (hold)", what: "Pan — spring-loaded Hand", where: "use-spring-loaded-tools" },
-  { key: "⌘Space (hold)", what: "Zoom — spring-loaded", where: "use-spring-loaded-tools" },
-  { key: "⌘ (hold)", what: "Direct Selection — spring-loaded", where: "use-spring-loaded-tools" },
+  { key: `${prettyKey("cmd+space")} (hold)`, what: "Zoom — spring-loaded", where: "use-spring-loaded-tools" },
+  { key: `${prettyKey("cmd+x").startsWith("⌘") ? "⌘" : "Ctrl"} (hold)`, what: "Direct Selection — spring-loaded", where: "use-spring-loaded-tools" },
   { key: "Enter", what: "Enter path-edit mode", where: "usePathEditMode" },
   { key: "← → ↑ ↓", what: "Nudge the selected anchors, in path-edit mode (⇧ ×10)", where: "usePathEditMode" },
   { key: "⌫ / Delete", what: "Remove the selected anchors, in path-edit mode", where: "usePathEditMode" },
@@ -116,21 +85,26 @@ export function KeyboardShortcutsPanel(_props: PanelProps) {
 
   const rows = useMemo(() => {
     const titles = new Map(commands.list().map((c) => [c.id, c.title]));
-    // One row per COMMAND, collecting its keys: cmd+ and ctrl+ are
-    // separate contributions for the same thing, and two rows saying
-    // "Group" would read as two different commands.
-    const byCommand = new Map<string, { keys: string[]; title: string }>();
+    // One row per COMMAND. cmd+ and ctrl+ are separate contributions for
+    // the same thing; show the one for this platform (the menus do the
+    // same), and any genuinely different second chord beside it.
+    const byCommand = new Map<string, { raw: string[]; title: string }>();
     for (const b of keybindings.list()) {
       const entry = byCommand.get(b.command) ?? {
-        keys: [],
+        raw: [],
         title: titles.get(b.command) ?? b.command,
       };
-      const k = prettyKey(b.key);
-      if (!entry.keys.includes(k)) entry.keys.push(k);
+      entry.raw.push(b.key);
       byCommand.set(b.command, entry);
     }
+    const twin = (k: string) => k.toLowerCase().replace(/\b(cmd|meta|ctrl|control)\b/g, "mod");
     return [...byCommand.entries()]
-      .map(([id, v]) => ({ id, ...v }))
+      .map(([id, v]) => {
+        const chords = new Map<string, string[]>();
+        for (const k of v.raw) chords.set(twin(k), [...(chords.get(twin(k)) ?? []), k]);
+        const keys = [...new Set([...chords.values()].map((ks) => prettyKey(nativeKey(ks))))];
+        return { id, title: v.title, keys };
+      })
       .sort((a, b) => a.title.localeCompare(b.title));
   }, [keybindings, commands]);
 

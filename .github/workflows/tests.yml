@@ -452,11 +452,6 @@ jobs:
       # never. And if a library IS ever missing, the browser fails to
       # launch with a named error in seconds instead of a silent 50-minute
       # stall — strictly better feedback either way.
-      #
-      # (`demo-capture.yml` still uses `--with-deps chrome`, which is a
-      # different case: installing real Google Chrome genuinely goes
-      # through apt. That lane is release-triggered and would hit the same
-      # wall; it needs its own fix, not this one.)
       - name: install chromium
         working-directory: editor
         # A browser download is ~1 minute. Bounding the step means a future
@@ -469,7 +464,7 @@ jobs:
 
       # --project is REQUIRED here, not tidiness. Without it Playwright
       # runs EVERY project in the config, which on a Linux runner means
-      # `journeys-gpu` and `demo-capture` — both of which need real Chrome
+      # `journeys-gpu` and `showcase` — both of which need real Chrome
       # (`channel: "chrome"`), and `journeys-gpu` additionally passes
       # `--use-angle=metal`, a macOS-only flag. playwright.config.ts says
       # of that lane, in its own words, "it cannot run on the Linux CI

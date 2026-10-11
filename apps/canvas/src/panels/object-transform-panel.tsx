@@ -396,7 +396,7 @@ export function ObjectTransformPanel() {
                   disabled
                   data-flip-v
                   data-seam
-                  title="Flip vertical — write-only on the v28 wire (no read-side reflection)"
+                  title="Flip vertical is not supported yet: the editor can set it but cannot read it back"
                   className="h-[28px] flex-1 rounded-[6px] border-0 text-xs font-semibold opacity-55"
                   style={{
                     background: "var(--pg-muted)",

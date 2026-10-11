@@ -17,98 +17,43 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// Design system — the header's collaboration cluster (kit
-// chrome.jsx: avatar stack · Share · comments · notifications).
-// The kit composition, rendered VISIBLE BUT INERT: there is no
-// multiplayer/notification backend yet, so every control is
-// disabled with an honest tooltip, the avatar stack shows neutral
-// placeholder seats (never invented users), and the bell carries no
-// badge (a live count would be fake data).
+// The header's collaboration seam: one Share button, disabled with an
+// honest tooltip until there is a multiplayer backend.
+//
+// It used to be the kit's whole cluster — three placeholder avatar
+// seats, Share, Comments and Notifications — every control inert. Four
+// dead controls on the most valuable strip of the screen cost the width
+// that pushed the header off a 1440 px display, and taught nothing a
+// single Share seam does not. The others return with their backend.
 
-import { Icon } from "../icons";
+const SOON = "Sharing and collaboration are coming soon";
 
-const SOON = "Collaboration coming soon";
-
-export function CollabCluster() {
-  return (
-    <div
-      data-collab-cluster
-      style={{ display: "flex", alignItems: "center", gap: 10 }}
-    >
-      {/* Placeholder presence seats — outlined, anonymous. */}
-      <div
-        title={SOON}
-        aria-disabled
-        style={{ display: "flex", alignItems: "center", opacity: 0.45 }}
-      >
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: "50%",
-              border: "1.5px dashed var(--chrome-divider)",
-              background: "var(--pg-muted)",
-              marginLeft: i ? -8 : 0,
-              position: "relative",
-              zIndex: 10 - i,
-            }}
-          />
-        ))}
-      </div>
-      <button
-        type="button"
-        disabled
-        data-collab-share
-        title={`Share — ${SOON.toLowerCase()}`}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 7,
-          height: 32,
-          padding: "0 15px",
-          borderRadius: "var(--radius-lg)",
-          border: "none",
-          cursor: "default",
-          background: "var(--pg-primary)",
-          color: "var(--pg-primary-fg)",
-          fontFamily: "var(--font-sans)",
-          fontSize: 13,
-          fontWeight: 600,
-          opacity: 0.45,
-        }}
-      >
-        Share
-      </button>
-      <InertIconButton name="ui-comment" label="Comments" />
-      <InertIconButton name="ui-bell" label="Notifications" />
-    </div>
-  );
-}
-
-function InertIconButton({ name, label }: { name: string; label: string }) {
+export function ShareButton() {
   return (
     <button
       type="button"
       disabled
-      title={`${label} — ${SOON.toLowerCase()}`}
+      data-collab-share
+      title={SOON}
       style={{
-        width: 30,
-        height: 30,
-        borderRadius: "var(--radius-md)",
-        border: "none",
-        background: "transparent",
-        color: "var(--chrome-icon)",
-        display: "flex",
+        display: "inline-flex",
         alignItems: "center",
-        justifyContent: "center",
+        gap: 6,
+        height: 30,
+        padding: "0 13px",
+        borderRadius: "var(--radius-lg)",
+        border: "none",
         cursor: "default",
+        background: "var(--pg-primary)",
+        color: "var(--pg-primary-fg)",
+        fontFamily: "var(--font-sans)",
+        fontSize: 13,
+        fontWeight: 600,
         opacity: 0.45,
-        padding: 0,
+        flexShrink: 0,
       }}
     >
-      <Icon name={name} size={17} />
+      Share
     </button>
   );
 }

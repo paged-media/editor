@@ -115,10 +115,12 @@ export function ExportCenterPanel() {
         display: "flex",
         justifyContent: "center",
         alignItems: "flex-start",
-        padding: "40px 24px",
+        // It opens in the 320 px right dock as often as in the centre, so
+        // the gutters and the rows give way when it is narrow.
+        padding: "24px 16px",
       }}
     >
-      <div style={{ width: "min(680px, 92%)", fontFamily: "var(--font-sans)" }}>
+      <div style={{ width: "min(680px, 100%)", fontFamily: "var(--font-sans)" }}>
         <div
           style={{
             display: "flex",
@@ -173,8 +175,9 @@ export function ExportCenterPanel() {
                 onClick={() => setSelectedExportTarget(t.id)}
                 style={{
                   display: "flex",
+                  flexWrap: "wrap",
                   alignItems: "center",
-                  gap: 13,
+                  gap: "8px 13px",
                   padding: "13px 16px",
                   borderTop: i ? "1px solid var(--pg-border)" : "none",
                   cursor: "pointer",
@@ -187,7 +190,7 @@ export function ExportCenterPanel() {
                   size={19}
                   style={{ color: "var(--pg-muted-fg)", flexShrink: 0 }}
                 />
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: "1 1 160px", minWidth: 0 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 500 }}>
                     {t.title}
                   </div>
@@ -196,7 +199,7 @@ export function ExportCenterPanel() {
                   </div>
                 </div>
                 {t.live ? (
-                  <>
+                  <span style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: "auto" }}>
                     <StatusPill tone={r.tone} testId={`readiness-${t.id}`}>
                       {r.label}
                     </StatusPill>
@@ -209,7 +212,7 @@ export function ExportCenterPanel() {
                     >
                       {running ? "Working…" : "Export…"}
                     </CockpitBtn>
-                  </>
+                  </span>
                 ) : (
                   <StatusPill tone="draft">soon</StatusPill>
                 )}
@@ -221,6 +224,7 @@ export function ExportCenterPanel() {
         <div
           style={{
             display: "flex",
+            flexWrap: "wrap",
             gap: 10,
             marginTop: 18,
             justifyContent: "flex-end",

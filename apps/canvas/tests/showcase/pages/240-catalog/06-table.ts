@@ -23,21 +23,21 @@
 // The bound TABLE lowers as a REAL Paged table: the plugin inserts a
 // frame, a native <Table> in its story, and pours the cells by
 // (tableId, row, col) — it exports to IDML as a table because it IS
-// one. What fills it is the panel's one-click demo wiring, and the page
-// says so plainly: the bindings panel's authoring row offers variable,
-// image and barcode kinds, so a table's COLUMN SPEC has no authoring
-// surface yet and the demo's single unnamed column is the only table a
-// designer can wire today. The engine underneath carries far more —
-// grouped record flows with per-group SUM/AVG/MIN/MAX footers — and the
-// margin records exactly where that lane stops short of the page.
+// one. What fills it is a table binding authored in the bindings panel's
+// authoring row (kind "table", a comma-separated column list — the
+// one-click demo wiring this page used to need was removed on
+// 2026-10-11). The engine underneath carries far more — grouped record
+// flows with per-group SUM/AVG/MIN/MAX footers — and the margin records
+// exactly where that lane stops short of the page.
 //
 // Beside it, the dataset panel's governance readouts, transcribed as
 // this page's ledger: the §7 governed catalog over the live schema, the
 // §10 batch plans, the §7.1 provider publication, and the batch RUN's
-// honest refusal (no record-flow binding can be defined either).
+// honest refusal (Plan batch stays disabled without a record-flow
+// binding, and says so).
 //
 // Runs LAST because `lowerAll` re-lowers everything: the six bound
-// barcodes re-draw onto the active page and the demo table would
+// barcodes re-draw onto the active page and the bound table would
 // re-commit as a fresh frame on any later pass — this module is the
 // pass, and it cleans what the pass re-drew.
 
@@ -57,8 +57,8 @@ import {
 } from "../../plugin-support";
 import type { PageContext, PageReport } from "../../types";
 import {
-  BINDINGS_PANEL,
   DATASET_PANEL,
+  addAuthoredBinding,
   ensureOrdersReady,
   settleStableNew,
   spreadOffset,
@@ -67,6 +67,8 @@ import {
 /** Where the lowered table is translated to (page-local top-left). */
 const TABLE_SLOT_TOP = 216;
 const TABLE_SLOT_LEFT = 48;
+/** The bound table's columns, as the authoring row takes them. */
+const TABLE_COLUMNS = "id, region, product, qty";
 
 export async function build(ctx: PageContext): Promise<PageReport> {
   const { doc, page } = ctx;
@@ -86,9 +88,9 @@ export async function build(ctx: PageContext): Promise<PageReport> {
         "frame, mints a real Paged table in its story, and pours every cell " +
         "by table, row and column — one row per record of the order book. " +
         "It reflows, it styles, and it exports to IDML as a table because " +
-        "it is one. What the shipped panel can WIRE into it is the demo's " +
-        "single unnamed column, and this page prints that honestly rather " +
-        "than dressing it up.",
+        "it is one. Its columns are named in the bindings panel — order id, " +
+        "region, product and quantity — and each cell is resolved from the " +
+        "record, not typed.",
       style: STYLE.bodySmall,
     },
   ]);
@@ -98,15 +100,10 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     {
       text:
         "The lowered table — minted with 49 native rows (one header, 48 " +
-        "records) in the demo wiring's one column, trimmed here to eight " +
-        "records because a native table paints past its frame. Every body " +
-        "cell reads #PARSE because the demo " +
-        "wiring binds an EMPTY expression and the engine prints its error " +
-        "token rather than inventing a value. A table binding's column " +
-        "spec has no authoring surface yet — the authoring row offers " +
-        "variable, image and barcode kinds only — so this demo shape is " +
-        "the only table a designer can define today, and the page prints " +
-        "it as it resolves.",
+        "records) over the four authored columns, trimmed here to eight " +
+        "records because a native table paints past its frame. Each " +
+        "column's header is its field name and each body cell the field's " +
+        "value for that record, as the engine resolved it.",
       style: STYLE.caption,
     },
   ]);
@@ -115,20 +112,21 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   let ledger: string[] = [];
 
   if (await ensureOrdersReady(ctx, notes)) {
-    // A frame that exists only to hold the caret: the demo wiring also
-    // defines an empty-expression variable whose field would land at
-    // the caret — parked here, then thrown away with the frame.
+    // A frame that exists only to hold the caret: lowerAll re-lowers the
+    // chapter's variable bindings too, and a variable field lands at the
+    // caret — parked here, then thrown away with the frame.
     const throwawayBox: [number, number, number, number] = [48, 560, 200, 592];
     const throwaway = await doc.textFrame(pageId, throwawayBox);
     const throwawayStory = await doc.storyOf(pageId, throwawayBox);
 
-    await openPanel(page, BINDINGS_PANEL);
+    await addAuthoredBinding(page, "table", TABLE_COLUMNS);
+    await expect(page.locator("[data-data-bind-msg]")).toContainText(/^table binding /, {
+      timeout: 30_000,
+    });
     const framesBefore = await sceneRefs(page, "textFrame");
     const polysBefore = await sceneRefs(page, "polygon");
     await withActivePage(page, pageId, async () => {
       await doc.designer.placeCaret(throwawayStory, 0);
-      await page.getByRole("button", { name: /wire demo binding/i }).click();
-      await page.waitForTimeout(400);
       await page.getByRole("button", { name: /^lower to document$/i }).click();
       await settle(
         page,
@@ -256,7 +254,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
         }
         await doc.batch(ops).catch((err) => {
           notes.push(
-            `trimming the demo table's rows was refused: ${String(err).slice(0, 140)}`,
+            `trimming the bound table's rows was refused: ${String(err).slice(0, 140)}`,
           );
         });
         notes.push(
@@ -298,8 +296,8 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     };
 
     await openPanel(page, DATASET_PANEL);
-    await page.getByRole("button", { name: /refresh \+ catalog/i }).click();
-    const catalogLine = await firstLine(/catalog: \d+ cols/);
+    await page.getByRole("button", { name: /^preview rows$/i }).click();
+    const catalogLine = await firstLine(/^\d+ columns? · \d+ documented/);
     if (catalogLine) {
       ledger.push(`§7  ${catalogLine}`);
       ledger.push(
@@ -312,7 +310,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     }
 
     await page.getByRole("button", { name: /^per group$/i }).click();
-    const perGroup = await firstLine(/plan: perGroup/);
+    const perGroup = await firstLine(/^\d+ outputs? from \d+ records?/);
     if (perGroup) {
       ledger.push(`§10 ${perGroup}`);
       ledger.push(
@@ -322,17 +320,21 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       );
     }
     await page.getByRole("button", { name: /^one catalog$/i }).click();
-    const oneCatalog = await firstLine(/plan: oneCatalog/);
+    const oneCatalog = await firstLine(/^1 output from \d+ records?/);
     if (oneCatalog) ledger.push(`§10 ${oneCatalog}`);
     if (perGroup || oneCatalog) covers.push("data.automation.batch");
 
-    await page.locator("[data-data-batch-run]").click();
-    const refusal = await firstLine(/no record-flow binding/i);
+    // "Plan batch" is disabled until a record-flow binding exists, and
+    // its tooltip says why — the refusal is read from the button itself.
+    const planBatch = page.locator("[data-data-batch-run]");
+    const refusal = (await planBatch.isDisabled().catch(() => false))
+      ? await planBatch.getAttribute("title")
+      : null;
     if (refusal) {
-      ledger.push(`§10 run batch → refused: “${refusal}”`);
+      ledger.push(`§10 plan batch → disabled: “${refusal}”`);
       ledger.push(
-        "    (a record-flow binding has no authoring surface either — the " +
-          "refusal is the honest answer)",
+        "    (this page authors no record-flow binding — the disabled " +
+          "button is the honest answer)",
       );
     }
 
@@ -374,10 +376,9 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       "The grouped catalog this chapter wanted — a native table grouped by " +
         "region with per-group SUM(qty) and AVG(unit_price) footers — lives " +
         "in the engine (the §9.4 record-flow lane carries multi-level " +
-        "grouping and footer aggregates) but no editor surface can define a " +
-        "grouped table or record-flow binding today: the demo table pins " +
-        "group_by to none and the authoring row has no table kind. Shown " +
-        "instead: the native single-column table, and the refusals, " +
+        "grouping and footer aggregates); this page authors a flat table " +
+        "binding only, so no grouping or footers reach the page. Shown " +
+        "instead: the native four-column table, and the refusals, " +
         "verbatim. → Appendix A",
     ),
   );
@@ -385,9 +386,9 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   elements.push(
     await specLabel(ctx, pg, [
       "Specimen No. 178",
-      "wire demo binding → insertTextFrame + insertTable + cell pour",
+      "authored table binding → insertTextFrame + insertTable + cell pour",
       "table translated by resizeFrame (stored coords, spread offset folded)",
-      "governed catalog · batch plans · provider publish · run-batch refusal",
+      "governed catalog · batch plans · provider publish · plan-batch refusal",
     ]),
   );
 

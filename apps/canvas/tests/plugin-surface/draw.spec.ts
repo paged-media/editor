@@ -42,8 +42,8 @@
 // Reverse path direction, then canary.14's Knife, Scissors (any point),
 // Reflect, Transform again, Create outlines and the Dashes…/Reflect…
 // sections):
-//   21 tools · 12 panels · 107 commands · 1 importer · 1 exporter ·
-//   7 partTypes · 1 editContext  =  149 contributions.
+//   21 tools · 10 panels · 107 commands · 1 importer · 1 exporter ·
+//   7 partTypes · 1 editContext  =  147 contributions.
 //
 // THE ID LISTS BELOW ARE TRANSCRIBED FROM THAT MANIFEST ON PURPOSE.
 //   Reading the manifest at runtime would name zero ids in this file, and
@@ -86,9 +86,16 @@ const TOOLS = [
   "media.paged.draw.tool.scissorsAnyPoint",
 ] as const;
 
-const PANELS = [
+// "Vector stroke" (`panel.stroke`) and "Vector fill" (`panel.fill`) are
+// no longer contributed: every row they carried is a core frame property,
+// and the host's Stroke, Object Options and Gradients panels carry them
+// (asserted ABSENT below, driven in journey/plugins/draw-panels).
+const RETIRED_PANELS = [
   "media.paged.draw.panel.stroke",
   "media.paged.draw.panel.fill",
+] as const;
+
+const PANELS = [
   "media.paged.draw.panel.appearance",
   "media.paged.draw.panel.graphicStyles",
   "media.paged.draw.panel.symbols",
@@ -262,11 +269,10 @@ const TOOL_SLOT: Record<string, string> = {
   "media.paged.draw.tool.scissorsAnyPoint": "scissors",
 };
 
-/** Root DOM marker each panel renders. The two SCHEMA panels come from
- *  the host catalog renderer; the nine React panels stamp their own. */
+/** Root DOM marker each panel renders. The SCHEMA panel ("Draw
+ *  settings") comes from the host catalog renderer; the nine React panels
+ *  stamp their own. */
 const PANEL_MARKER: Record<string, string> = {
-  "media.paged.draw.panel.stroke": '[data-schema-panel="media.paged.draw.panel.stroke"]',
-  "media.paged.draw.panel.fill": '[data-schema-panel="media.paged.draw.panel.fill"]',
   "media.paged.draw.panel.appearance": "[data-draw-appearance-panel]",
   "media.paged.draw.panel.graphicStyles": "[data-draw-graphic-styles-panel]",
   "media.paged.draw.panel.symbols": "[data-draw-symbols-panel]",
@@ -504,9 +510,13 @@ test.describe("plugin surface · paged.draw", () => {
     const missingTools = TOOLS.filter((id) => !reg.tools.includes(id));
     expect(missingTools, "every declared tool is in the tool registry").toEqual([]);
 
-    // PANELS — all 11 registered.
+    // PANELS — all 10 registered.
     const missingPanels = PANELS.filter((id) => !reg.panels.includes(id));
     expect(missingPanels, "every declared panel is in the panel registry").toEqual([]);
+    // …and the two merged into the host's panels are gone, so the user
+    // never sees two Stroke panels for one stroke.
+    const lingering = RETIRED_PANELS.filter((id) => reg.panels.includes(id));
+    expect(lingering, "Vector stroke / Vector fill are no longer registered").toEqual([]);
 
     // COMMANDS — all 107 registered.
     const missingCommands = COMMANDS.filter((id) => !reg.commands.includes(id));
@@ -545,7 +555,7 @@ test.describe("plugin surface · paged.draw", () => {
 
     // And the totals the campaign quotes, so a silent shrink is loud.
     expect(TOOLS).toHaveLength(21);
-    expect(PANELS).toHaveLength(12);
+    expect(PANELS).toHaveLength(10);
     expect(COMMANDS).toHaveLength(107);
   });
 
@@ -594,7 +604,7 @@ test.describe("plugin surface · paged.draw", () => {
 
   // ── 3. the panels ─────────────────────────────────────────────────
 
-  test("all 12 panels open as dock tabs and mount their body @feat:plugin-platform.panel-registration @feat:plugin-platform.bundle-lifecycle @level:happy", async ({
+  test("all 10 panels open as dock tabs and mount their body @feat:plugin-platform.panel-registration @feat:plugin-platform.bundle-lifecycle @level:happy", async ({
     page,
   }) => {
     const designer = new Designer(page);

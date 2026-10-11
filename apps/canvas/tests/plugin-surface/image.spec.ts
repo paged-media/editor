@@ -428,7 +428,7 @@ test.describe("plugin surface · paged.image", () => {
     // Content-aware fill gates on the SELECTION, not the source, and says
     // which in the panel rather than only in a changelog.
     await expect(page.locator("[data-image-content-aware-fill]")).toBeDisabled();
-    await expect(page.getByText("select an area first")).toBeVisible();
+    await expect(page.getByText("Select an area first.")).toBeVisible();
 
     // ── the refusals. Each of these commands is invoked with no image in
     //    the session; the contract is that it answers in the panel's own
@@ -467,12 +467,18 @@ test.describe("plugin surface · paged.image", () => {
     await designer.runCommand("media.paged.image.command.setType");
     await expect(page.locator("[data-image-type-text]")).toHaveCount(1);
     await expect(page.locator("[data-image-type-note]")).toContainText(
-      "BASELINE",
+      "baseline",
     );
     // …and the section states its own ceiling where the designer stands:
-    // this is a raster type tool, not a second text engine.
+    // this is a raster type tool, not a second text engine. The statement
+    // sits in the Type section's collapsed "About" block (2026-10-11 panel
+    // pass); opening it shows it.
+    const typeAbout = page.locator("[data-image-type-section] details", {
+      has: page.locator("summary", { hasText: "About" }),
+    });
+    await typeAbout.locator("summary").click();
     await expect(
-      page.getByText("This paints PIXELS, not a text object."),
+      typeAbout.getByText("This paints pixels, not a text object."),
     ).toBeVisible();
     expect(
       await status(page),

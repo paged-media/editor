@@ -126,8 +126,13 @@ test.describe("journey · paged.image panels", () => {
     expect(luma).toBeLessThan(99);
 
     // ── 3. And the panel says WHY it is partial, where the designer is
-    //    standing rather than in a changelog. ──
-    await expect(page.getByText("no threshold")).toBeVisible();
+    //    standing rather than in a changelog: the Channels section's
+    //    collapsed "About" (2026-10-11 panel pass) says it once opened. ──
+    const channelsAbout = page.locator("[data-image-channels-section] details", {
+      has: page.locator("summary", { hasText: "About" }),
+    });
+    await channelsAbout.locator("summary").click();
+    await expect(channelsAbout.getByText("no threshold")).toBeVisible();
   });
 
   test("a selection becomes a real vector path, and a path becomes a selection @feat:image.paths.selection-to-path @feat:image.paths.path-to-selection @feat:image.selection.mask-tools @level:gesture", async ({

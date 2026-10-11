@@ -54,5 +54,8 @@ export function soloMode(profile: SoloProfile): ModeContribution {
     // blurb, and to the edit-context segment when one is active, which
     // is the whole of what solo needs from that bar.
     paletteSuggestions: [...profile.paletteSuggestions],
+    // The solo app IS its plugin: the plugin's own menu (Draw, Image,
+    // Sheet…) stays on the bar, not only while its content is selected.
+    menus: ["*"],
   };
 }

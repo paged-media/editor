@@ -28,8 +28,7 @@
 //   Miter   metric "4"                          LIVE  (W2.2, Rect-only)
 //   Align   segments Center/Inside/Outside      LIVE  (W2.2, Rect-only)
 //   Gap     swatch + tint metric                LIVE  (W2.2)
-//   Dashes & arrows (collapsed): dash/gap 2-up + start/end selects
-//                                                seam
+//   Dashes & arrows (collapsed): dash pattern + start/end arrowheads
 //
 // W2.2 (2026-06-06) — protocol v28 lands the stroke-detail paths
 // (engine gap 17 closed bar dash-array + arrowheads). Every detail
@@ -50,8 +49,10 @@
 // TextFrame / Oval / Polygon / GraphicLine, the same kind-specific
 // honesty as the existing end-cap row.
 //
-// Still seamed: the "Dashes & arrows" disclosure — no
-// `frameStrokeDashArray` or arrowhead PropertyPath on the v28 wire.
+// Dashes & arrows are live on `frameStrokeDashArray` and the two
+// `frameStroke*Arrowhead` paths (they were seams until those paths
+// reached the wire; paged.draw's "Vector stroke" panel carried them
+// meanwhile, and is merged into this one).
 
 import type { CompositionNode } from "@paged-media/catalog";
 import {
@@ -60,7 +61,6 @@ import {
   PAGED_INPUT_NUMERIC_SCRUB,
   PAGED_INPUT_SELECT,
   PAGED_INPUT_TOGGLE_GROUP,
-  PAGED_LAYOUT_CLUSTER,
   PAGED_LAYOUT_SECTION,
   asPropertyFields,
 } from "@paged-media/shell";
@@ -78,6 +78,15 @@ const STROKE_TYPES = [
 // type comes from the target's schema row, reads/writes go through
 // `host.objects` (one batch = one undo step over a multi-selection), and
 // each field offers "Bind to data…" with a binding badge. Seams stay seams.
+/** Core's `frameStroke*Arrowhead` enum, with words for its members. */
+const ARROWHEAD_OPTIONS = [
+  { value: "None", label: "None" },
+  { value: "SimpleArrowHead", label: "Simple" },
+  { value: "TriangleArrowHead", label: "Triangle" },
+  { value: "CircleSolidArrowHead", label: "Circle" },
+  { value: "BarArrowHead", label: "Bar" },
+];
+
 export const strokeComposition: CompositionNode = asPropertyFields({
   catalogId: PAGED_LAYOUT_SECTION,
   props: { title: "Stroke", heading: false },
@@ -213,9 +222,11 @@ export const strokeComposition: CompositionNode = asPropertyFields({
       },
     },
     {
-      // Engine gap 17 (residual) — no `frameStrokeDashArray` or
-      // arrowhead PropertyPath on the v28 wire; the dash-pattern
-      // editor + start/end arrowhead selects stay seamed.
+      // Dashes and arrowheads, on the core paths paged.draw's separate
+      // "Vector stroke" panel used to carry (the two panels are merged
+      // here). The dash pattern is a list (dash, gap, dash, gap … in pt):
+      // its PropertyField renders the schema's list editor. Arrowheads
+      // apply to lines and open paths; core refuses them elsewhere.
       catalogId: PAGED_LAYOUT_SECTION,
       props: {
         title: "Dashes & arrows",
@@ -225,41 +236,45 @@ export const strokeComposition: CompositionNode = asPropertyFields({
       bindings: {},
       children: [
         {
-          catalogId: PAGED_LAYOUT_CLUSTER,
-          props: { count: 2 },
-          bindings: {},
-          children: [
-            {
-              catalogId: PAGED_INPUT_NUMERIC_SCRUB,
-              props: { seam: true, placeholder: "dash —" },
-              bindings: {},
+          catalogId: PAGED_INPUT_NUMERIC_SCRUB,
+          props: { label: "Dash pattern", labelPosition: "stack", suffix: "pt" },
+          bindings: {
+            value: {
+              kind: "selectionProperty",
+              scope: "element",
+              path: "frameStrokeDashArray",
             },
-            {
-              catalogId: PAGED_INPUT_NUMERIC_SCRUB,
-              props: { seam: true, placeholder: "gap —" },
-              bindings: {},
-            },
-          ],
+          },
         },
         {
           catalogId: PAGED_INPUT_SELECT,
           props: {
             label: "Start",
             labelPosition: "stack",
-            seam: true,
-            placeholder: "None",
+            options: ARROWHEAD_OPTIONS,
           },
-          bindings: {},
+          bindings: {
+            value: {
+              kind: "selectionProperty",
+              scope: "element",
+              path: "frameStrokeStartArrowhead",
+            },
+          },
         },
         {
           catalogId: PAGED_INPUT_SELECT,
           props: {
             label: "End",
             labelPosition: "stack",
-            seam: true,
-            placeholder: "None",
+            options: ARROWHEAD_OPTIONS,
           },
-          bindings: {},
+          bindings: {
+            value: {
+              kind: "selectionProperty",
+              scope: "element",
+              path: "frameStrokeEndArrowhead",
+            },
+          },
         },
       ],
     },
