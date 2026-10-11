@@ -88,3 +88,10 @@ handle.
   — how a foreign file type is opened
 - https://github.com/paged-media/core/blob/main/docs/adr/021-paged-native-document-model-idml-as-format.md
   — the `.paged` container that Save writes
+
+## Amendment, 2026-10-11
+
+One route is now served: `/api/ai/v1/messages`, the same-origin proxy that lets the editor use
+Claude without a key in the page (ADR 221). It is a Pages Function on the playground
+deployment, it holds no documents and no accounts, and a deployment without it answers 503 and
+otherwise works as before. Documents remain local files.

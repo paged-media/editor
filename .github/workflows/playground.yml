@@ -94,8 +94,11 @@ jobs:
 
       - name: deploy to Cloudflare Pages
         # npx (not wrangler-action) — its `pnpm add wrangler` fails in a pnpm workspace.
-        working-directory: editor
+        # Deployed from apps/canvas so wrangler picks up apps/canvas/functions:
+        # the same-origin Claude proxy at /api/ai (ADR 221). Its secret and
+        # KV binding live on the Pages project, not here.
+        working-directory: editor/apps/canvas
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx -y wrangler@3 pages deploy apps/canvas/dist-demo --project-name=paged-playground --branch=main
+        run: npx -y wrangler@3 pages deploy dist-demo --project-name=paged-playground --branch=main

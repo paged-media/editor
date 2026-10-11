@@ -29,6 +29,7 @@ import type { CommandContribution } from "../../registries";
 
 export const PAGED_FILE_OPEN_IDML = "paged.file.openIdml";
 export const PAGED_FILE_NEW = "paged.file.new";
+export const PAGED_FILE_NEW_FROM_BRIEF = "paged.file.newFromBrief";
 
 /** US Letter in points — InDesign's default new-document size. */
 const LETTER_PT: readonly [number, number] = [612, 792];
@@ -54,7 +55,7 @@ const LETTER_PT: readonly [number, number] = [612, 792];
  *  fine follow-up; shipping nothing until it exists is not.
  *
  *  Returns true when it is safe to proceed. */
-async function confirmDiscard(editor: PagedEditor, what: string): Promise<boolean> {
+export async function confirmDiscard(editor: PagedEditor, what: string): Promise<boolean> {
   // A placement armed against the OUTGOING document must not resolve
   // into the incoming one. Clicking a MENU already cancels it (a click
   // outside the canvas stands the placement down), but the keyboard
@@ -213,5 +214,16 @@ export function buildOpenIdmlCommand(options: {
         pushWarning: options.pushWarning,
       });
     },
+  };
+}
+
+/** File ▸ New from a brief… (ADR 221) — opens the dialog; the dialog
+ *  mints the blank document and runs Claude on it. */
+export function buildNewFromBriefCommand(open: () => void): CommandContribution {
+  return {
+    id: PAGED_FILE_NEW_FROM_BRIEF,
+    title: "New document from a brief…",
+    category: "File",
+    handler: () => open(),
   };
 }

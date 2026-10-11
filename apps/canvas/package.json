@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "build:demo": "tsc -b && vite build --mode demo --outDir dist-demo",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc -p functions/tsconfig.json",
     "typecheck:tests": "tsc --noEmit -p tsconfig.tests.json",
     "lint": "eslint src vite.config.ts",
     "test:fidelity": "playwright test --config=playwright.config.ts",
@@ -25,6 +25,7 @@
     "showcase:indesign-render:capture": "SHOWCASE_RENDER_MODE=capture playwright test --project=showcase --grep \"InDesign render\""
   },
   "dependencies": {
+    "@paged-media/ai": "link:../../../plugins/plugin-sdk/packages/ai",
     "@paged-media/canvas-wasm": "0.71.2",
     "@paged-media/catalog": "workspace:*",
     "@paged-media/client": "workspace:*",

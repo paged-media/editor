@@ -371,7 +371,7 @@
         {
           "name": "CanvasClient.executeScript",
           "kind": "method",
-          "signature": "async executeScript( source: string, ): Promise<{ output: string[]; error: string | null }>",
+          "signature": "async executeScript( source: string, ): Promise<{ output: string[]; error: string | null; budgetKind: string | null }>",
           "summary": "Scripting Stage 2 — run JS source against the loaded document."
         },
         {

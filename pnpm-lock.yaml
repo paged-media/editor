@@ -27,6 +27,9 @@ importers:
 
   apps/canvas:
     dependencies:
+      '@paged-media/ai':
+        specifier: link:../../../plugins/plugin-sdk/packages/ai
+        version: link:../../../plugins/plugin-sdk/packages/ai
       '@paged-media/canvas-wasm':
         specifier: 0.71.2
         version: 0.71.2
@@ -259,6 +262,9 @@ importers:
       '@fontsource/ibm-plex-sans':
         specifier: ^5.3.0
         version: 5.3.0
+      '@paged-media/ai':
+        specifier: link:../../../plugins/plugin-sdk/packages/ai
+        version: link:../../../plugins/plugin-sdk/packages/ai
       '@paged-media/catalog':
         specifier: workspace:*
         version: link:../catalog

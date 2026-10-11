@@ -35,6 +35,7 @@
 // exist before the shell has mounted an editor, and answers `failed`
 // until one is set.
 
+import { aiObjectModel, complete } from "@paged-media/ai";
 import {
   answerHostObjectsRound,
   CORE_PATHS,
@@ -50,10 +51,11 @@ import {
 } from "@paged-media/plugin-sdk";
 import type { PagedEditor } from "@paged-media/plugin-api";
 import type { ElementId } from "@paged-media/client";
-import type {
-  ShellObjectModelHost,
-  ShellObjectsSurface,
-  ShellPropertySchema,
+import {
+  editorAiTransport,
+  type ShellObjectModelHost,
+  type ShellObjectsSurface,
+  type ShellPropertySchema,
 } from "@paged-media/shell";
 
 let currentEditor: PagedEditor | null = null;
@@ -212,6 +214,11 @@ function withTableSeam(core: CoreObjects): CoreObjects {
 export const objectRegistry: ObjectRegistry = createObjectRegistry({
   core: withTableSeam(createCoreObjects(getEditor)),
 });
+
+// ADR 221 — scripts may ask Claude through the host bridge:
+// `JSON.parse(await paged.invoke("paged.ai.complete", { prompt }))`,
+// answered by the same-origin proxy. Registered as the editor's own.
+objectRegistry.register({ plugin: "paged.ai", model: aiObjectModel((prompt) => complete(editorAiTransport(), prompt)) });
 
 /** `layer:<id>` with the id escaped as the grammar requires (a self id
  *  like `Layer/u0` carries a slash). */
