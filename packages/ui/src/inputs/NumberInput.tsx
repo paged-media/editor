@@ -212,10 +212,16 @@ export function NumberInput(props: NumberInputProps) {
           color: mixed || readOnly ? "var(--pg-muted-fg)" : undefined,
         }}
         aria-label={props["aria-label"]}
-        onFocus={() => {
+        onFocus={(e) => {
           if (readOnly || disabled) return;
-          // Swap to the raw number for clean editing.
-          setText(value === null ? "" : fmt(value, precision));
+          // Swap to the raw number for clean editing, and select it so
+          // typing REPLACES the value. Written to the element synchronously:
+          // the state update alone lands after the browser has placed the
+          // caret, and typing "36" into a shown "12 pt" produced 1236.
+          const raw = value === null ? "" : fmt(value, precision);
+          setText(raw);
+          e.currentTarget.value = raw;
+          e.currentTarget.select();
         }}
         onChange={(e) => {
           setText(e.target.value);
