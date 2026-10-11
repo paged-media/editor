@@ -38,6 +38,9 @@ export type ShellValueType =
       kind: "number";
       integer?: boolean;
       unit?: "pt" | "deg" | "percent" | "em1000" | "ppi";
+      /** Words the row also takes in place of a number (a span count's
+       *  "All"). */
+      keywords?: readonly string[];
     }
   | { kind: "length" }
   | { kind: "color" }

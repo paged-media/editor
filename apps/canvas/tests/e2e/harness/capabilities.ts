@@ -108,6 +108,10 @@
 // renameMaster, onMaster. All got real-args probes (shapes from the .d.ts
 // and core's master_crud / on_master / page_metadata tests) and classify
 // `supported`; none has an editor UI yet, which each note says.
+//
+// 2026-10-11: the pin moved to canvas-wasm 0.71.1 (protocol 71).
+// AC-E2E-CAPS-COVER named three new Mutation ops — set,
+// createTextVariable, deleteTextVariable — each probed with real args.
 
 export type CapabilityStatus = "supported" | "unsupported";
 
@@ -279,6 +283,12 @@ export const CAPABILITIES: Capability[] = [
   { op: "createMaster", status: "supported", note: "proto 70; a one-page master of widthPt×heightPt, or a fresh-id copy of duplicateOf; master id is the bare MasterSpread self id; wire-only, no editor UI" },
   { op: "deleteMaster", status: "supported", note: "proto 70; refused while any page applies the master; undo restores it exactly; probed on a scratch master; wire-only, no editor UI" },
   { op: "renameMaster", status: "supported", note: "proto 70; sets the master's Name (the masterPages collection's label); probed on a scratch master; wire-only, no editor UI" },
+  // the object model (v71, core v0.71 — ADR 131/132): the typed Set every
+  // object-model field writes through, and authored text variables (the
+  // Text Variables panel).
+  { op: "set", status: "supported", note: "proto 71; {address, path, value} — ADR 132's typed Set over the address grammar; the editor's object-model PropertyFields write through it (host.objects)" },
+  { op: "createTextVariable", status: "supported", note: "proto 71; a custom text variable {name, contents?, textBefore?, textAfter?}; id dTextVariablen<name>; Text Variables panel ▸ New" },
+  { op: "deleteTextVariable", status: "supported", note: "proto 71; {variableId}; probed on a scratch variable; Text Variables panel ▸ Delete" },
   { op: "onMaster", status: "supported", note: "proto 70; wraps a page-item/style/property mutation to apply to a master's spread (page/spread-list ops are refused inside); probed as an insertGuide on a scratch master; wire-only, no editor UI" },
 ];
 

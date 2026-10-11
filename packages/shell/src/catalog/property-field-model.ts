@@ -162,6 +162,15 @@ export function optionsFor(
     return given.filter((o) => o.value !== CLEAR_OPTION).map((o) => ({ value: o.value, label: o.label ?? o.value }));
   }
   if (type.kind !== "enum") return given.map((o) => ({ value: o.value, label: o.label ?? o.value }));
+  // A segmented control is a curated set of icon buttons: it keeps the
+  // panel's options (those the schema still has), where a select lists
+  // every member. Listing all of them here grew Align and Position by
+  // members with no glyph (ToBindingSide, …) and Case by OTSmallCaps.
+  if (presentation?.style === "segments" && given.length > 0) {
+    return given
+      .filter((o) => type.members.includes(o.value))
+      .map((o) => ({ value: o.value, label: o.label ?? o.value }));
+  }
   const members = type.members.map((m) => ({
     value: m,
     label: given.find((o) => o.value === m)?.label ?? m,
@@ -253,6 +262,7 @@ export function parseInput(
       if (/^(false|no|0|off)$/i.test(t)) return { ok: true, value: false };
       return no(`"${text}" is not true or false`);
     case "number": {
+      if (type.keywords?.includes(t)) return { ok: true, value: t };
       const n = plainNumber(t.replace(/\s*%$/, "").replace(/\s*°$/, ""));
       if (n === null) return no(`"${text}" is not a number`);
       if (type.integer && !Number.isInteger(n)) return no(`"${text}" is not a whole number`);
@@ -622,6 +632,8 @@ export function checkArgs(type: ShellValueType, value: unknown, at = "args"): st
     case "bool":
       return typeof value === "boolean" ? null : `${at} must be a boolean`;
     case "number":
+      if (typeof value === "string" && type.keywords?.includes(value)) return null;
+      return typeof value === "number" && Number.isFinite(value) ? null : `${at} must be a number`;
     case "length":
       return typeof value === "number" && Number.isFinite(value) ? null : `${at} must be a number`;
     case "enum":

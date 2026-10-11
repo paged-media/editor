@@ -1779,6 +1779,48 @@ const GEOMETRY_PROBES: Probe[] = [
     },
     setupUndo: 1,
   },
+  // ── protocol 71 (core v0.71 — the object model, ADR 131/132): one
+  //    address grammar and a typed Set, plus authored text variables.
+  //    Shapes from canvas-wasm 0.71.1's generated .d.ts; a text
+  //    variable's id is `dTextVariablen<name>` (core's own tests). ──────
+  {
+    op: "set",
+    // ADR 132's typed Set: an address, a schema path and a wire Value;
+    // the editor's object-model fields write through it.
+    build: async ({ fx }) =>
+      fx.firstStory
+        ? {
+            op: "set",
+            args: {
+              address: `storyRange:${fx.firstStory.selfId}@0..1`,
+              path: "paragraphSpaceBefore",
+              value: { type: "length", value: 6 },
+            },
+          }
+        : null,
+  },
+  {
+    op: "createTextVariable",
+    // A custom text variable (the Text Variables panel's New…).
+    build: async () => ({
+      op: "createTextVariable",
+      args: { name: "ProbeCreate", contents: "9.99" },
+    }),
+  },
+  {
+    op: "deleteTextVariable",
+    // Deletes a scratch variable this probe creates first.
+    build: async ({ page }) => {
+      const made = await tryMutate(page, {
+        op: "createTextVariable",
+        args: { name: "ProbeDelete", contents: "x" },
+      });
+      return made.ok
+        ? { op: "deleteTextVariable", args: { variableId: "dTextVariablenProbeDelete" } }
+        : null;
+    },
+    setupUndo: 1,
+  },
   {
     op: "insertSection",
     build: async ({ fx }) => ({

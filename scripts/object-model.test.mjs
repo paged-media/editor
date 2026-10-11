@@ -162,6 +162,22 @@ test("a number row the panel names values for is a select; numeric options write
   assert.equal(M.optionValue({ kind: "text" }, "", true), "", "a text row writes the empty string itself");
 });
 
+test("a segmented enum keeps the panel's curated options; a select lists every member", () => {
+  const align = { kind: "enum", members: ["LeftAlign", "CenterAlign", "RightAlign", "ToBindingSide"] };
+  const pres = { style: "segments", options: [{ value: "LeftAlign", label: "L" }, { value: "CenterAlign" }, { value: "Gone" }] };
+  assert.deepEqual(M.optionsFor(align, pres).map((o) => o.value), ["LeftAlign", "CenterAlign"]);
+  assert.deepEqual(
+    M.optionsFor(align, { options: pres.options }).map((o) => o.value),
+    ["LeftAlign", "CenterAlign", "RightAlign", "ToBindingSide"],
+  );
+});
+
+test("a number row's keywords pass the arg check and text parsing", () => {
+  const count = { kind: "number", integer: true, keywords: ["All"] };
+  assert.equal(M.parseInput(count, "All").ok, true);
+  assert.equal(M.parseInput(count, "Some").ok, false);
+});
+
 // ───────────────────────────────────────────── parse + format
 
 test("parseInput coerces text against the type, never silently", () => {
