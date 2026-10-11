@@ -28,100 +28,107 @@ plugin changes.
 | Export Center broke apart in the dock. | Rows wrap; the narrow layout has tighter gutters. |
 | The Align panel used `ui-rows` for both "align top" and "align bottom". | New object-alignment glyphs (`ui-obj-align-*`), shared with the control bar. |
 
-## Open in the plugin repos
+## Fixed in the plugin repos
 
-These need changes in each plugin and a canary release. The order inside each list is
-by impact.
+Each plugin was fixed on a `ux/panels-2026-10` branch from its `main`, with that repo's
+tests passing. The editor's specs follow those builds.
 
 ### paged.draw
 
-- **Notes.** Nine panels end in a 150–300-word technical note full of internal terms.
-  Replace each with one line, plus an "About" disclosure; the detail belongs in the docs.
-  The panels are: Appearance, Graphic styles, Symbols, Live paint, Pattern, Repeat,
-  Blend, Objects on path and Path options.
-- **Duplicates.**
-  - The Stroke and Fill panels duplicate the host's.
-  - Draw properties edits the same recipe fields as the six recipe panels.
-  - Pick one home for each.
-- **Icons.** `panel-stroke` is used three times, and `panel-object-styles` and
-  `panel-effects` overlap with the host's panels. Give each panel its own glyph.
-- **Deletes.** Graphic styles and Symbols delete without confirmation, and neither delete
-  can be undone.
-- **Selection hints.**
-  - Objects on path needs the path to be the last object selected, and nothing shows
-    which object that is.
-  - "+ Blend" is disabled unless exactly two objects are selected, and nothing says so.
-- **Labels.**
-  - Some controls show raw enum values ("grid", "easeIn").
-  - Title Case appears in headings ("Live Paint", "Objects on Path").
+- **Notes.** Nine panels end in a one-sentence intro, plus a collapsed "About" written in
+  plain words. The audit codes, op names, paths and capitals are gone.
+- **Duplicates: merged into the host.** "Vector stroke" and "Vector fill" are no longer
+  contributed. Every row they carried is a core frame property, and the host now
+  carries them:
+  - the Stroke panel's "Dashes & arrows" section is live: dash pattern, start and end
+    arrowheads;
+  - corners are in Object Options;
+  - the gradient's angle and length are in Gradients.
+
+  "All draw settings" is now "Draw settings". The vector context raises it, and the
+  host's Properties panel shows it inline for artwork draw made or annotated.
+- **Icons.** Every draw panel has its own glyph.
+- **Deletes.** Graphic styles and Symbols confirm in the panel ("Confirm delete").
+- **Selection hints.** Objects on path names its target path; "+ Blend" and "+ On path"
+  say why they are disabled; refusals show in the panel.
+- **Labels.** Words instead of raw values; sentence-case headings.
 
 ### paged.image
 
-- **Header.** The Image panel opens with developer diagnostics: the bundle id and
-  version, the engine state, and the header "PAGED.IMAGE — LEVELS / CURVES / WHITE
-  BALANCE".
-- **Feedback.** Apply, Reset and the status line sit below about 30 sections, so a
-  refusal is out of sight.
-- **Scope.** The panel holds its own Layers, Brush, Type, Retouch, Paths and Channels
-  sections. They overlap the host's Layers panel and Image properties.
-- **Image properties.** It uses the `panel-layers` icon, and it shows all ten adjustment
-  groups for every layer.
-- **Colours.** One select has an inline white background.
-- **Tokens.** The histogram reads `--pg-surface-2`, which the host now defines as an
-  alias.
+- **Header.** It is a plain "Image adjustments" title. The diagnostics sit in a
+  collapsed "Diagnostics" block.
+- **Feedback.** A sticky action bar holds Use selected frame, Live, Apply, Reset and the
+  status line.
+- **Scope.** Layers, Brush, Type, Retouch, Paths and Channels are collapsible sections,
+  each with one plain sentence and its notes under "About".
+- **Image properties.** It has its own icon. The ten adjustment groups show only for
+  adjustment layers. The stored layer doesn't record which adjustment it is, so the
+  groups can't be narrowed further.
+- **Colours.** No inline white select background; swatches sit beside the selects.
 
 ### paged.sheet
 
-- **Grid.** The grid viewport is fixed at 480 px, wider than the dock. Size it from the
-  panel.
-- **Workbook.** One long column of controls; split it into collapsible sections.
-- **Naming.** The verb "Lower" (to frame) should become "Place on page" everywhere,
-  matching the menu.
-- **Duplicates.**
-  - Formatting and iterative calculation live both in Workbook and in Sheet properties.
-  - Find appears in Workbook and again in Grid.
-- **Datasets.**
-  - The empty state says "no data-provider registry is wired in this host".
-  - Rows show provider ids.
-- **Feedback.** Copy and paste refusals reach only the log.
+- **Grid.** It sizes from the panel's measured width.
+- **Workbook.** Collapsible sections, with only "Place on page" open by default.
+- **Naming.** "Place on page" replaces "Lower" everywhere a user reads it.
+- **One home per setting.** Formatting and iterative calculation live in Sheet
+  properties, and find and replace in the Grid panel. Pointers sit in their old places.
+- **Datasets.** A plain empty state; human names; "Use" and "Update".
+- **Feedback.** Copy, paste and fill refusals and successes show in the Grid panel.
+- **Deletes.** Destructive actions confirm in the panel.
 
 ### paged.web
 
-- **Empty state.** It points at the "Insert web frame" command; it needs an inline
-  button.
-- **Feedback.** "Make web frame" refusals reach only the log.
-- **Duplicate source.** Web properties exposes the raw `html`/`css`/`vars` beside the
-  Web frame panel's unsaved draft, so the two can conflict. Drop the Source section.
-- **Variables.** Three places hold variables: Variables, Bound data and Bound values.
+- **Titles.** The panels are "Web source" and "Web frame properties".
+- **Empty state.** An inline "Insert web frame" button; refusals show inline.
+- **Duplicate source.** The raw html/css/vars rows are gone from the properties panel.
+- **Variables.** Merged into one section, with a pointer between the two panels.
+- **Layout.** Option rows wrap, the preview sits above "Save to document", and no
+  hard-coded hex colours remain in chrome.
 
 ### paged.data
 
 - **Bindings.**
-  - It renders its whole set of controls before any source exists.
-  - "Wire demo binding" ships in the product.
-  - Authoring always binds `q_all` over the first source, so saved queries can't be
-    bound.
-- **Dead clicks.**
-  - About nine controls only `log.warn`.
-  - Two of them are menu rows: "Apply a data set…" and "Merge records…".
-- **Dataset preview.** It previews no rows. "Run batch" produces no pages in the editor.
-- **Mono values.** `font: var(--font-mono)` is used as a shorthand, which is invalid, so
-  values never render in mono. Use `fontFamily`.
-- **Icons.** Every panel uses `panel-canvas`.
+  - A first-step empty state with "Open Data sources".
+  - The demo controls are removed.
+  - A "Records from" query picker replaces the hard-wired `q_all`.
+  - A "Bind to data…" draft shows before any source exists.
+- **Dead clicks.** Each one is disabled with a reason or shows inline, including the two
+  menu rows.
+- **Dataset preview.** It previews rows. "Plan batch" says that no pages are made here.
+- **Mono values.** Fixed with `fontFamily`.
+- **Icons.** Every panel has its own.
+- **Names.** Command and menu names match the panel titles.
+- **Status line.** It shows the message, not the engine's state name.
 
 ### paged.doc
 
-- **Outline.** Outline entries can't be clicked, so the outline can't navigate.
-- **File picker.** "Place Word document…" does nothing when the host has no file picker.
-- **Glyphs and tokens.**
-  - Text glyphs stand in for icons ("▦", "●", "¶").
-  - `rgba(…)` is hard-coded.
-  - `--status-warning` was undefined (now aliased).
+- **Outline.** Headings navigate: a click takes the user to the heading's text and
+  selects it, through `host.viewport.revealText`, below.
+- **File picker.** "Insert Word document…" is disabled, with the reason, when the host
+  has no file picker.
+- **Glyphs and tokens.** Text glyphs, hard-coded colours and undefined tokens are
+  replaced.
+- **Lists.** Long lists cap with "Show all".
+- **Naming.** One verb, "Insert", everywhere.
 
-## Needs a contract change
+## Plugin API: revealing text
 
-- **Messages.** A way for plugins to show the user a message (`host.notify` or an inline
-  status primitive). Every plugin routes refusals to `host.log.warn`, which the user
-  never sees.
-- **Shared primitives.** The kit's input primitives exposed through `plugin-api`, so that
-  plugin panels stop hand-rolling controls.
+`host.viewport.revealText({ storyId, start, end }, { select })`, behind the
+`supports("viewport.revealText@1")` probe (plugin-api 0.2.49-canary.0, plugin-sdk
+0.2.50-canary.0):
+
+- it moves the camera to where the range is laid out, and selects it by default;
+- it answers `false` for an unknown story, a range that is not laid out, or a host
+  without the door.
+
+The editor backs it in `apps/canvas/src/plugin-pages.ts`.
+
+## Still open
+
+- **User messages.** A way for plugins to show the user a message (`host.notify` or an
+  inline status primitive). The plugins now show refusals in their own panels, each in
+  its own way.
+- **Shared primitives.** The kit's input primitives exposed through `plugin-api`.
+- **Doc plugin size.** paged.doc's wasm built from `main` is 8.64 MB, over its manifest's
+  8 MiB budget.
