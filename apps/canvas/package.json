@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@paged-media/ai": "workspace:*",
-    "@paged-media/canvas-wasm": "0.71.5",
+    "@paged-media/canvas-wasm": "0.71.6",
     "@paged-media/catalog": "workspace:*",
     "@paged-media/client": "workspace:*",
     "@paged-media/data": "0.1.0-canary.15",

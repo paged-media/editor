@@ -178,6 +178,11 @@ export function useDocumentStats(): DocumentStats | null {
         setStats(msg.payload);
       } else if (msg.kind === "documentLoaded") {
         setStats(msg.payload.stats);
+      } else if (msg.kind === "scriptResult") {
+        // Engine ≥ 0.71.5 puts the counts on every script reply: a script
+        // writes without the round trip that pushes `stats`.
+        const after = (msg.payload as { stats?: DocumentStats }).stats;
+        if (after) setStats(after);
       }
     });
     return off;
