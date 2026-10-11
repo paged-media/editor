@@ -197,4 +197,27 @@ test.describe("journey · paged.draw stroke + fill rows in the host panels", () 
     await expect(settings, "Draw settings mounts from the catalog").toBeVisible({ timeout: 6_000 });
     await expect(settings.locator('[data-schema-section="Path"]')).toBeVisible();
   });
+
+  test("Properties shows Draw settings inline for artwork draw made, not for a plain rectangle @feat:editor-shell.panels.properties @feat:plugin-platform.bundle-lifecycle @level:happy", async ({
+    page,
+  }) => {
+    const designer = new Designer(page);
+    await designer.open();
+    await designer.newDocument();
+    const rectId = await designer.drawRectangle({ x0: 150, y0: 150, x1: 300, y1: 260 });
+    expect(rectId, "drew a rectangle").not.toBe("");
+    await designer.selectElement("rectangle", rectId);
+    await designer.openPanel("paged.properties");
+    const owned = page.locator('[data-properties-section="plugin-owned"]');
+    // A plain rectangle carries no draw metadata: no draw surface here.
+    await expect(owned).toHaveCount(0);
+
+    // A radial repeat makes draw-owned artwork (the source carries draw's
+    // `x-paged:media.paged.draw` envelope).
+    await designer.runCommand("media.paged.draw.command.makeRadialRepeat");
+    await designer.selectElement("rectangle", rectId);
+    await expect(owned, "Draw settings inline for the repeat's source").toHaveCount(1, { timeout: 10_000 });
+    await expect(owned).toHaveAttribute("data-properties-owner", "vectorGraphic");
+    await expect(owned.getByText(/Radial repeat/).first()).toBeVisible();
+  });
 });
