@@ -40,7 +40,7 @@ for (const [page, text] of [[first, "Spring tea collection"], [second, "Opening 
 }
 console.log(JSON.stringify(JSON.parse(paged.pages()).map((p) => p.sizePt)));`;
 
-test("a brief becomes a document @feat:editor-shell.menus @level:happy", async ({ page }) => {
+test("a brief becomes a document @feat:editor-shell.ai-new-from-brief @feat:editor-shell.menus @level:happy", async ({ page }) => {
   const sent: Array<{ mode: string | null; prompt: string }> = [];
   await page.route("**/api/ai/v1/messages", async (route: Route) => {
     const req = route.request();

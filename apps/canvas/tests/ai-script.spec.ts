@@ -36,7 +36,7 @@ test.describe("Script panel — Ask Claude", () => {
     await openPanel(page, "paged.script-editor");
   });
 
-  test("Claude's script runs through the script door and its result goes back @feat:scripting.script-editor @level:happy", async ({ page }) => {
+  test("Claude's script runs through the script door and its result goes back @feat:scripting.ai-script-writing @feat:scripting.script-editor @level:happy", async ({ page }) => {
     const sent: Array<{ mode: string | null; body: { messages: Array<{ role: string; content: unknown }> } }> = [];
     await page.route("**/api/ai/v1/messages", async (route: Route) => {
       const req = route.request();
@@ -68,7 +68,7 @@ test.describe("Script panel — Ask Claude", () => {
     expect(await opacity(page)).not.toBe(40);
   });
 
-  test("an unconfigured deployment says so instead of failing silently @feat:scripting.script-editor @level:edge", async ({ page }) => {
+  test("an unconfigured deployment says so instead of failing silently @feat:scripting.ai-script-writing @level:edge", async ({ page }) => {
     await page.route("**/api/ai/v1/messages", (route) =>
       route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ type: "error", error: { type: "ai_unavailable", message: "The AI service is not configured on this deployment." } }) }),
     );
@@ -79,7 +79,7 @@ test.describe("Script panel — Ask Claude", () => {
     await expect(panel.locator("[data-script-ask-input]")).toBeEnabled();
   });
 
-  test("the command palette hands a request to the Ask bar @feat:scripting.script-editor @feat:editor-shell.command-palette @level:happy", async ({ page }) => {
+  test("the command palette hands a request to the Ask bar @feat:scripting.ai-script-writing @feat:editor-shell.command-palette @level:happy", async ({ page }) => {
     let calls = 0;
     await page.route("**/api/ai/v1/messages", (route: Route) => {
       calls++;
@@ -97,7 +97,7 @@ test.describe("Script panel — Ask Claude", () => {
     expect(await opacity(page)).toBe(40);
   });
 
-  test("a script asks Claude for text through paged.invoke @feat:scripting.script-editor @level:happy", async ({ page }) => {
+  test("a script asks Claude for text through paged.invoke @feat:scripting.ai-complete @level:happy", async ({ page }) => {
     const sent: Array<{ mode: string | null; content: unknown }> = [];
     await page.route("**/api/ai/v1/messages", async (route: Route) => {
       const req = route.request();

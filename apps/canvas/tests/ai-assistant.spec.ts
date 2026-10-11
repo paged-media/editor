@@ -51,7 +51,7 @@ test.describe("AI Assistant card", () => {
     await selectFrame(page);
   });
 
-  test("a suggestion runs Claude on the selection, and Undo reverts it @feat:editor-shell.panels.properties @level:happy", async ({ page }) => {
+  test("a suggestion runs Claude on the selection, and Undo reverts it @feat:editor-shell.ai-assistant @feat:editor-shell.panels.properties @level:happy", async ({ page }) => {
     const sent: Array<{ mode: string | null; prompt: unknown }> = [];
     await stubClaude(page, sent);
     const card = page.locator("[data-ai-assistant]");
@@ -72,7 +72,7 @@ test.describe("AI Assistant card", () => {
     expect(await opacity(page)).toEqual(before);
   });
 
-  test("Undo refuses once the document was edited after Claude @feat:editor-shell.panels.properties @level:edge", async ({ page }) => {
+  test("Undo refuses once the document was edited after Claude @feat:editor-shell.ai-assistant @feat:editor-shell.panels.properties @level:edge", async ({ page }) => {
     await stubClaude(page, []);
     const card = page.locator("[data-ai-assistant]");
     await card.locator("[data-ai-input]").fill("make it lighter");
