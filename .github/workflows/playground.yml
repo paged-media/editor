@@ -70,27 +70,24 @@ jobs:
         working-directory: editor
         run: pnpm --filter paged-canvas build:demo
 
-      # Cloudflare Pages refuses any file over 25 MiB. The ENGINE wasm is one
-      # (~27 MiB): ship it gzipped as `<file>.gz` (~7 MiB), which the worker
-      # falls back to (worker.ts engineWasmSource). paged.data's DuckDB
-      # (bin/duckdb-engine.wasm, ~34 MiB) has no such fallback yet, so it is
-      # dropped and the plugin reports `duckdb-missing`. Any other oversized
-      # file fails the deploy rather than vanishing.
-      - name: fit files to the Pages size limit
+      # Wasm modules are hosted, not deployed (ADR 220): every .wasm in the
+      # build is uploaded to modules.paged.media (R2, brotli, immutable per
+      # package version) if it is not there yet, removed from the deploy, and
+      # replaced by a same-origin 302. That also keeps every file under
+      # Cloudflare Pages' 25 MiB limit — the engine (~27 MiB) and DuckDB
+      # (~34 MiB) are not.
+      - name: host the wasm modules
+        working-directory: editor/apps/canvas
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/modules-sync.mjs dist-demo
+
+      - name: every file fits the Pages size limit
         working-directory: editor/apps/canvas/dist-demo
         run: |
-          find . -type f -size +25M -print | while read -r f; do
-            case "$f" in
-              ./assets/paged_canvas_wasm_bg-*.wasm)
-                gzip -9 -c "$f" > "$f.gz" && rm -f "$f"
-                echo "::notice::gzipped for the size limit: $f ($(du -h "$f.gz" | cut -f1))" ;;
-              ./bin/duckdb-engine.wasm)
-                rm -f "$f"
-                echo "::warning::not deployed (over 25 MiB): $f" ;;
-              *)
-                echo "::error::$f is over Cloudflare Pages' 25 MiB limit"; exit 1 ;;
-            esac
-          done
+          big=$(find . -type f -size +25M)
+          if [ -n "$big" ]; then echo "::error::over Cloudflare Pages' 25 MiB limit: $big"; exit 1; fi
 
       - name: deploy to Cloudflare Pages
         # npx (not wrangler-action) — its `pnpm add wrangler` fails in a pnpm workspace.
