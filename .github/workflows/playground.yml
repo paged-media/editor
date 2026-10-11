@@ -1,11 +1,16 @@
 name: playground
 
 # Build the live-demo PLAYGROUND (apps/canvas `demo` build) and deploy it to
-# Cloudflare Pages at play.paged.media.
+# Cloudflare Pages at play.paged.media — the real editor that the docs and
+# paged.media embed.
 #
-# Now a plain single-repo build: the editor consumes the plugin bundles + SDK as
-# PUBLISHED @paged-media packages (with their wasm baked in), so no multi-repo
-# checkout and no Rust/wasm toolchain here — just install + build + upload.
+# The editor consumes the engine and the plugin bundles as PUBLISHED
+# @paged-media packages — except @paged-media/doc, still a pnpm `link:` to
+# ../plugins/plugin-doc until its first publish. So, like tests.yml, the editor
+# is checked out under editor/ and the shared stopgap action builds plugin-doc
+# beside it. Without it every deploy since July failed on
+# "Cannot find module '@paged-media/doc'". DROP the stopgap (and go back to a
+# root checkout) once the package publishes and a pin replaces the link.
 on:
   push:
     branches: [main]
@@ -25,14 +30,61 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4   # reads packageManager (pnpm@9) from package.json
+        with:
+          path: editor
+
+      - name: rust toolchain (for the paged.doc engine wasm)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: cache cargo + plugin-doc build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+            plugins/plugin-doc/target
+          key: playground-rust-${{ runner.os }}-${{ github.sha }}
+          restore-keys: playground-rust-${{ runner.os }}-
+
+      # The editor is not at the workspace root, so action-setup cannot read
+      # `packageManager`: pin the editor's pnpm major explicitly.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter paged-canvas build:demo
+          cache: pnpm
+          cache-dependency-path: editor/pnpm-lock.yaml
+
+      - name: plugin-doc from source (stopgap until @paged-media/doc publishes)
+        uses: ./editor/.github/actions/plugin-doc-from-source
+
+      - name: install editor
+        working-directory: editor
+        run: pnpm install --frozen-lockfile
+
+      - name: build the demo
+        working-directory: editor
+        run: pnpm --filter paged-canvas build:demo
+
+      # Cloudflare Pages refuses any file over 25 MiB, and paged.data's DuckDB
+      # engine (bin/duckdb-engine.wasm, ~34 MiB) is one. Ship without it: the data
+      # plugin reports `duckdb-missing` honestly instead of the whole deploy
+      # failing. Follow-up: serve DuckDB from object storage or a CDN.
+      - name: drop files over the Pages size limit
+        working-directory: editor/apps/canvas/dist-demo
+        run: |
+          find . -type f -size +25M -print | while read -r f; do
+            echo "::warning::not deployed (over 25 MiB): $f"
+            rm -f "$f"
+          done
+
       - name: deploy to Cloudflare Pages
         # npx (not wrangler-action) — its `pnpm add wrangler` fails in a pnpm workspace.
+        working-directory: editor
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
