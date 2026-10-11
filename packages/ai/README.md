@@ -5,7 +5,7 @@ This directory is a **temporary copy** of `@paged-media/ai`, whose home is
 (ADR 325 there; ADR 221 here). It is vendored because the package's first npm
 publish has not happened yet, and the editor must build from its own repository.
 
-- Source: plugin-sdk `97d40f5`, `packages/ai/src/*.ts`, byte for byte, except
+- Source: plugin-sdk `1aed4d8`, `packages/ai/src/*.ts`, byte for byte, except
   `engine-catalog.ts`, which imports `./catalog.json` (plugin-api's vendored
   catalog, synced from `@paged-media/canvas-wasm@0.71.2` — the engine this
   editor pins) instead of reaching into a sibling package.

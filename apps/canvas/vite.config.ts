@@ -187,7 +187,8 @@ function aiProxyDev(): import("vite").Plugin {
           });
           const { handleAiProxy } = (await server.ssrLoadModule("@paged-media/ai/proxy")) as typeof import("@paged-media/ai/proxy");
           const { default: catalog } = (await server.ssrLoadModule("@paged-media/ai/catalog")) as typeof import("@paged-media/ai/catalog");
-          const response = await handleAiProxy(request, { apiKey, catalog });
+          const workspaceId = process.env.ANTHROPIC_WORKSPACE_ID;
+          const response = await handleAiProxy(request, { apiKey, catalog, ...(workspaceId ? { workspaceId } : {}) });
           res.statusCode = response.status;
           response.headers.forEach((value, key) => res.setHeader(key, value));
           if (!response.body) return res.end();

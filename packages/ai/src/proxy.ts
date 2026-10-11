@@ -36,6 +36,9 @@ export interface ProxyUsage {
 
 export interface AiProxyOptions {
   apiKey: string;
+  /** For an API key that is not scoped to a workspace: the workspace to
+   *  bill (sent as `anthropic-workspace-id`). */
+  workspaceId?: string;
   catalog: ApiCatalog;
   model?: string;
   /** Turnstile, rate limit, spend cap: return a Response to refuse the
@@ -139,18 +142,25 @@ export async function handleAiProxy(request: Request, options: AiProxyOptions): 
   const messages = validateMessages(body.messages, options.maxMessages ?? 160);
   if (typeof messages === "string") return errorResponse(400, "invalid_request_error", messages);
 
-  const client = new Anthropic({ apiKey: options.apiKey, ...(options.fetch ? { fetch: options.fetch } : {}) });
+  const client = new Anthropic({
+    apiKey: options.apiKey,
+    ...(options.workspaceId ? { defaultHeaders: { "anthropic-workspace-id": options.workspaceId } } : {}),
+    ...(options.fetch ? { fetch: options.fetch } : {}),
+  });
   const params = buildRequest({ mode, messages, catalog: options.catalog, model: options.model });
   let upstream: Response;
   try {
     upstream = await client.messages.create({ ...params, stream: true }).asResponse();
   } catch (err) {
     if (err instanceof Anthropic.APIError) {
-      // Pass the upstream status through, but not its message: it can name
-      // the server-side prompt or account details.
       const status = typeof err.status === "number" ? err.status : 502;
+      // Always in the server log (the platform's function logs).
+      console.error(`paged ai proxy: upstream ${status} (${mode}): ${err.message}`);
       const type = status === 429 ? "rate_limit_error" : status === 529 ? "overloaded_error" : status >= 500 ? "api_error" : "invalid_request_error";
-      return errorResponse(status, type, `upstream ${status}`);
+      // A 400 describes the request's shape, which the client needs to see;
+      // anything else (401/403 name the account) passes only its status.
+      const message = status === 400 ? `upstream 400: ${err.message}` : `upstream ${status}`;
+      return errorResponse(status, type, message);
     }
     return errorResponse(502, "api_error", "upstream unreachable");
   }

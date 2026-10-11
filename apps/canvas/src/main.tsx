@@ -54,7 +54,6 @@ import {
   CatalogRegistryProvider,
   type OverlayContribution,
   type PagedEditor,
-  type ModeContribution,
   type PanelContribution,
   type ShellSchemaPanelRendererProps,
   writeToOpenFile,
@@ -302,9 +301,6 @@ import {
 } from "./panels/cockpit/mode-inspectors";
 import { PlaygroundController } from "./playground/PlaygroundController";
 import { IframeScriptBridge } from "./playground/IframeScriptBridge";
-import { SiteBridge } from "./site/SiteBridge";
-import { SitePanel } from "./site/SitePanel";
-import { SITE } from "./site/site-state";
 import { useAnimatedCamera } from "./ui/useAnimatedCamera";
 import { useKeyboardShortcuts } from "./ui/useKeyboardShortcuts";
 import { documentBounds, fitCamera, layoutPages } from "./ui/layout";
@@ -349,20 +345,6 @@ const BUILT_IN_OVERLAYS: OverlayContribution[] = [
 // CANVAS itself is not a panel — it is the cockpit's viewport slot
 // (`canvasComponent`).
 const BUILT_IN_PANELS: PanelContribution[] = [
-  // Site mode (`?site=1`): paged.media's navigation and product facts, docked
-  // beside the page of the site that is open as a document (website ADR 855).
-  ...(SITE
-    ? [
-        {
-          id: "paged.site",
-          title: "paged.media",
-          component: SitePanel,
-          defaultDock: "right" as const,
-          defaultGroup: "cockpit",
-          icon: "ui-web",
-        },
-      ]
-    : []),
   {
     id: "paged.pages",
     title: "Pages",
@@ -1207,21 +1189,6 @@ if (!import.meta.env.PROD) {
   };
 }
 
-// Site mode opens paged.media's pages through the same documents door a plugin
-// uses: an edited page asks keep/discard before the next one replaces it.
-const openSiteDocument = (bytes: Uint8Array, name: string) =>
-  editorDocuments.backend.open(bytes, {
-    name,
-    requester: { id: "media.paged.site", name: "paged.media" },
-  });
-
-// In site mode Design opens with the Site panel as the active right-dock tab.
-const SITE_MODES: ModeContribution[] = COCKPIT_MODES.map((m) =>
-  m.id === "design" && m.slots
-    ? { ...m, slots: { ...m.slots, tabs: ["paged.site", ...(m.slots.tabs ?? [])] } }
-    : m,
-);
-
 // D-11 — the editor's reference credential store (host.secrets). One instance
 // for the whole app: `PluginBundles` injects `backend` into every bundle host
 // (the SDK door calls set/exists/forget), and `<SecretPromptDialog>` renders +
@@ -1674,7 +1641,7 @@ function PluginBundles() {
       // paged.pdf — Phase 0: opens a .pdf as full-page image frames (pdf.js
       // raster -> inline-image IDML -> host.nativeDocument.open).
       loadIf(pdfBundle),
-      // paged.doc — Word/DOCX: .docx/.dotx importer + "Place Word document…"
+      // paged.doc — Word/DOCX: .docx/.dotx importer + "Insert Word document…"
       // places lowered native stories into the OPEN document (no destructive
       // open; the docx→native standalone producer is deferred). Save-back
       // export needs the v54/v55 doors — degrades to verbatim on older hosts.
@@ -2267,13 +2234,13 @@ function CanvasAppRoot() {
       panels={SOLO_SURFACES?.panels ?? BUILT_IN_PANELS}
       overlays={BUILT_IN_OVERLAYS}
       tools={SOLO_SURFACES?.tools ?? BUILT_IN_TOOLS}
-      modes={SOLO_SURFACES?.modes ?? (SITE ? SITE_MODES : COCKPIT_MODES)}
+      modes={SOLO_SURFACES?.modes ?? COCKPIT_MODES}
       panelRail={SOLO_SURFACES?.panelRail ?? PANEL_RAIL}
       canvasComponent={CanvasPanel}
       // The corpus picker is an Envato IDML-pack browser — DTP
       // furniture with no meaning in a drawing app.
-      headerExtras={SOLO || SITE ? null : <CorpusPicker />}
-      initialMode={SOLO || SITE ? "design" : undefined}
+      headerExtras={SOLO ? null : <CorpusPicker />}
+      initialMode={SOLO ? "design" : undefined}
       initialDocumentSizePt={SOLO?.documentSizePt}
       bindingProviders={bindingProviders}
       objectModel={editorObjectModel}
@@ -2291,9 +2258,6 @@ function CanvasAppRoot() {
       )}
       {(import.meta.env.MODE === "demo" || !import.meta.env.PROD) && (
         <IframeScriptBridge />
-      )}
-      {(import.meta.env.MODE === "demo" || !import.meta.env.PROD) && SITE && (
-        <SiteBridge openDocument={openSiteDocument} />
       )}
     </PagedShell>
   );

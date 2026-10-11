@@ -30,6 +30,7 @@
 //
 // Bindings (set on the Pages project, not in the repo):
 //   ANTHROPIC_API_KEY        secret — absent: every call answers 503
+//   ANTHROPIC_WORKSPACE_ID   only for a key not scoped to a workspace
 //   AI_USAGE                 KV namespace for the counters — absent: 503,
 //                            unless AI_ALLOW_UNCAPPED = "1" (local dev)
 //   AI_DAILY_BUDGET_USD      default "20"
@@ -45,6 +46,7 @@ interface KV {
 
 interface Env {
   ANTHROPIC_API_KEY?: string;
+  ANTHROPIC_WORKSPACE_ID?: string;
   AI_USAGE?: KV;
   AI_DAILY_BUDGET_USD?: string;
   AI_IP_TURNS_PER_HOUR?: string;
@@ -93,6 +95,7 @@ export async function onRequest(context: Context): Promise<Response> {
 
   return handleAiProxy(request, {
     apiKey: env.ANTHROPIC_API_KEY,
+    ...(env.ANTHROPIC_WORKSPACE_ID ? { workspaceId: env.ANTHROPIC_WORKSPACE_ID } : {}),
     catalog,
     async authorize() {
       if (!kv) return null;

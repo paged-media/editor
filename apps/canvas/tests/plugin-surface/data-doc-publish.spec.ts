@@ -48,7 +48,7 @@
 //         wearing a file-action label. The REAL import door is the
 //         panel's own button.
 //     D2  paged.doc's `placeDoc` declares no `category`, so the palette's
-//         `groupByCategory` (`cmd.category ?? "Other"`) files "Place Word
+//         `groupByCategory` (`cmd.category ?? "Other"`) files "Insert Word
 //         document…" under **Other**, while "Place image…" — the same
 //         verb — sits under **Insert**.
 //     D3  paged.data's `dataBinding` edit context can never win a
@@ -874,7 +874,7 @@ test.describe("plugin surface · paged.doc", () => {
 
     expect(live.panels, "the outline panel is registered").toContain(DOC_PANEL);
     expect(live.placeDoc, "placeDoc is registered").toBeTruthy();
-    expect(live.placeDoc!.title).toBe("Place Word document…");
+    expect(live.placeDoc!.title).toBe("Insert Word document…");
 
     const imp = live.importers.find((i) => i.id === DOC_IMPORTER);
     expect(imp, "the .docx importer is registered").toBeTruthy();
@@ -927,7 +927,7 @@ test.describe("plugin surface · paged.doc", () => {
 
   // DELIBERATELY UNTAGGED — see D1. Both ids are covered elsewhere by
   // tests that assert the behaviour rather than characterise its absence.
-  test("KNOWN DEFECT D2 — 'Place Word document…' has no category, so the palette files it under Other @level:edge", async ({
+  test("KNOWN DEFECT D2 — 'Insert Word document…' has no category, so the palette files it under Other @level:edge", async ({
     page,
   }) => {
     const designer = new Designer(page);
@@ -962,7 +962,7 @@ test.describe("plugin surface · paged.doc", () => {
 
     await expect(
       groupWithHeading("Other").getByText("media.paged.doc.command.placeDoc"),
-      "D2: 'Place Word document…' lands in the Other junk drawer",
+      "D2: 'Insert Word document…' lands in the Other junk drawer",
     ).toBeVisible({ timeout: 10_000 });
     await expect(
       groupWithHeading("Insert").getByText("paged.insert.placeImage"),

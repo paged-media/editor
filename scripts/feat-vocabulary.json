@@ -5,7 +5,7 @@
     "by": "scripts/sync-feat-vocabulary.mjs",
     "commit": "4ae824bffeb29846f5c83d5e1c972b667a30f501"
   },
-  "count": 606,
+  "count": 610,
   "ids": [
     "anchored-inline-objects.anchor-alignment",
     "anchored-inline-objects.anchored-frames",
@@ -54,6 +54,8 @@
     "data.source.db-attach",
     "data.variable.traits",
     "edge-cases.diagnostics-channel",
+    "editor-shell.ai-assistant",
+    "editor-shell.ai-new-from-brief",
     "editor-shell.cockpit-modes",
     "editor-shell.command-authoring",
     "editor-shell.command-palette",
@@ -457,6 +459,8 @@
     "round-tripping.idml-reserialization",
     "round-tripping.native-reserialization",
     "round-tripping.undo-redo",
+    "scripting.ai-complete",
+    "scripting.ai-script-writing",
     "scripting.author-returns-id",
     "scripting.collections",
     "scripting.console",
@@ -613,5 +617,16 @@
     "typography.tracking-kerning",
     "typography.underline-strikethru",
     "typography.vertical-scale"
-  ]
+  ],
+  "added_from_cockpit": {
+    "repo": "paged-media/cockpit",
+    "commit": "20566a4",
+    "ids": [
+      "editor-shell.ai-assistant",
+      "editor-shell.ai-new-from-brief",
+      "scripting.ai-complete",
+      "scripting.ai-script-writing"
+    ],
+    "why": "state is retired (rows now land in cockpit/docs/features); added by hand until the vocabulary is generated from cockpit"
+  }
 }

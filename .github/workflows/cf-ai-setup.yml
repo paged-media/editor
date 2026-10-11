@@ -1,0 +1,87 @@
+name: cf-ai-setup
+
+# One-shot setup of the Claude proxy's Cloudflare side (ADR 221), run in CI
+# with the CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID org secrets, like
+# cf-setup.yml. Idempotent — safe to re-run:
+#
+#   1. a KV namespace for the proxy's counters (created once, found after);
+#   2. bound to paged-playground as AI_USAGE (production + preview);
+#   3. AI_DAILY_BUDGET_USD / AI_IP_TURNS_PER_HOUR as plain variables;
+#   4. ANTHROPIC_WORKSPACE_ID from the repository VARIABLE of that name, when
+#      set — needed only for a key that is not scoped to a workspace;
+#   5. ANTHROPIC_API_KEY as an encrypted Pages secret — copied from this
+#      repository's ANTHROPIC_API_KEY Actions secret, and skipped while that
+#      secret is not set (the proxy then keeps answering 503).
+#
+# Bindings apply to NEW deployments: the last step redeploys the playground.
+on:
+  workflow_dispatch:
+    inputs:
+      daily_budget_usd:
+        description: "Daily spend cap in USD"
+        default: "20"
+      ip_turns_per_hour:
+        description: "Model turns per IP per hour"
+        default: "120"
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: KV namespace, bindings, variables, secret
+        env:
+          T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          A: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WORKSPACE: ${{ vars.ANTHROPIC_WORKSPACE_ID }}
+          BUDGET: ${{ inputs.daily_budget_usd }}
+          TURNS: ${{ inputs.ip_turns_per_hour }}
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$A"
+          title="paged-playground-ai-usage"
+
+          echo "== KV namespace $title"
+          id=$(curl -fsS "$api/storage/kv/namespaces?per_page=100" -H "Authorization: Bearer $T" \
+            | python3 -c "import json,sys;print(next((n['id'] for n in json.load(sys.stdin)['result'] if n['title']=='$title'),''))")
+          if [ -z "$id" ]; then
+            id=$(curl -fsS -X POST "$api/storage/kv/namespaces" -H "Authorization: Bearer $T" \
+              -H "Content-Type: application/json" -d "{\"title\":\"$title\"}" \
+              | python3 -c "import json,sys;print(json.load(sys.stdin)['result']['id'])")
+            echo "  created $id"
+          else
+            echo "  exists $id"
+          fi
+
+          body=$(python3 - "$id" "$BUDGET" "$TURNS" <<'PY'
+          import json, os, sys
+          kv, budget, turns = sys.argv[1:4]
+          env = {
+              "AI_DAILY_BUDGET_USD": {"type": "plain_text", "value": budget},
+              "AI_IP_TURNS_PER_HOUR": {"type": "plain_text", "value": turns},
+          }
+          ws = os.environ.get("WORKSPACE", "")
+          if ws:
+              env["ANTHROPIC_WORKSPACE_ID"] = {"type": "plain_text", "value": ws}
+          key = os.environ.get("KEY", "")
+          if key:
+              env["ANTHROPIC_API_KEY"] = {"type": "secret_text", "value": key}
+          cfg = {"kv_namespaces": {"AI_USAGE": {"namespace_id": kv}}, "env_vars": env}
+          print(json.dumps({"deployment_configs": {"production": cfg, "preview": cfg}}))
+          PY
+          )
+          if [ -n "$KEY" ]; then echo "== ANTHROPIC_API_KEY: set from the repository secret"; else echo "::warning::ANTHROPIC_API_KEY repository secret is not set — the proxy will answer 503 until it is (gh secret set ANTHROPIC_API_KEY -R paged-media/editor), then re-run this workflow"; fi
+
+          echo "== PATCH paged-playground deployment_configs"
+          curl -fsS -X PATCH "$api/pages/projects/paged-playground" -H "Authorization: Bearer $T" \
+            -H "Content-Type: application/json" -d "$body" \
+            | python3 -c "import json,sys;d=json.load(sys.stdin);c=d['result']['deployment_configs']['production'];print('  ok' if d.get('success') else d.get('errors'));print('  kv:',list(c.get('kv_namespaces',{}).keys()),'| vars:',sorted(c.get('env_vars',{}).keys()))"
+
+      - name: redeploy the playground (bindings apply to new deployments)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run playground.yml -R "$GITHUB_REPOSITORY" --ref main
