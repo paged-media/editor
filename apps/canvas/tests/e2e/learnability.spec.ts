@@ -170,7 +170,10 @@ test.describe("Phase E — learnability", () => {
       '[data-menu-accelerator="paged.object.group"]',
     );
     await expect(accel).toBeVisible();
-    await expect(accel).toHaveText("⌘G");
+    // The menus show the platform's own chord: ⌘G on a Mac, Ctrl+G elsewhere
+    // (CI runs on Linux).
+    const mac = await page.evaluate(() => /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent));
+    await expect(accel).toHaveText(mac ? "⌘G" : "Ctrl+G");
     await page.keyboard.press("Escape");
   });
 });
