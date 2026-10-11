@@ -580,7 +580,7 @@ function dataBundleBin(): import("vite").Plugin {
 }
 
 /**
- * ADR 222 — the module manifest behind the editor's module door
+ * ADR 223 — the module manifest behind the editor's module door
  * (src/plugin-modules.ts): every installed plugin package's declared wasm,
  * with sha384 and host version, as `virtual:paged-modules`. A build with
  * PAGED_MODULES_HOSTED=1 (the playground deploy, whose modules-sync hosts

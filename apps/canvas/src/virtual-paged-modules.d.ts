@@ -13,7 +13,7 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// The build's module manifest (vite.config.ts `pagedModules`, ADR 222).
+// The build's module manifest (vite.config.ts `pagedModules`, ADR 223).
 declare module "virtual:paged-modules" {
   const manifest: import("./plugin-modules").ModuleManifest;
   export default manifest;

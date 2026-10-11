@@ -1423,7 +1423,7 @@ function PluginBundles() {
       "media.paged.draw": (module) =>
         module === "workers/trace.js" ? drawTraceWorkerUrl : null,
     });
-    // ADR 222 / plugin-sdk ADR 326: the module door behind host.modules — a
+    // ADR 223 / plugin-sdk ADR 326: the module door behind host.modules — a
     // bundle resolves one of its DECLARED wasm artifacts through the editor,
     // which answers from the build's module manifest (the module host in a
     // deployed build, /@fs/ in dev, with sha384 for Subresource Integrity).
@@ -1565,7 +1565,7 @@ function PluginBundles() {
       clipboard,
       textCaret,
       workers,
-      // ADR 222 — the module door (inert under an SDK older than 0.2.51).
+      // ADR 223 — the module door (inert under an SDK older than 0.2.51).
       modules,
       dataProviders,
       // ADR 023 phase A/C — see the module-scope registry above.

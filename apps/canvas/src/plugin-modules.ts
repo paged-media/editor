@@ -17,7 +17,7 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// ADR 222 — the editor's `ModulesBackend`, behind plugin-sdk's `host.modules`
+// ADR 223 — the editor's `ModulesBackend`, behind plugin-sdk's `host.modules`
 // door (plugin-sdk ADR 326): a bundle asks the HOST where one of its declared
 // wasm artifacts lives, and the editor answers from the MODULE MANIFEST the
 // build generated (scripts/module-index.mjs → `virtual:paged-modules`):

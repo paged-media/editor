@@ -13,7 +13,7 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// The installed @paged-media packages as MODULES (ADR 220, ADR 222). Two
+// The installed @paged-media packages as MODULES (ADR 220, ADR 223). Two
 // readers share this file so they cannot disagree about a module's home:
 //
 //   - scripts/modules-sync.mjs, after a build: which package + version +

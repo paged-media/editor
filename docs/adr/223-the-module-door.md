@@ -1,4 +1,4 @@
-# ADR 222 — The editor answers the module door from a build-time module manifest
+# ADR 223 — The editor answers the module door from a build-time module manifest
 
 - **Status:** Accepted, 2026-10-11.
 - **Scope:** `apps/canvas/src/plugin-modules.ts`, `apps/canvas/scripts/module-index.mjs`,

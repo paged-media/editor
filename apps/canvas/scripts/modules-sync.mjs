@@ -26,7 +26,7 @@
 // redirect, decodes brotli on the fly and caches the module for a year, shared
 // across every site that loads the same version.
 //
-// The module door (ADR 222) answers a plugin's DECLARED wasm with its
+// The module door (ADR 223) answers a plugin's DECLARED wasm with its
 // module-host URL straight away, emitted by this build or not; so every
 // module in the build's module manifest (scripts/module-index.mjs) is made
 // sure of too, uploaded from the installed package when it is missing.
@@ -118,7 +118,7 @@ for (const file of walk(dist, [], false)) {
   modules.push({ served, url, package: hit.name, version: hit.version, path: hit.path, bytes: raw.length, sha384: `sha384-${sha("sha384", raw)}` });
   console.log(`${served} → ${url} · ${(raw.length / 1048576).toFixed(1)} MiB · ${note}`);
 }
-// The module door (ADR 222) answers every DECLARED plugin artifact in the
+// The module door (ADR 223) answers every DECLARED plugin artifact in the
 // build's module manifest with its module-host URL, whether or not this build
 // emitted the file. Each of them must be hosted too, from the installed
 // package, or a bundle that adopted the door would be pointed at a 404.

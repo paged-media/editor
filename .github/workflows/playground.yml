@@ -66,7 +66,7 @@ jobs:
         working-directory: editor
         run: pnpm install --frozen-lockfile
 
-      # PAGED_MODULES_HOSTED: the module door (ADR 222) answers the module
+      # PAGED_MODULES_HOSTED: the module door (ADR 223) answers the module
       # host, because the next step hosts every module the build lists.
       - name: build the demo
         working-directory: editor

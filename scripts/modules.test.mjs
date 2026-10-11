@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Unit test for the module door's editor half (ADR 222):
+// Unit test for the module door's editor half (ADR 223):
 // apps/canvas/src/plugin-modules.ts — what the editor answers a bundle that
 // asks `host.modules` for one of its declared wasm artifacts — and
 // apps/canvas/scripts/module-index.mjs — the module manifest the build

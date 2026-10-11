@@ -57,6 +57,6 @@ domain.
 
 The plugin-API door named under "Not yet" exists: plugin-sdk ADR 326 (`host.modules`, with
 Subresource Integrity), answered by the editor from a build-time module manifest
-([ADR 222](222-the-module-door.md)). `modules-sync.mjs` now also hosts every module that
+([ADR 223](223-the-module-door.md)). `modules-sync.mjs` now also hosts every module that
 manifest lists, and plugin publish workflows can upload their own modules with
 `paged-plugin modules-upload`.
