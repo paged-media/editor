@@ -217,8 +217,8 @@ export function buildOpenIdmlCommand(options: {
   };
 }
 
-/** File ▸ New from a brief… (ADR 221) — opens the dialog; the dialog
- *  mints the blank document and runs Claude on it. */
+/** File ▸ New from a brief… (ADR 221) — opens the AI Assistant panel in
+ *  its "New document" view, which mints the blank page and runs Claude. */
 export function buildNewFromBriefCommand(open: () => void): CommandContribution {
   return {
     id: PAGED_FILE_NEW_FROM_BRIEF,

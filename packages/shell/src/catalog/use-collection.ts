@@ -85,6 +85,8 @@ export function useCollection<T>(name: CollectionName): T[] | null {
         msg.kind === "mutationApplied" ||
         msg.kind === "undoApplied" ||
         msg.kind === "redoApplied" ||
+        // A script writes without mutationApplied notifications.
+        msg.kind === "scriptResult" ||
         msg.kind === "documentLoaded"
       ) {
         refetch();
@@ -133,6 +135,8 @@ export function useDocumentMeta(): DocumentMeta | null {
         msg.kind === "mutationApplied" ||
         msg.kind === "undoApplied" ||
         msg.kind === "redoApplied" ||
+        // A script writes without mutationApplied notifications.
+        msg.kind === "scriptResult" ||
         msg.kind === "documentLoaded"
       ) {
         refetch();

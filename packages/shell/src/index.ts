@@ -553,13 +553,22 @@ export {
   type PanelStatus,
 } from "./components/cockpit/kit";
 export { AIAssistant, type AssistantKind } from "./components/cockpit/ai-assistant";
+export {
+  dismissAssistantRun,
+  getAssistantState,
+  openAssistant,
+  setAssistantOpener,
+  startAssistantRun,
+  subscribeAssistant,
+  type AssistantRun,
+  type AssistantState,
+  type AssistantView,
+} from "./ai/assistant-session";
 export { PoweredByClaude, type PoweredByClaudeProps } from "./ai/powered-by-claude";
 export {
   AI_ASK_COMMAND,
   AI_PROXY_PATH,
-  onAiAsk,
   plainSummary,
-  requestAiAsk,
   canvasScriptEngine,
   completeText,
   describeAiError,

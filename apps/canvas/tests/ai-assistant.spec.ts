@@ -17,10 +17,10 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// The AI Assistant card in the Properties panel (ADR 221), with the proxy
-// stubbed: a suggestion sends the selection and the diagnosis to Claude,
-// the agent's script changes the document, the summary shows, and Undo
-// reverts exactly Claude's change — but not after the user edited since.
+// The AI Assistant panel (ADR 221), with the proxy stubbed: a suggestion
+// sends the selection and the diagnosis to Claude, the agent's script
+// changes the document, each step and the summary show, and Undo reverts
+// exactly Claude's change — but not after the user edited since.
 
 import { test, expect, type Page, type Route } from "@playwright/test";
 
@@ -43,11 +43,11 @@ async function stubClaude(page: Page, sent: Array<{ mode: string | null; prompt:
   });
 }
 
-test.describe("AI Assistant card", () => {
+test.describe("AI Assistant panel", () => {
   test.beforeEach(async ({ page }) => {
     await openCanvas(page);
     await loadIdml(page, FIXTURE);
-    await openPanel(page, "paged.properties");
+    await openPanel(page, "paged.ai-assistant");
     await selectFrame(page);
   });
 
@@ -61,13 +61,14 @@ test.describe("AI Assistant card", () => {
 
     await card.locator("[data-ai-suggestion]").first().click();
     await expect(card.locator("[data-ai-summary]")).toHaveText("Set the frame's opacity to 40%.");
+    await expect(card.locator("[data-ai-step=ok]")).toHaveCount(1);
     expect(await opacity(page)).toBe(40);
 
     expect(sent[0]!.mode).toBe("assist");
     expect(String(sent[0]!.prompt)).toContain(`textFrame:${TEXT_FRAME_ID}`);
     expect(String(sent[0]!.prompt)).toMatch(/Request: /);
 
-    await card.locator("[data-action=ai-undo]").click();
+    await card.locator("[data-cockpit-action=ai-undo]").click();
     await expect(card).toHaveAttribute("data-ai-assistant-state", "idle");
     expect(await opacity(page)).toEqual(before);
   });
@@ -84,7 +85,7 @@ test.describe("AI Assistant card", () => {
       (id) => (globalThis as unknown as { __canvas: { client: { executeScript(s: string): Promise<unknown> } } }).__canvas.client.executeScript(`paged.set("textFrame:${id}", "frameOpacity", 70)`),
       TEXT_FRAME_ID,
     );
-    await card.locator("[data-action=ai-undo]").click();
+    await card.locator("[data-cockpit-action=ai-undo]").click();
     await expect(card.locator("[data-ai-error]")).toContainText("changed after Claude's edit");
     expect(await opacity(page)).toBe(70);
   });

@@ -150,35 +150,5 @@ export async function undoBackTo(client: CanvasClient, seq: number, expectTop: n
   }
 }
 
-// ---- the palette's "Ask Claude" hand-off -------------------------------
-//
-// The command palette (shell) asks; the Script panel (app) answers. The
-// panel may not be mounted yet when the request is made — opening it is
-// part of the command — so the request waits here until a listener takes it.
-
-type AskListener = (prompt: string) => void;
-let pendingAsk: string | null = null;
-const askListeners = new Set<AskListener>();
-
-/** Hand a request to the Script panel's Ask bar. */
-export function requestAiAsk(prompt: string): void {
-  if (askListeners.size === 0) {
-    pendingAsk = prompt;
-    return;
-  }
-  for (const l of askListeners) l(prompt);
-}
-
-/** Receive Ask requests (and the one made before this listener existed). */
-export function onAiAsk(listener: AskListener): () => void {
-  askListeners.add(listener);
-  if (pendingAsk !== null) {
-    const p = pendingAsk;
-    pendingAsk = null;
-    listener(p);
-  }
-  return () => askListeners.delete(listener);
-}
-
 /** The command the palette's assistant row invokes. */
 export const AI_ASK_COMMAND = "paged.ai.ask";

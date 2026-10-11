@@ -33,9 +33,9 @@
 // the log, so nothing it does is hidden, and every write undoes like a
 // hand-run script.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
-import { describeAiError, onAiAsk, plainSummary, PoweredByClaude, runEditorAgent, useCanvasClient } from "@paged-media/shell";
+import { describeAiError, plainSummary, PoweredByClaude, runEditorAgent, useCanvasClient } from "@paged-media/shell";
 
 interface LogEntry {
   source: string;
@@ -102,18 +102,6 @@ export function ScriptEditorPanel(_: PanelProps) {
       setAsking(null);
     }
   }, [ask, asking, running, client, scrollLog]);
-
-  // The command palette's "Ask Claude" row lands here (paged.ai.ask).
-  const askRef = useRef(askClaude);
-  askRef.current = askClaude;
-  useEffect(
-    () =>
-      onAiAsk((prompt) => {
-        setAsk(prompt);
-        void askRef.current(prompt);
-      }),
-    [],
-  );
 
   const run = useCallback(async () => {
     if (running) return;

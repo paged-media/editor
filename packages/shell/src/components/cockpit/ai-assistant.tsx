@@ -17,29 +17,49 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// Cockpit — the AI Assistant card (kit inspectors.jsx AIAssistant,
-// briefing §12.3: diagnose → propose → apply), live since ADR 221.
+// The AI Assistant panel (ADR 221) — the one place Claude works in the
+// editor. It started as a card at the bottom of the Properties panel
+// (kit inspectors.jsx AIAssistant: diagnose → propose → apply) and keeps
+// that look; as a docked panel it also holds what the card could not:
 //
-// - Diagnose: computed here, with no model call — overset stories, low-res
-//   and missing images, missing fonts, from the same collections the
-//   Publication health panel reads.
-// - Propose / apply: a suggestion or a typed request goes to Claude with
-//   the selection and the diagnosis; the agent writes and runs paged.*
-//   scripts through the undoable script door until the change is made.
-// - Undo: reverts exactly Claude's steps, and only while nothing was
-//   edited after it (the undo stack is shared with the user's own edits).
+// - "Ask": the document's diagnosis (computed locally, no model call),
+//   suggestions for the selection, and a free request. With a selection
+//   Claude makes that one change; without one it works on the document.
+// - "New document": a brief and a page size; Claude builds the document
+//   page by page while you watch the canvas (File ▸ New from a brief).
+// - Progress: one line per script Claude runs, then its summary, Stop,
+//   and an Undo that reverts exactly Claude's steps.
+//
+// Every entry point — the palette's "Ask Claude", the File menu, the
+// Properties shortcut — feeds the same session store (ai/assistant-session),
+// so a run started anywhere is shown here.
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
 import type { FontSummary, LinkSummary } from "@paged-media/client";
 
-import { describeAiError, plainSummary, runEditorAgent, undoBackTo, undoTop } from "../../ai/editor-ai";
+import {
+  dismissAssistantRun,
+  getAssistantState,
+  setAssistantDraft,
+  setAssistantView,
+  startAssistantRun,
+  stopAssistantRun,
+  subscribeAssistant,
+  takeAssistantAutoRun,
+  undoAssistantRun,
+  type AssistantStep,
+} from "../../ai/assistant-session";
 import { PoweredByClaude } from "../../ai/powered-by-claude";
 import { useCollection, useDocumentStats } from "../../catalog/use-collection";
-import { useCanvasClient } from "../../state/canvas-client-context";
 import { Icon } from "../../icons";
+import { useCanvasClient } from "../../state/canvas-client-context";
+import { confirmDiscard, mintBlankDocument } from "../../state/commands/file-commands";
 import { useContentSelection } from "../../state/content-selection-context";
+import { useDocument } from "../../state/document-context";
+import { useOptionalPaged } from "../../state/paged-editor";
 import { useSelection } from "../../state/selection-context";
+import { Btn, PanelHeader, Section } from "./kit";
 
 /** The panels' shared low-res floor (publication-health-panel). */
 const LOW_RES_PPI = 150;
@@ -67,21 +87,64 @@ const SUGGESTIONS: Record<AssistantKind, Array<[icon: string, label: string]>> =
   ],
 };
 
-type RunState =
-  | { phase: "idle" }
-  | { phase: "running"; label: string; controller: AbortController }
-  | { phase: "done"; summary: string; before: number; after: number; changed: boolean }
-  | { phase: "error"; message: string };
+const SIZES: Array<{ id: string; label: string; pt: [number, number] }> = [
+  { id: "a4", label: "A4", pt: [595, 842] },
+  { id: "letter", label: "US Letter", pt: [612, 792] },
+  { id: "a5", label: "A5", pt: [420, 595] },
+  { id: "a3", label: "A3", pt: [842, 1191] },
+  { id: "square", label: "Square 210 mm", pt: [595, 595] },
+];
 
-export function AIAssistant({ kind }: { kind: AssistantKind }) {
+const field: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  background: "var(--pg-bg)",
+  color: "var(--pg-fg)",
+  border: "1px solid var(--pg-border)",
+  borderRadius: "var(--radius-lg)",
+  fontFamily: "var(--font-sans)",
+  fontSize: 12.5,
+  lineHeight: 1.45,
+  padding: "8px 10px",
+  resize: "vertical",
+  outline: "none",
+};
+
+const select: React.CSSProperties = {
+  background: "var(--pg-muted)",
+  color: "var(--pg-fg)",
+  border: "1px solid var(--chrome-divider)",
+  borderRadius: "var(--radius-sm)",
+  fontFamily: "var(--font-sans)",
+  fontSize: 12,
+  minHeight: 26,
+  padding: "0 6px",
+};
+
+export function AIAssistant() {
   const client = useCanvasClient();
+  const editor = useOptionalPaged();
+  const { handle } = useDocument();
   const { elementSelection } = useSelection();
   const { contentSelection } = useContentSelection();
   const stats = useDocumentStats();
   const links = useCollection<LinkSummary>("links");
   const fonts = useCollection<FontSummary>("fonts");
-  const [request, setRequest] = useState("");
-  const [state, setState] = useState<RunState>({ phase: "idle" });
+  const session = useSyncExternalStore(subscribeAssistant, getAssistantState);
+  const hasDocument = handle != null && handle.pageCount > 0;
+  const view = hasDocument ? session.view : "brief";
+  const run = session.run;
+  const running = run.phase === "running";
+
+  const kind: AssistantKind | null = contentSelection
+    ? "text"
+    : elementSelection.length === 0
+      ? hasDocument
+        ? "page"
+        : null
+      : elementSelection.some((e) => e.kind === "textFrame")
+        ? "text"
+        : "frame";
 
   const diagnosis = useMemo(() => {
     const issues: string[] = [];
@@ -97,7 +160,7 @@ export function AIAssistant({ kind }: { kind: AssistantKind }) {
   }, [stats, links, fonts]);
 
   const context = useCallback((): string => {
-    const lines = [`The user has a ${kind} selected.`];
+    const lines: string[] = [];
     const ids = elementSelection.filter((e) => typeof e.id === "string").map((e) => `${e.kind}:${e.id as string}`);
     if (ids.length) lines.push(`Selected elements: ${ids.join(", ")}.`);
     if (contentSelection) {
@@ -106,69 +169,148 @@ export function AIAssistant({ kind }: { kind: AssistantKind }) {
     }
     lines.push(diagnosis.length ? `Document issues: ${diagnosis.join(", ")}.` : "The document has no overset text, image or font issues.");
     return lines.join("\n");
-  }, [kind, elementSelection, contentSelection, diagnosis]);
+  }, [elementSelection, contentSelection, diagnosis]);
 
   const ask = useCallback(
-    async (what: string) => {
-      const text = what.trim();
-      if (!text || state.phase === "running") return;
-      const controller = new AbortController();
-      setState({ phase: "running", label: "Thinking…", controller });
-      try {
-        const before = await undoTop(client);
-        const result = await runEditorAgent(client, {
-          mode: "assist",
-          prompt: `${context()}\n\nRequest: ${text}`,
-          signal: controller.signal,
-          onEvent: (e) => {
-            if (e.type === "script") setState((s) => (s.phase === "running" ? { ...s, label: "Changing the document…" } : s));
-            else if (e.type === "render") setState((s) => (s.phase === "running" ? { ...s, label: "Checking the page…" } : s));
-          },
-        });
-        const after = await undoTop(client);
-        if (result.outcome === "refused") {
-          setState({ phase: "error", message: "Claude declined this request." });
-          return;
-        }
-        const note = result.outcome === "done" ? "" : " It stopped before finishing.";
-        setState({ phase: "done", summary: (plainSummary(result.summary) || "Done.") + note, before, after, changed: after !== before });
-        setRequest("");
-      } catch (err) {
-        setState({ phase: "error", message: describeAiError(err) });
-      }
+    (request: string) => {
+      const text = request.trim();
+      if (!text || running || !hasDocument) return;
+      const scoped = elementSelection.length > 0 || contentSelection != null;
+      startAssistantRun({
+        client,
+        mode: scoped ? "assist" : "script",
+        prompt: `${scoped ? `The user has a ${kind ?? "frame"} selected.\n` : ""}${context()}\n\nRequest: ${text}`,
+      });
     },
-    [client, context, state.phase],
+    [client, context, running, hasDocument, elementSelection, contentSelection, kind],
   );
 
-  const revert = useCallback(async () => {
-    if (state.phase !== "done") return;
-    const ok = await undoBackTo(client, state.before, state.after);
-    setState(ok ? { phase: "idle" } : { phase: "error", message: "The document changed after Claude's edit, so it was not undone. Use Edit ▸ Undo instead." });
-  }, [client, state]);
+  const build = useCallback(
+    (brief: string, sizeId: string) => {
+      const text = brief.trim();
+      if (!text || running || !editor) return;
+      const size = SIZES.find((s) => s.id === sizeId) ?? SIZES[0]!;
+      startAssistantRun({
+        client,
+        mode: "document",
+        prompt: `${text}\n\nPage size: ${size.label} (${size.pt[0]} × ${size.pt[1]} pt). The document is open with one blank page of that size.`,
+        prepare: async () => {
+          if (!(await confirmDiscard(editor, "Creating a new document"))) return false;
+          await mintBlankDocument(editor, size.pt, { setStatus: () => {}, pushWarning: () => {} });
+          return true;
+        },
+      });
+    },
+    [client, editor, running],
+  );
 
-  const running = state.phase === "running";
+  // The palette's "Ask Claude" opens this panel with a request to run.
+  useEffect(() => {
+    if (!session.autoRun || !hasDocument || running) return;
+    const request = takeAssistantAutoRun();
+    if (request) ask(request);
+  }, [session.autoRun, hasDocument, running, ask]);
 
   return (
-    <div
-      data-ai-assistant
-      data-ai-assistant-state={state.phase}
-      style={{
-        margin: "0 14px 16px",
-        padding: 14,
-        borderRadius: "var(--radius-xl)",
-        background: "var(--primary-soft)",
-        border: "1px solid color-mix(in srgb, var(--pg-primary) 26%, transparent)",
-        fontFamily: "var(--font-sans)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <Icon name="ui-wand" size={17} style={{ color: "var(--pg-primary)" }} />
-        <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>AI Assistant</span>
-        <span style={{ marginLeft: "auto" }}>
-          <PoweredByClaude size={10} />
-        </span>
+    <div data-ai-assistant data-ai-assistant-state={run.phase} data-ai-assistant-view={view} style={{ height: "100%", overflowY: "auto", fontFamily: "var(--font-sans)" }}>
+      <PanelHeader title="AI Assistant" action={<PoweredByClaude size={10} />} />
+
+      <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
+        <Btn sm tone={view === "ask" ? "soft" : undefined} disabled={!hasDocument || running} onClick={() => setAssistantView("ask")} testId="ai-view-ask">
+          Ask
+        </Btn>
+        <Btn sm tone={view === "brief" ? "soft" : undefined} disabled={running} onClick={() => setAssistantView("brief")} testId="ai-view-brief">
+          New document
+        </Btn>
       </div>
 
+      {view === "ask" ? (
+        <AskView
+          kind={kind ?? "page"}
+          diagnosis={diagnosis}
+          draft={session.draft}
+          running={running}
+          onAsk={ask}
+        />
+      ) : (
+        <BriefView draft={session.draft} running={running} canBuild={editor != null} onBuild={build} />
+      )}
+
+      {run.phase !== "idle" && (
+        <Section title={run.phase === "running" ? "Working" : run.phase === "done" ? "Done" : "Stopped"}>
+          <div data-ai-steps style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
+            {run.steps.length === 0 && run.phase === "running" && <StepLine step={{ label: "Thinking…", state: "info" }} />}
+            {run.steps.map((s, i) => (
+              <StepLine key={i} step={s} />
+            ))}
+          </div>
+          {run.phase === "running" && (
+            <div data-ai-status style={{ display: "flex", justifyContent: "flex-end" }}>
+              <Btn sm onClick={() => stopAssistantRun()} testId="ai-stop">
+                Stop
+              </Btn>
+            </div>
+          )}
+          {run.phase === "done" && (
+            <div data-ai-result>
+              <div data-ai-summary data-brief-summary style={{ fontSize: 12.5, lineHeight: 1.5, whiteSpace: "pre-wrap", marginBottom: 10 }}>
+                {run.summary}
+                {run.stopped ? " (It stopped before finishing.)" : ""}
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                {run.changed && (
+                  <Btn sm onClick={() => void undoAssistantRun(client)} testId="ai-undo">
+                    Undo
+                  </Btn>
+                )}
+                <Btn sm tone="soft" onClick={() => dismissAssistantRun()} testId="ai-dismiss">
+                  Done
+                </Btn>
+              </div>
+            </div>
+          )}
+          {run.phase === "error" && (
+            <div>
+              <div data-ai-error data-brief-error role="alert" style={{ fontSize: 12.5, color: "var(--status-error)", marginBottom: 10 }}>
+                {run.message}
+              </div>
+              <Btn sm tone="soft" onClick={() => dismissAssistantRun()} testId="ai-dismiss">
+                Done
+              </Btn>
+            </div>
+          )}
+        </Section>
+      )}
+    </div>
+  );
+}
+
+function StepLine({ step }: { step: AssistantStep }) {
+  const icon = step.state === "ok" ? "ui-check" : step.state === "failed" ? "ui-x" : "ui-dot";
+  const color = step.state === "ok" ? "var(--status-approved)" : step.state === "failed" ? "var(--status-error)" : "var(--pg-muted-fg)";
+  return (
+    <div data-ai-step={step.state} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, lineHeight: 1.4 }}>
+      <Icon name={icon} size={13} style={{ color, flexShrink: 0, marginTop: 1 }} />
+      <span>{step.label}</span>
+    </div>
+  );
+}
+
+function AskView({
+  kind,
+  diagnosis,
+  draft,
+  running,
+  onAsk,
+}: {
+  kind: AssistantKind;
+  diagnosis: string[];
+  draft: string;
+  running: boolean;
+  onAsk: (text: string) => void;
+}) {
+  return (
+    <div style={{ padding: "0 14px 14px" }}>
       <div
         data-ai-diagnosis
         style={{
@@ -176,45 +318,16 @@ export function AIAssistant({ kind }: { kind: AssistantKind }) {
           gap: 10,
           padding: 11,
           borderRadius: "var(--radius-lg)",
-          background: "var(--pg-bg)",
-          border: "1px solid var(--pg-border)",
+          background: "var(--primary-soft)",
+          border: "1px solid color-mix(in srgb, var(--pg-primary) 26%, transparent)",
           marginBottom: 12,
         }}
       >
-        <Icon name="ui-wand" size={18} style={{ color: diagnosis.length ? "var(--status-warn, var(--pg-primary))" : "var(--pg-muted-fg)", flexShrink: 0, marginTop: 1 }} />
+        <Icon name="ui-wand" size={18} style={{ color: "var(--pg-primary)", flexShrink: 0, marginTop: 1 }} />
         <div className="pg-ui-xs" style={{ flex: 1, lineHeight: 1.45, color: "var(--pg-fg)" }}>
           {diagnosis.length ? `This document has ${diagnosis.join(", ")}.` : "No overset text, image or font issues found."}
         </div>
       </div>
-
-      {state.phase === "running" ? (
-        <div data-ai-status style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, fontSize: 12 }}>
-          <span style={{ flex: 1, color: "var(--pg-muted-fg)" }}>{state.label}</span>
-          <button type="button" className="pg-ui-xs" onClick={() => state.controller.abort()} data-action="ai-stop">
-            Stop
-          </button>
-        </div>
-      ) : state.phase === "done" ? (
-        <div data-ai-result style={{ marginBottom: 12, fontSize: 12, lineHeight: 1.45 }}>
-          <div style={{ marginBottom: 8, whiteSpace: "pre-wrap" }} data-ai-summary>
-            {state.summary}
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {state.changed && (
-              <button type="button" className="pg-ui-xs" onClick={() => void revert()} data-action="ai-undo">
-                Undo
-              </button>
-            )}
-            <button type="button" className="pg-ui-xs" onClick={() => setState({ phase: "idle" })} data-action="ai-dismiss">
-              Done
-            </button>
-          </div>
-        </div>
-      ) : state.phase === "error" ? (
-        <div data-ai-error role="alert" style={{ marginBottom: 12, fontSize: 12, color: "var(--status-error)" }}>
-          {state.message}
-        </div>
-      ) : null}
 
       <div className="pg-label" style={{ margin: "0 0 8px" }}>
         Suggestions
@@ -225,7 +338,7 @@ export function AIAssistant({ kind }: { kind: AssistantKind }) {
             type="button"
             key={label}
             disabled={running}
-            onClick={() => void ask(label)}
+            onClick={() => onAsk(label)}
             data-ai-suggestion={label}
             style={{
               display: "flex",
@@ -252,30 +365,91 @@ export function AIAssistant({ kind }: { kind: AssistantKind }) {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          void ask(request);
+          onAsk(draft);
         }}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          height: 34,
-          padding: "0 12px",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--pg-border)",
-          background: "var(--pg-bg)",
-        }}
+        style={{ display: "flex", flexDirection: "column", gap: 8 }}
       >
-        <Icon name="ui-wand" size={14} style={{ color: "var(--pg-primary)" }} />
-        <input
-          value={request}
-          onChange={(e) => setRequest(e.target.value)}
+        <textarea
+          value={draft}
+          onChange={(e) => setAssistantDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onAsk(draft);
+            }
+          }}
           disabled={running}
-          placeholder="Make this spread more premium…"
+          rows={3}
+          placeholder="Ask for a change — “make this spread more premium”…"
           aria-label="Ask the AI Assistant"
           data-ai-input
-          style={{ flex: 1, minWidth: 0, fontSize: 12, background: "transparent", border: "none", outline: "none", color: "var(--pg-fg)" }}
+          style={field}
         />
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <Btn sm primary disabled={running || !draft.trim()} onClick={() => onAsk(draft)} testId="ai-ask">
+            Ask Claude
+          </Btn>
+        </div>
       </form>
     </div>
   );
 }
+
+function BriefView({
+  draft,
+  running,
+  canBuild,
+  onBuild,
+}: {
+  draft: string;
+  running: boolean;
+  canBuild: boolean;
+  onBuild: (brief: string, sizeId: string) => void;
+}) {
+  const sizeId = useSyncExternalStore(subscribeSize, getSize);
+  return (
+    <div data-new-from-brief style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div className="pg-ui-xs" style={{ lineHeight: 1.45, color: "var(--pg-muted-fg)" }}>
+        Describe the document. Claude builds it page by page in a new document while you watch; every step can be undone.
+      </div>
+      <textarea
+        value={draft}
+        onChange={(e) => setAssistantDraft(e.target.value)}
+        disabled={running}
+        rows={6}
+        placeholder="A four-page spring catalogue for a small tea shop: cover with a large headline, two pages of products with prices, a back page with opening hours and the address."
+        aria-label="Brief"
+        data-brief-input
+        style={field}
+      />
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+        <span style={{ color: "var(--pg-muted-fg)" }}>Page size</span>
+        <select value={sizeId} onChange={(e) => setSize(e.target.value)} disabled={running} data-brief-size style={select}>
+          {SIZES.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <Btn sm primary disabled={running || !draft.trim() || !canBuild} onClick={() => onBuild(draft, sizeId)} testId="brief-generate">
+          Build document
+        </Btn>
+      </div>
+    </div>
+  );
+}
+
+// The page size survives the panel being hidden, like the rest of the session.
+let size = "a4";
+const sizeListeners = new Set<() => void>();
+const getSize = () => size;
+const subscribeSize = (l: () => void) => {
+  sizeListeners.add(l);
+  return () => sizeListeners.delete(l);
+};
+const setSize = (next: string) => {
+  size = next;
+  for (const l of sizeListeners) l();
+};

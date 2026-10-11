@@ -108,7 +108,7 @@ import { PagedEditorProvider } from "./state/paged-editor";
 import { useRegistries } from "./state/registries-context";
 import { ActionsProvider } from "./actions/actions-context";
 import { CommandPalette } from "./chrome/CommandPalette";
-import { NewFromBriefDialog, notifyNewFromBriefDialog } from "./chrome/NewFromBriefDialog";
+import { openAssistant } from "./ai/assistant-session";
 import { DemoOverlay, DemoSpotlight } from "./demo/overlay";
 import { runDemoScriptWithHandle } from "./demo/runner";
 import { ExportPdfDialog } from "./chrome/ExportPdfDialog";
@@ -508,6 +508,7 @@ function ShellChrome({
   // document handle (to refresh the page grid on page-structure
   // mutations) without re-subscribing per handle change.
   const handleRef = useRef(handle);
+  const refreshingPagesRef = useRef(false);
   handleRef.current = handle;
 
   // Publish main-thread FPS for the canvas HUD.
@@ -907,7 +908,7 @@ function ShellChrome({
     );
     // ADR 221 — File ▸ New from a brief… (Claude builds the document).
     const newFromBrief = registries.commands.register(
-      buildNewFromBriefCommand(() => notifyNewFromBriefDialog("open")),
+      buildNewFromBriefCommand(() => openAssistant({ view: "brief" })),
     );
     // Concept 2 — swatch-library import/export commands.
     const importAse = registries.commands.register(
@@ -1140,6 +1141,37 @@ function ShellChrome({
             });
           }
         }
+      } else if (msg.kind === "scriptResult" && !refreshingPagesRef.current) {
+        // A script (the Script panel, Claude) can add or resize pages
+        // without the mutationApplied that carries the page list, so the
+        // page grid, map and navigator re-read it. The read is itself a
+        // script; the flag keeps its own result from re-triggering it.
+        const prev = handleRef.current;
+        if (!prev) return;
+        refreshingPagesRef.current = true;
+        void client
+          .executeScript("console.log(paged.pages())")
+          .then((run) => {
+            const line = run.output[0]?.replace(/^\[\w+\] /, "");
+            if (!line) return;
+            const pages = JSON.parse(line) as Array<{ selfId: string; sizePt: [number, number] }>;
+            const now = handleRef.current;
+            if (!now) return;
+            const same =
+              pages.length === now.pageIds.length &&
+              pages.every((p, i) => p.selfId === now.pageIds[i] && p.sizePt[0] === now.pageSizesPt?.[i]?.[0] && p.sizePt[1] === now.pageSizesPt?.[i]?.[1]);
+            if (same) return;
+            setHandle({
+              ...now,
+              pageCount: pages.length,
+              pageIds: pages.map((p) => p.selfId) as typeof now.pageIds,
+              pageSizesPt: pages.map((p) => p.sizePt) as typeof now.pageSizesPt,
+            });
+          })
+          .catch(() => undefined)
+          .finally(() => {
+            refreshingPagesRef.current = false;
+          });
       }
     });
     client
@@ -1303,7 +1335,6 @@ function ShellChrome({
       <DemoSpotlight />
       <DemoOverlay />
       <ExportPdfDialog />
-      <NewFromBriefDialog />
 
       {/* Canvas-app-specific integration: legacy hooks (keyboard
        *   shortcuts, camera tweens, text editing) that read from

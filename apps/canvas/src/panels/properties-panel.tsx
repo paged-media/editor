@@ -30,11 +30,12 @@
 //   - Nothing selected ⇒ the panel-rail steer (`inspectorContext`)
 //     picks the Page summary or a per-kind guidance hint.
 //
-// The AI Assistant card renders below as a visible, inert seam.
+// The AI Assistant lives in its own panel (ADR 221); this one links to it.
 
 import {
-  AIAssistant,
   CatalogRegistryProvider,
+  CockpitBtn,
+  openAssistant,
   CockpitPanelHeader,
   CockpitRow,
   CockpitSection,
@@ -255,7 +256,13 @@ export function PropertiesPanel() {
           ) : null}
         </div>
 
-        {kind !== "none" && <AIAssistant kind={kind} />}
+        {kind !== "none" && (
+          <div data-ai-assistant-link style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 14px 16px" }}>
+            <CockpitBtn sm tone="soft" onClick={() => openAssistant({ view: "ask" })} testId="open-ai-assistant">
+              Ask the AI Assistant…
+            </CockpitBtn>
+          </div>
+        )}
       </div>
     </CatalogRegistryProvider>
   );

@@ -79,11 +79,11 @@ test.describe("Script panel — Ask Claude", () => {
     await expect(panel.locator("[data-script-ask-input]")).toBeEnabled();
   });
 
-  test("the command palette hands a request to the Ask bar @feat:scripting.ai-script-writing @feat:editor-shell.command-palette @level:happy", async ({ page }) => {
-    let calls = 0;
+  test("the command palette hands a request to the AI Assistant, which runs it @feat:scripting.ai-script-writing @feat:editor-shell.command-palette @level:happy", async ({ page }) => {
+    const sent: string[] = [];
     await page.route("**/api/ai/v1/messages", (route: Route) => {
-      calls++;
-      return route.fulfill({ status: 200, contentType: "text/event-stream", body: calls === 1 ? TOOL_TURN : SUMMARY_TURN });
+      sent.push(String((route.request().postDataJSON() as { messages: Array<{ content: unknown }> }).messages[0]!.content));
+      return route.fulfill({ status: 200, contentType: "text/event-stream", body: sent.length === 1 ? TOOL_TURN : SUMMARY_TURN });
     });
     await page.evaluate(() =>
       (globalThis as unknown as { __canvas: { registries: { commands: { invoke(id: string, payload?: unknown): Promise<unknown> } } } }).__canvas.registries.commands.invoke(
@@ -91,9 +91,9 @@ test.describe("Script panel — Ask Claude", () => {
         "make the text frame 40% opaque",
       ),
     );
-    const panel = page.locator("[data-script-editor]");
-    await expect(panel.locator("[data-script-note]").first()).toHaveText("You: make the text frame 40% opaque");
-    await expect(panel.locator("[data-script-note]").last()).toHaveText("Claude: Set the frame's opacity to 40%.");
+    const panel = page.locator("[data-ai-assistant]");
+    await expect(panel.locator("[data-ai-summary]")).toHaveText("Set the frame's opacity to 40%.");
+    expect(sent[0]).toContain("Request: make the text frame 40% opaque");
     expect(await opacity(page)).toBe(40);
   });
 

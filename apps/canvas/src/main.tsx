@@ -60,7 +60,9 @@ import {
   setChromeStorageScope,
   ALWAYS_IN_PALETTE,
   AI_ASK_COMMAND,
-  requestAiAsk,
+  AIAssistant,
+  openAssistant,
+  setAssistantOpener,
 } from "@paged-media/shell";
 import "@paged-media/shell/styles/globals.css";
 
@@ -1006,6 +1008,15 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     id: "paged.properties",
     title: "Properties",
     component: PropertiesPanel,
+    defaultDock: "right",
+    defaultGroup: "properties",
+  },
+  {
+    // ADR 221 — the one place Claude works: Ask (diagnosis, suggestions,
+    // requests), New document from a brief, and each run's progress.
+    id: "paged.ai-assistant",
+    title: "AI Assistant",
+    component: AIAssistant,
     defaultDock: "right",
     defaultGroup: "properties",
   },
@@ -2188,17 +2199,17 @@ function CanvasAppIntegration() {
           runAlign(objectRegistry, payload as { kind: AlignKind; targets: string[] }),
       },
     ];
-    // ADR 221 — the palette's "Ask Claude" row: open the Script panel and
-    // hand it the request (the panel's Ask bar runs the agent).
+    // ADR 221 — every Claude entry point opens the AI Assistant panel;
+    // the palette's "Ask Claude" row also runs the request there.
+    setAssistantOpener(() => void registries.commands.invoke("paged.panel.show.paged.ai-assistant"));
     const aiCommands = [
       {
         id: AI_ASK_COMMAND,
         title: "Ask Claude",
         category: "Assistant",
         args: { kind: "text" } as const,
-        handler: async (_paged: unknown, payload?: unknown) => {
-          requestAiAsk(String(payload ?? ""));
-          await registries.commands.invoke("paged.panel.show.paged.script-editor");
+        handler: (_paged: unknown, payload?: unknown) => {
+          openAssistant({ view: "ask", draft: String(payload ?? ""), autoRun: true });
         },
       },
     ];
