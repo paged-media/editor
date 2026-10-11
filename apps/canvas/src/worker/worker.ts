@@ -307,7 +307,9 @@ async function init() {
   // deprecated by current wasm-bindgen loaders and logs a warning.
   // In a deployed build this URL answers with a 302 to the module host
   // (modules.paged.media, ADR 220); the browser follows it, decodes brotli
-  // and streams the compile. In dev it is the file itself.
+  // and streams the compile. In dev it is the file itself. A worker enforces
+  // the CSP of ITS OWN script response, so the module host must be in the
+  // connect-src floor that `_headers` sends with this file too.
   await mod.default({ module_or_path: canvasWasmUrl });
   worker = new mod.CanvasWorker();
   if (worker.protocolVersion !== PROTOCOL_VERSION) {
