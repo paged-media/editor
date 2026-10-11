@@ -24,6 +24,8 @@
 // the non-design modes. The ONLY tabbed surface in the app; panels
 // never float or re-dock elsewhere.
 
+import { useEffect, useRef } from "react";
+
 import { Icon, hasIcon } from "../icons";
 import { PluginGlyph } from "../icons/plugin-glyph";
 import { useRegistries } from "../state/registries-context";
@@ -41,6 +43,18 @@ export function RightDock() {
     .filter((c): c is NonNullable<typeof c> => c != null);
   const active = activeTab && panels.get(activeTab) ? activeTab : null;
 
+  // The strip scrolls sideways once tabs outgrow the dock. Opening a
+  // panel (menu, palette, a pill) activates a tab that was then usually
+  // out of sight to the right — the panel changed and its tab did not
+  // appear. Bring the active tab into view; let the wheel scroll the strip.
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip || !active) return;
+    const tab = strip.querySelector<HTMLElement>(`[data-dock-tab="${CSS.escape(active)}"]`);
+    tab?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [active, rightTabs]);
+
   return (
     <div
       data-right-dock
@@ -53,6 +67,13 @@ export function RightDock() {
     >
       {tabs.length > 1 && (
         <div
+          ref={stripRef}
+          data-dock-strip
+          onWheel={(e) => {
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+              e.currentTarget.scrollLeft += e.deltaY;
+            }
+          }}
           style={{
             display: "flex",
             alignItems: "stretch",

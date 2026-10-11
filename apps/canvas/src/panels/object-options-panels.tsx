@@ -91,6 +91,45 @@ function useQuery(selector: string): string[] | null {
   return list;
 }
 
+/** "Master Options" → "Master", "Condition Options" → "Condition". The
+ *  row used to read "Master Option". */
+function pickerLabel(title: string): string {
+  return title.replace(/\s+Options?$/, "").replace(/s$/, "");
+}
+
+/** Each address's own `name`, when it has one: the picker listed raw ids
+ *  ("ua400f2") for objects whose names the document carries. */
+function useObjectNames(list: readonly string[] | null): Map<string, string> {
+  const model = useObjectModel();
+  const [names, setNames] = useState<Map<string, string>>(new Map());
+  const key = JSON.stringify(list ?? []);
+  useEffect(() => {
+    if (!model || !list || list.length === 0) {
+      setNames(new Map());
+      return;
+    }
+    let cancelled = false;
+    void Promise.all(
+      list.map(async (a) => {
+        try {
+          const v = await model.objects.get(a, "name");
+          return v.kind === "value" && typeof v.value === "string" && v.value !== ""
+            ? ([a, v.value] as const)
+            : null;
+        } catch {
+          return null;
+        }
+      }),
+    ).then((pairs) => {
+      if (!cancelled) setNames(new Map(pairs.filter((p): p is readonly [string, string] => p !== null)));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [model, key]); // eslint-disable-line react-hooks/exhaustive-deps
+  return names;
+}
+
 function Picker({
   testId,
   value,
@@ -282,6 +321,7 @@ function AddressListPanel({
   actions?: (address: string | null) => ReactNode;
 }) {
   const list = useQuery(selector);
+  const names = useObjectNames(list);
   const [pick, setPick] = useState("");
   const address = pick && list?.includes(pick) ? pick : (list?.[0] ?? null);
   const targets = useMemo(() => (address ? [address] : []), [address]);
@@ -296,11 +336,14 @@ function AddressListPanel({
       {address ? (
         <>
           <div className="px-3.5 pb-2">
-            <CockpitRow label={title.replace(/s$/, "")}>
+            <CockpitRow label={pickerLabel(title)}>
               <Picker
                 testId={testId}
                 value={address}
-                options={(list ?? []).map((a) => ({ value: a, label: displayName(idOf(a)) }))}
+                options={(list ?? []).map((a) => ({
+                  value: a,
+                  label: displayName(names.get(a) ?? idOf(a)),
+                }))}
                 onChange={setPick}
               />
             </CockpitRow>

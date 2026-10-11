@@ -495,7 +495,7 @@ export function PropertyField(props: PropertyFieldProps) {
       }
     : undefined;
 
-  const label = props.label ?? (props.autoLabel ? (row?.title ?? path) : undefined);
+  const label = props.label ?? (props.autoLabel ? (row?.title ?? humanizePath(path)) : undefined);
   const adornment = <Badges bound={field.bound} inferred={field.inferred} />;
   const chrome: Record<string, unknown> = {
     ...(props.chrome ?? {}),
@@ -515,7 +515,16 @@ export function PropertyField(props: PropertyFieldProps) {
   }
 
   const value =
-    state.state === "value" ? leafValue(type, widget, state.value) : null;
+    state.state === "value"
+      ? leafValue(
+          type,
+          widget,
+          // Unset (a definite null) on a row with a numeric default shows
+          // the default — an untouched frame's opacity is 100 %, and the
+          // length leaf drew the null as "0 %".
+          state.value === null && typeof row?.default === "number" ? row.default : state.value,
+        )
+      : null;
   const leafProps: LeafProps = { value, onCommit: commitLeaf, props: chrome };
 
   let control: React.ReactNode;
@@ -672,3 +681,26 @@ export function PropertyFieldLeaf({ props }: LeafProps) {
     />
   );
 }
+
+/** A label for a row that declares none and whose schema row has no
+ *  title: the path, read as words. Plugin panels declared this way showed
+ *  the raw keys — "fileName", "recordCount", "radiusPt", "blendMode". */
+export function humanizePath(path: string): string {
+  const last = path.split(/[./]/).filter((p) => p && p !== "[]").pop() ?? path;
+  const key = last.replace(/\[\]$/, "");
+  const unit = key.match(/(Pt|Deg|Px|Pct)$/);
+  const base = unit ? key.slice(0, -unit[1].length) : key;
+  const words = base
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .toLowerCase()
+    .split(" ")
+    .map((w) => (ACRONYMS.has(w) ? w.toUpperCase() : w))
+    .join(" ");
+  const text = words.charAt(0).toUpperCase() + words.slice(1);
+  const suffix = unit ? PATH_UNIT_SUFFIX[unit[1]] : "";
+  return suffix ? `${text} (${suffix})` : text;
+}
+
+const ACRONYMS = new Set(["url", "sql", "id", "css", "html", "rgb", "cmyk", "pdf", "csv", "json", "xml", "ui"]);
+const PATH_UNIT_SUFFIX: Record<string, string> = { Pt: "pt", Deg: "°", Px: "px", Pct: "%" };

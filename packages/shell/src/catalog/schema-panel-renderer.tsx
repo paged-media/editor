@@ -574,7 +574,9 @@ function SchemaSection({
       data-schema-section={section.title}
     >
       <div className="pg-label mb-2">{section.title}</div>
-      <div className="flex flex-col gap-[9px]">{rows}</div>
+      {/* `data-schema-rows` + :empty (globals.css) says "nothing to edit"
+          when every row resolved to no target. */}
+      <div className="flex flex-col gap-[9px]" data-schema-rows="">{rows}</div>
     </div>
   );
 }

@@ -891,26 +891,30 @@ test.describe("plugin surface · paged.sheet", () => {
     });
   });
 
-  test("AUDIT — Window disables 'Workbook' until you are already in a sheet, while 'Grid' and 'Datasets' stay lit and unlabelled", async ({
+  test("FIXED 2026-10-11 — Plugins ▸ Sheet offers 'Workbook' before you are in a sheet (it was disabled until you already were)", async ({
     page,
   }) => {
+    // A plugin's panels live in Plugins ▸ <plugin> (they left Window).
     const openWindowMenu = async () => {
+      await page.keyboard.press("Escape");
       await page
         .locator('nav[aria-label="Main menu"]')
-        .getByRole("button", { name: "Window" })
+        .getByRole("button", { name: "Plugins" })
         .click();
+      await page.locator('[data-menu-submenu="Sheet"]').hover();
       await expect(page.getByRole("menuitem", { name: "Grid", exact: true })).toHaveCount(1);
     };
 
     await openWindowMenu();
 
-    // ADR-024 `panelBelongsHere`: the sheet context CLAIMS the Workbook
-    // panel (`panelIds: [workbook]`), and the context is not active, so
-    // the item is offered dead.
+    // ADR-024 `panelBelongsHere`, revised: the sheet context claims the
+    // Workbook panel, but standing in NO context offers it — it is where
+    // a user starts (it opens or makes a workbook). Only another content
+    // type's context withholds it.
     await expect(
       page.getByRole("menuitem", { name: "Workbook", exact: true }),
-      "Window ▸ Workbook is disabled outside the sheet context",
-    ).toHaveAttribute("aria-disabled", "true");
+      "Plugins ▸ Sheet ▸ Workbook is live at the document root",
+    ).not.toHaveAttribute("aria-disabled", "true");
 
     // Grid and Datasets are claimed by NO context, so they stay live in
     // every document — including ones with no spreadsheet in them — and
@@ -959,18 +963,15 @@ test.describe("plugin surface · paged.sheet", () => {
     await openWindowMenu();
     await expect(
       page.getByRole("menuitem", { name: "Workbook", exact: true }),
-      "inside the sheet context Window ▸ Workbook is live",
+      "inside the sheet context Plugins ▸ Sheet ▸ Workbook is live",
     ).not.toHaveAttribute("aria-disabled", "true");
 
     test.info().annotations.push({
       type: "surface-finding",
       description:
-        "DEFECT (discoverability inversion): the ONE panel that explains paged.sheet — Workbook, " +
-        "which also owns Sort and Find & Replace — is disabled in the Window menu until a sheet " +
-        "edit context is already active, i.e. until the user has already found the feature. The " +
-        "two panels that stay lit in every document, Grid and Datasets, carry titles that name " +
-        "no owner. panelBelongsHere is right about Workbook belonging to a context and wrong " +
-        "about what to do before that context can exist.",
+        "FIXED 2026-10-11: Workbook was disabled in the Window menu until a sheet edit context " +
+        "was already active. It now lives in Plugins ▸ Sheet beside Grid and Datasets (whose " +
+        "owner the submenu now names) and is offered at the document root.",
     });
   });
 

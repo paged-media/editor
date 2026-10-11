@@ -36,6 +36,7 @@
  */
 
 :root {
+  color-scheme: light;
   /* ── Paged semantic channels (light) ───────────────────────── */
   --paged-bg: 0 0% 100%;
   --paged-fg: 0 0% 9%;
@@ -116,6 +117,14 @@
   --status-draft: #a1a1aa; /* zinc   — draft / unplaced               */
   --status-error: #c1121f; /* red    — overset / missing font / lo-res */
   --status-info: #2c507d; /* blueprint blue — technical metadata     */
+  /* Aliases plugins already reference. Undefined, each fell back to a
+     hard-coded hex in every theme. They follow the theme through the
+     tokens they name. */
+  --status-ok: var(--status-approved);
+  --status-warn: var(--status-review);
+  --status-warning: var(--status-review);
+  --status-error-fg: var(--status-error);
+  --pg-surface-2: var(--pg-muted);
 
   /* ── canvas overlays (DTP cues) ────────────────────────────── */
   --overlay-selection: #e0408f; /* magenta — selected frame edges + handles */
@@ -158,6 +167,9 @@
 /* ── DARK — the default editor surface (deep zinc, lifted violet,
  *    near-black canvas surround so the pages pop). ─────────────── */
 .dark {
+  /* Native form controls (selects, number spinners, scrollbars) follow
+     the theme instead of drawing as light OS widgets. */
+  color-scheme: dark;
   --paged-bg: 240 6% 10%;
   --paged-fg: 0 0% 96%;
   --paged-border: 240 5% 20%;

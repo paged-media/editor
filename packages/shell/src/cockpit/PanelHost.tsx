@@ -55,9 +55,18 @@ export function PanelHost({ id }: { id: string }) {
   // catalog/panel-binding-surface.tsx). Scoping here rather than in the
   // dock covers every mount point at once — dock tab, the Properties
   // panel's embedded plugin surface, a test harness.
+  //
+  // The `data-panel-host` wrapper (`display: contents`, so layout is
+  // untouched) scopes the theme's baseline for native controls
+  // (globals.css): plugin panels draw raw <input>/<select>/<button>, and
+  // without it those rendered as light OS widgets on the dark theme, with
+  // disabled buttons indistinguishable from live ones.
+  const source = (contribution as { source?: string }).source;
   return (
-    <PanelBindingScope panelId={id}>
-      <Component paged={paged} api={{ id }} />
-    </PanelBindingScope>
+    <div data-panel-host={id} data-panel-source={source || "host"} style={{ display: "contents" }}>
+      <PanelBindingScope panelId={id}>
+        <Component paged={paged} api={{ id }} />
+      </PanelBindingScope>
+    </div>
   );
 }

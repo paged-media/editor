@@ -681,25 +681,28 @@ test.describe("plugin surface · paged.web", () => {
     });
   });
 
-  test("AUDIT — Window disables 'Web frame' until you are already inside a web frame", async ({
+  test("FIXED 2026-10-11 — Plugins ▸ Web offers 'Web frame' before you are inside one (it was disabled until you already were)", async ({
     page,
   }) => {
+    // A plugin's panels live in Plugins ▸ <plugin> (they left Window).
     const openWindowMenu = async () => {
+      await page.keyboard.press("Escape");
       await page
         .locator('nav[aria-label="Main menu"]')
-        .getByRole("button", { name: "Window" })
+        .getByRole("button", { name: "Plugins" })
         .click();
-      await expect(page.getByRole("menuitem", { name: "Layers", exact: true })).toHaveCount(1);
+      await page.locator('[data-menu-submenu="Web"]').hover();
+      await expect(page.getByRole("menuitem", { name: "Web frame", exact: true })).toHaveCount(1);
     };
 
     await openWindowMenu();
-    // ADR-024 `panelBelongsHere`: the webFrame context claims the source
-    // panel, the context is not active, so the item is offered dead —
-    // the same inversion paged.sheet's Workbook panel has.
+    // ADR-024 `panelBelongsHere`, revised: claimed by the webFrame
+    // context, but offered at the document root — the panel is how a
+    // user learns this content type exists.
     await expect(
       page.getByRole("menuitem", { name: "Web frame", exact: true }),
-      "Window ▸ Web frame is disabled outside the webFrame context",
-    ).toHaveAttribute("aria-disabled", "true");
+      "Plugins ▸ Web ▸ Web frame is live at the document root",
+    ).not.toHaveAttribute("aria-disabled", "true");
     await page.keyboard.press("Escape");
 
     // …yet the palette can open it from anywhere: `paged.panel.show.*`
@@ -736,16 +739,15 @@ test.describe("plugin surface · paged.web", () => {
     await openWindowMenu();
     await expect(
       page.getByRole("menuitem", { name: "Web frame", exact: true }),
-      "inside the webFrame context Window ▸ Web frame is live",
+      "inside the webFrame context Plugins ▸ Web ▸ Web frame is live",
     ).not.toHaveAttribute("aria-disabled", "true");
 
     test.info().annotations.push({
       type: "surface-finding",
       description:
-        "DEFECT (discoverability inversion): paged.web's single panel is disabled in the Window " +
-        "menu until a webFrame edit context is already active — i.e. until the user has already " +
-        "inserted a web frame and double-clicked it. The panel that would tell a user this " +
-        "content type exists is dark until they no longer need telling.",
+        "FIXED 2026-10-11: paged.web's panel was disabled in the Window menu until a webFrame " +
+        "edit context was already active. It now lives in Plugins ▸ Web and is offered at the " +
+        "document root; only another content type's context withholds it.",
     });
   });
 });

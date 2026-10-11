@@ -224,11 +224,13 @@ test.describe("Window menu — panel applicability", () => {
     expect(panelBelongsHere(stateIn("sheet"), "draw.stroke")).toBe(false);
   });
 
-  test("AC-WIN-4 — at the document root, no content-type panel is offered @level:edge", () => {
-    // Not standing in any content type, so neither content surface
-    // applies — but the unclaimed panels still do (AC-WIN-1).
-    expect(panelBelongsHere(stateIn(null), "draw.stroke")).toBe(false);
-    expect(panelBelongsHere(stateIn(null), "sheet.workbook")).toBe(false);
+  test("AC-WIN-4 — at the document root, every content-type panel is offered @level:edge", () => {
+    // Revised: these were withheld until their context was active, which
+    // hid each plugin's starting panel (the sheet's Workbook makes the
+    // workbook) until the user had already found the feature. Only being
+    // inside ANOTHER content type withholds them (AC-WIN-3).
+    expect(panelBelongsHere(stateIn(null), "draw.stroke")).toBe(true);
+    expect(panelBelongsHere(stateIn(null), "sheet.workbook")).toBe(true);
   });
 
   test("AC-WIN-5 — with no registry to ask, everything is offered @level:edge", () => {

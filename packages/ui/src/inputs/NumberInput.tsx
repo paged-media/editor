@@ -173,7 +173,7 @@ export function NumberInput(props: NumberInputProps) {
 
   return (
     <div
-      className={`inline-flex items-stretch overflow-hidden rounded-[6px] border border-input bg-background h-[28px] ${className}`}
+      className={`inline-flex min-w-0 max-w-full items-stretch overflow-hidden rounded-[6px] border border-input bg-background h-[28px] ${className}`}
       data-disabled={disabled || undefined}
       data-mixed={mixed ? "" : undefined}
     >
