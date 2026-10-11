@@ -33,7 +33,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import type { FontSummary, LinkSummary } from "@paged-media/client";
 
-import { describeAiError, runEditorAgent, undoBackTo, undoTop } from "../../ai/editor-ai";
+import { describeAiError, plainSummary, runEditorAgent, undoBackTo, undoTop } from "../../ai/editor-ai";
 import { PoweredByClaude } from "../../ai/powered-by-claude";
 import { useCollection, useDocumentStats } from "../../catalog/use-collection";
 import { useCanvasClient } from "../../state/canvas-client-context";
@@ -131,7 +131,7 @@ export function AIAssistant({ kind }: { kind: AssistantKind }) {
           return;
         }
         const note = result.outcome === "done" ? "" : " It stopped before finishing.";
-        setState({ phase: "done", summary: (result.summary || "Done.") + note, before, after, changed: after !== before });
+        setState({ phase: "done", summary: (plainSummary(result.summary) || "Done.") + note, before, after, changed: after !== before });
         setRequest("");
       } catch (err) {
         setState({ phase: "error", message: describeAiError(err) });

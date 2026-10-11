@@ -56,6 +56,11 @@ const { createGuardedLoader } = await import(
     resolvePath(here, "..", "apps", "canvas", "src", "plugin-load-guard.ts"),
   ).href
 );
+const { createBundleActivator } = await import(
+  pathToFileURL(
+    resolvePath(here, "..", "apps", "canvas", "src", "plugin-bundle-loader.ts"),
+  ).href
+);
 
 // ─────────────────────────────────────────────────────────────────────
 // The predicate
@@ -516,4 +521,221 @@ test("all eight loading cleanly produces eight successes and no problems", () =>
   assert.equal(loaded.length, 8);
   assert.equal(h.problems.length, 0);
   assert.equal(h.recorded.every((e) => e.data.ok === true), true);
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// Code-split bundles (ADR 222)
+// ─────────────────────────────────────────────────────────────────────
+//
+// The bundles are dynamic imports now, so the guard above runs after an
+// await. What must not change: activation ORDER (menus, palette and the
+// data-provider rendezvous were built on the static import order), a
+// StrictMode unmount mid-fetch must not leave a bundle activated with no one
+// to dispose it, and an on-demand bundle's placeholder must hand the file to
+// the real importer.
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+function miniImporterRegistry() {
+  const byId = new Map();
+  return {
+    register(c) {
+      if (byId.has(c.id)) throw new Error(`id "${c.id}" already registered`);
+      byId.set(c.id, c);
+      return { dispose: () => byId.delete(c.id) };
+    },
+    resolve(name) {
+      const ext = name.slice(name.lastIndexOf(".")).toLowerCase();
+      for (const c of byId.values()) if (c.extensions.includes(ext)) return c;
+      return null;
+    },
+    byId,
+  };
+}
+
+function activatorHarness(entries, { importers, failActivate = new Set() } = {}) {
+  const activated = [];
+  const disposed = [];
+  const problems = [];
+  const recorded = [];
+  const activator = createBundleActivator({
+    entries,
+    activate: (bundle) => {
+      if (failActivate.has(bundle.manifest.id)) return null;
+      activated.push(bundle.manifest.id);
+      bundle.onActivate?.();
+      return {
+        id: bundle.manifest.id,
+        active: true,
+        dispose: () => disposed.push(bundle.manifest.id),
+      };
+    },
+    record: (e) => recorded.push(e),
+    publishProblem: (bundleId, key, diagnostics) =>
+      problems.push({ bundleId, key, diagnostics }),
+    importers,
+    now: () => 0,
+  });
+  return { activator, activated, disposed, problems, recorded };
+}
+
+test("boot activates in the declared order whatever order the chunks arrive in", async () => {
+  const d = ["a", "b", "c"].map(() => deferred());
+  const entries = ["a", "b", "c"].map((id, i) => ({
+    id,
+    lane: "boot",
+    load: () => d[i].promise,
+  }));
+  const h = activatorHarness(entries);
+  const booted = h.activator.boot();
+  d[2].resolve({ manifest: { id: "c" } });
+  d[1].resolve({ manifest: { id: "b" } });
+  d[0].resolve({ manifest: { id: "a" } });
+  await booted;
+  assert.deepEqual(h.activated, ["a", "b", "c"]);
+  assert.deepEqual(h.activator.active(), ["a", "b", "c"]);
+});
+
+test("a chunk that fails to load is named, and the rest still activate", async () => {
+  const entries = [
+    { id: "a", lane: "boot", load: async () => ({ manifest: { id: "a" } }) },
+    { id: "b", lane: "boot", load: async () => { throw new TypeError("Failed to fetch /Users/alice/b.js"); } },
+    { id: "c", lane: "boot", load: async () => ({ manifest: { id: "c" } }) },
+  ];
+  const h = activatorHarness(entries);
+  await h.activator.boot();
+  assert.deepEqual(h.activated, ["a", "c"]);
+  assert.equal(h.problems.length, 1);
+  assert.equal(h.problems[0].bundleId, "b");
+  const failure = h.recorded.find((e) => e.data?.ok === false);
+  assert.equal(failure.data.plugin, "b");
+  assert.equal(JSON.stringify(h.recorded).includes("/Users/alice"), false, "no path in the journal");
+});
+
+test("a chunk whose manifest id disagrees with the table is refused", async () => {
+  const h = activatorHarness([
+    { id: "a", lane: "boot", load: async () => ({ manifest: { id: "not-a" } }) },
+  ]);
+  await h.activator.boot();
+  assert.deepEqual(h.activated, []);
+  assert.equal(h.problems[0].bundleId, "a");
+});
+
+test("disposing mid-fetch (StrictMode remount) activates nothing", async () => {
+  const d = deferred();
+  const h = activatorHarness([{ id: "a", lane: "boot", load: () => d.promise }]);
+  const booted = h.activator.boot();
+  h.activator.dispose();
+  d.resolve({ manifest: { id: "a" } });
+  await booted;
+  assert.deepEqual(h.activated, [], "an orphaned activation would never be disposed");
+});
+
+test("dispose tears down every activated bundle", async () => {
+  const h = activatorHarness([
+    { id: "a", lane: "boot", load: async () => ({ manifest: { id: "a" } }) },
+    { id: "b", lane: "boot", load: async () => ({ manifest: { id: "b" } }) },
+  ]);
+  await h.activator.boot();
+  h.activator.dispose();
+  assert.deepEqual(h.disposed.sort(), ["a", "b"]);
+  assert.deepEqual(h.activator.active(), []);
+});
+
+test("an on-demand bundle is not fetched at boot; its placeholder importer is registered", async () => {
+  let fetches = 0;
+  const importers = miniImporterRegistry();
+  const h = activatorHarness(
+    [
+      {
+        id: "pdf",
+        lane: "onDemand",
+        load: async () => {
+          fetches++;
+          return { manifest: { id: "pdf" } };
+        },
+        importers: [{ id: "pdf.importer", title: "PDF", extensions: [".pdf"], mimeTypes: ["application/pdf"] }],
+      },
+    ],
+    { importers },
+  );
+  await h.activator.boot();
+  assert.equal(fetches, 0);
+  assert.deepEqual(h.activated, []);
+  assert.equal(importers.resolve("x.pdf")?.id, "pdf.importer", "the placeholder claims the file type");
+});
+
+test("the first import activates the bundle and hands the file to the real importer", async () => {
+  const importers = miniImporterRegistry();
+  const received = [];
+  const bundle = {
+    manifest: { id: "pdf" },
+    // What the real bundle does in activate(): register the importer under
+    // the SAME id the placeholder held.
+    onActivate: () =>
+      importers.register({
+        id: "pdf.importer",
+        title: "PDF",
+        extensions: [".pdf"],
+        import: (file) => void received.push(file.name),
+      }),
+  };
+  const h = activatorHarness(
+    [
+      {
+        id: "pdf",
+        lane: "onDemand",
+        load: async () => bundle,
+        importers: [{ id: "pdf.importer", title: "PDF", extensions: [".pdf"] }],
+      },
+    ],
+    { importers },
+  );
+  const placeholder = importers.resolve("brochure.pdf");
+  await placeholder.import({ name: "brochure.pdf", bytes: new Uint8Array(), mimeType: "application/pdf" });
+  assert.deepEqual(h.activated, ["pdf"]);
+  assert.deepEqual(received, ["brochure.pdf"]);
+  assert.notEqual(importers.resolve("brochure.pdf"), placeholder, "the real importer replaced it");
+  // A second import goes straight to the real importer.
+  await importers.resolve("again.pdf").import({ name: "again.pdf", bytes: new Uint8Array(), mimeType: "" });
+  assert.deepEqual(received, ["brochure.pdf", "again.pdf"]);
+  assert.deepEqual(h.activated, ["pdf"], "activated once");
+});
+
+test("a failed on-demand load keeps the placeholder and retries next time", async () => {
+  const importers = miniImporterRegistry();
+  let attempt = 0;
+  const h = activatorHarness(
+    [
+      {
+        id: "pdf",
+        lane: "onDemand",
+        load: async () => {
+          attempt++;
+          if (attempt === 1) throw new TypeError("Failed to fetch");
+          return {
+            manifest: { id: "pdf" },
+            onActivate: () =>
+              importers.register({ id: "pdf.importer", title: "PDF", extensions: [".pdf"], import: () => {} }),
+          };
+        },
+        importers: [{ id: "pdf.importer", title: "PDF", extensions: [".pdf"] }],
+      },
+    ],
+    { importers },
+  );
+  const file = { name: "a.pdf", bytes: new Uint8Array(), mimeType: "" };
+  await assert.rejects(importers.resolve("a.pdf").import(file), /could not be loaded/);
+  assert.ok(importers.resolve("a.pdf"), "the file type is still claimed after a failure");
+  await importers.resolve("a.pdf").import(file);
+  assert.equal(attempt, 2, "the chunk was fetched again");
+  assert.deepEqual(h.activated, ["pdf"]);
 });

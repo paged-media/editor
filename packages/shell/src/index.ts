@@ -558,6 +558,7 @@ export {
   AI_ASK_COMMAND,
   AI_PROXY_PATH,
   onAiAsk,
+  plainSummary,
   requestAiAsk,
   canvasScriptEngine,
   completeText,

@@ -69,8 +69,10 @@ registers it and runs in the `checks` job. Where a bundle's manifest cannot be r
 the host ids only and prints which profiles went unchecked; the script states that this is
 the case for `@paged-media/doc` in that job (`scripts/solo-profiles-guard.mjs:63-79`).
 
-Solo saves no download: all eight bundle modules are imported statically and evaluated, and
-only the `activate()` of the other seven is skipped. The mode id `design` is reused because
+Solo saved no download when this was written: all eight bundle modules were imported
+statically and evaluated, and only the `activate()` of the other seven was skipped. Since
+[ADR 222](222-code-split-plugin-bundles.md) the bundles are separate chunks, and solo fetches
+only its own. The mode id `design` is reused because
 `WorkflowMode` is a closed union; the id is also a storage key, which is why the storage
 scope exists (`packages/shell/src/state/chrome-storage-scope.ts:16-40`).
 `apps/canvas/tests/journey/focused/solo-mode.journey.spec.ts` starts every profile and

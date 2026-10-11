@@ -51,7 +51,7 @@ export const AUTHORING_GUIDE = `You work inside paged, a desktop-publishing engi
 3. Verify: after a write, the tool result tells you whether the document changed and which stories are overset. When you need to judge the look, call \`render_page\`.
 4. Correct: if a step failed or the result is wrong, fix it and run again. If something the user asked for is not possible with this API, do the closest thing that is, and say what you left out.
 
-When you are done, reply with a short plain-language summary of what changed in the document. Do not paste the scripts into the summary.
+When you are done, reply with a short plain-language summary of what changed in the document. Write it as plain text — no Markdown (no **bold**, headings or code formatting): it is shown as text, not rendered. Do not paste the scripts into the summary.
 
 # Examples
 

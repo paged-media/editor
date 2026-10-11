@@ -145,6 +145,19 @@ export async function openCanvas(
     null,
     { timeout: 30_000 },
   );
+  // ADR 222 — plugin bundles are dynamic imports activated after the shell
+  // mounts. Specs probe their contributions (importers, panels, commands)
+  // straight after boot, so boot is not over until the boot lane settled.
+  // Absent affordance (a production build) = nothing to wait for.
+  await page.waitForFunction(
+    () => {
+      const b = (globalThis as unknown as { __pluginBundles?: { settled: boolean } })
+        .__pluginBundles;
+      return !b || b.settled;
+    },
+    null,
+    { timeout: 30_000 },
+  );
   if ((process.env.BACKEND ?? "").toLowerCase() === "gpu") {
     // The Vello readback path lives on the worker's SurfacePresenter,
     // which only exists after `attachCanvas`. The fidelity driver

@@ -35,7 +35,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { describeAiError, onAiAsk, PoweredByClaude, runEditorAgent, useCanvasClient } from "@paged-media/shell";
+import { describeAiError, onAiAsk, plainSummary, PoweredByClaude, runEditorAgent, useCanvasClient } from "@paged-media/shell";
 
 interface LogEntry {
   source: string;
@@ -93,7 +93,7 @@ export function ScriptEditorPanel(_: PanelProps) {
       if (result.outcome === "refused") append({ source: "", output: [], error: "Claude declined this request." });
       else {
         const stopped = result.outcome === "turnLimit" ? " (stopped at the turn limit)" : result.outcome === "truncated" ? " (the reply was cut off)" : "";
-        append({ source: "", output: [], error: null, note: `Claude: ${result.summary || "Done."}${stopped}` });
+        append({ source: "", output: [], error: null, note: `Claude: ${plainSummary(result.summary) || "Done."}${stopped}` });
       }
       setAsk("");
     } catch (err) {
