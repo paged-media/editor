@@ -27,3 +27,8 @@ ICC profiles: no CMYK working-space profiles are currently bundled
 eciCMYK are the intended candidates; they are freely
 redistributable per ECI's terms once obtained from eci.org). Users
 can register their own profiles via Document Colour Settings.
+
+3. Inter (the editor's default font for new documents)
+   apps/canvas/public/fonts/Inter.ttf
+   Copyright (c) The Inter Project Authors
+   Licence: SIL Open Font License 1.1 — apps/canvas/public/fonts/OFL-inter.txt

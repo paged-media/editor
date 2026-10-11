@@ -161,12 +161,23 @@ export async function fetchDefaultFont(): Promise<Uint8Array | undefined> {
   try {
     const fontResp = await fetch("/fonts/Inter.ttf");
     if (fontResp.ok) {
-      return new Uint8Array(await fontResp.arrayBuffer());
+      const bytes = new Uint8Array(await fontResp.arrayBuffer());
+      // A static host answers a missing file with its SPA index.html and a
+      // 200 — the playground did, and every new document laid its text out
+      // with "HTML" as the font: nothing drew. Accept only sfnt bytes.
+      if (isFontFile(bytes)) return bytes;
     }
   } catch {
     // fall through to undefined — the caller warns.
   }
   return undefined;
+}
+
+/** TrueType / OpenType / collection magic: 0x00010000, "OTTO", "true", "ttcf". */
+function isFontFile(bytes: Uint8Array): boolean {
+  if (bytes.length < 12) return false;
+  const tag = String.fromCharCode(bytes[0]!, bytes[1]!, bytes[2]!, bytes[3]!);
+  return (bytes[0] === 0 && bytes[1] === 1 && bytes[2] === 0 && bytes[3] === 0) || tag === "OTTO" || tag === "true" || tag === "ttcf";
 }
 
 /** U5/A7 — a missing default font is the "blank text" precondition;
