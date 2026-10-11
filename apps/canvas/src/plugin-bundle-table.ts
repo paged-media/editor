@@ -86,7 +86,7 @@ export const PLUGIN_BUNDLES: readonly BundleEntry<PluginBundle>[] = [
       },
     ],
   },
-  // paged.doc — Word/DOCX: importer, Place Word document…, the outline panel,
+  // paged.doc — Word/DOCX: importer, Insert Word document…, the outline panel,
   // the wordDocument edit context and part types. Boot: a document carrying
   // its parts must find it active.
   {
