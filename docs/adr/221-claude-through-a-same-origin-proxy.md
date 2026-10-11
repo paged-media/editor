@@ -67,11 +67,12 @@ in its object registry, and a script reaches it through the protocol-71 host bri
 (`JSON.parse(await paged.invoke("paged.ai.complete", { prompt }))`). No engine change was
 needed.
 
-**Attribution:** every surface carries a small "Powered by Claude" mark (`PoweredByClaude`). It
-is drawn from the published Claude logo, not the house icon registries. The house rule that
-icons are clean-room line glyphs, never third-party sets, does not apply to another company's
-mark used to attribute its service. The spark keeps its brand colour; the wordmark takes the
-text colour so it reads on the dark default theme. The source is listed in `NOTICE`.
+**Attribution:** every surface carries a small plain-text "Powered by Claude" (`PoweredByClaude`).
+It is text, not Anthropic's logo: the Trademark Guidelines allow the logos only with Anthropic's
+prior approval and forbid any alteration, colour included, while a plain-text "Powered by Claude"
+is a form Anthropic lists as allowed. A first version drew the logo with its wordmark recoloured
+for the dark theme; it was replaced the same day. The official mark can replace the text once
+Anthropic approves its use, as supplied and unaltered.
 
 **Turnstile was considered and deferred.** A bot challenge in front of the route would add
 friction for scripted abuse, but its widget is a cross-origin iframe inside a cross-origin-isolated
