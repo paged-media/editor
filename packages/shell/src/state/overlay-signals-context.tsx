@@ -152,6 +152,13 @@ export type ToolPreviewShape =
  */
 export type ToolPreviewSlot = ToolPreviewShape | readonly ToolPreviewShape[];
 
+/** W-20 — one retained plugin overlay layer: its host-wide key
+ *  (`<plugin id>/<layer id>`) and the shapes it holds now. */
+export interface OverlayLayerEntry {
+  key: string;
+  shapes: readonly ToolPreviewShape[];
+}
+
 interface OverlaySignalsValue {
   /** Last click hit-result. Cleared when the user clicks empty space. */
   hitSelection: SelectionState | null;
@@ -175,6 +182,17 @@ interface OverlaySignalsValue {
    *  Shape Builder could highlight one face but not shade the collected
    *  set). Replaces whatever the slot holds; `null` or `[]` clears it. */
   setToolPreviews: (value: readonly ToolPreviewShape[] | null) => void;
+  /** W-20 — the retained plugin overlay LAYERS (`host.overlay.layer`),
+   *  in stack order (bottom-most first). Separate from the tool-preview
+   *  slot: a tool's preview never erases a layer, and a layer never
+   *  erases the preview. */
+  overlayLayers: readonly OverlayLayerEntry[];
+  /** Set a layer's shapes. The FIRST call for a key appends it to the
+   *  stack; later calls replace its shapes in place (`[]` empties it and
+   *  keeps its place). */
+  setOverlayLayer: (key: string, shapes: readonly ToolPreviewShape[]) => void;
+  /** Drop a layer and its place in the stack. */
+  removeOverlayLayer: (key: string) => void;
 }
 
 const Context = createContext<OverlaySignalsValue | null>(null);
@@ -214,6 +232,30 @@ export function OverlaySignalsProvider({ children }: PropsWithChildren) {
     [],
   );
 
+  const [overlayLayers, setOverlayLayers] = useState<
+    readonly OverlayLayerEntry[]
+  >([]);
+  const setOverlayLayer = useCallback(
+    (key: string, shapes: readonly ToolPreviewShape[]) =>
+      setOverlayLayers((prev) => {
+        const i = prev.findIndex((l) => l.key === key);
+        if (i < 0) return [...prev, { key, shapes }];
+        const next = prev.slice();
+        next[i] = { key, shapes };
+        return next;
+      }),
+    [],
+  );
+  const removeOverlayLayer = useCallback(
+    (key: string) =>
+      setOverlayLayers((prev) =>
+        prev.some((l) => l.key === key)
+          ? prev.filter((l) => l.key !== key)
+          : prev,
+      ),
+    [],
+  );
+
   const value = useMemo<OverlaySignalsValue>(
     () => ({
       hitSelection,
@@ -225,6 +267,9 @@ export function OverlaySignalsProvider({ children }: PropsWithChildren) {
       toolPreview,
       setToolPreview,
       setToolPreviews,
+      overlayLayers,
+      setOverlayLayer,
+      removeOverlayLayer,
     }),
     [
       hitSelection,
@@ -233,6 +278,9 @@ export function OverlaySignalsProvider({ children }: PropsWithChildren) {
       toolPreview,
       setToolPreview,
       setToolPreviews,
+      overlayLayers,
+      setOverlayLayer,
+      removeOverlayLayer,
     ],
   );
 

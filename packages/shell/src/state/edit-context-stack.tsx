@@ -60,7 +60,7 @@ import {
 } from "react";
 
 // eslint-disable-next-line import/no-relative-parent-imports
-import type { ElementId } from "@paged-media/client";
+import type { ElementId, PageId } from "@paged-media/client";
 
 import type {
   EditContextContribution,
@@ -96,6 +96,14 @@ export interface EditContextFrame {
   label: string;
 }
 
+/** W-19 — where a POINTER entry happened, handed to the context's
+ *  `onEnter` (see `EnteredEditContext`). */
+export interface EnterPoint {
+  pageId: PageId;
+  pagePoint: [number, number];
+  contentPoint?: [number, number];
+}
+
 export interface EditContextStackValue {
   /** The whole stack, root→top. */
   stack: EditContextFrame[];
@@ -110,7 +118,11 @@ export interface EditContextStackValue {
   /** Push a context onto the stack (double-click / programmatic enter).
    *  Re-entering the same type+element is a no-op. Returns the pushed
    *  frame, or the existing one when it was a no-op. */
-  enter(contribution: EditContextContribution, on: ElementId): EditContextFrame;
+  enter(
+    contribution: EditContextContribution,
+    on: ElementId,
+    at?: EnterPoint,
+  ): EditContextFrame;
   /** Pop the TOP frame (plain exit — runs `onExit` only). Returns the
    *  popped frame, or null when the stack was empty. */
   pop(): EditContextFrame | null;
@@ -152,7 +164,11 @@ export function EditContextStackProvider({ children }: PropsWithChildren) {
   );
 
   const enter = useCallback(
-    (contribution: EditContextContribution, on: ElementId): EditContextFrame => {
+    (
+      contribution: EditContextContribution,
+      on: ElementId,
+      at?: EnterPoint,
+    ): EditContextFrame => {
       const frame: EditContextFrame = {
         type: contribution.type,
         scopeRoot: on,
@@ -179,7 +195,17 @@ export function EditContextStackProvider({ children }: PropsWithChildren) {
       // primes panel state / publishes bindings; it must not see a stale
       // stack, but it also must not block the state update).
       if (result === frame) {
-        const entered: EnteredEditContext = { type: frame.type, id: on };
+        const entered: EnteredEditContext = {
+          type: frame.type,
+          id: on,
+          ...(at
+            ? {
+                pageId: at.pageId,
+                pagePoint: at.pagePoint,
+                ...(at.contentPoint ? { contentPoint: at.contentPoint } : {}),
+              }
+            : {}),
+        };
         try {
           contribution.onEnter?.(entered);
         } catch {

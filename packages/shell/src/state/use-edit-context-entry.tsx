@@ -35,11 +35,12 @@
 import { useCallback } from "react";
 
 // eslint-disable-next-line import/no-relative-parent-imports
-import type { ElementId } from "@paged-media/client";
+import type { ElementId, PageId } from "@paged-media/client";
 
 import { useCanvasClient } from "./canvas-client-context";
 import { useSelection } from "./selection-context";
-import { useEditContextStack } from "./edit-context-stack";
+import { pageToContentPoint } from "./content-point";
+import { useEditContextStack, type EnterPoint } from "./edit-context-stack";
 import { useRegistries } from "./registries-context";
 import {
   resolveDoubleClick,
@@ -52,6 +53,12 @@ import {
 export interface DoubleClickHit {
   element: ElementId | null;
   groupChain: readonly string[];
+  /** W-19 — the page the pointer was on and the pointer in page-local pt
+   *  (the `hitTest` point). Both or neither; with them the entered
+   *  context's `onEnter` receives the point, mapped into the frame's
+   *  content space as well. */
+  pageId?: PageId;
+  pagePoint?: [number, number];
 }
 
 export type MetaEnvelope = {
@@ -86,6 +93,11 @@ export function readEnvelope(
     }
   }
   return null;
+}
+
+function idKey(id: ElementId): string {
+  const anyId = id as unknown as { kind?: string; id?: unknown };
+  return `${anyId.kind ?? ""}:${String(anyId.id)}`;
 }
 
 export function useEditContextEntry() {
@@ -171,11 +183,26 @@ export function useEditContextEntry() {
       if (!resolution) return false;
 
       // Select the element (the context's write-scope root) and enter.
+      let at: EnterPoint | undefined =
+        hit.pageId && hit.pagePoint
+          ? { pageId: hit.pageId, pagePoint: hit.pagePoint }
+          : undefined;
       try {
         const ids = await client.setElementSelection([element], "replace");
         setElementSelection(ids);
         const geom = await client.elementGeometry(ids);
         setElementGeometry(geom);
+        // W-19 — the same frame geometry the K-1 content pointers map
+        // through, so the entering point and the first pointer after it
+        // share one content origin.
+        if (at) {
+          const key = idKey(element);
+          const item = geom.find(
+            (g) => g.pageId === at!.pageId && idKey(g.id) === key,
+          );
+          const content = item ? pageToContentPoint(item, at.pagePoint) : null;
+          if (content) at = { ...at, contentPoint: content };
+        }
       } catch {
         // Selection failed — still enter (the context is the point).
       }
@@ -184,7 +211,7 @@ export function useEditContextEntry() {
       // the live ones.
       const real = editContexts.get(resolution.contextType);
       if (!real) return false;
-      enter(real, element);
+      enter(real, element, at);
       return true;
     },
     [

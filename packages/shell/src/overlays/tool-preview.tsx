@@ -79,8 +79,9 @@ function ToolPreviewRender(props: OverlayProps) {
 
 /** One preview shape → its SVG node (or null when its page is off
  *  screen). Split out of the component so the single- and multi-shape
- *  paths share one renderer — the vocabulary must not fork. */
-function renderPreviewShape(
+ *  paths — and the retained plugin layers (W-20) — share one renderer:
+ *  the vocabulary must not fork. */
+export function renderPreviewShape(
   p: ToolPreviewShape,
   props: OverlayProps,
 ): ReactNode {

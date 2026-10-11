@@ -26,6 +26,7 @@ import {
   hitMarkerContribution,
   marqueeContribution,
   toolPreviewContribution,
+  pluginOverlayLayersContribution,
   guideOverlayContribution,
   pageDecorationsContribution,
   pathEditContribution,
@@ -93,6 +94,7 @@ import {
   setObjectModelEditor,
 } from "./object-model";
 import { ALIGN_ARGS, ALIGN_COMMAND, runAlign, type AlignKind } from "./align-plan";
+import { cameraForPage, pagesBackend, publishActivePage, setPageGoTo } from "./plugin-pages";
 import { resolveSoloProfile } from "./solo/profiles";
 import { soloMode } from "./solo/mode";
 import { drawBundle } from "@paged-media/draw";
@@ -326,6 +328,8 @@ const BUILT_IN_OVERLAYS: OverlayContribution[] = [
   contentGrabberContribution,
   pathEditContribution,
   marqueeContribution,
+  // W-20 — plugins' retained overlay layers, just below the tool preview.
+  pluginOverlayLayersContribution,
   toolPreviewContribution,
   snapLinesContribution,
   caretContribution,
@@ -1322,7 +1326,9 @@ function PluginBundles() {
     // the provider reads the engine's font registry over the
     // requestFontFaceBytes wire pair (registered faces; unregistered
     // document families still answer null and the preview keeps its
-    // honest substitution badge).
+    // honest substitution badge). ONE source for every bundle: since
+    // protocol 69 it also registers scene-layer faces (W-15), and the
+    // SDK keys its list of live faces by this object.
     const assetSource = createEditorAssetSource(
       () => pagedRef.current?.client ?? null,
     );
@@ -1520,8 +1526,16 @@ function PluginBundles() {
       // D-26 — rides inert until the pinned plugin-sdk knows the option
       // (0.2.41); it then flips supports("documents.open@1") true.
       documents,
+      // v70 — page navigation and the active page (`viewport.pages@1`).
+      pages: pagesBackend,
       diagnosticsSink: problemsSink,
       schemaPanelRenderer: HostSchemaPanelRenderer as SchemaPanelRendererType,
+      // W-19 — the shell's pointer entries (double-click, the Type-tool
+      // click on owned content) hand the entering point to `onEnter`
+      // (use-edit-context-entry.tsx), so this host vouches for
+      // supports("editContext.enterPoint@1"). Inert under an SDK that
+      // predates the option.
+      editContextEnterPoint: true,
     };
     // ADR 025 §4a — identical doors for every bundle, but a PER-PLUGIN
     // console so `host.log` is attributed at the source rather than parsed
@@ -1559,6 +1573,17 @@ function PluginBundles() {
       // v66 — the will-save registry, so a spec can register a listener
       // as a bundle would and see Save wait for it.
       (globalThis as unknown as { __willSave?: unknown }).__willSave = willSave;
+      // Load a throwaway bundle through the SAME loader and host options
+      // every real bundle gets, so a journey can exercise a plugin door
+      // end to end (SDK host → shell) without a published plugin that
+      // happens to use it. Returns the disposer.
+      (globalThis as unknown as { __loadTestBundle?: unknown }).__loadTestBundle =
+        (bundle: Parameters<typeof loadBundle>[1]) =>
+          loadBundle(
+            () => pagedRef.current,
+            bundle,
+            hostOptionsFor(bundle.manifest.id),
+          );
     }
     // Solo loads ONE bundle. Filtering here (rather than after
     // registration) means the other seven never activate at all, so
@@ -1605,6 +1630,8 @@ function PluginBundles() {
       detachDocuments();
       delete (globalThis as unknown as { __shellDoors?: unknown })
         .__shellDoors;
+      delete (globalThis as unknown as { __loadTestBundle?: unknown })
+        .__loadTestBundle;
     };
     // Mount-once by design; the ref keeps the handle live.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1757,7 +1784,24 @@ function CanvasAppIntegration() {
   useEffect(() => {
     const target = pageTargetFor({ handle, camera, viewportSize });
     client.setActivePage(target?.pageId ?? null);
+    // v70 — the same page, for `host.viewport.activePage` and its event.
+    publishActivePage(target?.pageId ?? null);
   }, [client, handle, camera, viewportSize]);
+
+  // v70 — `host.viewport.goToPage`: the page by id, fitted whole or by
+  // width, with the navigator's animation.
+  useEffect(() => {
+    setPageGoTo((pageId, fit) => {
+      const index = handle?.pageIds.indexOf(pageId) ?? -1;
+      if (!handle || index < 0) return false;
+      const [vw, vh] = viewportSize;
+      const cam = cameraForPage(handle.pageSizesPt, index, fit, vw, vh);
+      if (!cam) return false;
+      animateCamera(cam);
+      return true;
+    });
+    return () => setPageGoTo(null);
+  }, [animateCamera, handle, viewportSize]);
 
   // Cockpit — the thumbnail filmstrip / document map navigate by
   // page indices; the camera-fit math (page layout convention) is

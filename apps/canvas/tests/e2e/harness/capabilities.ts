@@ -101,6 +101,13 @@
 // probes and classify `supported` on canvas-wasm 0.66.0. (v66's
 // `deletePagedPart` is a worker message beside write/read/listPagedParts,
 // not a Mutation op, so it is correctly absent here.)
+//
+// 2026-10-06: the pin moved to canvas-wasm 0.70.0 (protocol 70).
+// AC-E2E-CAPS-COVER named seven new Mutation ops — movePage,
+// setPageMetadata, setDocumentMetadata, createMaster, deleteMaster,
+// renameMaster, onMaster. All got real-args probes (shapes from the .d.ts
+// and core's master_crud / on_master / page_metadata tests) and classify
+// `supported`; none has an editor UI yet, which each note says.
 
 export type CapabilityStatus = "supported" | "unsupported";
 
@@ -260,6 +267,19 @@ export const CAPABILITIES: Capability[] = [
   { op: "duplicateElements", status: "supported", note: "proto 65; a whole clone of each element directly above its source, moved by `offset`; probed on a scratch frame" },
   // whole-table removal (v66, core f3bfefe + de297f5 — the sheet campaign)
   { op: "deleteTable", status: "supported", note: "proto 66; {storyId, tableId}; the removal is captured whole so one undo restores every cell; probed on a table the probe mints with insertTable" },
+  // the presentation batch (v70, core f6a8c56 — ADR 129/130): page order,
+  // page/document plugin labels, master CRUD + master item edits. All seven
+  // are WIRE-ONLY in the editor today: no panel, menu or gesture issues them
+  // (the Pages panel has no drag-reorder, there is no masters editor).
+  // Domain proof lives in core (master_crud.rs, on_master.rs,
+  // page_metadata.rs); here they are probed on the geometry fixture.
+  { op: "movePage", status: "supported", note: "proto 70; moves a page's single-page spread after `after` (null = to the front); wire-only, no editor UI" },
+  { op: "setPageMetadata", status: "supported", note: "proto 70; a page's plugin label, read back on the pages collection's pluginMetadata; travels with movePage/duplicatePage; plugin-sdk gates the key namespace; no editor UI" },
+  { op: "setDocumentMetadata", status: "supported", note: "proto 70; the document-scoped plugin label — reached via the plugin host door host.document.setDocumentMetadata (journey plugin-doors-69), no editor UI of its own" },
+  { op: "createMaster", status: "supported", note: "proto 70; a one-page master of widthPt×heightPt, or a fresh-id copy of duplicateOf; master id is the bare MasterSpread self id; wire-only, no editor UI" },
+  { op: "deleteMaster", status: "supported", note: "proto 70; refused while any page applies the master; undo restores it exactly; probed on a scratch master; wire-only, no editor UI" },
+  { op: "renameMaster", status: "supported", note: "proto 70; sets the master's Name (the masterPages collection's label); probed on a scratch master; wire-only, no editor UI" },
+  { op: "onMaster", status: "supported", note: "proto 70; wraps a page-item/style/property mutation to apply to a master's spread (page/spread-list ops are refused inside); probed as an insertGuide on a scratch master; wire-only, no editor UI" },
 ];
 
 export function expectedStatus(op: string): Capability | undefined {
