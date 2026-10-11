@@ -52,7 +52,7 @@ const PARENT = `<!doctype html><meta charset="utf-8"><title>parent</title>
   });
 </script>`;
 
-test.describe("site mode — the editor as paged.media's shell", () => {
+test.describe("site mode — the editor as paged.media's shell (panel paged.site)", () => {
   test("opens the page it is handed, docks the Site panel, and asks the parent to navigate", async ({ page }) => {
     await page.route("**/__site-parent.html", (route) =>
       route.fulfill({
