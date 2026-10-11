@@ -235,7 +235,7 @@ test.describe("W2.7 — Stories field inspector", () => {
     for (const seam of ["story-seam-words", "story-seam-preview"]) {
       await expect(
         inspector.locator(`[data-story-seam="${seam}"]`),
-      ).toContainText("awaits wire read");
+      ).toContainText("not available yet");
     }
     await expect(
       inspector.locator('[data-story-seam="story-seam-frame-chain"]'),

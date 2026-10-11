@@ -444,7 +444,7 @@ function ListDefinitions() {
         className="mt-[6px] text-[10.5px] italic opacity-70"
         style={{ color: "var(--pg-muted-fg)" }}
       >
-        Applied list per paragraph is write-only on the wire — no read-back.
+        The list applied to each paragraph is not shown yet: the editor can set it but cannot read it back.
       </div>
     </div>
   );

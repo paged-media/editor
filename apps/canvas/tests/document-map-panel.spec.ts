@@ -178,7 +178,7 @@ test.describe("W2.7 — Document Map per-page chips", () => {
     await expect(seam).toContainText("doc-level");
     await expect(seam).toHaveAttribute(
       "title",
-      /can't be attributed to a page/,
+      /cannot be traced to a page yet/,
     );
   });
 
