@@ -1316,9 +1316,9 @@ test.describe("plugin surface · host-hardcoded chrome", () => {
     // "alone" stopped being the interesting fact the moment the plugin
     // could speak for itself.
     const hostRows = [
-      "Data/Connect source…",
-      "Data/Field mapping…",
-      "Data/Generate pages…",
+      "Data/Data sources…",
+      "Data/Bindings…",
+      "Data/Dataset preview…",
     ];
     for (const row of hostRows) {
       expect(dataMenu.map((m) => m.path), `${row} survives`).toContain(row);
@@ -1344,7 +1344,9 @@ test.describe("plugin surface · host-hardcoded chrome", () => {
       expect(dataMenu.map((m) => m.command)).toContain(cmd);
     }
 
-    // Through the real MenuBar: three items, all greyed, all badged.
+    // Through the real MenuBar. Data is a context menu now (it shows while
+    // a binding is selected or entered); Data layout keeps it on the bar.
+    await page.evaluate(() => (globalThis as unknown as CanvasProbe).__canvas.setMode("data"));
     await page
       .locator('nav[aria-label="Main menu"]')
       .getByRole("button", { name: "Data" })
@@ -1358,8 +1360,8 @@ test.describe("plugin surface · host-hardcoded chrome", () => {
     await page.keyboard.press("Escape");
 
     // ── 2. THE LIVE PILLS THAT DUPLICATE THEM. Data mode's toolbar
-    //    carries "Connect source" / "Field mapping" / "Generate" — the
-    //    same three labels — and each one RAISES a live paged.data panel.
+    //    carries "Data sources" / "Bindings" / "Dataset preview" — the
+    //    panels' own names — and each one RAISES a live paged.data panel.
     //    So the verbs exist; only the menu is dead.
     await page.evaluate(() => (globalThis as unknown as CanvasProbe).__canvas.setMode("data"));
     for (const [action, panel] of [

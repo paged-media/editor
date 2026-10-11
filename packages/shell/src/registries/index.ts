@@ -73,6 +73,8 @@ export {
   type ToolId,
   type ToolGroupId,
   type ToolSectionId,
+  type ToolClusterId,
+  BUILT_IN_TOOL_CLUSTERS,
   type ToolStatus,
   type ToolRegistry,
   type ToolRegistryEvent,

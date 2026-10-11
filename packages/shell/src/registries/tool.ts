@@ -55,6 +55,29 @@ export type ToolGroupId = string;
 export type ToolSectionId = "selection" | "drawType" | "transform" | "modNav";
 
 /**
+ * A named run of slots on the two-column rail — what a tool is FOR
+ * (select, draw & type, frames & shapes, transform, colour, view), finer
+ * than the four sections. The built-in ids are {@link BUILT_IN_TOOL_CLUSTERS};
+ * a bundle may name its own (it is labelled from the id). Optional: an
+ * undeclared tool joins its flyout group's cluster, then the cluster of
+ * the edit context whose `toolIds` claim it, then its section's.
+ */
+export type ToolClusterId = string;
+
+/** The built-in clusters in rail order, with their labels. */
+export const BUILT_IN_TOOL_CLUSTERS: ReadonlyArray<{
+  id: ToolClusterId;
+  label: string;
+}> = [
+  { id: "select", label: "Select" },
+  { id: "draw", label: "Draw & type" },
+  { id: "shapes", label: "Frames & shapes" },
+  { id: "transform", label: "Transform" },
+  { id: "colour", label: "Colour" },
+  { id: "view", label: "View" },
+];
+
+/**
  * Honest-stub marker (design-system rule: "new product surfaces
  * without engine support ship as VISIBLE stubs, never
  * fake-interactive").
@@ -91,6 +114,11 @@ export interface ToolContribution {
   group: ToolGroupId;
   /** Which A–D section divider the slot sits under. */
   section: ToolSectionId;
+  /** The rail cluster the slot sits in — see {@link ToolClusterId}. */
+  cluster?: ToolClusterId;
+  /** One sentence for the rail tooltip: what the tool does, in the
+   *  user's terms. The title names it; this says what a drag does. */
+  description?: string;
   /** Ordering within the group's flyout (and of slots within a section). */
   order?: number;
   /** B-14 (2026-06-06) — SLOT position hint within the section: the

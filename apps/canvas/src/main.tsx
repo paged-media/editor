@@ -437,6 +437,10 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultDock: "left",
     defaultGroup: "cockpit",
     icon: "ui-database",
+    // No longer OFFERED in Window: "not connected" / "coming soon" beside
+    // the live Data sources panel read as a second, broken data surface.
+    // Still registered and openable (specs, the palette).
+    devOnly: true,
   },
   {
     id: "paged.data-grid",
@@ -445,6 +449,8 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultDock: "center",
     defaultGroup: "cockpit",
     icon: "ui-bolt",
+    // Same: a ComingSoon card that overlapped paged.data's live panels.
+    devOnly: true,
   },
   {
     id: "paged.story-inspector",

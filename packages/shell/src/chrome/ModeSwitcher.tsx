@@ -19,14 +19,14 @@
 
 // Design system (publishing cockpit) — the 48px bottom mode bar.
 // Six workflow modes, one product: the switcher is the cockpit's
-// primary navigation. Left shows the save state (real
-// `documentMeta.dirty`); the centre lists the registered modes;
-// the right side is a seam for the zoom/progress cluster.
+// primary navigation. The centre lists the registered modes; the right
+// side carries zoom (dropdown + slider). The save state moved to the
+// header, beside the document name.
 
 import { useState, type ReactNode } from "react";
 
 import { Icon } from "../icons";
-import { useDocumentMeta } from "../catalog/use-collection";
+import { ZoomControl } from "./ZoomControl";
 import { useCamera } from "../state/camera-context";
 import { useRegistries } from "../state/registries-context";
 import {
@@ -41,35 +41,14 @@ export interface ModeSwitcherProps {
 export function ModeSwitcher({ right }: ModeSwitcherProps) {
   const { mode, setMode } = useWorkflowMode();
   const { modes } = useRegistries();
-  const meta = useDocumentMeta();
   const list = modes.list();
   if (list.length === 0) return null;
 
   return (
     <div data-mode-switcher style={barStyle}>
       <div style={sideStyle}>
-        {meta ? (
-          <span
-            className="pg-ui-xs"
-            style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
-            data-save-state={meta.dirty ? "dirty" : "saved"}
-          >
-            <span
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: "50%",
-                background: meta.dirty
-                  ? "var(--status-review)"
-                  : "var(--status-approved)",
-              }}
-            />
-            {/* U14 — honest wording: the dirty flag means edits-since-
-                load; nothing persists to disk, so neither state may
-                claim a save happened. */}
-            {meta.dirty ? "Edited — not saved" : "No unsaved edits"}
-          </span>
-        ) : null}
+        {/* The save state moved to the header's document chip, beside
+            the name it describes. */}
       </div>
 
       <div style={centerStyle}>
@@ -93,11 +72,10 @@ export function ModeSwitcher({ right }: ModeSwitcherProps) {
   );
 }
 
-/** Kit chrome.jsx — the bottom-right zoom cluster: live mono percent
- *  + a log-scale slider that zooms around the viewport centre. */
+/** Kit chrome.jsx — the bottom-right zoom cluster: the zoom dropdown
+ *  (live percent + presets) and a log-scale slider that zooms around the viewport centre. */
 function ZoomCluster() {
   const { camera, setCamera, viewportSize } = useCamera();
-  const pct = Math.round(camera.scale * 100);
   // Log mapping 1%…800% so page-fit zooms (~5–60%) get usable travel.
   const MIN = Math.log(0.01);
   const MAX = Math.log(8);
@@ -122,9 +100,7 @@ function ZoomCluster() {
       data-zoom-cluster
       style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}
     >
-      <span className="pg-value" style={{ fontSize: 11.5 }}>
-        {pct}%
-      </span>
+      <ZoomControl side="top" />
       <input
         type="range"
         aria-label="Zoom"

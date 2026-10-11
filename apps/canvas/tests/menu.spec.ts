@@ -133,34 +133,25 @@ test.describe("Phase 4 — menu via commands", () => {
   test("AC-MENU-U11 — the Window menu is grouped into category sections @feat:editor-shell.menus @level:happy", async ({
     page,
   }) => {
-    // U11 — panels no longer land in one flat "panels" bucket: the
-    // Window menu clusters them by category (derived from each
-    // contribution's defaultGroup / plugin source), and the MenuBar
-    // renders a separator at every category boundary. With the
-    // built-in panel set spanning Workspace / Structure / Styles /
-    // Text / Properties / Object / Output / Developer (+ plugin
-    // panels), several separators must appear.
+    // U11, revised: the Workspace panels stay one click deep, and every
+    // other category is a SUBMENU (Window ▸ Structure ▸ Links), with the
+    // plugins' panels under their names in a Plugins section. A flat menu
+    // of ~110 panels was taller than the screen.
     await page
       .locator('nav[aria-label="Main menu"]')
       .getByRole("button", { name: "Window" })
       .click();
-    const menu = page.getByRole("menu");
+    const menu = page.getByRole("menu").first();
     await expect(menu).toBeVisible();
-    // Category boundaries render as separators — the flat bucket had
-    // none between panels.
-    const separators = menu.locator('[role="separator"]');
-    await expect
-      .poll(() => separators.count())
-      .toBeGreaterThanOrEqual(4);
-    // Two panels of the SAME category (structure) sit contiguously:
-    // no separator between Links and its structure siblings would be
-    // hard to assert positionally, so assert the cheap invariant
-    // instead — both categories' representatives are present.
-    await expect(
-      page.getByRole("menuitem", { name: "Links", exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("menuitem", { name: "Swatches", exact: true }),
-    ).toBeVisible();
+    // Sections are headed, and separated.
+    await expect(menu.locator('[data-menu-group-label="Workspace"]')).toBeVisible();
+    await expect(menu.locator('[data-menu-group-label="Panels"]')).toBeVisible();
+    await expect.poll(() => menu.locator('[role="separator"]').count()).toBeGreaterThanOrEqual(1);
+    // Each category is a submenu holding its panels.
+    await page.locator('[data-menu-submenu="Structure"]').hover();
+    await expect(page.getByRole("menuitem", { name: "Links", exact: true })).toBeVisible();
+    // Moving to the next category swaps the open submenu.
+    await page.locator('[data-menu-submenu="Styles"]').click();
+    await expect(page.getByRole("menuitem", { name: "Swatches", exact: true })).toBeVisible();
   });
 });

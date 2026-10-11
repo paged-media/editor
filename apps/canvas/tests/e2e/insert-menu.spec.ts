@@ -114,9 +114,9 @@ test.describe("C1 — the Insert menu reaches plugin content", () => {
     // path is not an id. These are the registry-DERIVED panel-show
     // commands the shell mints for every registered panel.
     const expected = new Map([
-      ["Data/Connect source…", "paged.panel.show.media.paged.data.panel.sources"],
-      ["Data/Field mapping…", "paged.panel.show.media.paged.data.panel.bindings"],
-      ["Data/Generate pages…", "paged.panel.show.media.paged.data.panel.dataset"],
+      ["Data/Data sources…", "paged.panel.show.media.paged.data.panel.sources"],
+      ["Data/Bindings…", "paged.panel.show.media.paged.data.panel.bindings"],
+      ["Data/Dataset preview…", "paged.panel.show.media.paged.data.panel.dataset"],
     ]);
     for (const [path, command] of expected) {
       const entry = items.find((i) => i.path === path);

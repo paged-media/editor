@@ -79,6 +79,9 @@ export interface ModeContribution {
   slots?: ModeCockpitSlots;
   /** Command ids surfaced as "Suggested in <Mode>" in the palette. */
   paletteSuggestions?: string[];
+  /** Context menus this mode keeps on the menu bar regardless of the
+   *  selection (Data layout keeps "Data"). By top-level label. */
+  menus?: string[];
 }
 
 export type ModeRegistryEvent =

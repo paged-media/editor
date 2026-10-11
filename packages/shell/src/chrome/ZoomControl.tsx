@@ -17,7 +17,8 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// Design system — the header zoom dropdown (kit chrome.jsx "50% ▾").
+// Design system — the zoom dropdown (kit chrome.jsx "50% ▾"), in the
+// bottom bar beside the slider (it was in the header as well).
 // REAL: the percentage reads the live camera scale; the menu items
 // invoke the registered zoom commands (zoom in / out / 100% / fit),
 // so behaviour matches the View menu and keyboard shortcuts.
@@ -39,7 +40,7 @@ const ZOOM_ITEMS: Array<[string, string]> = [
   ["Fit document", "paged.view.zoomFit"],
 ];
 
-export function ZoomControl() {
+export function ZoomControl({ side = "bottom" }: { side?: "top" | "bottom" } = {}) {
   const { camera } = useCamera();
   const { commands } = useRegistries();
   const pct = Math.round(camera.scale * 100);
@@ -51,12 +52,13 @@ export function ZoomControl() {
     <DropdownMenu>
       <DropdownMenuTrigger
         data-zoom-control
+        className="pg-value"
         style={{
           display: "inline-flex",
           alignItems: "center",
           gap: 5,
-          height: 30,
-          padding: "0 10px",
+          height: 26,
+          padding: "0 8px",
           borderRadius: "var(--radius-md)",
           border: "1px solid var(--pg-border)",
           background: "transparent",
@@ -70,7 +72,7 @@ export function ZoomControl() {
         {pct}%
         <Icon name="ui-chevron-down" size={13} />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={4}>
+      <DropdownMenuContent align="end" side={side} sideOffset={4}>
         {ZOOM_ITEMS.map(([label, id]) =>
           commands.get(id) ? (
             <DropdownMenuItem

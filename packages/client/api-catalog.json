@@ -1282,6 +1282,12 @@
           "summary": null
         },
         {
+          "name": "ENGINE_VERSION",
+          "kind": "type",
+          "signature": "ENGINE_VERSION",
+          "summary": null
+        },
+        {
           "name": "protocolFromVersion",
           "kind": "value",
           "signature": "protocolFromVersion",

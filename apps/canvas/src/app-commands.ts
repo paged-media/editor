@@ -36,9 +36,11 @@ import { toggleViewToggle } from "@paged-media/shell";
 // `focusPanel` / `hasPanel` / `togglePanel`. A later commit can add
 // that surface; the menu items follow once it exists.
 
+import { ENGINE_VERSION } from "@paged-media/client";
 import type {
   CommandContribution,
   KeybindingContribution,
+  MenuItemContribution,
 } from "@paged-media/shell";
 
 export const PAGED_EDITOR_UNDO = "paged.editor.undo";
@@ -60,6 +62,35 @@ export const PAGED_VIEW_ZOOM_FIT = "paged.view.zoomFit";
  *  registry + MenuBar change and is not smuggled in here. */
 export const PAGED_VIEW_TOGGLE_TEXT_THREADS = "paged.view.toggleTextThreads";
 export const PAGED_VIEW_TOGGLE_SNAP_TO_POINTS = "paged.view.toggleSnapToPoints";
+
+/** Help — the places the app sends you to learn it. */
+const HELP_LINKS = [
+  {
+    id: "paged.help.docs",
+    title: "Documentation",
+    url: "https://docs.paged.media/",
+    icon: "ui-doc",
+    order: 10,
+  },
+  {
+    id: "paged.help.idmlReference",
+    title: "IDML format reference",
+    url: "https://idml.paged.media/",
+    icon: "ui-component",
+    order: 11,
+  },
+  {
+    id: "paged.help.reportIssue",
+    title: "Report an issue…",
+    url: "https://github.com/paged-media/editor/issues/new",
+    icon: "ui-warn",
+    order: 30,
+  },
+] as const;
+
+const openExternal = (url: string) => {
+  window.open(url, "_blank", "noopener,noreferrer");
+};
 
 export interface AppCommandHandlers {
   undo: () => void | Promise<void>;
@@ -204,6 +235,12 @@ export function buildAppCommands(
         toggleViewToggle("snapToPoints");
       },
     },
+    ...HELP_LINKS.map((l) => ({
+      id: l.id,
+      title: l.title,
+      category: "Help",
+      handler: () => openExternal(l.url),
+    })),
   ];
 }
 
@@ -214,14 +251,22 @@ export function buildAppCommands(
  *  `paged.file.openIdml`) and `View/Toggle command palette`, so
  *  this projection covers only the items unique to the canvas app:
  *  Edit > Undo/Redo and View > Zoom*. */
-export const APP_MENU_ITEMS: Array<{
-  path: string;
-  command: string;
-  order?: number;
-  group?: string;
-  when?: (state: unknown) => boolean;
-  labelFor?: (state: unknown) => string | null;
-}> = [
+export const APP_MENU_ITEMS: MenuItemContribution[] = [
+  ...HELP_LINKS.map((l) => ({
+    path: `Help/${l.title}`,
+    command: l.id,
+    order: l.order,
+    group: l.order < 20 ? "learn" : "feedback",
+    icon: l.icon,
+  })),
+  {
+    path: "Help/About",
+    command: "paged.help.version",
+    order: 90,
+    group: "about",
+    kind: "label",
+    labelFor: () => `paged editor · engine ${ENGINE_VERSION}`,
+  },
   // File menu — "Open PDF…" sits right after the shell's "Open IDML…"
   // (order 10, group "open"), the plugin-format sibling of the native open.
   {
@@ -253,18 +298,24 @@ export const APP_MENU_ITEMS: Array<{
   {
     path: "Edit/Undo",
     command: PAGED_EDITOR_UNDO,
-    order: 10,
+    // First in Edit whatever a bundle contributes there (paged.image's
+    // selection conversions ranked above it at their own low orders).
+    order: -20,
     group: "undo",
     when: (state) => undoOwnerAllows(state, "undo"),
     labelFor: (state) => undoOwnerLabel(state, "undo"),
+    // Bound by useTextEditing, not the registry (see APP_KEYBINDINGS),
+    // so the accelerator column needs telling.
+    accelerator: "cmd+z",
   },
   {
     path: "Edit/Redo",
     command: PAGED_EDITOR_REDO,
-    order: 20,
+    order: -10,
     group: "undo",
     when: (state) => undoOwnerAllows(state, "redo"),
     labelFor: (state) => undoOwnerLabel(state, "redo"),
+    accelerator: "cmd+shift+z",
   },
   // View menu
   {

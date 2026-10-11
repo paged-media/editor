@@ -36,6 +36,64 @@ const LINE = {
 } as const;
 
 export const UI_GLYPHS: Record<string, ReactNode> = {
+  // ── Object alignment + arrange (the control bar). The text-alignment
+  //    glyphs (`ui-align-*`) are lines of type; these are OBJECTS
+  //    against a key edge, so a vertical alignment no longer borrows
+  //    `ui-rows`. ──
+  "ui-obj-align-left": (
+    <>
+      <path d="M4 3 V21" {...LINE} />
+      <rect x={6.5} y={6} width={9} height={4} rx={1} {...LINE} />
+      <rect x={6.5} y={14} width={13.5} height={4} rx={1} {...LINE} />
+    </>
+  ),
+  "ui-obj-align-center-h": (
+    <>
+      <path d="M12 3 V21" {...LINE} />
+      <rect x={7.5} y={6} width={9} height={4} rx={1} {...LINE} />
+      <rect x={5} y={14} width={14} height={4} rx={1} {...LINE} />
+    </>
+  ),
+  "ui-obj-align-right": (
+    <>
+      <path d="M20 3 V21" {...LINE} />
+      <rect x={8.5} y={6} width={9} height={4} rx={1} {...LINE} />
+      <rect x={4} y={14} width={13.5} height={4} rx={1} {...LINE} />
+    </>
+  ),
+  "ui-obj-align-top": (
+    <>
+      <path d="M3 4 H21" {...LINE} />
+      <rect x={6} y={6.5} width={4} height={9} rx={1} {...LINE} />
+      <rect x={14} y={6.5} width={4} height={13.5} rx={1} {...LINE} />
+    </>
+  ),
+  "ui-obj-align-center-v": (
+    <>
+      <path d="M3 12 H21" {...LINE} />
+      <rect x={6} y={7.5} width={4} height={9} rx={1} {...LINE} />
+      <rect x={14} y={5} width={4} height={14} rx={1} {...LINE} />
+    </>
+  ),
+  "ui-obj-align-bottom": (
+    <>
+      <path d="M3 20 H21" {...LINE} />
+      <rect x={6} y={8.5} width={4} height={9} rx={1} {...LINE} />
+      <rect x={14} y={4} width={4} height={13.5} rx={1} {...LINE} />
+    </>
+  ),
+  "ui-arrange-front": (
+    <>
+      <rect x={4} y={4} width={11} height={11} rx={1.5} {...LINE} strokeDasharray="2 2" />
+      <rect x={9} y={9} width={11} height={11} rx={1.5} {...LINE} fill="currentColor" fillOpacity={0.3} />
+    </>
+  ),
+  "ui-arrange-back": (
+    <>
+      <rect x={4} y={4} width={11} height={11} rx={1.5} {...LINE} fill="currentColor" fillOpacity={0.3} />
+      <rect x={9} y={9} width={11} height={11} rx={1.5} {...LINE} strokeDasharray="2 2" />
+    </>
+  ),
   "ui-search": (
     <>
       <circle cx={11} cy={11} r={6.5} {...LINE} />
