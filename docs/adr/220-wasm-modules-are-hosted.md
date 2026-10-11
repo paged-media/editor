@@ -52,3 +52,11 @@ domain.
     artifacts through the host, with subresource integrity.
   - Lazy loading of the plugin bundles' JavaScript.
   - Uploading from each package's own publish workflow.
+
+## Amendment, 2026-10-11
+
+The plugin-API door named under "Not yet" exists: plugin-sdk ADR 326 (`host.modules`, with
+Subresource Integrity), answered by the editor from a build-time module manifest
+([ADR 223](223-the-module-door.md)). `modules-sync.mjs` now also hosts every module that
+manifest lists, and plugin publish workflows can upload their own modules with
+`paged-plugin modules-upload`.
