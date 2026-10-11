@@ -51,7 +51,7 @@ import {
   type AssistantStep,
 } from "../../ai/assistant-session";
 import { PoweredByClaude } from "../../ai/powered-by-claude";
-import { useCollection, useDocumentStats } from "../../catalog/use-collection";
+import { useCollection, useDocumentMeta, useDocumentStats } from "../../catalog/use-collection";
 import { Icon } from "../../icons";
 import { useCanvasClient } from "../../state/canvas-client-context";
 import { confirmDiscard, mintBlankDocument } from "../../state/commands/file-commands";
@@ -131,7 +131,10 @@ export function AIAssistant() {
   const links = useCollection<LinkSummary>("links");
   const fonts = useCollection<FontSummary>("fonts");
   const session = useSyncExternalStore(subscribeAssistant, getAssistantState);
-  const hasDocument = handle != null && handle.pageCount > 0;
+  const meta = useDocumentMeta();
+  // The engine's own page count, not only the shell's handle: a document
+  // loaded through the client directly (an automation, a test) has no handle.
+  const hasDocument = (handle?.pageCount ?? 0) > 0 || (meta?.pageCount ?? 0) > 0;
   const view = hasDocument ? session.view : "brief";
   const run = session.run;
   const running = run.phase === "running";
