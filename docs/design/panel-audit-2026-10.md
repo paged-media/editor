@@ -100,6 +100,12 @@ tests passing. The editor's specs follow those builds.
 - **Icons.** Every panel has its own.
 - **Names.** Command and menu names match the panel titles.
 - **Status line.** It shows the message, not the engine's state name.
+- **Data overview.** The property panel was "Data objects": five lists that read only
+  "No entries". It now has:
+  - an intro sentence;
+  - in each empty section, a line naming the panel where that kind is made;
+  - an "Open in …" on every row, which raises the owning panel;
+  - the picked item's settings below, with readable labels.
 
 ### paged.doc
 
