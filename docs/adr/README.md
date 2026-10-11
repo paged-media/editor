@@ -36,6 +36,7 @@ and 024 predate that scheme and keep their numbers. Records 200–217 were writt
 | [219](219-plugin-documents-door.md) | A plugin may replace the open document, and the editor asks first | Accepted, 2026-10-06 |
 | [220](220-wasm-modules-are-hosted.md) | Wasm modules are hosted, not deployed | Accepted, 2026-10-11 |
 | [221](221-claude-through-a-same-origin-proxy.md) | Claude reaches the editor through one same-origin proxy | Accepted 2026-10-11 |
+| [222](222-the-module-door.md) | The editor answers the module door from a build-time module manifest | Accepted 2026-10-11 |
 
 Decisions made in other repositories that this editor's code rests on are listed in
 [`../README.md`](../README.md). Comments in the source also cite ADR 025 (the journal) and

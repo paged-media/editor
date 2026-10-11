@@ -130,6 +130,11 @@ jobs:
       - name: network policy (connect-src)
         run: pnpm test:network-policy
 
+      # The module door (ADR 222): what the editor answers host.modules, and
+      # the build-time module manifest it answers from.
+      - name: module door (module manifest)
+        run: pnpm test:modules
+
       # Every gated fidelity pack must carry a threshold entry, or the
       # fidelity gate silently skips it.
       - name: fidelity thresholds schema

@@ -26,6 +26,13 @@
 // redirect, decodes brotli on the fly and caches the module for a year, shared
 // across every site that loads the same version.
 //
+// The module door (ADR 222) answers a plugin's DECLARED wasm with its
+// module-host URL straight away, emitted by this build or not; so every
+// module in the build's module manifest (scripts/module-index.mjs) is made
+// sure of too, uploaded from the installed package when it is missing.
+// Package discovery, host versions and the manifest live in module-index.mjs,
+// shared with vite.config.ts so the two cannot disagree about a module's key.
+//
 //   node scripts/modules-sync.mjs <dist-dir> [--dry-run]
 //
 // Needs CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID with R2 write access
@@ -33,62 +40,15 @@
 // without a version has no immutable home.
 
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, relative, resolve } from "node:path";
 import { brotliCompressSync, constants } from "node:zlib";
 
-export const MODULE_HOST = process.env.PAGED_MODULE_HOST ?? "https://modules.paged.media";
+import { APP, MODULE_HOST, buildModuleManifest, packageIndex, sha, toPosix as posix, walkWasm as walk } from "./module-index.mjs";
+
+export { MODULE_HOST };
 const BUCKET = process.env.PAGED_MODULE_BUCKET ?? "paged-modules";
-const APP = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-
-const sha = (alg, buf) => createHash(alg).update(buf).digest(alg === "sha384" ? "base64" : "hex");
-const posix = (p) => p.split(sep).join("/");
-
-function walk(dir, out = [], skipNodeModules = true) {
-  for (const name of readdirSync(dir)) {
-    const p = join(dir, name);
-    const s = statSync(p);
-    if (s.isDirectory()) {
-      if (skipNodeModules && name === "node_modules") continue;
-      walk(p, out, skipNodeModules);
-    } else if (name.endsWith(".wasm")) out.push(p);
-  }
-  return out;
-}
-
-/** Every wasm inside the installed @paged-media packages, by sha256. */
-function packageIndex() {
-  const roots = new Set();
-  for (const base of [join(APP, "node_modules", "@paged-media"), join(APP, "..", "..", "node_modules", "@paged-media")]) {
-    if (!existsSync(base)) continue;
-    for (const name of readdirSync(base)) {
-      try {
-        roots.add(realpathSync(join(base, name)));
-      } catch {
-        /* a dangling link */
-      }
-    }
-  }
-  const index = new Map();
-  for (const root of roots) {
-    const pkgFile = join(root, "package.json");
-    if (!existsSync(pkgFile)) continue;
-    const { name, version } = JSON.parse(readFileSync(pkgFile, "utf8"));
-    // A package installed from npm is immutable per version. One linked from a
-    // source checkout (`link:`, e.g. @paged-media/doc until its first publish)
-    // is not — its bytes change under the same version — so its key carries
-    // the content hash too.
-    const published = posix(root).includes("/node_modules/.pnpm/");
-    for (const file of walk(root)) {
-      const hash = sha("sha256", readFileSync(file));
-      const v = published ? version : `${version}+${hash.slice(0, 12)}`;
-      if (!index.has(hash)) index.set(hash, { name, version: v, path: posix(relative(root, file)) });
-    }
-  }
-  return index;
-}
 
 async function present(url) {
   try {
@@ -104,7 +64,10 @@ function upload(key, file) {
   const br = brotliCompressSync(raw, {
     params: { [constants.BROTLI_PARAM_QUALITY]: 10, [constants.BROTLI_PARAM_SIZE_HINT]: raw.length },
   });
-  const tmp = `${file}.br`;
+  // In a temp dir: the file may be inside the package store (a declared
+  // module this build did not emit).
+  const dir = mkdtempSync(join(tmpdir(), "paged-modules-"));
+  const tmp = join(dir, "module.wasm.br");
   writeFileSync(tmp, br);
   execFileSync(
     "npx",
@@ -117,8 +80,17 @@ function upload(key, file) {
     ],
     { stdio: ["ignore", "inherit", "inherit"] },
   );
-  rmSync(tmp);
+  rmSync(dir, { recursive: true, force: true });
   return br.length;
+}
+
+/** The installed root of package `name` (realpath), or null. */
+function rootOf(name) {
+  for (const base of [join(APP, "node_modules"), join(APP, "..", "..", "node_modules")]) {
+    const p = join(base, ...name.split("/"));
+    if (existsSync(join(p, "package.json"))) return p;
+  }
+  return null;
 }
 
 const dist = resolve(process.argv[2] ?? "dist-demo");
@@ -145,6 +117,30 @@ for (const file of walk(dist, [], false)) {
   }
   modules.push({ served, url, package: hit.name, version: hit.version, path: hit.path, bytes: raw.length, sha384: `sha384-${sha("sha384", raw)}` });
   console.log(`${served} → ${url} · ${(raw.length / 1048576).toFixed(1)} MiB · ${note}`);
+}
+// The module door (ADR 222) answers every DECLARED plugin artifact in the
+// build's module manifest with its module-host URL, whether or not this build
+// emitted the file. Each of them must be hosted too, from the installed
+// package, or a bundle that adopted the door would be pointed at a 404.
+const emitted = new Set(modules.map((m) => m.url));
+const declared = buildModuleManifest({ app: APP, host: MODULE_HOST });
+for (const [pkgName, pkg] of Object.entries(declared.packages)) {
+  const root = rootOf(pkgName);
+  for (const [path, file] of Object.entries(pkg.files)) {
+    const key = `${pkgName}/${file.version}/${path}`;
+    const url = `${MODULE_HOST}/${key}`;
+    if (emitted.has(url)) continue;
+    let note = "already hosted";
+    if (!(await present(url))) {
+      if (dry) note = "would upload";
+      else if (!root) {
+        console.error(`::error::${url} is declared but ${pkgName} is not installed`);
+        failed = true;
+        continue;
+      } else note = `uploaded (${(upload(key, join(root, ...path.split("/"))) / 1048576).toFixed(1)} MiB brotli)`;
+    }
+    console.log(`(declared) ${url} · ${note}`);
+  }
 }
 if (failed) process.exit(1);
 if (dry) process.exit(0);

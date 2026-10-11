@@ -66,8 +66,12 @@ jobs:
         working-directory: editor
         run: pnpm install --frozen-lockfile
 
+      # PAGED_MODULES_HOSTED: the module door (ADR 222) answers the module
+      # host, because the next step hosts every module the build lists.
       - name: build the demo
         working-directory: editor
+        env:
+          PAGED_MODULES_HOSTED: "1"
         run: pnpm --filter paged-canvas build:demo
 
       # Wasm modules are hosted, not deployed (ADR 220): every .wasm in the

@@ -18,6 +18,7 @@
  */
 
 import { defineConfig } from "vite";
+import { buildModuleManifest, MODULE_HOST } from "./scripts/module-index.mjs";
 import react from "@vitejs/plugin-react";
 import { resolve, sep } from "node:path";
 import { createReadStream, readFileSync, readdirSync, statSync, writeFileSync, existsSync } from "node:fs";
@@ -578,6 +579,35 @@ function dataBundleBin(): import("vite").Plugin {
   };
 }
 
+/**
+ * ADR 222 — the module manifest behind the editor's module door
+ * (src/plugin-modules.ts): every installed plugin package's declared wasm,
+ * with sha384 and host version, as `virtual:paged-modules`. A build with
+ * PAGED_MODULES_HOSTED=1 (the playground deploy, whose modules-sync hosts
+ * every listed module) answers the module host; the dev server answers the
+ * installed files under /@fs/; any other build answers null (bundles load
+ * their own copy).
+ */
+function pagedModules(): import("vite").Plugin {
+  const ID = "virtual:paged-modules";
+  let dev = false;
+  return {
+    name: "paged-modules",
+    configResolved(config) {
+      dev = config.command === "serve";
+    },
+    resolveId(id) {
+      return id === ID ? `\0${ID}` : null;
+    },
+    load(id) {
+      if (id !== `\0${ID}`) return null;
+      const hosted = !dev && process.env.PAGED_MODULES_HOSTED === "1";
+      const manifest = buildModuleManifest({ host: hosted ? MODULE_HOST : null, dev });
+      return `export default ${JSON.stringify(manifest)};`;
+    },
+  };
+}
+
 export default defineConfig({
   // The page learns which data origins its wall admits, so the consent
   // dialog can say when a consented origin stays unreachable (ADR 218).
@@ -596,6 +626,7 @@ export default defineConfig({
     corpusIdmlRoute(),
     duckdbDistRoute(),
     dataBundleBin(),
+    pagedModules(),
   ],
   server: {
     // Pin to IPv4 so Playwright's `127.0.0.1` health-check resolves.

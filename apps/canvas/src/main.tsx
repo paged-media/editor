@@ -112,6 +112,8 @@ import { createEditorAssetSource } from "./plugin-asset-source";
 import { createEditorBlobStore } from "./plugin-blob-store";
 import { createEditorClipboardBackend } from "./plugin-clipboard";
 import { createEditorWorkerBackend } from "./plugin-worker";
+import { createEditorModulesBackend } from "./plugin-modules";
+import moduleManifest from "virtual:paged-modules";
 // K-3 — the paged.image decode worker module, resolved as a served URL
 // through Vite's `?worker&url` (a bundled, COOP/COEP-served chunk). The
 // editor maps the bundle's DECLARED module path ("workers/decode.js") to
@@ -1421,6 +1423,21 @@ function PluginBundles() {
       "media.paged.draw": (module) =>
         module === "workers/trace.js" ? drawTraceWorkerUrl : null,
     });
+    // ADR 222 / plugin-sdk ADR 326: the module door behind host.modules — a
+    // bundle resolves one of its DECLARED wasm artifacts through the editor,
+    // which answers from the build's module manifest (the module host in a
+    // deployed build, /@fs/ in dev, with sha384 for Subresource Integrity).
+    // Flips supports("modules@1") once the pinned plugin-sdk knows the
+    // option (0.2.51); until then it rides inert (loadBundle ignores
+    // unknown options) and bundles keep their bundle-relative URLs.
+    const modules = createEditorModulesBackend(moduleManifest, window.location.origin);
+    if (!import.meta.env.PROD) {
+      // Test affordance (like `__textCaret`): e2e reads the answers directly.
+      (globalThis as unknown as { __modules?: unknown }).__modules = {
+        backend: modules,
+        manifest: moduleManifest,
+      };
+    }
     // D-09 (paged.data §7.1): ONE shared cross-plugin data-provider registry,
     // injected into every bundle host so a provider plugin (paged.data publishing
     // a governed query) and a consumer plugin (paged.sheet sourcing a sheet from
@@ -1548,6 +1565,8 @@ function PluginBundles() {
       clipboard,
       textCaret,
       workers,
+      // ADR 222 — the module door (inert under an SDK older than 0.2.51).
+      modules,
       dataProviders,
       // ADR 023 phase A/C — see the module-scope registry above.
       bindingProviders,
