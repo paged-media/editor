@@ -1434,8 +1434,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       onWheel={onWheel}
       onDoubleClick={onDoubleClick}
     >
-      {/* data-paged-canvas: stable selector for the demo-capture frame-tap /
-          rrweb replay to locate the document canvas (see demo-replay). */}
+      {/* data-paged-canvas: a stable selector for the document canvas (specs use it). */}
       <canvas ref={canvasRef} style={canvasStyle} data-paged-canvas="" />
       <OverlayHost
         camera={props.camera}

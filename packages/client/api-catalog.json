@@ -3,7 +3,7 @@
   "package": "@paged-media/client",
   "protocol": 71,
   "counts": {
-    "clientMembers": 75,
+    "clientMembers": 72,
     "wireKinds": 52,
     "exports": 71
   },
@@ -499,24 +499,6 @@
           "kind": "method",
           "signature": "resizeCanvas(dpr: number, cssWidth: number, cssHeight: number): void",
           "summary": "Notify the worker of a host canvas resize."
-        },
-        {
-          "name": "CanvasClient.startFrameTap",
-          "kind": "method",
-          "signature": "startFrameTap(fps",
-          "summary": "Start tapping rendered document frames at ~`fps` (webp)."
-        },
-        {
-          "name": "CanvasClient.stopFrameTap",
-          "kind": "method",
-          "signature": "stopFrameTap(): void",
-          "summary": "Stop the frame tap."
-        },
-        {
-          "name": "CanvasClient.onFrame",
-          "kind": "method",
-          "signature": "onFrame(cb: (f: { src: string; width: number; height: number })",
-          "summary": "Subscribe to tapped frames (image data URLs)."
         },
         {
           "name": "CanvasClient.dispose",

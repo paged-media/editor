@@ -56,7 +56,6 @@
     "autoprefixer": "^10.5.5",
     "pngjs": "^7.0.0",
     "postcss": "^8.5.28",
-    "rrweb": "2.0.1",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.23.13",
     "typescript": "^5.9.3",

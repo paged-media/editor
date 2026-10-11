@@ -383,9 +383,6 @@ type IncomingMessage =
       font: Uint8Array | null;
       cmykIccProfile: Uint8Array | null;
     }
-  // Demo capture only (CI): tap rendered document frames for rrweb replay.
-  | { kind: "startFrameTap"; fps: number }
-  | { kind: "stopFrameTap" }
   // v66 — the binary doors: pixels and part bytes as transferred
   // Uint8Arrays, never `number[]` through the JSON envelope. Replies that
   // are `WorkerToMain` envelopes go back through `postBack` (the client
@@ -664,15 +661,6 @@ async function dispatch(data: IncomingMessage): Promise<void> {
     startGestureDrain();
     return;
   }
-  if (data.kind === "startFrameTap") {
-    renderer?.setFrameTap(data.fps, (f) => {
-      (self as unknown as DedicatedWorkerGlobalScope).postMessage(
-        { kind: "frameTap", bytes: f.bytes, width: f.width, height: f.height, ts: f.ts },
-        [f.bytes],
-      );
-    });
-    return;
-  }
   if (data.kind === "journalDrain") {
     // Drain, never stream: the cost lands when somebody actually looks
     // (panel open, export), not on the render loop.
@@ -684,10 +672,6 @@ async function dispatch(data: IncomingMessage): Promise<void> {
       ledger: drained.ledger,
       epochWallMs: drained.epochWallMs,
     } as unknown as WorkerToMain);
-    return;
-  }
-  if (data.kind === "stopFrameTap") {
-    renderer?.setFrameTap(0);
     return;
   }
   if (data.kind === "attachCanvas") {

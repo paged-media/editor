@@ -175,7 +175,7 @@ loaded from a URL at run time ([ADR 201](adr/201-plugins-as-pinned-packages.md))
 - One bundle is not consumed as a pinned package: the root `package.json` overrides
   `@paged-media/doc` with a `link:` to a sibling checkout of plugin-doc, which `tests.yml` and
   `showcase-nightly.yml` check out and build first (`.github/actions/plugin-doc-from-source/action.yml`);
-  `playground.yml` and `demo-capture.yml` do not.
+  `playground.yml` does not.
 - `scripts/wasm-budget.mjs` fails when the distinct `.wasm` files the application can
   resolve sum to more than 100 MB
   ([plugin-sdk ADR 308](https://github.com/paged-media/plugin-sdk/blob/main/docs/adr/308-plugin-wasm.md)).
@@ -250,7 +250,7 @@ the dev server with one worker ([ADR 216](adr/216-test-tiers.md)).
   ([ADR 215](adr/215-measured-capability-table.md)).
 - **`journeys`**: 80 `*.journey.spec.ts` files in `tests/journey/`, 44 of them under
   `plugins/`: real pointer and keyboard input, then an assertion on the editing context.
-- **`journeys-gpu`**, **`showcase`**, **`demo-capture`**: run in real Chrome for a WebGPU
+- **`journeys-gpu`**, **`showcase`**: run in real Chrome for a WebGPU
   adapter. The showcase builds one large reference document through the editor
   ([ADR 217](adr/217-showcase-reference-document.md)); `showcase-nightly.yml` runs it on macOS.
 - **Fidelity** (`tests/fidelity.spec.ts`): page renders against reference PDFs from a
