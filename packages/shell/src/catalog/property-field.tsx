@@ -529,13 +529,10 @@ export function PropertyField(props: PropertyFieldProps) {
             ? row.default
             : state.value,
         )
-      : // Unset and writable (core answers `absent` for a property the
-        // object has never had set): the default too — the same reading
-        // the Design control bar gives. A refusal or a provider seam is
-        // not this case (`write` is null for both).
-        state.state === "absent" && write && row?.default !== undefined && row.default !== null
-        ? leafValue(type, widget, row.default)
-        : null;
+      : // `absent` stays the em-dash: core answers it both for "never set"
+        // and for "this kind carries no such entry" (a text frame has no
+        // end cap), and a default would claim a cap the frame lacks.
+        null;
   const leafProps: LeafProps = { value, onCommit: commitLeaf, props: chrome };
 
   let control: React.ReactNode;
