@@ -72,7 +72,6 @@ import { readFileSync } from "node:fs";
 
 import { expect, test, type Page } from "@playwright/test";
 import { fitFirstPage } from "../fidelity/canvas-driver";
-import { readFileSync } from "node:fs";
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -138,9 +137,6 @@ const DATA_PART_TYPES = [
 ] as const;
 
 
-/** Declared under `contributes.partTypes`. The host has no partType
- *  registry, so these are pinned against the manifest, not a live one. */
-const DATA_PART_TYPES = ["session", "data", "data-json", "data-parquet", "data-xlsx"] as const;
 
 const DOC_PANEL = "media.paged.doc.panel.outline";
 const DOC_COMMAND = "media.paged.doc.command.placeDoc";
@@ -431,7 +427,7 @@ test.describe("plugin surface · paged.data", () => {
     // manifest so a change is noticed. (The bytes behind them are proven
     // by the import-formats / persist-reload journeys, which write
     // `data/<hash>.<format>` parts.)
-    expect((c.partTypes ?? []).map((p) => p.type)).toEqual([...DATA_PART_TYPES]);
+    expect((c.partTypes ?? []).map((p) => p.type)).toEqual(DATA_PART_TYPES.map((p) => p.type));
     const registryNames = await page.evaluate(() =>
       Object.keys((globalThis as unknown as CanvasProbe).__canvas.registries),
     );

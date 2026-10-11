@@ -53,7 +53,7 @@ async function firstSwatch(page: Page, not: unknown): Promise<string> {
   return id as string;
 }
 
-async function commitNumber(page: Page, input: ReturnType<Page["locator"]>, value: number) {
+async function commitNumber(_page: Page, input: ReturnType<Page["locator"]>, value: number) {
   await input.click();
   await input.fill(String(value));
   await input.press("Enter");

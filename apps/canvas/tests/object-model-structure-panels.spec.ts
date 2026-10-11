@@ -38,7 +38,7 @@ import { bindDryRun, fieldOf, objGet, undoOnce } from "./e2e/harness/objects";
 
 const addr = (r: ElementRef) => `${r.kind}:${r.id}`;
 
-async function commit(page: Page, input: ReturnType<Page["locator"]>, value: string) {
+async function commit(_page: Page, input: ReturnType<Page["locator"]>, value: string) {
   await input.click();
   await input.fill(value);
   await input.press("Enter");

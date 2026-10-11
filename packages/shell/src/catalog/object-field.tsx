@@ -172,7 +172,7 @@ export function useObjectBindings<K extends string>(
   const out = {} as Record<K, ObjectField>;
   for (const key of Object.keys(map) as K[]) {
     const spec = map[key];
-    // eslint-disable-next-line react-hooks/rules-of-hooks -- fixed key set
+    // A hook in a loop is sound here: the key set is fixed per call site.
     out[key] = useObjectField({
       path: spec.path,
       scope: spec.scope,

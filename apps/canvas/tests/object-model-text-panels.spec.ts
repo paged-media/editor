@@ -32,7 +32,7 @@ import { loadFixture } from "./e2e/harness/fixtures";
 import { setCaret } from "./e2e/harness/ui";
 import { bindDryRun, fieldOf, objGet, objQuery, undoOnce } from "./e2e/harness/objects";
 
-async function commit(page: Page, input: ReturnType<Page["locator"]>, value: string) {
+async function commit(_page: Page, input: ReturnType<Page["locator"]>, value: string) {
   await input.click();
   await input.fill(value);
   await input.press("Enter");

@@ -97,7 +97,6 @@ export type {
   ConditionSummary,
   CrossReferenceSummary,
   FontSummary,
-  FontScope,
   ClearFontRegistryPayload,
   HyperlinkSummary,
   IndexTopicSummary,

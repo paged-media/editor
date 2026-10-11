@@ -385,7 +385,7 @@ test.describe("ADR 323 §4 — core UI closure: typed commands and schema fields
     await expect(fieldOf(ms, "name")).toHaveAttribute("data-value-type", "text");
   });
 
-  test("CUI-8 — Text Frame Options ▸ Page growth: story flowGrow on the selected frame's story, one undo step, Bind to data… @feat:editor-shell.panels.text-frame-options @feat:layout-model.page-growth @feat:round-tripping.undo-redo @level:happy", async ({
+  test("CUI-8 — Text Frame Options ▸ Page growth: story flowGrow on the selected frame's story, one undo step, Bind to data… @feat:editor-shell.panels.text-frame-options @feat:round-tripping.undo-redo @level:happy", async ({
     page,
   }) => {
     await loadIdml(page, fixture("markers"));

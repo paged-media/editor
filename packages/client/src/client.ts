@@ -59,7 +59,6 @@ import {
   type SceneTreeNode,
   type MainToWorker,
   type MainToWorkerKind,
-  type FontScope,
   type Mutation,
   type PageId,
   type ParagraphBounds,

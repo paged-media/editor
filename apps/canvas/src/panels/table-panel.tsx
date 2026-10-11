@@ -203,7 +203,7 @@ function useAddressFields(
   const out: Record<string, ObjectField> = {};
   const targets = address ? [address] : NO_TARGETS;
   for (const path of paths) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks -- fixed list
+    // A hook in a loop is sound here: `paths` is a fixed list per call site.
     out[path] = useObjectField({ path, targets, schemaKind });
   }
   return out;
