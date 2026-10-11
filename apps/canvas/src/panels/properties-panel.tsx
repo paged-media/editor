@@ -33,7 +33,7 @@
 // The AI Assistant card renders below as a visible, inert seam.
 
 import {
-  AIAssistantSeam,
+  AIAssistant,
   CatalogRegistryProvider,
   CockpitPanelHeader,
   CockpitRow,
@@ -255,7 +255,7 @@ export function PropertiesPanel() {
           ) : null}
         </div>
 
-        {kind !== "none" && <AIAssistantSeam />}
+        {kind !== "none" && <AIAssistant kind={kind} />}
       </div>
     </CatalogRegistryProvider>
   );

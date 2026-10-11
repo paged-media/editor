@@ -108,6 +108,7 @@ import { PagedEditorProvider } from "./state/paged-editor";
 import { useRegistries } from "./state/registries-context";
 import { ActionsProvider } from "./actions/actions-context";
 import { CommandPalette } from "./chrome/CommandPalette";
+import { NewFromBriefDialog, notifyNewFromBriefDialog } from "./chrome/NewFromBriefDialog";
 import { DemoOverlay, DemoSpotlight } from "./demo/overlay";
 import { runDemoScriptWithHandle } from "./demo/runner";
 import { ExportPdfDialog } from "./chrome/ExportPdfDialog";
@@ -125,6 +126,7 @@ import { loadDocumentFile } from "./state/document-loader";
 import {
   PAGED_FILE_OPEN_IDML,
   buildNewDocumentCommand,
+  buildNewFromBriefCommand,
   mintBlankDocument,
   buildOpenIdmlCommand,
 } from "./state/commands/file-commands";
@@ -903,6 +905,10 @@ function ShellChrome({
         pushWarning: (w) => setWarnings((prev) => [...prev, w]),
       }),
     );
+    // ADR 221 — File ▸ New from a brief… (Claude builds the document).
+    const newFromBrief = registries.commands.register(
+      buildNewFromBriefCommand(() => notifyNewFromBriefDialog("open")),
+    );
     // Concept 2 — swatch-library import/export commands.
     const importAse = registries.commands.register(
       buildImportAseCommand({
@@ -926,6 +932,7 @@ function ShellChrome({
     return () => {
       handle.dispose();
       newDoc.dispose();
+      newFromBrief.dispose();
       importAse.dispose();
       exportAse.dispose();
       exportPdf.dispose();
@@ -1296,6 +1303,7 @@ function ShellChrome({
       <DemoSpotlight />
       <DemoOverlay />
       <ExportPdfDialog />
+      <NewFromBriefDialog />
 
       {/* Canvas-app-specific integration: legacy hooks (keyboard
        *   shortcuts, camera tweens, text editing) that read from

@@ -299,6 +299,8 @@ export {
 // ── Built-in commands ──────────────────────────────────────────
 export {
   buildNewDocumentCommand,
+  buildNewFromBriefCommand,
+  PAGED_FILE_NEW_FROM_BRIEF,
   buildOpenIdmlCommand,
   PAGED_FILE_NEW,
   PAGED_FILE_OPEN_IDML,
@@ -550,7 +552,23 @@ export {
   type StatusTone,
   type PanelStatus,
 } from "./components/cockpit/kit";
-export { AIAssistantSeam } from "./components/cockpit/ai-assistant-seam";
+export { AIAssistant, type AssistantKind } from "./components/cockpit/ai-assistant";
+export { PoweredByClaude, type PoweredByClaudeProps } from "./ai/powered-by-claude";
+export {
+  AI_ASK_COMMAND,
+  AI_PROXY_PATH,
+  onAiAsk,
+  requestAiAsk,
+  canvasScriptEngine,
+  completeText,
+  describeAiError,
+  editorAiTransport,
+  loadAiCatalog,
+  runEditorAgent,
+  undoBackTo,
+  undoTop,
+  type EditorAgentRequest,
+} from "./ai/editor-ai";
 export {
   ListRows,
   PanelToolbar,

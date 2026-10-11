@@ -25,7 +25,7 @@
 // item lights up when its backing lands. Sentence case per the
 // content rules.
 
-import { PAGED_FILE_NEW } from "@paged-media/shell";
+import { PAGED_FILE_NEW, PAGED_FILE_NEW_FROM_BRIEF } from "@paged-media/shell";
 import type { MenuItemContribution } from "@paged-media/shell";
 
 const soon = (
@@ -57,6 +57,7 @@ const panel = (
 export const COCKPIT_MENU_SEAMS: MenuItemContribution[] = [
   // ── File (kit FILE_MENU; New document… + Open IDML… + Export PDF… are real) ──
   { path: "File/New document…", command: PAGED_FILE_NEW, order: 5, group: "open" },
+  { path: "File/New from a brief…", command: PAGED_FILE_NEW_FROM_BRIEF, order: 6, group: "open" },
   soon("File/Open recent", 12, "open"),
   soon("File/Close", 30, "save"),
   // `File/Save (.paged)` was a seam here until `client.exportPaged()`

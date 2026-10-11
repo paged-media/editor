@@ -54,11 +54,14 @@ import {
   CatalogRegistryProvider,
   type OverlayContribution,
   type PagedEditor,
+  type ModeContribution,
   type PanelContribution,
   type ShellSchemaPanelRendererProps,
   writeToOpenFile,
   setChromeStorageScope,
   ALWAYS_IN_PALETTE,
+  AI_ASK_COMMAND,
+  requestAiAsk,
 } from "@paged-media/shell";
 import "@paged-media/shell/styles/globals.css";
 
@@ -305,6 +308,9 @@ import {
 } from "./panels/cockpit/mode-inspectors";
 import { PlaygroundController } from "./playground/PlaygroundController";
 import { IframeScriptBridge } from "./playground/IframeScriptBridge";
+import { SiteBridge } from "./site/SiteBridge";
+import { SitePanel } from "./site/SitePanel";
+import { SITE } from "./site/site-state";
 import { useAnimatedCamera } from "./ui/useAnimatedCamera";
 import { useKeyboardShortcuts } from "./ui/useKeyboardShortcuts";
 import { documentBounds, fitCamera, layoutPages } from "./ui/layout";
@@ -349,6 +355,20 @@ const BUILT_IN_OVERLAYS: OverlayContribution[] = [
 // CANVAS itself is not a panel — it is the cockpit's viewport slot
 // (`canvasComponent`).
 const BUILT_IN_PANELS: PanelContribution[] = [
+  // Site mode (`?site=1`): paged.media's navigation and product facts, docked
+  // beside the page of the site that is open as a document (website ADR 855).
+  ...(SITE
+    ? [
+        {
+          id: "paged.site",
+          title: "paged.media",
+          component: SitePanel,
+          defaultDock: "right" as const,
+          defaultGroup: "cockpit",
+          icon: "ui-web",
+        },
+      ]
+    : []),
   {
     id: "paged.pages",
     title: "Pages",
@@ -1023,8 +1043,9 @@ const BUILT_IN_PANELS: PanelContribution[] = [
     defaultGroup: "console",
   },
   {
+    // A designer surface since the Ask bar (ADR 221): Claude writes the
+    // script, so it no longer takes a developer to use it.
     id: "paged.script-editor",
-    devOnly: true,
     title: "Script",
     component: ScriptEditorPanel,
     defaultDock: "bottom",
@@ -1197,6 +1218,21 @@ if (!import.meta.env.PROD) {
     current: () => editorDocuments.controller.current(),
   };
 }
+
+// Site mode opens paged.media's pages through the same documents door a plugin
+// uses: an edited page asks keep/discard before the next one replaces it.
+const openSiteDocument = (bytes: Uint8Array, name: string) =>
+  editorDocuments.backend.open(bytes, {
+    name,
+    requester: { id: "media.paged.site", name: "paged.media" },
+  });
+
+// In site mode Design opens with the Site panel as the active right-dock tab.
+const SITE_MODES: ModeContribution[] = COCKPIT_MODES.map((m) =>
+  m.id === "design" && m.slots
+    ? { ...m, slots: { ...m.slots, tabs: ["paged.site", ...(m.slots.tabs ?? [])] } }
+    : m,
+);
 
 // D-11 — the editor's reference credential store (host.secrets). One instance
 // for the whole app: `PluginBundles` injects `backend` into every bundle host
@@ -2155,8 +2191,23 @@ function CanvasAppIntegration() {
           runAlign(objectRegistry, payload as { kind: AlignKind; targets: string[] }),
       },
     ];
+    // ADR 221 — the palette's "Ask Claude" row: open the Script panel and
+    // hand it the request (the panel's Ask bar runs the agent).
+    const aiCommands = [
+      {
+        id: AI_ASK_COMMAND,
+        title: "Ask Claude",
+        category: "Assistant",
+        args: { kind: "text" } as const,
+        handler: async (_paged: unknown, payload?: unknown) => {
+          requestAiAsk(String(payload ?? ""));
+          await registries.commands.invoke("paged.panel.show.paged.script-editor");
+        },
+      },
+    ];
     const cmdDisposables = [
       ...commands,
+      ...aiCommands,
       ...objectCommands,
       ...insertCommands,
       ...alignCommands,
@@ -2257,13 +2308,13 @@ function CanvasAppRoot() {
       panels={SOLO_SURFACES?.panels ?? BUILT_IN_PANELS}
       overlays={BUILT_IN_OVERLAYS}
       tools={SOLO_SURFACES?.tools ?? BUILT_IN_TOOLS}
-      modes={SOLO_SURFACES?.modes ?? COCKPIT_MODES}
+      modes={SOLO_SURFACES?.modes ?? (SITE ? SITE_MODES : COCKPIT_MODES)}
       panelRail={SOLO_SURFACES?.panelRail ?? PANEL_RAIL}
       canvasComponent={CanvasPanel}
       // The corpus picker is an Envato IDML-pack browser — DTP
       // furniture with no meaning in a drawing app.
-      headerExtras={SOLO ? null : <CorpusPicker />}
-      initialMode={SOLO ? "design" : undefined}
+      headerExtras={SOLO || SITE ? null : <CorpusPicker />}
+      initialMode={SOLO || SITE ? "design" : undefined}
       initialDocumentSizePt={SOLO?.documentSizePt}
       bindingProviders={bindingProviders}
       objectModel={editorObjectModel}
@@ -2281,6 +2332,9 @@ function CanvasAppRoot() {
       )}
       {(import.meta.env.MODE === "demo" || !import.meta.env.PROD) && (
         <IframeScriptBridge />
+      )}
+      {(import.meta.env.MODE === "demo" || !import.meta.env.PROD) && SITE && (
+        <SiteBridge openDocument={openSiteDocument} />
       )}
     </PagedShell>
   );
