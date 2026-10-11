@@ -98,6 +98,20 @@ export async function completeText(prompt: string, signal?: AbortSignal): Promis
   return answer.text;
 }
 
+/** Claude's summary as plain text for a plain-text surface: the prompt
+ *  asks for no Markdown, and this removes what slips through — emphasis
+ *  markers, heading hashes, inline code ticks — keeping line breaks and
+ *  list dashes, which read fine as text. */
+export function plainSummary(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/(^|\W)\*([^*\n]+)\*(?=\W|$)/g, "$1$2")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/`([^`]+)`/g, "$1")
+    .trim();
+}
+
 /** A human sentence for an error the proxy or the SDK raised. */
 export function describeAiError(err: unknown): string {
   const e = err as { status?: number; error?: { error?: { type?: string; message?: string } }; name?: string; message?: string };

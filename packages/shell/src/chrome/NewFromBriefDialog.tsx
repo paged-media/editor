@@ -27,7 +27,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { describeAiError, runEditorAgent } from "../ai/editor-ai";
+import { describeAiError, plainSummary, runEditorAgent } from "../ai/editor-ai";
 import { PoweredByClaude } from "../ai/powered-by-claude";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
@@ -91,7 +91,7 @@ export function NewFromBriefDialog() {
         },
       });
       if (result.outcome === "refused") setPhase({ kind: "error", message: "Claude declined this brief." });
-      else setPhase({ kind: "done", summary: result.summary || "Done.", stopped: result.outcome !== "done" });
+      else setPhase({ kind: "done", summary: plainSummary(result.summary) || "Done.", stopped: result.outcome !== "done" });
     } catch (err) {
       setPhase({ kind: "error", message: describeAiError(err) });
     }
@@ -119,7 +119,22 @@ export function NewFromBriefDialog() {
         />
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
           <span style={{ opacity: 0.8 }}>Page size</span>
-          <select value={sizeId} onChange={(e) => setSizeId(e.target.value)} disabled={running} data-brief-size>
+          <select
+            value={sizeId}
+            onChange={(e) => setSizeId(e.target.value)}
+            disabled={running}
+            data-brief-size
+            style={{
+              background: "var(--pg-muted)",
+              color: "var(--pg-fg)",
+              border: "1px solid var(--chrome-divider)",
+              borderRadius: "var(--radius-sm)",
+              fontFamily: "var(--font-sans)",
+              fontSize: 12,
+              minHeight: 26,
+              padding: "0 6px",
+            }}
+          >
             {SIZES.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.label}
