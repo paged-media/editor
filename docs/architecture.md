@@ -155,11 +155,15 @@ when it declines ([ADR 023](adr/023-shared-panels-binding-providers.md)).
 
 ## Plugin hosting
 
-`main.tsx` imports eight bundles statically (`draw`, `web`, `data`, `sheet`, `image`,
-`publish`, `pdf`, `doc`), each pinned to an exact version in `apps/canvas/package.json`,
-and `PluginBundles` activates them once, in that order, through plugin-sdk's `loadBundle`.
-Bundles run as modules of the application on the main thread; no bundle is discovered or
-loaded from a URL at run time ([ADR 201](adr/201-plugins-as-pinned-packages.md)).
+The editor ships eight bundles (`draw`, `web`, `data`, `sheet`, `image`, `publish`, `pdf`,
+`doc`), each pinned to an exact version in `apps/canvas/package.json`. Each is a dynamic
+`import()` in `apps/canvas/src/plugin-bundle-table.ts`, so each is its own chunk of the build
+and none is in the entry chunk ([ADR 222](adr/222-code-split-plugin-bundles.md)). After the
+shell mounts, `PluginBundles` fetches the seven boot bundles in parallel and activates them,
+in table order, through plugin-sdk's `loadBundle`; document loads wait until they have.
+`pdf` is fetched only when the user first imports a PDF. Bundles run as modules of the
+application on the main thread; no bundle is discovered or loaded from a URL at run time
+([ADR 201](adr/201-plugins-as-pinned-packages.md)).
 
 - The host adapter is plugin-sdk's. The application supplies an editor handle and the
   backends only it can provide (`sharedHostOptions`, `main.tsx:1251-1267`): file picker and

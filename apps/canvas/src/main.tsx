@@ -100,14 +100,16 @@ import { ALIGN_ARGS, ALIGN_COMMAND, runAlign, type AlignKind } from "./align-pla
 import { cameraForPage, pagesBackend, publishActivePage, setPageGoTo } from "./plugin-pages";
 import { resolveSoloProfile } from "./solo/profiles";
 import { soloMode } from "./solo/mode";
-import { drawBundle } from "@paged-media/draw";
-import { webBundle } from "@paged-media/web";
-import { dataBundle } from "@paged-media/data";
-import { sheetBundle } from "@paged-media/sheet";
-import { imageBundle } from "@paged-media/image";
-import { publishBundle } from "@paged-media/publish";
-import { pdfBundle } from "@paged-media/pdf";
-import { docBundle } from "@paged-media/doc";
+// ADR 222 — the bundles are NOT imported here: each is a dynamic import()
+// in the table, so each is its own chunk and none sits in the entry.
+import { PLUGIN_BUNDLES } from "./plugin-bundle-table";
+import {
+  bootBundlesAreSettled,
+  bootBundlesSettled,
+  createBundleActivator,
+  markBootBundlesSettled,
+  type BundleActivator,
+} from "./plugin-bundle-loader";
 import { createEditorAssetSource } from "./plugin-asset-source";
 import { createEditorBlobStore } from "./plugin-blob-store";
 import { createEditorClipboardBackend } from "./plugin-clipboard";
@@ -1272,10 +1274,33 @@ if (!import.meta.env.PROD) {
   };
 }
 
+// ADR 222 — the activator of the mounted `PluginBundles` (StrictMode mounts
+// it twice; only the live one may settle the boot lane or serve `ensure`).
+let liveActivator: BundleActivator<{ id: string; active: boolean; dispose(): void }> | null =
+  null;
+
+// Test affordance (the `__canvas` pattern): specs wait for `settled` before
+// probing plugin contributions, and can force an on-demand bundle active.
+// Module scope, so it exists before `__canvas.client` does — a spec can never
+// observe a client without this beside it.
+if (!import.meta.env.PROD || import.meta.env.MODE === "demo") {
+  (globalThis as unknown as { __pluginBundles?: unknown }).__pluginBundles = {
+    get settled() {
+      return bootBundlesAreSettled();
+    },
+    ready: () => bootBundlesSettled(),
+    active: () => liveActivator?.active() ?? [],
+    ensure: async (id: string) => (await liveActivator?.ensure(id)) != null,
+  };
+}
+
 function PluginBundles() {
   const paged = usePaged();
   const pagedRef = useRef(paged);
   pagedRef.current = paged;
+  const registries = useRegistries();
+  const registriesRef = useRef(registries);
+  registriesRef.current = registries;
   // ADR 323 — the shared object registry's core seam reads this editor.
   setObjectModelEditor(paged);
   // Test affordance (like `__consent`/`__secrets`) — the aggregate
@@ -1624,45 +1649,31 @@ function PluginBundles() {
     // Solo loads ONE bundle. Filtering here (rather than after
     // registration) means the other seven never activate at all, so
     // their panels, tools, menus, importers and edit contexts are never
-    // registered and nothing has to un-register them.
-    //
-    // NOT a download win: the eight imports at the top of this file are
-    // static, so every module body still evaluates. What solo skips is
-    // seven plugins' `activate()` — their engines, workers and wasm.
-    const soloOnly = <T extends { manifest: { id: string } }>(b: T) =>
-      !SOLO || b.manifest.id === SOLO.bundleId ? b : null;
-    const loadIf = (b: { manifest: { id: string } }) =>
-      soloOnly(b) ? loadGuarded(b as Parameters<typeof loadGuarded>[0]) : null;
-    const loaded = [
-      loadIf(drawBundle),
-      loadIf(webBundle),
-      // paged.data (the §7.1 PROVIDER — publishes a governed query) + paged.sheet
-      // (the future consumer, S-15). Both rendezvous through `dataProviders`
-      // above. Engines boot lazily, so loading them is cheap; a missing engine /
-      // DuckDB degrades honestly in-panel (never crashes the app).
-      loadIf(dataBundle),
-      loadIf(sheetBundle),
-      // paged.image (M4 ingest slice): C-5 placed bytes → engine-wasm
-      // decode → GPU adjustments → C-1 Stage-A in-frame composite. The
-      // engine wasm boots lazily on first ingest (the GPU device lives
-      // in the bundle realm — I-07); a missing artifact / no WebGPU
-      // degrades honestly in-panel.
-      loadIf(imageBundle),
-      // ADR-022 Phase 4/5 — paged.publish: the IDML importer (routes .idml to
-      // host.nativeDocument.open) + exporter (reuses the engine serializer).
-      // Replaces the Export Center's built-in static IDML target.
-      loadIf(publishBundle),
-      // paged.pdf — Phase 0: opens a .pdf as full-page image frames (pdf.js
-      // raster -> inline-image IDML -> host.nativeDocument.open).
-      loadIf(pdfBundle),
-      // paged.doc — Word/DOCX: .docx/.dotx importer + "Place Word document…"
-      // places lowered native stories into the OPEN document (no destructive
-      // open; the docx→native standalone producer is deferred). Save-back
-      // export needs the v54/v55 doors — degrades to verbatim on older hosts.
-      loadIf(docBundle),
-    ].filter((l): l is NonNullable<typeof l> => l !== null);
+    // registered and nothing has to un-register them — and, since the
+    // bundles are dynamic imports (ADR 222), their chunks are never
+    // fetched either.
+    const activator = createBundleActivator({
+      entries: SOLO
+        ? PLUGIN_BUNDLES.filter((e) => e.id === SOLO.bundleId).map((e) => ({
+            ...e,
+            lane: "boot" as const,
+          }))
+        : PLUGIN_BUNDLES,
+      activate: loadGuarded,
+      record: (entry) => journal.record(entry),
+      publishProblem: (bundleId, key, diagnostics) =>
+        problemsSink.publish(bundleId, key, diagnostics),
+      importers: registriesRef.current.importers,
+    });
+    liveActivator = activator;
+    // Non-blocking: the shell is already mounted and painting. Document
+    // loads wait for this (the gated client in CanvasAppRoot).
+    void activator.boot().then(() => {
+      if (liveActivator === activator) markBootBundlesSettled();
+    });
     return () => {
-      for (const l of loaded) l.dispose();
+      activator.dispose();
+      if (liveActivator === activator) liveActivator = null;
       detachDocuments();
       delete (globalThis as unknown as { __shellDoors?: unknown })
         .__shellDoors;
@@ -2184,6 +2195,35 @@ function CanvasAppIntegration() {
 }
 
 /**
+ * ADR 222 — no document opens before the boot plugin bundles are active.
+ *
+ * The bundles are fetched after the shell mounts, so without this a fast
+ * open (a test's direct `client.loadDocument`, a site-bridge document, the
+ * solo boot artboard) could reach the worker before a bundle subscribed to
+ * `document.onDidOpen` — and that bundle's container parts (a workbook, a
+ * data session, draw recipes) would not be restored for the first document.
+ * Every load path (File ▸ Open, importers via nativeDocument.open, File ▸
+ * New, scripts) goes through these two methods, so this is the one gate.
+ * The chunks download in parallel with the worker's wasm boot, so in
+ * practice the wait is already over by the time a document is asked for.
+ */
+class GatedCanvasClient extends CanvasClient {
+  override async loadDocument(
+    ...args: Parameters<CanvasClient["loadDocument"]>
+  ): ReturnType<CanvasClient["loadDocument"]> {
+    await bootBundlesSettled();
+    return super.loadDocument(...args);
+  }
+
+  override async newBlankDocument(
+    ...args: Parameters<CanvasClient["newBlankDocument"]>
+  ): ReturnType<CanvasClient["newBlankDocument"]> {
+    await bootBundlesSettled();
+    return super.newBlankDocument(...args);
+  }
+}
+
+/**
  * Root: owns the CanvasClient lifecycle and hands it to PagedShell.
  */
 function CanvasAppRoot() {
@@ -2196,7 +2236,7 @@ function CanvasAppRoot() {
     // top-of-file import): Vite then fully bundles the worker chunk and its
     // `?url` wasm asset, instead of opaquely copying a raw `.ts` URL across
     // the package boundary (the D6/E8 prod-dist bug).
-    const c = new CanvasClient({
+    const c = new GatedCanvasClient({
       workerFactory: () => new CanvasRenderWorker(),
       // U5/A7 — the default-font invariant. Any document load that
       // reaches the client WITHOUT explicit font bytes (the plugin
