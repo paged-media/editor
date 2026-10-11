@@ -46,4 +46,6 @@
   # `network: false`, so the consented set is empty). `connect-src` only — no
   # `default-src` — so script/style/img are untouched (just the egress wall).
   # Lock-step with the dev header in apps/canvas/vite.config.ts.
-  Content-Security-Policy: connect-src 'self' blob: data:
+  # The module host (ADR 220) is part of the floor: the deployed build's wasm
+  # redirects there.
+  Content-Security-Policy: connect-src 'self' blob: data: https://modules.paged.media
