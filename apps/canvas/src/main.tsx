@@ -1894,18 +1894,44 @@ function CanvasAppIntegration() {
 
   // v70 — `host.viewport.goToPage`: the page by id, fitted whole or by
   // width, with the navigator's animation.
+  //
+  // A plugin calls this straight after the mutation that made or moved the
+  // page, before React has re-rendered with the new handle. The closure's
+  // handle then holds the page at its OLD index (paged.slide's new slide
+  // sat after its template page, not where it was moved), and the camera
+  // went to whatever page now occupies that slot. So the order is taken
+  // from the engine, and the camera waits for the handle that agrees.
+  const pageHandleRef = useRef(handle);
+  pageHandleRef.current = handle;
   useEffect(() => {
-    setPageGoTo((pageId, fit) => {
-      const index = handle?.pageIds.indexOf(pageId) ?? -1;
-      if (!handle || index < 0) return false;
+    setPageGoTo(async (pageId, fit) => {
+      let order: string[];
+      try {
+        order = (await client.collection<{ selfId: string }>("pages")).map((p) => p.selfId);
+      } catch {
+        return false;
+      }
+      if (!order.includes(pageId)) return false;
+      const settled = () => {
+        const h = pageHandleRef.current;
+        return h && h.pageIds.length === order.length && h.pageIds.every((id, i) => id === order[i])
+          ? h
+          : null;
+      };
+      let h = settled();
+      for (let waited = 0; !h && waited < 2000; waited += 16) {
+        await new Promise((r) => setTimeout(r, 16));
+        h = settled();
+      }
+      if (!h) return false;
       const [vw, vh] = viewportSize;
-      const cam = cameraForPage(handle.pageSizesPt, index, fit, vw, vh);
+      const cam = cameraForPage(h.pageSizesPt, h.pageIds.indexOf(pageId as never), fit, vw, vh);
       if (!cam) return false;
       animateCamera(cam);
       return true;
     });
     return () => setPageGoTo(null);
-  }, [animateCamera, handle, viewportSize]);
+  }, [animateCamera, client, viewportSize]);
 
   // Cockpit — the thumbnail filmstrip / document map navigate by
   // page indices; the camera-fit math (page layout convention) is

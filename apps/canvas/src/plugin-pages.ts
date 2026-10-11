@@ -29,7 +29,7 @@ import type { Camera } from "@paged-media/client";
 import { fitCamera, layoutPages } from "./ui/layout";
 
 type Listener = (pageId: string | null) => void;
-type GoTo = (pageId: string, fit: "page" | "width") => boolean;
+type GoTo = (pageId: string, fit: "page" | "width") => boolean | Promise<boolean>;
 
 let active: string | null = null;
 let goTo: GoTo | null = null;
@@ -78,7 +78,7 @@ export function cameraForPage(
 
 /** The backend every plugin host gets (plugin-sdk `PagesBackend`). */
 export const pagesBackend = {
-  goToPage(pageId: string, fit: "page" | "width"): boolean {
+  goToPage(pageId: string, fit: "page" | "width"): boolean | Promise<boolean> {
     return goTo ? goTo(pageId, fit) : false;
   },
   activePage(): string | null {
