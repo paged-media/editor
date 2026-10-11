@@ -225,7 +225,7 @@ export function previewBundle(options: JournalExportOptions = {}): string {
 /**
  * Hand the bundle to the user as a download, through the app's existing
  * blob→anchor door. No network call is made, and none can be: the editor's
- * CSP floor is `connect-src 'self' blob: data:` and this path never touches
+ * CSP floor is `connect-src 'self' blob: data:` (+ the module host) and this path never touches
  * it. The journal is KEPT, not SENT.
  */
 export function exportJournalBundle(options: JournalExportOptions = {}): void {

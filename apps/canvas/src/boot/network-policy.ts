@@ -30,8 +30,11 @@
 // origin the user consents to but the deployment did not list stays
 // unreachable, and the consent dialog says so.
 
-/** Same-origin + local bytes — the editor's own network surface. */
-export const CONNECT_SRC_FLOOR = "connect-src 'self' blob: data:";
+/** Same-origin + local bytes — the editor's own network surface — plus the
+ *  first-party module host the deployed build's wasm redirects to (ADR 220).
+ *  An exact origin we serve, not a data origin: no plugin data reaches it. */
+export const MODULE_HOST_ORIGIN = "https://modules.paged.media";
+export const CONNECT_SRC_FLOOR = `connect-src 'self' blob: data: ${MODULE_HOST_ORIGIN}`;
 
 /** The environment variable a build reads its admitted data origins from. */
 export const DATA_ORIGINS_ENV = "PAGED_DATA_ORIGINS";

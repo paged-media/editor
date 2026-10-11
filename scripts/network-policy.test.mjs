@@ -28,7 +28,7 @@ const {
 test("no configured origins: the floor, exactly", () => {
   assert.deepEqual(parseDataOrigins(undefined), []);
   assert.deepEqual(parseDataOrigins("  "), []);
-  assert.equal(connectSrc([]), "connect-src 'self' blob: data:");
+  assert.equal(connectSrc([]), "connect-src 'self' blob: data: https://modules.paged.media");
   assert.equal(connectSrc([]), CONNECT_SRC_FLOOR);
 });
 
@@ -37,7 +37,7 @@ test("exact https origins are admitted, deduplicated, in order", () => {
   assert.deepEqual(o, ["https://data.example.com", "https://api.example.org:8443"]);
   assert.equal(
     connectSrc(o),
-    "connect-src 'self' blob: data: https://data.example.com https://api.example.org:8443",
+    "connect-src 'self' blob: data: https://modules.paged.media https://data.example.com https://api.example.org:8443",
   );
   // Local development may list a loopback http origin.
   assert.deepEqual(parseDataOrigins("http://127.0.0.1:8765"), ["http://127.0.0.1:8765"]);
@@ -60,11 +60,11 @@ test("anything wider than an exact origin fails the build", () => {
 });
 
 test("the _headers rewrite replaces the policy line and refuses a file without one", () => {
-  const before = "/*\n  X-Other: 1\n  Content-Security-Policy: connect-src 'self' blob: data:\n";
+  const before = "/*\n  X-Other: 1\n  Content-Security-Policy: connect-src 'self' blob: data: https://modules.paged.media\n";
   const after = rewriteHeadersCsp(before, connectSrc(["https://data.example.com"]));
   assert.equal(
     after,
-    "/*\n  X-Other: 1\n  Content-Security-Policy: connect-src 'self' blob: data: https://data.example.com\n",
+    "/*\n  X-Other: 1\n  Content-Security-Policy: connect-src 'self' blob: data: https://modules.paged.media https://data.example.com\n",
   );
   assert.throws(() => rewriteHeadersCsp("/*\n  X-Other: 1\n", CONNECT_SRC_FLOOR), /no Content-Security-Policy/);
 });
