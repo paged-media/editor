@@ -2247,7 +2247,16 @@ function CanvasAppIntegration() {
       ellipse: freshInsert((p) => insertEllipse(p, insertReport)),
       line: freshInsert((p) => insertLine(p, insertReport)),
       table: freshInsert((p) => insertTable(p, insertReport)),
-      placeImage: freshInsert((p) => placeImage(p, insertReport)),
+      // IMG-2 — Place's errors (a file it cannot read) are reported where
+      // the user sees them, not only into a panel nobody has open.
+      placeImage: freshInsert((p) =>
+        placeImage(p, (severity, message) => {
+          insertReport(severity, message);
+          if (severity === "error") {
+            void registries.commands.invoke("paged.panel.show.paged.problems");
+          }
+        }),
+      ),
       newPage: freshInsert((p) => addPage(p, insertReport)),
     });
     // ADR 323 — Align / Distribute as a TYPED command over

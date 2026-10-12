@@ -76,6 +76,7 @@
 
 import type {
   CommandContribution,
+  ImporterContribution,
   KeybindingContribution,
   MenuItemContribution,
   PagedEditor,
@@ -625,6 +626,23 @@ async function naturalImageSize(
   }
 }
 
+/** A Photoshop file's pixel size, read from its header — browsers decode
+ *  neither PSD nor PSB, so `createImageBitmap` cannot size one. The
+ *  header is `8BPS`, version, six reserved bytes, the channel count, then
+ *  height and width as big-endian u32 at bytes 14 and 18. */
+export function psdHeaderSize(
+  bytes: Uint8Array,
+): { width: number; height: number } | null {
+  if (bytes.length < 26) return null;
+  if (bytes[0] !== 0x38 || bytes[1] !== 0x42 || bytes[2] !== 0x50 || bytes[3] !== 0x53) {
+    return null;
+  }
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const height = view.getUint32(14);
+  const width = view.getUint32(18);
+  return width > 0 && height > 0 ? { width, height } : null;
+}
+
 /** Smallest frame (pt) a place drag draws; a smaller box is a click. */
 const PLACE_MIN_DRAG_PT = 4;
 
@@ -692,6 +710,14 @@ async function selectedEmptyFrame(paged: PagedEditor): Promise<ElementId | null>
  * frame. And with exactly one empty graphic frame selected there is
  * nothing to ask: the picture goes into that frame.
  *
+ * FORMATS THE BROWSER CANNOT DECODE (IMG-2). A PSD sized through the
+ * browser's decoder failed, so Place stopped with a message in a panel
+ * nobody had open. Now a file an importer claims (paged.image claims
+ * .psd / .psb) is sized from its header, the frame is minted and selected
+ * as for any image, and the bytes go to that importer, which reads the
+ * frame selection to know where the layers belong. Errors reach the user:
+ * the host's report opens the Problems panel.
+ *
  * A click that misses every page still places — page-local bounds may
  * sit outside the page rect, which is the pasteboard, and putting an
  * image on the pasteboard while you decide is ordinary DTP practice.
@@ -701,17 +727,51 @@ export async function placeImage(
   report: InsertReport,
 ): Promise<InsertOutcome> {
   if (blockedFor(paged, report, "Place image")) return REFUSED;
-  const [file] = await pickFiles({ accept: ["image/*"] });
+  const [file] = await pickFiles({ accept: ["image/*", ".psd", ".psb"] });
   if (!file) return REFUSED; // cancelled — an ordinary answer, no report.
 
-  const size = await naturalImageSize(file.bytes, file.mimeType);
+  // The browser decodes PNG, JPEG and the like itself. What it cannot
+  // decode, an importer may: its size then comes from the file's header.
+  let size = await naturalImageSize(file.bytes, file.mimeType);
+  let importer: ImporterContribution | null = null;
+  if (!size) {
+    const psd = psdHeaderSize(file.bytes);
+    if (psd) {
+      importer = paged.registries.importers.resolve(file.name, file.mimeType);
+      if (!importer) {
+        report(
+          "error",
+          `Place image: "${file.name}" is a Photoshop file, and no loaded plugin reads one.`,
+        );
+        return REFUSED;
+      }
+      size = psd;
+    }
+  }
   if (!size) {
     report("error", `Place image: could not decode "${file.name}" as an image.`);
     return REFUSED;
   }
 
-  /** Put the picture into `frame`. False when that refused. */
+  /** Put the file into `frame` (selected). False when that refused. */
   const fill = async (frame: ElementId): Promise<boolean> => {
+    if (importer) {
+      try {
+        await importer.import({
+          name: file.name,
+          bytes: file.bytes,
+          mimeType: file.mimeType,
+        });
+        return true;
+      } catch (err) {
+        report(
+          "error",
+          `Place image: ${importer.title} could not read "${file.name}" — ` +
+            (err instanceof Error ? err.message : String(err)),
+        );
+        return false;
+      }
+    }
     const reply = await mutateAndSelect(
       paged,
       {

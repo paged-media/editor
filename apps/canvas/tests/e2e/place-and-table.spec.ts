@@ -24,13 +24,23 @@
 //
 //   ED-6  The place cursor ignored a drag (the image landed at natural
 //         size), and Place ignored a selected empty frame.
+//   IMG-2 Place with a .psd did nothing: the browser cannot decode a PSD,
+//         and the error reached only the Problems sink.
 
+import { dirname, resolve as pathResolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
 import { PNG } from "pngjs";
 
 import { openCanvas } from "../fidelity/canvas-driver";
 import { selectElements } from "./harness/ui";
 import { loadViaReactPath, screenPoint } from "./harness/viewport";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PSD = pathResolve(__dirname, "harness", "annual-layers.psd");
+/** The PSD header's own size (big-endian u32 at bytes 14 / 18). */
+const PSD_W = 400;
+const PSD_H = 300;
 
 interface ElementId {
   kind: string;
@@ -163,7 +173,49 @@ async function emptyFrame(
   return created as ElementId;
 }
 
-test.describe("File ▸ Place… (film defect ED-6)", () => {
+/** Record every call the importer claiming `.psd` receives, then let the
+ *  real importer run. */
+async function spyOnPsdImporter(page: Page): Promise<void> {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (globalThis as unknown as CanvasGlobal).__canvas.registries.importers.resolve(
+            "x.psd",
+          ) != null,
+      ),
+    )
+    .toBe(true);
+  await page.evaluate(() => {
+    const c = (globalThis as unknown as CanvasGlobal).__canvas;
+    const w = globalThis as unknown as {
+      __psdImports: Array<{ name: string; size: number; selected: string[] }>;
+    };
+    w.__psdImports = [];
+    const imp = c.registries.importers.resolve("x.psd")!;
+    const real = imp.import.bind(imp);
+    imp.import = async (req) => {
+      w.__psdImports.push({
+        name: req.name,
+        size: req.bytes.length,
+        selected: (globalThis as unknown as CanvasGlobal).__canvas.elementSelection.map(
+          (e) => e.id,
+        ),
+      });
+      return real(req);
+    };
+  });
+}
+
+const psdImports = (page: Page) =>
+  page.evaluate(
+    () =>
+      (globalThis as unknown as {
+        __psdImports: Array<{ name: string; size: number; selected: string[] }>;
+      }).__psdImports,
+  );
+
+test.describe("File ▸ Place… (film defects ED-6, IMG-2)", () => {
   test("ED-6 — a drag with the place cursor sizes the frame to the drag, keeping the image's proportions @feat:images-graphics.placed-images @feat:editor-shell.command-authoring @level:gesture", async ({
     page,
   }) => {
@@ -225,5 +277,89 @@ test.describe("File ▸ Place… (film defect ED-6)", () => {
     // Its own bounds, and nothing new on the page.
     expect((await geometryOf(page, frame))?.bounds).toEqual([400, 100, 520, 300]);
     expect(await itemCount(page)).toBe(before);
+  });
+
+  test("IMG-2 — Place with a .psd mints a frame at the PSD's size and hands the file to the importer that claims it @feat:images-graphics.placed-images @feat:image.psd.mutatable @level:happy", async ({
+    page,
+  }) => {
+    await openText(page);
+    await spyOnPsdImporter(page);
+
+    const chooser = page.waitForEvent("filechooser");
+    const placed = invoke(page, "paged.insert.placeImage");
+    await (await chooser).setFiles(PSD);
+    await placementArmed(page);
+    const at = await screenPoint(page, 60, 80);
+    await page.mouse.click(at.x, at.y);
+
+    const outcome = await placed;
+    expect(outcome.applied).toBe(true);
+    const frame = outcome.createdId!;
+    // Sized from the header: the browser cannot decode a PSD, and the
+    // size used to come from the browser's decoder alone.
+    const geo = await geometryOf(page, frame);
+    const [top, left, bottom, right] = geo!.bounds;
+    expect(Math.abs(left - 60)).toBeLessThan(3);
+    expect(Math.abs(top - 80)).toBeLessThan(3);
+    expect((right - left) / (bottom - top)).toBeCloseTo(PSD_W / PSD_H, 2);
+    expect(right - left).toBeLessThanOrEqual(PSD_W + 0.01);
+
+    // The importer got the whole file, with the new frame — and only it —
+    // selected, which is how paged.image knows where the layers go.
+    await expect.poll(() => psdImports(page)).toHaveLength(1);
+    const [call] = await psdImports(page);
+    expect(call.name).toBe("annual-layers.psd");
+    expect(call.size).toBe(27654);
+    expect(call.selected).toEqual([frame.id]);
+  });
+
+  test("IMG-2 — a .psd placed with an empty frame selected goes to the importer with that frame @feat:images-graphics.placed-images @feat:image.psd.mutatable @level:edge", async ({
+    page,
+  }) => {
+    const pageId = await openText(page);
+    await spyOnPsdImporter(page);
+    const frame = await emptyFrame(page, pageId, [400, 100, 520, 300]);
+    const before = await itemCount(page);
+
+    const chooser = page.waitForEvent("filechooser");
+    const placed = invoke(page, "paged.insert.placeImage");
+    await (await chooser).setFiles(PSD);
+
+    await page.waitForTimeout(500);
+    await expect(page.locator("html[data-paged-placement]")).toHaveCount(0);
+    const outcome = await placed;
+    expect(outcome.applied).toBe(true);
+    expect(outcome.createdId?.id).toBe(frame.id);
+    await expect.poll(() => psdImports(page)).toHaveLength(1);
+    expect((await psdImports(page))[0].selected).toEqual([frame.id]);
+    expect(await itemCount(page)).toBe(before);
+  });
+
+  test("IMG-2 — a file Place cannot read is reported where the user sees it @feat:images-graphics.placed-images @feat:editor-shell.panels.problems @level:edge", async ({
+    page,
+  }) => {
+    await openText(page);
+    const before = await itemCount(page);
+    const chooser = page.waitForEvent("filechooser");
+    const placed = invoke(page, "paged.insert.placeImage");
+    await (await chooser).setFiles({
+      name: "broken.png",
+      mimeType: "image/png",
+      buffer: Buffer.from("not an image at all"),
+    });
+    const outcome = await placed;
+    expect(outcome.applied).toBe(false);
+    expect(await itemCount(page)).toBe(before);
+
+    // The Problems panel opens on the reason instead of the reason waiting
+    // in a panel nobody has open.
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (globalThis as unknown as CanvasGlobal).__canvas.debugContext().panels.open,
+        ),
+      )
+      .toContain("paged.problems");
+    await expect(page.getByText(/could not decode "broken\.png"/)).toBeVisible();
   });
 });
