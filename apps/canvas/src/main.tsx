@@ -318,6 +318,11 @@ import { useKeyboardShortcuts } from "./ui/useKeyboardShortcuts";
 import { documentBounds, fitCamera, layoutPages } from "./ui/layout";
 import { usePathEditMode } from "./ui/usePathEditMode";
 import { frameHoldingCaret, useTextEditing } from "./ui/useTextEditing";
+import {
+  SELECT_ALL_COMMAND,
+  SELECT_ALL_KEYBINDINGS,
+  SELECT_ALL_MENU_ITEM,
+} from "./select-all";
 import { CorpusPicker } from "./ui/CorpusPicker";
 
 // Default overlay contributions for the canvas app. Order is
@@ -2266,11 +2271,13 @@ function CanvasAppIntegration() {
       ...objectCommands,
       ...insertCommands,
       ...alignCommands,
+      SELECT_ALL_COMMAND,
       // ADR 323 §4 — the typed core commands' menu / palette doors.
       ...buildCoreCommandEntries(),
     ].map((c) => registries.commands.register(c));
     const menuDisposables = [
       ...APP_MENU_ITEMS,
+      SELECT_ALL_MENU_ITEM,
       ...OBJECT_MENU_ITEMS,
       ...INSERT_MENU_ITEMS,
       ...CORE_COMMAND_MENU_ITEMS,
@@ -2285,6 +2292,7 @@ function CanvasAppIntegration() {
       .map((m) => registries.menus.register(m));
     const keyDisposables = [
       ...APP_KEYBINDINGS,
+      ...SELECT_ALL_KEYBINDINGS,
       ...OBJECT_KEYBINDINGS,
       ...INSERT_KEYBINDINGS,
     ].map((k) => registries.keybindings.register(k));

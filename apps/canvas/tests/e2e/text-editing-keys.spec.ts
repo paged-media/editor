@@ -27,6 +27,7 @@
 //   ED-1  Escape did not end text editing: the next key typed into the text.
 //   ED-2  No text paste: Cmd+V with a caret did nothing (nor copy / cut).
 //   ED-3  After a Type-tool drag, pointer moves with no button panned the view.
+//   ED-14 No Select All: Cmd+A selected nothing, the Edit menu had no item.
 //   ED-18 The first key after End was lost: "for" + End + " A" → "forA".
 
 import { expect, test, type Page } from "@playwright/test";
@@ -294,5 +295,85 @@ test.describe("text editing keys (film defects)", () => {
 
     await page.keyboard.type("Typed");
     await expect.poll(() => storyText(page, sel.storyId)).toBe("Typed");
+  });
+
+  test("ED-14 — Cmd+A in text selects the whole story @feat:stories-text.caret-selection @feat:editor-shell.keyboard-shortcuts @level:happy", async ({
+    page,
+  }) => {
+    const text = "First paragraph\nSecond one";
+    const { d, storyId } = await docWithText(page, text);
+    await clickCaret(page, d, storyId, 3);
+
+    await page.keyboard.press("ControlOrMeta+A");
+    await expect
+      .poll(async () => {
+        const s = await contentSelection(page);
+        return s ? `${s.storyId}:${s.start}:${s.end}` : null;
+      })
+      .toBe(`${storyId}:0:${text.length}`);
+
+    // And the range behaves like any range: typing replaces all of it.
+    await page.keyboard.type("X");
+    await expect.poll(() => storyText(page, storyId)).toBe("X");
+  });
+});
+
+test.describe("Select All (film defect ED-14)", () => {
+  test("ED-14 — Edit ▸ Select All and Cmd+A select every page item on the spread @feat:editor-tools.select.click-marquee @feat:editor-shell.menus @feat:editor-shell.keyboard-shortcuts @level:happy", async ({
+    page,
+  }) => {
+    const d = new Designer(page);
+    await d.open();
+    await d.newDocument();
+    const { frameId } = await d.addTextFrame({ x0: 72, y0: 72, x1: 300, y1: 200 });
+    const rectId = await page.evaluate(async () => {
+      const c = (globalThis as unknown as {
+        __canvas: {
+          handle: { pageIds: string[] };
+          client: {
+            mutate: (m: unknown) => Promise<{
+              payload?: { createdId?: { id?: string } | null };
+            }>;
+          };
+        };
+      }).__canvas;
+      const r = await c.client.mutate({
+        op: "insertFrame",
+        args: { pageId: c.handle.pageIds[0], bounds: [300, 100, 400, 250] },
+      });
+      return r.payload?.createdId?.id ?? null;
+    });
+    expect(rectId).toBeTruthy();
+
+    const menuPaths = await page.evaluate(() =>
+      (globalThis as unknown as CanvasGlobal).__canvas.registries.menus
+        .list()
+        .map((m) => m.path),
+    );
+    expect(menuPaths).toContain("Edit/Select all");
+
+    await d.activate("select");
+    await page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null;
+      if (el && el !== document.body) el.blur?.();
+    });
+    await page.keyboard.press("ControlOrMeta+A");
+    await expect
+      .poll(async () => (await elementSelection(page)).map((e) => e.id).sort())
+      .toEqual([frameId, rectId as string].sort());
+
+    // The menu item runs the same command.
+    await page.evaluate(async () => {
+      const c = (globalThis as unknown as CanvasGlobal).__canvas;
+      await c.client.setElementSelection([], "replace");
+    });
+    await page.evaluate(async () => {
+      await (globalThis as unknown as CanvasGlobal).__canvas.registries.commands.invoke(
+        "paged.edit.selectAll",
+      );
+    });
+    await expect
+      .poll(async () => (await elementSelection(page)).map((e) => e.id).sort())
+      .toEqual([frameId, rectId as string].sort());
   });
 });

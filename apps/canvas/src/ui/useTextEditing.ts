@@ -54,6 +54,9 @@
 // needs no clipboard permission; copy and cut read the range from the
 // engine and write it through `navigator.clipboard`.
 //
+// Cmd/Ctrl+A (ED-14) selects the whole story (or the whole cell) the
+// caret is in.
+//
 // Listener runs in the CAPTURE phase: the page-navigation shortcuts
 // (`useKeyboardShortcuts`) bind Home/End/PageUp/PageDown on `window`
 // too, and listener order between two `window` keydown handlers isn't
@@ -107,6 +110,10 @@ const utf8 = new TextEncoder();
 export function byteLength(text: string): number {
   return utf8.encode(text).length;
 }
+
+/** Past the end of any story: the engine clamps a paragraph query to the
+ *  story's last paragraph, whose end is then the story's end. */
+const PAST_THE_END = 0x7fff_ffff;
 
 export function useTextEditing(ctx: TextEditingContext) {
   // Shift-extend anchor: the offset that stays fixed while the focus
@@ -195,6 +202,18 @@ export function useTextEditing(ctx: TextEditingContext) {
           leavingRef.current = false;
           setSel(null);
           ctxRef.current.onLeaveText?.(left);
+        });
+        return;
+      }
+
+      // Select All inside text: the whole story, or the whole cell.
+      if (cmd && !e.altKey && !e.shiftKey && (key === "a" || key === "A")) {
+        e.preventDefault();
+        e.stopPropagation();
+        anchorRef.current = null;
+        enqueue(async (sel, c) => {
+          const all = await wholeStorySelection(c, sel);
+          if (all && stillAt(sel)) setSel(all);
         });
         return;
       }
@@ -405,6 +424,16 @@ function insertAt(
   }
   const caret = sel.start + byteLength(text);
   setSel({ ...sel, start: caret, end: caret, affinity: false });
+}
+
+/** The selection spanning the whole story (or cell) `sel` is in. */
+export async function wholeStorySelection(
+  client: CanvasClient,
+  sel: ContentSelection,
+): Promise<ContentSelection | null> {
+  const last = await client.paragraphBounds(sel.storyId, PAST_THE_END, sel.cell ?? null);
+  if (!last) return null;
+  return { ...sel, start: 0, end: last.end, affinity: false };
 }
 
 /** The text of a body range, read from the engine. Paragraphs join with
