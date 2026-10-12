@@ -98,4 +98,16 @@ export const PLUGIN_BUNDLES: readonly BundleEntry<PluginBundle>[] = [
     load: () =>
       import("@paged-media/doc").then((m) => m.docBundle as unknown as PluginBundle),
   },
+  // paged.slide — PowerPoint: a .pptx/.ppsx/.potx opens as native slides (the
+  // bundle writes the deck as one IDML package with PowerPoint's inheritance
+  // resolved, opened via host.nativeDocument.open; the source deck rides
+  // along as a part). Boot, like doc: the Slides and Notes panels and a
+  // reopened deck's part must find it active.
+  {
+    id: "media.paged.slide",
+    lane: "boot",
+    // The cast: a `link:` checkout until its first publish (see doc above).
+    load: () =>
+      import("@paged-media/slide").then((m) => m.slideBundle as unknown as PluginBundle),
+  },
 ];

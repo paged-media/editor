@@ -18,6 +18,7 @@ signal.
 | `sheet-09-chart.xlsx` | `plugin-sheets/corpus/xlsx-corpus/09-chart.xlsx` | see below |
 | `sheet-14-textstyles.xlsx` | `plugin-sheets/corpus/xlsx-corpus/14-textstyles.xlsx` | see below |
 | `doc-memo.docx` | `plugin-doc/docx-conformance/src/lib.rs` → `memo_docx()` | re-emit from that fn |
+| `slide-deck.pptx` | `plugin-slide/slide-conformance/fixtures/placeholders.pptx` (authored in PowerPoint: one slide per built-in layout) | copy again |
 | `data-people.csv` | authored here (plain CSV, no generator) | edit in place |
 
 All four `.xlsx` are byte-identical to their source as of 2026-08-19,

@@ -679,7 +679,8 @@ export default defineConfig({
     // @paged-media/pdf ships the same shape (the pdf-import wasm mapper +
     // pdf.js worker, both loaded via `?url`); esbuild's dep-optimizer can't
     // read a `?url` import, so exclude it too and let Vite resolve the assets.
-    // @paged-media/doc likewise (bin/docx_js_bg.wasm via `?url`).
+    // @paged-media/doc likewise (bin/docx_js_bg.wasm via `?url`), and
+    // @paged-media/slide (bin/slide_js_bg.wasm via `?url`).
     //
     // @paged-media/plugin-sdk for a different reason, and it is worth
     // stating because it will bite the next canary bump: the SDK's
@@ -700,6 +701,7 @@ export default defineConfig({
       "@paged-media/canvas-wasm",
       "@paged-media/pdf",
       "@paged-media/doc",
+      "@paged-media/slide",
       "@paged-media/data",
       "@paged-media/plugin-sdk",
     ],
