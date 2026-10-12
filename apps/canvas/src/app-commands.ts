@@ -62,6 +62,9 @@ export const PAGED_VIEW_ZOOM_FIT = "paged.view.zoomFit";
  *  registry + MenuBar change and is not smuggled in here. */
 export const PAGED_VIEW_TOGGLE_TEXT_THREADS = "paged.view.toggleTextThreads";
 export const PAGED_VIEW_TOGGLE_SNAP_TO_POINTS = "paged.view.toggleSnapToPoints";
+/** View ▸ Show heading anchors — the resolver's anchor badges, a
+ *  diagnostic drawn only on request. */
+export const PAGED_VIEW_TOGGLE_HEADING_ANCHORS = "paged.view.toggleHeadingAnchors";
 
 /** Help — the places the app sends you to learn it. */
 const HELP_LINKS = [
@@ -235,6 +238,14 @@ export function buildAppCommands(
         toggleViewToggle("snapToPoints");
       },
     },
+    {
+      id: PAGED_VIEW_TOGGLE_HEADING_ANCHORS,
+      title: "Show heading anchors",
+      category: "View",
+      handler: () => {
+        toggleViewToggle("headingAnchors");
+      },
+    },
     ...HELP_LINKS.map((l) => ({
       id: l.id,
       title: l.title,
@@ -355,6 +366,12 @@ export const APP_MENU_ITEMS: MenuItemContribution[] = [
     path: "View/Snap to points",
     command: PAGED_VIEW_TOGGLE_SNAP_TO_POINTS,
     order: 70,
+    group: "extras",
+  },
+  {
+    path: "View/Show heading anchors",
+    command: PAGED_VIEW_TOGGLE_HEADING_ANCHORS,
+    order: 65,
     group: "extras",
   },
 ];

@@ -17,7 +17,7 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 
 // eslint-disable-next-line import/no-relative-parent-imports
 import type { PageId } from "@paged-media/client";
@@ -25,15 +25,21 @@ import type { PageId } from "@paged-media/client";
 import type { OverlayContribution, OverlayProps } from "../registries/overlay";
 import { useDocument } from "../state/document-context";
 import { useOptionalScreenMode } from "../state/screen-mode-context";
+import { getViewToggle, subscribeViewToggles } from "../state/view-toggles";
 
 /**
  * Per-page labels: "page N" caption under the page, plus heading-
  * anchor badges (Tier 3 resolution data). The caption count comes
  * from the registry's `pageRects` map; anchor badges come from the
- * resolution table on DocumentContext.
+ * resolution table on DocumentContext, and only when View ▸ Show
+ * heading anchors asks for them — they are a diagnostic of the
+ * resolver, not chrome every document with a heading should wear.
  */
 function PageDecorationsRender(props: OverlayProps) {
   const { resolution } = useDocument();
+  const showAnchors = useSyncExternalStore(subscribeViewToggles, () =>
+    getViewToggle("headingAnchors"),
+  );
   // Concept 1 (T7) — captions/badges are non-printing chrome: Normal
   // mode only; Preview / Bleed / Slug / Presentation hide them.
   const screenMode = useOptionalScreenMode();
@@ -63,7 +69,7 @@ function PageDecorationsRender(props: OverlayProps) {
     i += 1;
   }
 
-  if (resolution) {
+  if (resolution && showAnchors) {
     out.push(...renderAnchorBadges(resolution, props, inv));
   }
 
@@ -103,11 +109,12 @@ function renderAnchorBadges(
       const cx = r.x + 8 * inv;
       const cy = r.y + (12 + i * 22) * inv;
       const trimmed = a.text.length > 28 ? `${a.text.slice(0, 27)}…` : a.text;
-      const label = `⚓ ${a.pageNumber} — ${trimmed}`;
+      const label = `${a.pageNumber} — ${trimmed}`;
       const labelWidthPx = 8 + label.length * 6.0;
       badges.push(
         <g
           key={`badge:${pageId}:${a.anchorId}`}
+          data-anchor-badge={a.anchorId}
           transform={`translate(${cx}, ${cy}) scale(${inv})`}
         >
           <rect
