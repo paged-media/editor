@@ -195,6 +195,7 @@ test.describe("edit context — toolIds semantics", () => {
 // and only somebody ELSE'S content surface is hidden.
 
 import { panelBelongsHere } from "@paged-media/shell";
+import { contextSegmentModel } from "../../../packages/shell/src/chrome/ContextToolbar";
 
 const CONTEXTS = [
   { type: "vectorGraphic", panelIds: ["draw.stroke"] },
@@ -249,68 +250,53 @@ test.describe("Window menu — panel applicability", () => {
 // pills on the strip directly above the canvas: controls for page items
 // over content that has none.
 //
-// The segment's TEXT is the contract, so it is asserted as text. The
-// empty case especially: a context declaring `toolIds: []` has said no
-// canvas tool edits its content, and saying that out loud is the point
-// of the declaration — rendering a blank would leave the user to infer
-// it from an absence, which is how people conclude an app is broken.
+// The segment's MODEL is the contract, asserted through the function
+// the toolbar renders from. The empty case especially: a context
+// declaring `toolIds: []` has said no canvas tool edits its content, and
+// saying that out loud is the point of the declaration — rendering a
+// blank would leave the user to infer it from an absence, which is how
+// people conclude an app is broken. (ED-11: it was a sentence — the raw
+// type and a comma-separated list of titles; the tools are now pills.)
 
-/** The segment's rule, mirrored from `ContextToolbar.ContextSegment`. */
-function segmentText(
-  frame: { label: string; type: string; toolIds: readonly string[] | null },
-  titleOf: (id: string) => string | undefined,
-): string {
-  const label = frame.label || frame.type;
-  const applicable = (frame.toolIds ?? [])
-    .map(titleOf)
-    .filter((t): t is string => Boolean(t));
-  const tail =
-    frame.toolIds === null
-      ? ""
-      : applicable.length > 0
-        ? ` — ${applicable.join(", ")}`
-        : " — no canvas tools apply here";
-  return `Editing ${label}${tail} · Esc to leave`;
-}
-
-const TITLES: Record<string, string> = {
-  "media.paged.image.tool.brush": "Brush",
-  "paged.tool.type": "Type",
+const TOOLS: Record<string, { title: string; icon: string }> = {
+  "media.paged.image.tool.brush": { title: "Brush", icon: "tool-brush" },
+  "paged.tool.type": { title: "Type", icon: "tool-type" },
 };
-const titleOf = (id: string) => TITLES[id];
+const lookup = (id: string) => TOOLS[id];
 
 test.describe("context toolbar — the segment", () => {
-  test("AC-BAR-1 — names the content type and its tools @level:happy", () => {
-    const t = segmentText(
+  test("AC-BAR-1 — names the content type and offers its tools @level:happy", () => {
+    const m = contextSegmentModel(
       { label: "rasterImage", type: "rasterImage", toolIds: ["media.paged.image.tool.brush"] },
-      titleOf,
+      lookup,
     );
-    expect(t).toContain("Editing rasterImage");
-    expect(t).toContain("Brush");
-    expect(t, "and the way out is always shown").toContain("Esc to leave");
+    expect(m.label, "the type reads as words, as in the breadcrumb").toBe("Raster image");
+    expect(m.tools.map((t) => t.title)).toEqual(["Brush"]);
+    expect(m.noTools).toBe(false);
   });
 
   test("AC-BAR-2 — DECLARED-EMPTY says so out loud @level:edge", () => {
     // The assertion that matters. A blank here would be read as a bug.
-    const t = segmentText({ label: "sheet", type: "sheet", toolIds: [] }, titleOf);
-    expect(t).toContain("no canvas tools apply here");
+    const m = contextSegmentModel({ label: "sheet", type: "sheet", toolIds: [] }, lookup);
+    expect(m.noTools).toBe(true);
+    expect(m.tools).toEqual([]);
   });
 
   test("AC-BAR-3 — an UNDECLARED list claims nothing about tools @level:edge", () => {
     // `null` means the context never said. It must not be reported as
     // "no tools apply", which is a different and much stronger claim.
-    const t = segmentText({ label: "legacy", type: "legacy", toolIds: null }, titleOf);
-    expect(t).not.toContain("no canvas tools apply");
-    expect(t).toContain("Editing legacy");
+    const m = contextSegmentModel({ label: "legacy", type: "legacy", toolIds: null }, lookup);
+    expect(m.noTools).toBe(false);
+    expect(m.label).toBe("Legacy");
   });
 
   test("AC-BAR-4 — a tool the registry does not know is dropped, not printed raw @level:edge", () => {
     // A stale id must not put a namespaced string in front of a user.
-    const t = segmentText(
+    const m = contextSegmentModel(
       { label: "sheet", type: "sheet", toolIds: ["media.paged.gone.tool.x"] },
-      titleOf,
+      lookup,
     );
-    expect(t).not.toContain("media.paged.gone");
-    expect(t).toContain("no canvas tools apply here");
+    expect(JSON.stringify(m)).not.toContain("media.paged.gone");
+    expect(m.noTools).toBe(true);
   });
 });

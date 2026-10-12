@@ -41,6 +41,10 @@ export const HAND_TOOL_ID: ToolId = "paged.tool.hand";
 export const DIRECT_SELECT_TOOL_ID: ToolId = "paged.tool.directSelect";
 export const ZOOM_TOOL_ID: ToolId = "paged.tool.zoom";
 
+/** The tools you LOOK with. Picking one inside an edit context is not
+ *  reaching for another editing tool, so it never leaves the context. */
+export const VIEW_TOOL_IDS: readonly ToolId[] = [HAND_TOOL_ID, ZOOM_TOOL_ID];
+
 /**
  * Concept 1 (T2) — the active tool is a base selection plus a
  * transient-override STACK, not a scalar, because spring-loaded tools

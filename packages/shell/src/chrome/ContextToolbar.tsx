@@ -25,8 +25,9 @@
 
 import type { ReactNode } from "react";
 
-import { Icon } from "../icons";
+import { Icon, hasIcon } from "../icons";
 import { useRegistries } from "../state/registries-context";
+import { useOptionalTool } from "../state/tool-context";
 import { useWorkflowMode } from "../state/workflow-mode-context";
 import {
   useOptionalEditContextStack,
@@ -97,9 +98,44 @@ export function ContextToolbar({ paged, right }: ContextToolbarProps) {
   );
 }
 
+/** `rasterImage` → `Raster image` — the breadcrumb's rule. */
+function titleCase(type: string): string {
+  const spaced = type.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
+}
+
+/** What the segment shows for a context: its name, the tools that edit
+ *  it, and whether it declared that none do. */
+export interface ContextSegmentModel {
+  label: string;
+  tools: Array<{ id: string; title: string; icon: string }>;
+  /** True for a DECLARED list none of whose tools exist (`[]`, or ids
+   *  the registry does not know): "no canvas tools apply here". */
+  noTools: boolean;
+}
+
+export function contextSegmentModel(
+  frame: Pick<EditContextFrame, "label" | "type" | "toolIds">,
+  lookup: (id: string) => { title: string; icon: string } | undefined,
+): ContextSegmentModel {
+  const tools = (frame.toolIds ?? []).flatMap((id) => {
+    const t = lookup(id);
+    return t ? [{ id, title: t.title, icon: t.icon }] : [];
+  });
+  return {
+    label: titleCase(frame.label || frame.type),
+    tools,
+    noTools: frame.toolIds !== null && tools.length === 0,
+  };
+}
+
 /**
- * What the bar says while a plugin content type is being edited: the
- * content you are in, and the tools that apply to it.
+ * What the bar shows while a plugin content type is being edited: the
+ * content you are in, and the tools that edit it — as TOOLS, pressable
+ * and showing which one is in hand. It used to be one sentence, the
+ * context's raw type and a comma-separated list of every tool title
+ * ("Editing rasterImage — Brush (raster), Pencil (raster), …"), which
+ * named the tools without offering them.
  *
  * The empty case is a STATEMENT, not a blank. A context declaring
  * `toolIds: []` has said no canvas tool edits its content — a
@@ -110,20 +146,39 @@ export function ContextToolbar({ paged, right }: ContextToolbarProps) {
  */
 function ContextSegment({ frame }: { frame: EditContextFrame }) {
   const { tools } = useRegistries();
-  const label = frame.label || frame.type;
-  const applicable = (frame.toolIds ?? [])
-    .map((id) => tools.get(id as never)?.title)
-    .filter((t): t is string => Boolean(t));
+  const tool = useOptionalTool();
+  const model = contextSegmentModel(frame, (id) => {
+    const t = tools.get(id as never);
+    return t ? { title: t.title, icon: t.icon } : undefined;
+  });
+  const inHand = tool?.toolState.base ?? null;
 
   return (
-    <span className="pg-ui-xs" style={{ paddingLeft: 2 }} data-context-segment>
-      Editing {label}
-      {frame.toolIds === null
-        ? ""
-        : applicable.length > 0
-          ? ` — ${applicable.join(", ")}`
-          : " — no canvas tools apply here"}
-      <span style={{ opacity: 0.6 }}> · Esc to leave</span>
+    <span
+      className="pg-ui-xs"
+      style={{ display: "flex", alignItems: "center", gap: 6, paddingLeft: 2, minWidth: 0 }}
+      data-context-segment
+    >
+      <span data-context-label style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
+        {model.label}
+      </span>
+      {model.tools.length > 0 && <span style={sepStyle} aria-hidden />}
+      {model.tools.map((t) => (
+        <ViewPill
+          key={t.id}
+          name={t.icon}
+          title={t.title}
+          active={inHand === t.id}
+          toolId={t.id}
+          onClick={() => tool?.setBaseTool(t.id)}
+        />
+      ))}
+      {model.noTools && (
+        <span style={{ opacity: 0.7, whiteSpace: "nowrap" }}>
+          No canvas tools apply here
+        </span>
+      )}
+      <span style={{ opacity: 0.6, whiteSpace: "nowrap" }}>Esc to leave</span>
     </span>
   );
 }
@@ -136,19 +191,25 @@ function ViewPill({
   active,
   disabled,
   onClick,
+  toolId,
 }: {
   name: string;
   title: string;
   active?: boolean;
   disabled?: boolean;
   onClick?: () => void;
+  /** Set when the pill arms a tool (the context segment). */
+  toolId?: string;
 }) {
   return (
     <button
       type="button"
       title={title}
+      aria-label={title}
       disabled={disabled}
-      data-view-pill={name}
+      data-view-pill={toolId ? undefined : name}
+      data-context-tool={toolId}
+      aria-pressed={toolId ? Boolean(active) : undefined}
       onClick={onClick}
       style={{
         width: 30,
@@ -166,7 +227,15 @@ function ViewPill({
         padding: 0,
       }}
     >
-      <Icon name={name} size={18} />
+      {hasIcon(name) ? (
+        <Icon name={name} size={18} />
+      ) : (
+        // A bundle glyph the shell does not know: the title's initial, as
+        // the tool rail falls back.
+        <span style={{ fontSize: 12, fontWeight: 600 }}>
+          {title.slice(0, 1).toUpperCase()}
+        </span>
+      )}
     </button>
   );
 }
