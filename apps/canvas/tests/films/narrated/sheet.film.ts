@@ -71,6 +71,28 @@ async function overset(page: Page): Promise<string> {
   return ((await page.locator("text=Overset stories").first().locator("..").textContent()) ?? "").replace(/\D+/g, "");
 }
 
+/** The placed table's version, from the sheet plugin's metadata on its
+ *  frame: it changes when the page table is refreshed from the workbook.
+ *  Cheap to poll, unlike reading the table out of an IDML export. */
+async function placedTableHash(page: Page): Promise<string | null> {
+  return page.evaluate(async () => {
+    type Node = { pluginMetadata?: Array<{ key: string; value: string }>; children?: Node[] };
+    const c = (globalThis as unknown as { __canvas: { client: { executeScript(s: string): Promise<{ output: string[] }> } } }).__canvas;
+    const r = await c.client.executeScript("JSON.stringify(paged.tree())");
+    let found: string | null = null;
+    const visit = (n: Node) => {
+      const m = n.pluginMetadata?.find((x) => x.key === "x-paged:media.paged.sheet");
+      if (m && found === null) {
+        const data = (JSON.parse(m.value) as { data?: { table?: { hash?: string } } }).data;
+        found = data?.table?.hash ?? null;
+      }
+      for (const ch of n.children ?? []) visit(ch);
+    };
+    for (const root of JSON.parse(JSON.parse(r.output[0])) as Node[]) visit(root);
+    return found;
+  });
+}
+
 /** A grid cell, by the text it shows in the Grid panel. */
 const gridCell = (page: Page, text: string) =>
   page.locator("[data-grid-svg-root] text").filter({ hasText: new RegExp(`^${text.replace(".", "\\.")}$`) }).first();
@@ -137,15 +159,24 @@ film("sheet", async (k) => {
     await expect(page.locator("[data-formula-input]")).toHaveValue("3.5");
   });
 
-  // ── A new price: the amount and the total follow on the page. ──
+  // ── A new price, typed in the formula bar. The scene ends once the page
+  //    table has caught up, so the next line speaks over the result. ──
   await k.scene("edit", async () => {
+    const before = await placedTableHash(page);
+    expect(before, "the placed frame carries the sheet binding").not.toBeNull();
     await retype(k, page.locator("[data-formula-input]"), "4.20");
-    // Read off the grid panel: the document check (an IDML export) would
-    // stall the editor on camera, so it runs once, at the end.
+    // Read off the grid panel and the frame's binding: the document check
+    // (an IDML export) would stall the editor on camera, so it runs once,
+    // at the end.
     await expect(gridCell(page, "168.00")).toBeVisible({ timeout: 10_000 });
     await expect(gridCell(page, "560.00")).toBeVisible();
+    await expect.poll(() => placedTableHash(page), { timeout: 15_000, intervals: [250] }).not.toBe(before);
+  });
+
+  // ── The amount and the total, recalculated on the page. ──
+  await k.scene("recalc", async () => {
     k.focus(TABLE, 1.4);
-    await k.hold(2400);
+    await k.hold(2600);
   });
 
   // ── The total is a formula: SUM over the amounts. ──
