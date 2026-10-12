@@ -2076,6 +2076,9 @@ function CanvasAppIntegration() {
             );
           }
           const bytes = await client.exportPaged();
+          // What the bytes hold: an edit landing while they are written
+          // out is not part of this save.
+          const savedMark = client.editMark;
           let baseName = sourceName || "document";
           try {
             const meta = await client.documentMeta();
@@ -2094,7 +2097,14 @@ function CanvasAppIntegration() {
           // prompt, a moved file.  returns false rather
           // than throwing for exactly that reason: a save that did not
           // happen must not look like one that did.
-          if (await writeToOpenFile(bytes, "application/x-paged+zip")) return;
+          //
+          // ED-4 — either way the document is saved, so the edited flag
+          // clears (until the next edit). Until now nothing cleared it:
+          // after a save the next Open still warned of unsaved edits.
+          if (await writeToOpenFile(bytes, "application/x-paged+zip")) {
+            client.markSaved(savedMark);
+            return;
+          }
           const blob = new Blob([bytes.slice()], {
             type: "application/x-paged+zip",
           });
@@ -2104,6 +2114,7 @@ function CanvasAppIntegration() {
           a.download = `${baseName.replace(/\.(paged|idml)$/i, "")}.paged`;
           a.click();
           URL.revokeObjectURL(url);
+          client.markSaved(savedMark);
         } catch (err) {
           // A failed save that reaches only the devtools console is a
           // failed save the user believes succeeded — and with no

@@ -3,7 +3,7 @@
   "package": "@paged-media/client",
   "protocol": 71,
   "counts": {
-    "clientMembers": 72,
+    "clientMembers": 75,
     "wireKinds": 52,
     "exports": 71
   },
@@ -181,6 +181,24 @@
           "kind": "method",
           "signature": "async documentMeta(): Promise<DocumentMeta>",
           "summary": "SDK Phase 5 (D1) — singleton document-meta snapshot per `docs/design/panel-catalog.md` §5.6."
+        },
+        {
+          "name": "CanvasClient.editMark",
+          "kind": "property",
+          "signature": "get editMark(): number",
+          "summary": "How many replies that may have changed the document have arrived."
+        },
+        {
+          "name": "CanvasClient.markSaved",
+          "kind": "method",
+          "signature": "markSaved(mark?: number): void",
+          "summary": "Record a save: from now until the next edit, `documentMeta()` answers `dirty: false`."
+        },
+        {
+          "name": "CanvasClient.onSaved",
+          "kind": "method",
+          "signature": "onSaved(listener: ()",
+          "summary": "Notified after {@link markSaved}: the dirty flag may have flipped without any worker message to say so."
         },
         {
           "name": "CanvasClient.setActivePage",
