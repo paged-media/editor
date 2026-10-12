@@ -100,6 +100,10 @@ export interface Kit {
   focus(page: [number, number, number, number], max?: number): void;
   /** Back to the whole window. */
   unfocus(): void;
+  /** Log the camera again after the editor's layout moved the page (a mode
+   *  that adds bars above the canvas, a zoom): later focus() rects are aimed
+   *  through the newest camera. */
+  recamera(): Promise<void>;
 }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, Math.max(0, ms)));
@@ -138,6 +142,11 @@ export function film(slug: string, body: (k: Kit) => Promise<void>): void {
     const pointer = new Pointer(page, join(dir, "cursor.jsonl"), { x: VIEW.width / 2, y: VIEW.height / 2 });
     let capture: Capture | null = null;
     let next = 0;
+    const logCamera = async () => {
+      const o = await screenPoint(page, 0, 0);
+      const x = await screenPoint(page, 100, 0);
+      mark({ mark: "camera", wall: Date.now(), origin: [o.x, o.y], scale: (x.x - o.x) / 100 });
+    };
 
     const k: Kit = {
       page,
@@ -171,10 +180,9 @@ export function film(slug: string, body: (k: Kit) => Promise<void>): void {
         await page.evaluate(() => document.getElementById("film-clapper")?.remove());
         mark({ mark: "clapper-off", wall: Date.now() });
         await sleep(300);
-        // The camera must not move after this: zooms are aimed through it.
-        const o = await screenPoint(page, 0, 0);
-        const x = await screenPoint(page, 100, 0);
-        mark({ mark: "camera", wall: Date.now(), origin: [o.x, o.y], scale: (x.x - o.x) / 100 });
+        // Zooms are aimed through the newest camera mark; k.recamera() logs
+        // another one when the page moves.
+        await logCamera();
         mark({ mark: "roll", wall: Date.now() });
       },
       async scene(id, actions) {
@@ -216,6 +224,7 @@ export function film(slug: string, body: (k: Kit) => Promise<void>): void {
       unfocus() {
         mark({ mark: "unfocus", wall: Date.now() });
       },
+      recamera: logCamera,
     };
 
     await body(k);

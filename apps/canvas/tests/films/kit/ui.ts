@@ -44,8 +44,16 @@ export async function hover(k: Kit, l: Locator): Promise<void> {
   await k.pointer.moveTo(c, { targetWidth: c.w });
 }
 
+/** A menu item by the start of its accessible name, so "Place…" finds
+ *  "Place… ⌘D" (the name carries the shortcut). */
+const menuItem = (k: Kit, label: string) =>
+  k.page.getByRole("menuitem", { name: new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`) }).first();
+
 /** Open a menu path: the top-level entry by its label in the menu bar, each
- *  submenu by hovering, the last entry by a click. */
+ *  submenu by hovering, the last entry by a click. After each hover the
+ *  pointer rests a moment and nudges right, the way a hand settles into a
+ *  submenu: crossing another submenu on the way otherwise leaves the wrong
+ *  one open. */
 export async function menu(k: Kit, path: string[]): Promise<void> {
   const [top, ...rest] = path;
   const bar = k.page.getByRole("menubar");
@@ -53,13 +61,15 @@ export async function menu(k: Kit, path: string[]): Promise<void> {
   await press(k, scope.getByText(top, { exact: true }).first());
   await k.hold(250);
   for (const [i, label] of rest.entries()) {
-    const item = k.page.getByRole("menuitem", { name: label, exact: true }).first();
-    if (i < rest.length - 1) {
-      await hover(k, item);
-      await k.hold(300);
-    } else {
-      await press(k, item);
+    if (i === rest.length - 1) {
+      await press(k, menuItem(k, label));
+      break;
     }
+    await hover(k, menuItem(k, label));
+    await k.hold(400);
+    const at = k.pointer.position;
+    await k.pointer.moveTo({ x: at.x + 10, y: at.y }, { targetWidth: 60 });
+    await menuItem(k, rest[i + 1]).waitFor({ state: "visible", timeout: 5000 });
   }
 }
 
