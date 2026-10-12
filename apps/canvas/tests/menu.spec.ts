@@ -155,3 +155,63 @@ test.describe("Phase 4 — menu via commands", () => {
     await expect(page.getByRole("menuitem", { name: "Swatches", exact: true })).toBeVisible();
   });
 });
+
+// ED-13 — a plugin's submenu in Plugins ▸ <name> is assembled from two
+// sources: the plugin's own menu (folded in) and the shell's per-panel
+// entries. They were CONCATENATED, so a panel the plugin also listed in
+// its own menu appeared twice under one key (React warned "two children
+// with the same key" on every open of Plugins ▸ Data / Image), and a
+// panel named like one of the plugin's command submenus sat beside it
+// as a second "Appearance" — two rows, one label, different things.
+test.describe("ED-13 — plugin submenus", () => {
+  test("AC-MENU-ED13 — every Plugins submenu lists each entry once, with unique keys @feat:editor-shell.menus @level:edge", async ({
+    page,
+  }) => {
+    const keyWarnings: string[] = [];
+    page.on("console", (m) => {
+      if (m.type() === "error" && m.text().includes("same key")) {
+        keyWarnings.push(m.text().slice(0, 300));
+      }
+    });
+    await openCanvas(page);
+    await loadIdml(page, FIXTURE);
+
+    // Walk Plugins with the keyboard: hovering down the list crosses the
+    // previous row's submenu, which Radix keeps open in its grace area.
+    await page.locator('[data-menu-trigger="Plugins"]').click();
+    const plugins = await page
+      .locator('[role="menu"] [data-menu-submenu]')
+      .evaluateAll((els) => els.map((e) => e.getAttribute("data-menu-submenu")!));
+    expect(plugins.length, "plugins have submenus").toBeGreaterThan(2);
+
+    const clashes: string[] = [];
+    for (const name of plugins) {
+      await page.keyboard.press("ArrowDown");
+      const trigger = page.locator(`[role="menu"] [data-menu-submenu="${name}"]`).first();
+      await expect(trigger).toBeFocused();
+      await page.keyboard.press("ArrowRight");
+      await expect(trigger).toHaveAttribute("data-state", "open");
+      const contentId = await trigger.getAttribute("aria-controls");
+      const sub = page.locator(`[id="${contentId}"]`);
+      await expect(sub).toBeVisible();
+      const rows = await sub.evaluate((el) =>
+        Array.from(el.children)
+          .filter((c) => c.getAttribute("role")?.startsWith("menuitem"))
+          .map((c) => (c.textContent ?? "").trim()),
+      );
+      const seen = new Map<string, number>();
+      for (const row of rows) {
+        // An accelerator rides the label's text; compare the label alone.
+        const label = row.replace(/[⌘⇧⌥⌃].*$/, "").trim();
+        seen.set(label, (seen.get(label) ?? 0) + 1);
+      }
+      for (const [label, n] of seen) {
+        if (n > 1) clashes.push(`Plugins ▸ ${name}: "${label}" ×${n}`);
+      }
+      await page.keyboard.press("ArrowLeft");
+      await expect(trigger).toHaveAttribute("data-state", "closed");
+    }
+    expect(clashes, "a label appears twice in one plugin submenu").toEqual([]);
+    expect(keyWarnings, "React duplicate-key warnings").toEqual([]);
+  });
+});
