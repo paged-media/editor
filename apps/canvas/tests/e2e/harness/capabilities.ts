@@ -151,8 +151,8 @@ export const CAPABILITIES: Capability[] = [
   { op: "editSection", status: "supported" },
   { op: "deleteSection", status: "supported" },
   // ── conditional text (v28) ────────────────────────────────────────
-  { op: "setConditionVisible", status: "unsupported", note: "engine op live (v28) — generated fixtures carry no conditions to probe" },
-  { op: "activateConditionSet", status: "unsupported", note: "engine op live (v28) — generated fixtures carry no condition sets to probe" },
+  { op: "setConditionVisible", status: "supported" },
+  { op: "activateConditionSet", status: "supported" },
   // ── document settings ─────────────────────────────────────────────
   { op: "setDocumentDefaults", status: "supported" },
   { op: "setColorSettings", status: "supported" },
