@@ -194,8 +194,9 @@ film("designers", async (k) => {
     k.unfocus();
     await menu(k, ["View", "Show text threads"]);
     await expect(page.locator("[data-thread-hop]")).toHaveCount(1);
+    // Punch-ins hold at least 2 s, or the compositor drops them as twitches.
     k.focus(COPY);
-    await k.hold(800);
+    await k.hold(2200);
   });
 
   // ── The heading takes its style. ──
@@ -207,7 +208,7 @@ film("designers", async (k) => {
     await press(k, page.locator('[data-apply-item="ParagraphStyle/Headline"]').first());
     await expect.poll(async () => (await story(page, storyId))[0]?.style).toBe("ParagraphStyle/Headline");
     k.focus(COPY);
-    await k.hold(900);
+    await k.hold(2200);
   });
 
   // ── A character from the Glyphs panel. ──
@@ -218,7 +219,7 @@ film("designers", async (k) => {
     await press(k, page.locator('[data-glyph="†"]:visible').first());
     await expect.poll(async () => (await story(page, storyId))[0]?.text).toBe(`${HEAD}†`);
     k.focus(COPY);
-    await k.hold(900);
+    await k.hold(2200);
     k.unfocus();
     await deselect(k);
   });
