@@ -121,8 +121,10 @@ function editorCommit(): { commit: string; dirty: boolean } {
 /** Declare a film. The body sets up off camera, rolls, and plays the plan's
  *  scenes in order; the take is written when the body returns. */
 export function film(slug: string, body: (k: Kit) => Promise<void>): void {
+  // Skipped at collection, before any browser starts: a run that selects
+  // every project must not launch Chrome for a film it cannot record.
+  test.skip(!ROOT, "PAGED_MEDIA_ROOT is not set (films are recorded locally)");
   test(`film · ${slug}`, async ({ page }) => {
-    test.skip(!ROOT, "PAGED_MEDIA_ROOT is not set (films are recorded locally)");
     const { plan, hash } = readPlan(slug);
     const dir = join(ROOT!, ".build", "raw", slug);
     rmSync(dir, { recursive: true, force: true });
