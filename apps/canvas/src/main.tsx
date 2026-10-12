@@ -312,6 +312,7 @@ import {
   StoryInspectorPanel,
 } from "./panels/cockpit/mode-inspectors";
 import { PlaygroundController } from "./playground/PlaygroundController";
+import { debugFlag } from "./debug-flags";
 import { IframeScriptBridge } from "./playground/IframeScriptBridge";
 import { useAnimatedCamera } from "./ui/useAnimatedCamera";
 import { useKeyboardShortcuts } from "./ui/useKeyboardShortcuts";
@@ -330,7 +331,9 @@ const BUILT_IN_OVERLAYS: OverlayContribution[] = [
   // the same `DocumentHandle.rulerGuides` AND drives create/move/
   // delete. The static one stays in the shell barrel for the viewer.
   guideOverlayContribution,
-  hitMarkerContribution,
+  // The hit marker is a diagnostic of the hit-test path (a crosshair at
+  // every click): `?debug=hits` only.
+  ...(debugFlag("hits") ? [hitMarkerContribution] : []),
   selectionChromeContribution,
   resizeHandlesContribution,
   rotateHandleContribution,

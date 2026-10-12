@@ -352,6 +352,40 @@ export function CanvasPanel(_props: PanelProps) {
       .catch(() => {});
   }, [client, elementSelection, setElementGeometry]);
 
+  // The geometry mirror follows the DOCUMENT, not only the pointer. It
+  // was refreshed on clicks, marquees and gestures, so an edit from
+  // anywhere else — a panel, a script, Place, undo — left the overlays
+  // and inspectors reading the frame as it was before: a frame that had
+  // just received a photo still said `hasImage: false`, and the
+  // Properties panel kept calling it a Frame.
+  const selectionRef = useRef(elementSelection);
+  selectionRef.current = elementSelection;
+  useEffect(
+    () =>
+      client.subscribe((msg) => {
+        if (
+          msg.kind !== "mutationApplied" &&
+          msg.kind !== "undoApplied" &&
+          msg.kind !== "redoApplied"
+        ) {
+          return;
+        }
+        const ids = selectionRef.current;
+        if (ids.length === 0) return;
+        const asked = JSON.stringify(ids);
+        void client
+          .elementGeometry(ids)
+          .then((items) => {
+            // A reply for a selection the user has since left is stale.
+            if (JSON.stringify(selectionRef.current) === asked) {
+              setElementGeometry(items);
+            }
+          })
+          .catch(() => {});
+      }),
+    [client, setElementGeometry],
+  );
+
   // K-1 — refresh the ACTIVE edit context's frame geometry on entry. The
   // cached `elementGeometry` only updates on the click/marquee/gesture
   // selection paths, so a context entered after a programmatic selection
