@@ -1591,7 +1591,8 @@ function ViewportHud(props: {
           ? "var(--status-review)"
           : "var(--status-error)";
   return (
-    <div style={hudStyle}>
+    // data-viewport-hud: the films (tests/films) hide this readout by it.
+    <div style={hudStyle} data-viewport-hud="">
       <span style={{ color: gpuBadge.color, fontWeight: 600 }}>
         {gpuBadge.label}
       </span>
