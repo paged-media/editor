@@ -361,7 +361,7 @@ film("data", async (k) => {
     await k.hold(1500);
   });
 
-  // ── A barcode bound to the EAN column, drawn as vector modules. ──
+  // ── A frame bound to the EAN column, then lowered: a vector barcode. ──
   await k.scene("barcode", async () => {
     // Back to the whole document, then a frame below page 2's cards.
     await k.key("v");
@@ -396,6 +396,10 @@ film("data", async (k) => {
     await page.keyboard.type("ean", { delay: 90 });
     await press(k, author.locator("[data-data-bind-add]"));
     await expect(page.locator("[data-data-bind-msg]").first()).toContainText("(ean13)");
+  });
+
+  await k.scene("lower", async () => {
+    k.unfocus();
     const polygonsBefore = new Set((await elements(page, "polygon")).map((e) => e.id));
     await press(k, page.getByRole("button", { name: /lower to document/i }));
     await expect(page.locator("[data-status]").last()).toHaveText(/Resolved \+ lowered barcode/, { timeout: 10_000 });
@@ -409,7 +413,6 @@ film("data", async (k) => {
     const bars = (await elements(page, "polygon")).filter((e) => !polygonsBefore.has(e.id)).map((e) => e.bounds);
     const eans = readFileSync(CSV, "utf8").trim().split("\n").slice(1).map((l) => l.split(",").at(-1)!.trim());
     expect(eans, "the barcode encodes an EAN from the data").toContain(decodeEan13(bars));
-    k.unfocus();
     // Off the selection, so the bars read without handles.
     await k.key("v");
     await pointer.click(await pt(k, -90, PAGE2_Y + 400), { targetWidth: 100 });
