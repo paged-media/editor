@@ -313,6 +313,7 @@ import {
 } from "./panels/cockpit/mode-inspectors";
 import { PlaygroundController } from "./playground/PlaygroundController";
 import { debugFlag } from "./debug-flags";
+import { BundledFaces } from "./bundled-faces";
 import { IframeScriptBridge } from "./playground/IframeScriptBridge";
 import { useAnimatedCamera } from "./ui/useAnimatedCamera";
 import { useKeyboardShortcuts } from "./ui/useKeyboardShortcuts";
@@ -2294,10 +2295,14 @@ function CanvasAppIntegration() {
  * practice the wait is already over by the time a document is asked for.
  */
 class GatedCanvasClient extends CanvasClient {
+  /** ED-10 — the bundled Inter, registered by name before each load. */
+  private readonly bundledFaces = new BundledFaces(fetchDefaultFont);
+
   override async loadDocument(
     ...args: Parameters<CanvasClient["loadDocument"]>
   ): ReturnType<CanvasClient["loadDocument"]> {
     await bootBundlesSettled();
+    await this.bundledFaces.ensure(this);
     return super.loadDocument(...args);
   }
 
@@ -2305,7 +2310,22 @@ class GatedCanvasClient extends CanvasClient {
     ...args: Parameters<CanvasClient["newBlankDocument"]>
   ): ReturnType<CanvasClient["newBlankDocument"]> {
     await bootBundlesSettled();
+    await this.bundledFaces.ensure(this);
     return super.newBlankDocument(...args);
+  }
+
+  override async registerFont(
+    ...args: Parameters<CanvasClient["registerFont"]>
+  ): ReturnType<CanvasClient["registerFont"]> {
+    await super.registerFont(...args);
+    this.bundledFaces.noteRegistered(args[0], args[3]?.scope);
+  }
+
+  override async clearFontRegistry(
+    ...args: Parameters<CanvasClient["clearFontRegistry"]>
+  ): ReturnType<CanvasClient["clearFontRegistry"]> {
+    await super.clearFontRegistry(...args);
+    this.bundledFaces.noteCleared(args[0]?.scope);
   }
 }
 
