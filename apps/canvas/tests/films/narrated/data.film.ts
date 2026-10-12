@@ -186,11 +186,6 @@ async function focusOn(k: Kit, l: Locator, pad = 12, max?: number): Promise<void
   if (!b) throw new Error(`no box for ${l}`);
   focusBox(k, b, pad, max);
 }
-async function focusPagePt(k: Kit, x0: number, y0: number, x1: number, y1: number, max?: number): Promise<void> {
-  const a = await pt(k, x0, y0);
-  const b = await pt(k, x1, y1);
-  focusBox(k, { x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y }, 0, max);
-}
 
 /** Every element of a kind, with its bounds (page-local: top, left, bottom, right). */
 async function elements(page: Page, kind: string): Promise<Array<{ id: string; bounds: Bounds }>> {
@@ -413,10 +408,15 @@ film("data", async (k) => {
     const bars = (await elements(page, "polygon")).filter((e) => !polygonsBefore.has(e.id)).map((e) => e.bounds);
     const eans = readFileSync(CSV, "utf8").trim().split("\n").slice(1).map((l) => l.split(",").at(-1)!.trim());
     expect(eans, "the barcode encodes an EAN from the data").toContain(decodeEan13(bars));
-    // Off the selection, so the bars read without handles.
+    // Off the selection, so the bars read without handles; then the editor's
+    // own zoom on them, which is what "sharp at any size" means.
     await k.key("v");
     await pointer.click(await pt(k, -90, PAGE2_Y + 400), { targetWidth: 100 });
-    await focusPagePt(k, 300, PAGE2_Y + 560, 570, PAGE2_Y + 730, 2);
-    await k.hold(2200);
+    await k.key("z", "Zoom tool");
+    for (let i = 0; i < 4; i++) {
+      await pointer.click(await pt(k, 435, PAGE2_Y + 645), { targetWidth: 60 });
+      await k.hold(350);
+    }
+    await k.hold(1800);
   });
 });
