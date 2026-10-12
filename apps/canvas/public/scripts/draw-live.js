@@ -2,8 +2,6 @@
 // hands-free. Every step goes through the same code a click would: the wire
 // ops the panels use, and the paged.draw plugin's own commands.
 
-const step = (title, body, index) => demo.showInfo(title, body, { autoMs: 3600, index, total: 5 });
-
 await editor.runCommand("paged.file.new");
 // The new document's page list arrives a moment after the command returns.
 let pageId;
@@ -16,7 +14,7 @@ const make = async (op) => {
   if (reply.kind !== "mutationApplied") throw new Error(`${op.op} was not applied (${reply.kind})`);
   return reply.payload.createdId;
 };
-await step("paged.draw, live", "This is the editor itself, running in this tab. A script is about to draw with it.", 1);
+await demo.showInfo("paged.draw, live", "This is the editor itself, running in this tab. A script is about to draw with it.", { autoMs: 3600, index: 1, total: 5 });
 
 // Two swatches, named so the script can use them by id.
 for (const [selfId, name, rgb] of [
@@ -47,14 +45,14 @@ const domeId = await make({
 });
 await fill(domeId, "Color/Rose");
 await editor.select([domeId], "replace");
-await step("A curve, by its anchors", "Three anchors, one of them smooth: a closed vector path, filled from a swatch.", 2);
+await demo.showInfo("A curve, by its anchors", "Three anchors, one of them smooth: a closed vector path, filled from a swatch.", { autoMs: 3600, index: 2, total: 5 });
 
 // A rectangle, rounded live by the plugin's corner command.
 const cardId = await make({ op: "insertFrame", args: { pageId, bounds: [90, 360, 250, 540] } });
 await fill(cardId, "Color/Violet");
 await editor.select([cardId], "replace");
 await editor.runCommand("media.paged.draw.command.cornersRounded");
-await step("Live corners", "Draw ▸ Corners ▸ Rounded: the corners stay live, and InDesign reads them as its own.", 3);
+await demo.showInfo("Live corners", "Draw ▸ Corners ▸ Rounded: the corners stay live, and save as IDML corner options.", { autoMs: 3600, index: 3, total: 5 });
 
 // Two overlapping shapes, united by Pathfinder.
 const a = await make({ op: "insertFrame", args: { pageId, bounds: [320, 90, 440, 250] } });
@@ -64,11 +62,7 @@ await fill(b, "Color/Violet");
 await editor.select([a, b], "replace");
 await demo.wait(900);
 await editor.runCommand("media.paged.draw.command.pathfinderUnite");
-await step("Pathfinder", "Two overlapping shapes, united into one path by Draw ▸ Pathfinder ▸ Unite.", 4);
+await demo.showInfo("Pathfinder", "Two overlapping shapes, united into one path by Draw ▸ Pathfinder ▸ Unite.", { autoMs: 3600, index: 4, total: 5 });
 
 await editor.select([], "replace");
-await step(
-  "Your turn",
-  "Everything here is still editable: pick a tool and draw. The script is in the panel on the right; change it and run it again.",
-  5,
-);
+await demo.showInfo("Your turn", "Everything here is still editable: pick a tool and draw. The script is in the panel on the left; edit it and run it again.", { autoMs: 3600, index: 5, total: 5 });
