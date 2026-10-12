@@ -29,6 +29,9 @@ import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { Designer } from "./journey/driver/designer";
+import { selectElements } from "./e2e/harness/ui";
+import { treeIds } from "./e2e/harness/viewport";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -213,5 +216,64 @@ test.describe("ED-13 — plugin submenus", () => {
     }
     expect(clashes, "a label appears twice in one plugin submenu").toEqual([]);
     expect(keyWarnings, "React duplicate-key warnings").toEqual([]);
+  });
+});
+
+// ED-19 — a plugin's menu comes forward on the bar while its content is
+// selected, and the selection classifier answered only for a SINGLE
+// selection. So a command that needs two of the plugin's frames —
+// paged.web's "Thread web flow into frames" — was unreachable from the
+// bar: the moment the second frame joined the selection, the Web menu
+// left. Several items of one kind keep that kind's menu; mixed kinds
+// show none.
+test.describe("ED-19 — context menus follow a multi-selection", () => {
+  async function contextMenus(page: import("@playwright/test").Page): Promise<string[]> {
+    return page
+      .locator('[data-menu-trigger][data-menu-context="true"]')
+      .evaluateAll((els) => els.map((e) => e.getAttribute("data-menu-trigger")!));
+  }
+
+  test("AC-MENU-ED19-1 — two paths keep Draw on the bar; a path and an oval do not @feat:editor-shell.menus @level:edge", async ({
+    page,
+  }) => {
+    const designer = new Designer(page);
+    await designer.open();
+    await designer.newDocument();
+    const a = await designer.drawRectangle({ x0: 60, y0: 60, x1: 160, y1: 160 });
+    const b = await designer.drawRectangle({ x0: 200, y0: 60, x1: 300, y1: 160 });
+    await designer.selectElement("rectangle", a);
+    await expect.poll(() => contextMenus(page)).toContain("Draw");
+
+    await selectElements(page, [
+      { kind: "rectangle", id: a },
+      { kind: "rectangle", id: b },
+    ]);
+    await expect.poll(() => contextMenus(page)).toContain("Draw");
+
+    // An oval is no path the vector context claims: mixed → no menu.
+    await designer.runCommand("paged.insert.ellipse");
+    await expect.poll(async () => (await treeIds(page, "oval")).length).toBe(1);
+    const ovals = await treeIds(page, "oval");
+    expect(ovals.length).toBe(1);
+    await selectElements(page, [{ kind: "rectangle", id: a }, ovals[0]]);
+    await expect.poll(() => contextMenus(page)).not.toContain("Draw");
+  });
+
+  test("AC-MENU-ED19-2 — two web frames keep Web on the bar, and its two-frame command is reachable @feat:editor-shell.menus @level:edge", async ({
+    page,
+  }) => {
+    const designer = new Designer(page);
+    await designer.open();
+    await designer.newDocument();
+    await designer.runCommand("media.paged.web.command.insertWebFrame");
+    await designer.runCommand("media.paged.web.command.insertWebFrame");
+    const frames = [...(await treeIds(page, "textFrame")), ...(await treeIds(page, "rectangle"))];
+    expect(frames.length, "two web frames").toBe(2);
+    await selectElements(page, frames);
+    await expect.poll(() => contextMenus(page)).toContain("Web");
+    await page.locator('[data-menu-trigger="Web"]').click();
+    const thread = page.getByRole("menuitem", { name: /^Thread flow into frames/ });
+    await expect(thread).toBeVisible();
+    await expect(thread).not.toHaveAttribute("data-disabled", /.*/);
   });
 });
