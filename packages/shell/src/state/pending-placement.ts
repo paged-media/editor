@@ -46,7 +46,24 @@
 export interface PlacementPoint {
   clientX: number;
   clientY: number;
+  /** Where the pointer was released when the press was a DRAG (ED-6):
+   *  the user drew the box the placed item should fill. Absent for a
+   *  click. */
+  to?: { clientX: number; clientY: number };
 }
+
+export interface PlacementOptions {
+  /** Called while a drag is under way with the press and the pointer now,
+   *  and with `null` when it ends — for a live preview of the box. */
+  onDrag?: (
+    from: { clientX: number; clientY: number },
+    to: { clientX: number; clientY: number } | null,
+  ) => void;
+}
+
+/** Screen px a press must travel before it is a drag — the canvas's own
+ *  click/drag threshold. */
+const DRAG_THRESHOLD_PX = 4;
 
 /** Marks the armed state for specs and for anything that wants to react
  *  to it. `documentElement` rather than a React node so it survives a
@@ -61,7 +78,9 @@ export function placementArmed(): boolean {
 }
 
 /**
- * Arm a placement and resolve with the point the user clicks next.
+ * Arm a placement and resolve with the point the user clicks next — or,
+ * when they DRAG, with the press and the release (`to`), the box they
+ * drew (ED-6: a drag used to be ignored, the press alone resolved).
  *
  * Resolves `null` when the user presses Escape, right-clicks, or clicks
  * anywhere outside the canvas — every one of which means "no point was
@@ -70,11 +89,17 @@ export function placementArmed(): boolean {
  * would be worse than the centred behaviour it replaces, because the
  * user believes they cancelled.
  */
-export function awaitPlacementPoint(): Promise<PlacementPoint | null> {
+export function awaitPlacementPoint(
+  options: PlacementOptions = {},
+): Promise<PlacementPoint | null> {
   return new Promise<PlacementPoint | null>((resolve) => {
     const root = document.documentElement;
     const previous = root.style.getPropertyValue("cursor");
     const previousPriority = root.style.getPropertyPriority("cursor");
+
+    /** The press inside the canvas, while its release is awaited. */
+    let pressed: { clientX: number; clientY: number } | null = null;
+    let dragging = false;
 
     let settled = false;
     const finish = (value: PlacementPoint | null) => {
@@ -85,7 +110,11 @@ export function awaitPlacementPoint(): Promise<PlacementPoint | null> {
       if (previous) root.style.setProperty("cursor", previous, previousPriority);
       else root.style.removeProperty("cursor");
       window.removeEventListener("pointerdown", onDown, true);
+      window.removeEventListener("pointermove", onMove, true);
+      window.removeEventListener("pointerup", onUp, true);
+      window.removeEventListener("pointercancel", onPointerCancel, true);
       window.removeEventListener("keydown", onKey, true);
+      if (dragging) options.onDrag?.(pressed!, null);
       resolve(value);
     };
 
@@ -113,10 +142,38 @@ export function awaitPlacementPoint(): Promise<PlacementPoint | null> {
         return;
       }
       // Inside the canvas: consume it, or the canvas ALSO starts a
-      // marquee/selection under the image being placed.
+      // marquee/selection under the image being placed. Then wait for the
+      // release, which decides between a click and a drawn box.
       e.preventDefault();
       e.stopPropagation();
-      finish({ clientX: e.clientX, clientY: e.clientY });
+      if (pressed) return;
+      pressed = { clientX: e.clientX, clientY: e.clientY };
+    };
+
+    const onMove = (e: PointerEvent) => {
+      if (!pressed) return;
+      // The canvas never saw the press; keep the drag from it too.
+      e.stopPropagation();
+      dragging ||=
+        Math.hypot(e.clientX - pressed.clientX, e.clientY - pressed.clientY) >
+        DRAG_THRESHOLD_PX;
+      if (dragging) options.onDrag?.(pressed, { clientX: e.clientX, clientY: e.clientY });
+    };
+
+    const onUp = (e: PointerEvent) => {
+      if (!pressed) return;
+      e.preventDefault();
+      e.stopPropagation();
+      finish(
+        dragging
+          ? { ...pressed, to: { clientX: e.clientX, clientY: e.clientY } }
+          : pressed,
+      );
+    };
+
+    // Capture stolen mid-press: the press is still the user's answer.
+    const onPointerCancel = () => {
+      if (pressed) finish(pressed);
     };
 
     const onKey = (e: KeyboardEvent) => {
@@ -132,6 +189,9 @@ export function awaitPlacementPoint(): Promise<PlacementPoint | null> {
     // Capture phase, so this wins the pointer before ViewportCanvas's
     // own pointerdown handler begins a gesture.
     window.addEventListener("pointerdown", onDown, true);
+    window.addEventListener("pointermove", onMove, true);
+    window.addEventListener("pointerup", onUp, true);
+    window.addEventListener("pointercancel", onPointerCancel, true);
     window.addEventListener("keydown", onKey, true);
   });
 }

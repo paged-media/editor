@@ -625,6 +625,50 @@ async function naturalImageSize(
   }
 }
 
+/** Smallest frame (pt) a place drag draws; a smaller box is a click. */
+const PLACE_MIN_DRAG_PT = 4;
+
+/** The box a place DRAG draws for an image of `size`: the largest box of
+ *  the image's proportions inside the dragged one, anchored at the press
+ *  (it grows the way the drag went). Document space; `null` when too
+ *  small to be meant. */
+export function placeDragBox(
+  from: [number, number],
+  to: [number, number],
+  size: { width: number; height: number },
+): { left: number; top: number; w: number; h: number } | null {
+  const scale = Math.min(
+    Math.abs(to[0] - from[0]) / size.width,
+    Math.abs(to[1] - from[1]) / size.height,
+  );
+  const w = size.width * scale;
+  const h = size.height * scale;
+  if (!(w >= PLACE_MIN_DRAG_PT && h >= PLACE_MIN_DRAG_PT)) return null;
+  return {
+    left: to[0] >= from[0] ? from[0] : from[0] - w,
+    top: to[1] >= from[1] ? from[1] : from[1] - h,
+    w,
+    h,
+  };
+}
+
+/** The selection when it is exactly one EMPTY graphic frame — where a
+ *  Place puts the picture instead of asking for a point (ED-6). */
+async function selectedEmptyFrame(paged: PagedEditor): Promise<ElementId | null> {
+  const selected = paged.selection.elementSelection;
+  if (selected.length !== 1) return null;
+  const [id] = selected;
+  if (id.kind !== "rectangle" && id.kind !== "oval" && id.kind !== "polygon") {
+    return null;
+  }
+  try {
+    const [geometry] = await paged.client.elementGeometry([id]);
+    return geometry && !geometry.hasImage ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * File ▸ Place… — pick an image, ask WHERE with the pointer, then mint
  * an aspect-fit frame with its top-left at the clicked point
@@ -642,6 +686,12 @@ async function naturalImageSize(
  * cancels and places NOTHING, because a place that landed anyway after
  * a cancel is worse than one that always centred.
  *
+ * DRAG-TO-SIZE and PLACE-INTO (ED-6). A drag with the armed cursor draws
+ * the frame — the image's proportions inside the dragged box, previewed
+ * while dragging — instead of the press alone deciding a natural-size
+ * frame. And with exactly one empty graphic frame selected there is
+ * nothing to ask: the picture goes into that frame.
+ *
  * A click that misses every page still places — page-local bounds may
  * sit outside the page rect, which is the pasteboard, and putting an
  * image on the pasteboard while you decide is ordinary DTP practice.
@@ -653,11 +703,36 @@ export async function placeImage(
   if (blockedFor(paged, report, "Place image")) return REFUSED;
   const [file] = await pickFiles({ accept: ["image/*"] });
   if (!file) return REFUSED; // cancelled — an ordinary answer, no report.
+
   const size = await naturalImageSize(file.bytes, file.mimeType);
   if (!size) {
     report("error", `Place image: could not decode "${file.name}" as an image.`);
     return REFUSED;
   }
+
+  /** Put the picture into `frame`. False when that refused. */
+  const fill = async (frame: ElementId): Promise<boolean> => {
+    const reply = await mutateAndSelect(
+      paged,
+      {
+        op: "replaceImageBytes",
+        args: {
+          elementId: frame.id as string,
+          bytes: Array.from(file.bytes),
+        },
+      },
+      "placeImage",
+      refusedTap(report, "Place image"),
+    );
+    return outcomeOf(reply).applied;
+  };
+
+  // An empty frame is selected: that is where it goes.
+  const into = await selectedEmptyFrame(paged);
+  if (into) {
+    return (await fill(into)) ? { applied: true, createdId: into } : REFUSED;
+  }
+
   const target = currentPageTarget(paged);
   if (!target) return REFUSED;
   const maxW = target.rect.w * PLACE_IMAGE_MAX_PAGE_FRACTION;
@@ -665,13 +740,37 @@ export async function placeImage(
   const scale = Math.min(1, maxW / size.width, maxH / size.height);
   const w = size.width * scale;
   const h = size.height * scale;
+  const natural = size;
 
   // Ask where. Cancelling is an ordinary answer — no report, exactly
-  // like cancelling the picker above.
-  const point = await awaitPlacementPoint();
+  // like cancelling the picker above. A drag previews the frame it draws.
+  const point = await awaitPlacementPoint({
+    onDrag: (from, to) => {
+      const a = to ? clientPointToDoc(paged, from.clientX, from.clientY) : null;
+      const b = to ? clientPointToDoc(paged, to.clientX, to.clientY) : null;
+      const box = a && b ? placeDragBox(a, b, natural) : null;
+      const page = a ? (pageContaining(paged, a[0], a[1]) ?? target) : target;
+      paged.overlaySignals.setToolPreview(
+        box
+          ? {
+              pageId: page.pageId,
+              rect: [
+                box.top - page.rect.y,
+                box.left - page.rect.x,
+                box.top - page.rect.y + box.h,
+                box.left - page.rect.x + box.w,
+              ],
+            }
+          : null,
+      );
+    },
+  });
   if (!point) return REFUSED;
 
   const doc = clientPointToDoc(paged, point.clientX, point.clientY);
+  const dragEnd = point.to
+    ? clientPointToDoc(paged, point.to.clientX, point.to.clientY)
+    : null;
   let landing = target;
   let bounds: [number, number, number, number];
   if (doc) {
@@ -679,9 +778,16 @@ export async function placeImage(
     // while page 1 is "current" does what it looks like it does.
     const hit = pageContaining(paged, doc[0], doc[1]);
     if (hit) landing = hit;
-    const left = doc[0] - landing.rect.x;
-    const top = doc[1] - landing.rect.y;
-    bounds = [top, left, top + h, left + w];
+    const box = dragEnd ? placeDragBox(doc, dragEnd, natural) : null;
+    if (box) {
+      const left = box.left - landing.rect.x;
+      const top = box.top - landing.rect.y;
+      bounds = [top, left, top + box.h, left + box.w];
+    } else {
+      const left = doc[0] - landing.rect.x;
+      const top = doc[1] - landing.rect.y;
+      bounds = [top, left, top + h, left + w];
+    }
   } else {
     // No viewport to measure against (the canvas is unmounted, or the
     // camera has no scale). Falling back to centring is right here: the
@@ -697,19 +803,7 @@ export async function placeImage(
   );
   const frame = outcomeOf(frameReply);
   if (!frame.applied || !frame.createdId) return REFUSED;
-  const bytesReply = await mutateAndSelect(
-    paged,
-    {
-      op: "replaceImageBytes",
-      args: {
-        elementId: frame.createdId.id as string,
-        bytes: Array.from(file.bytes),
-      },
-    },
-    "placeImage",
-    refusedTap(report, "Place image"),
-  );
-  if (!outcomeOf(bytesReply).applied) {
+  if (!(await fill(frame.createdId))) {
     await rollBackFirstStep(paged);
     return REFUSED;
   }
