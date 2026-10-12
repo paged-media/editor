@@ -30,11 +30,21 @@
 // "goal column") and `client.lineBounds`. Shift extends from a stable
 // anchor; the focus end moves via the same nav.
 //
-// Selection updates happen optimistically on the main thread (insert
-// at offset O shifts the caret to O+len) so the caret stays in step
-// with typing; the worker's authoritative `MutationApplied` reply
-// confirms or supersedes via subsequent caret queries (PagedShell's
-// post-mutation refresh re-fetches caret + selection geometry).
+// ONE KEY AT A TIME (ED-18). Every key's work runs on a single promise
+// chain, in the order the keys arrived, against the selection the
+// previous key left behind (`selRef`, written synchronously — the React
+// state it mirrors lands a render later). The engine round-trips of
+// End / Home / Up / Down hold the chain until they answer. Before this,
+// "End" then " A" typed quickly put the space at the OLD caret, and the
+// late line-bounds answer then dragged the caret back over it, so the
+// next letter landed in front of the space ("for" + End + " A" → "forA ").
+// An engine answer is dropped when something outside this handler (a
+// click, a panel) moved the selection while it was in flight.
+//
+// OFFSETS ARE UTF-8 BYTES. The engine addresses story text by byte
+// (`wordBounds`, `lineBounds`, `insertText.offset` alike), so an insert
+// advances the caret by the text's UTF-8 length, not its UTF-16 length —
+// "ü" is two bytes, and advancing by one left the caret inside it.
 //
 // Listener runs in the CAPTURE phase: the page-navigation shortcuts
 // (`useKeyboardShortcuts`) bind Home/End/PageUp/PageDown on `window`
@@ -53,8 +63,12 @@
 // inverse op carries the same `cell` (proven by the cell-text probe).
 
 import { useEffect, useRef } from "react";
-import type { CanvasClient } from "@paged-media/client";
-import type { CaretDirection, ContentSelection } from "@paged-media/client";
+import type {
+  CanvasClient,
+  CaretDirection,
+  ContentSelection,
+  Mutation,
+} from "@paged-media/client";
 
 export interface TextEditingContext {
   client: CanvasClient | null;
@@ -66,28 +80,75 @@ export interface TextEditingContext {
   undoOwnedByContext?: () => boolean;
 }
 
+/** One key's work, run against the selection the previous key left. */
+type Task = (
+  sel: ContentSelection,
+  client: CanvasClient,
+) => void | Promise<void>;
+
+const utf8 = new TextEncoder();
+
+/** The engine's offsets are UTF-8 bytes. */
+export function byteLength(text: string): number {
+  return utf8.encode(text).length;
+}
+
 export function useTextEditing(ctx: TextEditingContext) {
   // Shift-extend anchor: the offset that stays fixed while the focus
   // end moves. Reset to the caret offset on any non-extending move so a
   // fresh Shift+arrow grows from the current caret, not a stale anchor.
   const anchorRef = useRef<number | null>(null);
+  const ctxRef = useRef(ctx);
+  ctxRef.current = ctx;
+
+  // The selection as the last key left it. Synced from the prop only
+  // when the prop CHANGES, so a render that has not caught up with this
+  // handler's own writes cannot roll it back.
+  const selRef = useRef<ContentSelection | null>(ctx.selection);
+  const seenRef = useRef<ContentSelection | null>(ctx.selection);
+  if (seenRef.current !== ctx.selection) {
+    seenRef.current = ctx.selection;
+    selRef.current = ctx.selection;
+  }
+  const queueRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
+    const setSel = (s: ContentSelection | null) => {
+      selRef.current = s;
+      ctxRef.current.setSelection(s);
+    };
+    const after = (work: () => unknown) => {
+      queueRef.current = queueRef.current.then(async () => {
+        try {
+          await work();
+        } catch {
+          /* worker reload / disconnect — leave the caret put */
+        }
+      });
+    };
+    const enqueue = (task: Task) =>
+      after(async () => {
+        const sel = selRef.current;
+        const client = ctxRef.current.client;
+        if (!sel || !client) return;
+        await task(sel, client);
+      });
+    /** An engine answer still applies only if nothing outside this
+     *  handler moved the selection while the question was in flight. */
+    const stillAt = (sel: ContentSelection) => selRef.current === sel;
+
     const onKey = (e: KeyboardEvent) => {
       if (isEditableTarget(e.target)) return;
-      const sel = ctx.selection;
+      const ctx = ctxRef.current;
       const client = ctx.client;
       if (!client) return;
 
       const cmd = e.metaKey || e.ctrlKey;
-      // v35 cell qualifier — forwarded verbatim onto every text mutation
-      // / nav query so a caret inside a table cell edits THAT cell's
-      // stream. `undefined` (body selection) keeps the legacy wire shape.
-      const cell = sel?.cell ?? undefined;
+      const key = e.key;
 
       // Cmd+Z / Cmd+Shift+Z. Always handled when client exists,
       // regardless of selection state.
-      if (cmd && (e.key === "z" || e.key === "Z")) {
+      if (cmd && (key === "z" || key === "Z")) {
         // Both this hook and the edit-context controller listen on
         // `window` in the capture phase, so stopPropagation in one never
         // stops the other and their order is registration order. While a
@@ -96,106 +157,69 @@ export function useTextEditing(ctx: TextEditingContext) {
         // undid the placed table's cell pour and emptied every cell.
         if (e.defaultPrevented || ctx.undoOwnedByContext?.()) return;
         e.preventDefault();
-        if (e.shiftKey) {
-          void client.redo();
-        } else {
-          void client.undo();
-        }
+        // Behind any key still in flight, so it undoes what was typed.
+        const redo = e.shiftKey;
+        after(() => (redo ? client.redo() : client.undo()));
         return;
       }
 
       // The remaining shortcuts require an active selection.
-      if (!sel) return;
+      if (!selRef.current) return;
 
-      if (e.key === "Backspace") {
+      if (key === "Backspace") {
         e.preventDefault();
         anchorRef.current = null;
-        if (sel.start === sel.end && sel.start === 0) return;
-        if (sel.start === sel.end) {
-          // Caret: delete one character backwards.
-          const start = sel.start - 1;
-          const end = sel.start;
-          void client.mutate({
-            op: "deleteRange",
-            args: { storyId: sel.storyId, start, end, cell },
-          });
-          ctx.setSelection({
-            ...sel,
-            start,
-            end: start,
-            affinity: false,
-          });
-        } else {
-          void client.mutate({
-            op: "deleteRange",
-            args: { storyId: sel.storyId, start: sel.start, end: sel.end, cell },
-          });
-          ctx.setSelection({ ...sel, end: sel.start, affinity: false });
-        }
+        enqueue((sel, c) => {
+          const cell = sel.cell ?? undefined;
+          if (sel.start === sel.end && sel.start === 0) return;
+          if (sel.start === sel.end) {
+            // Caret: delete one character backwards.
+            const start = sel.start - 1;
+            void c.mutate({
+              op: "deleteRange",
+              args: { storyId: sel.storyId, start, end: sel.start, cell },
+            });
+            setSel({ ...sel, start, end: start, affinity: false });
+          } else {
+            void c.mutate({
+              op: "deleteRange",
+              args: { storyId: sel.storyId, start: sel.start, end: sel.end, cell },
+            });
+            setSel({ ...sel, end: sel.start, affinity: false });
+          }
+        });
         return;
       }
 
-      if (e.key === "Delete") {
+      if (key === "Delete") {
         e.preventDefault();
         anchorRef.current = null;
-        if (sel.start === sel.end) {
-          // Forward delete — defer correct end-of-story handling
-          // (worker will reject if out of range).
-          void client.mutate({
-            op: "deleteRange",
-            args: {
-              storyId: sel.storyId,
-              start: sel.start,
-              end: sel.start + 1,
-              cell,
-            },
-          });
-        } else {
-          void client.mutate({
-            op: "deleteRange",
-            args: { storyId: sel.storyId, start: sel.start, end: sel.end, cell },
-          });
-          ctx.setSelection({ ...sel, end: sel.start, affinity: false });
-        }
+        enqueue((sel, c) => {
+          const cell = sel.cell ?? undefined;
+          if (sel.start === sel.end) {
+            // Forward delete — defer correct end-of-story handling
+            // (worker will reject if out of range).
+            void c.mutate({
+              op: "deleteRange",
+              args: { storyId: sel.storyId, start: sel.start, end: sel.start + 1, cell },
+            });
+          } else {
+            void c.mutate({
+              op: "deleteRange",
+              args: { storyId: sel.storyId, start: sel.start, end: sel.end, cell },
+            });
+            setSel({ ...sel, end: sel.start, affinity: false });
+          }
+        });
         return;
       }
 
       // Printable input. e.key is "a", "A", " ", etc. for character
       // keys; "Enter" / "Tab" / arrow keys handled elsewhere.
-      if (e.key.length === 1 && !cmd && !e.altKey) {
+      if (key.length === 1 && !cmd && !e.altKey) {
         e.preventDefault();
         anchorRef.current = null;
-        const text = e.key;
-        // Optimistic local shift: caret advances by 1.
-        if (sel.start === sel.end) {
-          void client.mutate({
-            op: "insertText",
-            args: { storyId: sel.storyId, offset: sel.start, text, cell },
-          });
-          ctx.setSelection({
-            ...sel,
-            start: sel.start + text.length,
-            end: sel.start + text.length,
-            affinity: false,
-          });
-        } else {
-          // Range selection: replace = delete + insert. Send as two
-          // ops; the worker applies them in order.
-          void client.mutate({
-            op: "deleteRange",
-            args: { storyId: sel.storyId, start: sel.start, end: sel.end, cell },
-          });
-          void client.mutate({
-            op: "insertText",
-            args: { storyId: sel.storyId, offset: sel.start, text, cell },
-          });
-          ctx.setSelection({
-            ...sel,
-            start: sel.start + text.length,
-            end: sel.start + text.length,
-            affinity: false,
-          });
-        }
+        enqueue((sel, c) => insertAt(c, sel, key, setSel));
         return;
       }
 
@@ -204,74 +228,61 @@ export function useTextEditing(ctx: TextEditingContext) {
       // last extend moved. For a collapsed selection both ends equal
       // the caret; for a range we treat `end` as the focus and `start`
       // as the implicit anchor, falling back to anchorRef when set.
-
-      const caretFocus = focusOffset(sel, anchorRef.current);
+      const shift = e.shiftKey;
 
       // Left / Right arrows move the caret by one offset. Cmd+Left /
       // Cmd+Right jump to the line start / end (macOS line-nav
       // convention) via lineBounds.
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      if (key === "ArrowLeft" || key === "ArrowRight") {
         e.preventDefault();
         e.stopPropagation();
         const toLineEdge = cmd; // Cmd+Arrow = line start/end on mac
-        if (toLineEdge) {
-          void applyLineEdge(
-            client,
-            sel,
-            e.key === "ArrowLeft" ? "start" : "end",
-            e.shiftKey,
-            anchorRef,
-            caretFocus,
-            ctx.setSelection,
-          );
-          return;
-        }
-        const delta = e.key === "ArrowLeft" ? -1 : 1;
-        const newFocus = Math.max(0, caretFocus + delta);
-        applyMove(sel, newFocus, e.shiftKey, anchorRef, caretFocus, ctx.setSelection);
+        enqueue(async (sel, c) => {
+          const caretFocus = focusOffset(sel, anchorRef.current);
+          if (toLineEdge) {
+            await applyLineEdge(c, sel, key === "ArrowLeft" ? "start" : "end", shift, anchorRef, caretFocus, setSel, stillAt);
+            return;
+          }
+          const delta = key === "ArrowLeft" ? -1 : 1;
+          const newFocus = Math.max(0, caretFocus + delta);
+          applyMove(sel, newFocus, shift, anchorRef, caretFocus, setSel);
+        });
         return;
       }
 
       // Up / Down arrows: vertical nav owned by the engine (line
       // metrics + desired-x). Returned offset is the new focus.
-      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      if (key === "ArrowUp" || key === "ArrowDown") {
         e.preventDefault();
         e.stopPropagation();
-        const direction: CaretDirection = e.key === "ArrowUp" ? "up" : "down";
-        void client
-          .caretNav(sel.storyId, caretFocus, direction, cell ?? null)
-          .then((offset) => {
-            // null = no-op (already at first/last line): keep the caret.
-            if (offset === null) return;
-            applyMove(
-              sel,
-              offset,
-              e.shiftKey,
-              anchorRef,
-              caretFocus,
-              ctx.setSelection,
-            );
-          })
-          .catch(() => {
-            /* worker reload / disconnect — leave the caret put */
-          });
+        const direction: CaretDirection = key === "ArrowUp" ? "up" : "down";
+        enqueue(async (sel, c) => {
+          const caretFocus = focusOffset(sel, anchorRef.current);
+          const offset = await c.caretNav(sel.storyId, caretFocus, direction, sel.cell ?? null);
+          // null = no-op (already at first/last line): keep the caret.
+          if (offset === null || !stillAt(sel)) return;
+          applyMove(sel, offset, shift, anchorRef, caretFocus, setSel);
+        });
         return;
       }
 
       // Home / End: line start / end via lineBounds. Stop propagation
       // so the page-navigation shortcut (also on window) doesn't also
       // fire while we own the caret.
-      if (e.key === "Home" || e.key === "End") {
+      if (key === "Home" || key === "End") {
         e.preventDefault();
         e.stopPropagation();
-        void applyLineEdge(
-          client,
-          sel,
-          e.key === "Home" ? "start" : "end",
-          e.shiftKey,
-          anchorRef,
-          caretFocus,
-          ctx.setSelection,
+        enqueue((sel, c) =>
+          applyLineEdge(
+            c,
+            sel,
+            key === "Home" ? "start" : "end",
+            shift,
+            anchorRef,
+            focusOffset(sel, anchorRef.current),
+            setSel,
+            stillAt,
+          ),
         );
         return;
       }
@@ -279,8 +290,43 @@ export function useTextEditing(ctx: TextEditingContext) {
 
     // Capture phase — preempt the bubble-phase page-nav shortcuts.
     window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [ctx]);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+    };
+  }, []);
+}
+
+/** Insert `text` at the caret, or replace the range with it, and move
+ *  the caret past it. A replace is one `batch`, so it undoes as one. */
+function insertAt(
+  client: CanvasClient,
+  sel: ContentSelection,
+  text: string,
+  setSel: (s: ContentSelection | null) => void,
+): void {
+  const cell = sel.cell ?? undefined;
+  const insert: Mutation = {
+    op: "insertText",
+    args: { storyId: sel.storyId, offset: sel.start, text, cell },
+  };
+  if (sel.start === sel.end) {
+    void client.mutate(insert);
+  } else {
+    void client.mutate({
+      op: "batch",
+      args: {
+        ops: [
+          {
+            op: "deleteRange",
+            args: { storyId: sel.storyId, start: sel.start, end: sel.end, cell },
+          },
+          insert,
+        ],
+      },
+    });
+  }
+  const caret = sel.start + byteLength(text);
+  setSel({ ...sel, start: caret, end: caret, affinity: false });
 }
 
 /** The steerable end of the selection. For a collapsed caret both ends
@@ -335,15 +381,12 @@ async function applyLineEdge(
   anchorRef: React.MutableRefObject<number | null>,
   caretFocus: number,
   setSelection: (s: ContentSelection | null) => void,
+  stillAt: (sel: ContentSelection) => boolean,
 ): Promise<void> {
-  try {
-    const bounds = await client.lineBounds(sel.storyId, caretFocus, sel.cell ?? null);
-    if (!bounds) return;
-    const target = edge === "start" ? bounds.lineStart : bounds.lineEnd;
-    applyMove(sel, target, shift, anchorRef, caretFocus, setSelection);
-  } catch {
-    /* worker reload / disconnect — leave the caret put */
-  }
+  const bounds = await client.lineBounds(sel.storyId, caretFocus, sel.cell ?? null);
+  if (!bounds || !stillAt(sel)) return;
+  const target = edge === "start" ? bounds.lineStart : bounds.lineEnd;
+  applyMove(sel, target, shift, anchorRef, caretFocus, setSelection);
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
