@@ -116,6 +116,12 @@ export const SHAPE_SIZE_PT: readonly [number, number] = [160, 160];
 export const LINE_LENGTH_PT = 200;
 export const TABLE_FRAME_SIZE_PT: readonly [number, number] = [320, 180];
 export const TABLE_ROWS = 4;
+/** Each new row's height (pt) — the engine's own height for a row it
+ *  mints. A row the insert leaves unsized lays out 0 pt tall while its
+ *  cells are empty, so a new table drew as one black bar of stacked
+ *  strokes (ED-7). The renderer sizes a row as max(this, content), so a
+ *  row still grows with what is typed into it. */
+export const TABLE_ROW_HEIGHT_PT = 20;
 export const TABLE_COLS = 3;
 /** Place… fits the image within this fraction of the page (never
  *  upscaling past natural size — InDesign places at 100%). */
@@ -507,6 +513,28 @@ async function rollBackFirstStep(paged: PagedEditor): Promise<void> {
   }
 }
 
+function newRowHeights(): number[] {
+  return Array.from({ length: TABLE_ROWS }, () => TABLE_ROW_HEIGHT_PT);
+}
+
+/** Put the caret in the new table's first cell, as InDesign does: the
+ *  next keys fill the table. Without it the caret stayed where it was —
+ *  in the empty paragraph the engine leaves ABOVE a table it appends — so
+ *  the text typed next landed above the table (ED-7). */
+function enterFirstCell(paged: PagedEditor, outcome: InsertOutcome): void {
+  const id = outcome.createdId;
+  if (!outcome.applied || id?.kind !== "table") return;
+  const table = id.id as unknown as { story_id?: string; table_id?: string };
+  if (!table.story_id || !table.table_id) return;
+  paged.contentSelection.setContentSelection({
+    storyId: table.story_id,
+    start: 0,
+    end: 0,
+    affinity: false,
+    cell: { tableId: table.table_id, row: 0, col: 0 },
+  });
+}
+
 /**
  * Insert a `TABLE_ROWS × TABLE_COLS` table with even column widths.
  *
@@ -533,6 +561,7 @@ export async function insertTable(
           storyId: caret.storyId,
           rows: TABLE_ROWS,
           cols: TABLE_COLS,
+          rowHeights: newRowHeights(),
           ...(width != null
             ? { columnWidths: evenColumnWidths(width, TABLE_COLS) }
             : {}),
@@ -541,7 +570,9 @@ export async function insertTable(
       "insertTable",
       refusedTap(report, "Insert table"),
     );
-    return outcomeOf(reply);
+    const outcome = outcomeOf(reply);
+    enterFirstCell(paged, outcome);
+    return outcome;
   }
 
   const target = currentPageTarget(paged);
@@ -591,6 +622,7 @@ export async function insertTable(
         rows: TABLE_ROWS,
         cols: TABLE_COLS,
         columnWidths: evenColumnWidths(frameWidth, TABLE_COLS),
+        rowHeights: newRowHeights(),
       },
     },
     "insertTable",
@@ -601,6 +633,7 @@ export async function insertTable(
     await rollBackFirstStep(paged);
     return REFUSED;
   }
+  enterFirstCell(paged, table);
   // Report the TABLE as the creation (the verb's object); the frame
   // is its host and the fallback if the reply carried no table id.
   return { applied: true, createdId: table.createdId ?? frame.createdId };

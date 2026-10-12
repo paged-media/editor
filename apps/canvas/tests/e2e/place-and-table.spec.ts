@@ -17,7 +17,7 @@
  *  @license    AGPL-3.0-only OR Paged Media Enterprise License (PMEL)
  */
 
-// File ▸ Place…, driven through the real commands, the
+// File ▸ Place… and Insert ▸ Table, driven through the real commands, the
 // real file chooser and the real pointer, with every outcome read back
 // from the engine. Each test pins a defect that recording the product
 // films on 2026-10-12 caught:
@@ -26,6 +26,8 @@
 //         size), and Place ignored a selected empty frame.
 //   IMG-2 Place with a .psd did nothing: the browser cannot decode a PSD,
 //         and the error reached only the Problems sink.
+//   ED-7  Insert ▸ Table with a caret drew a black bar (every row 0 pt
+//         tall), and the text typed next landed above the table.
 
 import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,6 +35,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { PNG } from "pngjs";
 
 import { openCanvas } from "../fidelity/canvas-driver";
+import { Designer } from "../journey/driver/designer";
 import { selectElements } from "./harness/ui";
 import { loadViaReactPath, screenPoint } from "./harness/viewport";
 
@@ -361,5 +364,120 @@ test.describe("File ▸ Place… (film defects ED-6, IMG-2)", () => {
       )
       .toContain("paged.problems");
     await expect(page.getByText(/could not decode "broken\.png"/)).toBeVisible();
+  });
+});
+
+test.describe("Insert ▸ Table with a caret (film defect ED-7)", () => {
+  test("ED-7 — the rows have height and the caret moves into the first cell, so typing fills it @feat:tables.model @feat:editor-shell.command-authoring @feat:editor-tools.text.caret-typing @level:happy", async ({
+    page,
+  }) => {
+    const d = new Designer(page);
+    await d.open();
+    await d.newDocument();
+    await d.activate("type");
+    const a = await screenPoint(page, 72, 72);
+    const b = await screenPoint(page, 400, 300);
+    await page.mouse.move(a.x, a.y);
+    await page.mouse.down();
+    await page.mouse.move(b.x, b.y, { steps: 8 });
+    await page.mouse.up();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (globalThis as unknown as CanvasGlobal).__canvas.contentSelection?.storyId ?? null,
+        ),
+      )
+      .not.toBeNull();
+    const storyId = await page.evaluate(
+      () => (globalThis as unknown as CanvasGlobal).__canvas.contentSelection!.storyId,
+    );
+
+    const outcome = await invoke(page, "paged.insert.table");
+    expect(outcome.applied).toBe(true);
+    const tableId = (outcome.createdId!.id as unknown as { table_id: string }).table_id;
+
+    // The caret is in the first cell.
+    await expect
+      .poll(() =>
+        page.evaluate(() => (globalThis as unknown as CanvasGlobal).__canvas.contentSelection),
+      )
+      .toMatchObject({ storyId, start: 0, end: 0, cell: { tableId, row: 0, col: 0 } });
+
+    // Typing lands in the cell, not in the body above the table.
+    await page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null;
+      if (el && el !== document.body) el.blur?.();
+    });
+    await page.keyboard.type("Cell");
+    await expect
+      .poll(() =>
+        page.evaluate(
+          async ({ storyId, tableId }) =>
+            (
+              await (globalThis as unknown as CanvasGlobal).__canvas.client.paragraphBounds(
+                storyId,
+                0x7fff_ffff,
+                { tableId, row: 0, col: 0 },
+              )
+            )?.end ?? null,
+          { storyId, tableId },
+        ),
+      )
+      .toBe(4);
+
+    // Every row has height, the empty ones too: the last row sits three
+    // rows below the first. Unsized, the two empty rows between were 0 pt
+    // tall — every stroke on one line, the black bar.
+    const caretTop = (row: number) =>
+      page.evaluate(
+        async ({ storyId, tableId, row }) =>
+          (
+            await (globalThis as unknown as CanvasGlobal).__canvas.client.caretGeometry({
+              storyId,
+              start: 0,
+              end: 0,
+              cell: { tableId, row, col: 0 },
+            })
+          )?.topPt ?? null,
+        { storyId, tableId, row },
+      );
+    await page.evaluate(
+      ({ storyId, tableId }) =>
+        (
+          globalThis as unknown as {
+            __canvas: { setContentSelection: (s: unknown) => void };
+          }
+        ).__canvas.setContentSelection({
+          storyId,
+          start: 0,
+          end: 0,
+          cell: { tableId, row: 3, col: 0 },
+        }),
+      { storyId, tableId },
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (globalThis as unknown as CanvasGlobal).__canvas.contentSelection?.cell?.row,
+        ),
+      )
+      .toBe(3);
+    await page.keyboard.type("D");
+    await expect.poll(() => caretTop(3)).not.toBeNull();
+    const first = (await caretTop(0))!;
+    const last = (await caretTop(3))!;
+    expect(last - first).toBeGreaterThan(3 * 15);
+
+    const body = await page.evaluate(async (sid) => {
+      const r = await (globalThis as unknown as CanvasGlobal).__canvas.client.send({
+        kind: "requestStoryContent",
+        payload: { storyId: sid },
+      });
+      return (r.payload.content?.paragraphs ?? [])
+        .map((p) => p.runs.map((run) => run.text).join(""))
+        .join("\n");
+    }, storyId);
+    expect(body).not.toContain("Cell");
+    expect(body).not.toContain("D");
   });
 });
