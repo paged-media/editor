@@ -130,6 +130,23 @@ export class Pointer {
     this.log({ ...this.at, down: false, click: true });
   }
 
+  /** Two clicks in quick succession that the page sees as a double-click
+   *  (word selection in text): the second press carries clickCount 2, which
+   *  separate `click()` calls never do. */
+  async dblclick(to?: Point, opts: { targetWidth?: number } = {}): Promise<void> {
+    if (to) await this.moveTo(to, opts);
+    for (const clickCount of [1, 2]) {
+      await this.page.mouse.down({ clickCount });
+      this.down = true;
+      this.log({ ...this.at, down: true });
+      await new Promise((r) => setTimeout(r, 60));
+      await this.page.mouse.up({ clickCount });
+      this.down = false;
+      this.log({ ...this.at, down: false, click: true });
+      if (clickCount === 1) await new Promise((r) => setTimeout(r, 90));
+    }
+  }
+
   /** Press where the pointer is, follow `path` along straight segments at
    *  `pxPerSec` CSS px per second, release: a retouching stroke, which an
    *  arcing path would let wander off what it is meant to cover. */
