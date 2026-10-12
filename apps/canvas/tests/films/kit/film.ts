@@ -33,6 +33,7 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { Designer } from "../../journey/driver/designer";
+import { screenPoint } from "../../e2e/harness/viewport";
 import { startCapture, type Capture } from "./capture";
 import { Pointer } from "./pointer";
 import { dressStage } from "./stage";
@@ -64,7 +65,14 @@ export type Mark =
   | { mark: "clapper-on" | "clapper-off" | "roll" | "wrap"; wall: number }
   | { mark: "scene"; id: string; wall: number; speechAt: number }
   | { mark: "scene-end"; id: string; wall: number }
-  | { mark: "cut-start" | "cut-end"; label: string; wall: number };
+  | { mark: "cut-start" | "cut-end"; label: string; wall: number }
+  | { mark: "chip"; wall: number; text: string; icon: "key" | "file" | "save" | "done"; kbd?: string }
+  /** Page 1's origin in CSS px and CSS px per point, so a storyboard can
+   *  aim its zooms in page points. */
+  | { mark: "camera"; wall: number; origin: [number, number]; scale: number }
+  /** Punch in on a page rectangle (points: x0, y0, x1, y1) until unfocus. */
+  | { mark: "focus"; wall: number; page: [number, number, number, number]; max?: number }
+  | { mark: "unfocus"; wall: number };
 
 export interface Kit {
   readonly page: Page;
@@ -84,6 +92,14 @@ export interface Kit {
   cut(label: string, wait: () => Promise<void>): Promise<void>;
   /** Hold the shot. */
   hold(ms: number): Promise<void>;
+  /** Press a shortcut; with a label it shows on screen as a keycap. */
+  key(combo: string, label?: string, shown?: string): Promise<void>;
+  /** A chip for what the picture cannot show (a file picked, a file saved). */
+  chip(text: string, icon: "file" | "save" | "done"): void;
+  /** Punch the camera in on a page rectangle, in points. */
+  focus(page: [number, number, number, number], max?: number): void;
+  /** Back to the whole window. */
+  unfocus(): void;
 }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, Math.max(0, ms)));
@@ -153,6 +169,10 @@ export function film(slug: string, body: (k: Kit) => Promise<void>): void {
         await page.evaluate(() => document.getElementById("film-clapper")?.remove());
         mark({ mark: "clapper-off", wall: Date.now() });
         await sleep(300);
+        // The camera must not move after this: zooms are aimed through it.
+        const o = await screenPoint(page, 0, 0);
+        const x = await screenPoint(page, 100, 0);
+        mark({ mark: "camera", wall: Date.now(), origin: [o.x, o.y], scale: (x.x - o.x) / 100 });
         mark({ mark: "roll", wall: Date.now() });
       },
       async scene(id, actions) {
@@ -175,6 +195,25 @@ export function film(slug: string, body: (k: Kit) => Promise<void>): void {
         mark({ mark: "cut-end", label, wall: Date.now() });
       },
       hold: sleep,
+      async key(combo, label, shown) {
+        // A focused field would take the keystroke as input (a select jumps
+        // to the option starting with it), so the shortcut goes to the page.
+        await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+        if (label) {
+          mark({ mark: "chip", wall: Date.now(), text: label, icon: "key", kbd: shown ?? combo.toUpperCase() });
+          await sleep(180);
+        }
+        await page.keyboard.press(combo);
+      },
+      chip(text, icon) {
+        mark({ mark: "chip", wall: Date.now(), text, icon });
+      },
+      focus(rect, max) {
+        mark({ mark: "focus", wall: Date.now(), page: rect, ...(max ? { max } : {}) });
+      },
+      unfocus() {
+        mark({ mark: "unfocus", wall: Date.now() });
+      },
     };
 
     await body(k);
