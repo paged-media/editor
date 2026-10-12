@@ -5,7 +5,7 @@
  * WHAT A `@feat:` TAG IS FOR, AND HOW IT FAILS.
  *
  *   A tag in a test title (`@feat:layers.ops`) is how a spec claims a row
- *   in the capability registry (paged-media/state). The join reads the
+ *   in the capability registry (paged-media/cockpit). The join reads the
  *   tag, finds the row, and the row counts as covered. An id that matches
  *   NO row does not fail anything: it becomes an `unknown-id` drift entry
  *   in a report generated in another repo, and the test covers nothing at
@@ -28,7 +28,7 @@
  *   Both repos are private, so neither CI can read the other without a
  *   token, and a token-gated check degrades to a skip — a gate that
  *   passes by not looking. `scripts/feat-vocabulary.json` is published by
- *   state's `scripts/sync-feat-vocabulary.mjs`, and that script's
+ *   cockpit's `scripts/sync-feat-vocabulary.mjs` (state until its retirement), and that script's
  *   `--check` mode is what keeps the copy honest. This gate is then
  *   offline and hard.
  *
@@ -63,7 +63,7 @@ const MIN_VOCAB = 500;
  * It is empty, and that is the point — every id in this tree names a real
  * capability. Adding an entry is a decision to be explained, not a way
  * past a red run: the alternatives are to fix the tag, or to add the row
- * in state/registry/features and re-publish the vocabulary.
+ * in cockpit/docs/features and re-publish the vocabulary.
  */
 const ACKNOWLEDGED = Object.freeze({});
 
@@ -114,7 +114,7 @@ function main() {
   } catch (err) {
     console.error(
       `[feat-vocabulary] FAIL: cannot read ${relative(ROOT, VOCAB)} (${err.message}).\n` +
-        `  It is published from the state repo:\n` +
+        `  It is published from the cockpit repo:\n` +
         `    node scripts/sync-feat-vocabulary.mjs --editor ${ROOT}`,
     );
     process.exit(1);
@@ -201,7 +201,7 @@ function main() {
   console.log(
     `[feat-vocabulary] ${claims.size} distinct ids claimed across ` +
       `${new Set([...claims.values()].flat().map((s) => s.split(":")[0])).size} spec files; ` +
-      `vocabulary ${known.size} ids @ state ${vendoredAt}` +
+      `vocabulary ${known.size} ids @ ${vocabulary.generated_from?.repo ?? "registry"} ${vendoredAt}` +
       (unknown.length ? `; ${unknown.length} unknown` : ""),
   );
 
@@ -225,7 +225,7 @@ function main() {
   if (unexplained.length || rotted.length) {
     console.error(
       `\n[feat-vocabulary] FAIL — an id that names no row covers nothing.\n` +
-        `  Fix the tag, or add the row in state/registry/features and re-publish:\n` +
+        `  Fix the tag, or add the row in cockpit/docs/features and re-publish:\n` +
         `    node scripts/sync-feat-vocabulary.mjs --editor ${ROOT}`,
     );
     process.exit(1);
