@@ -264,7 +264,7 @@ test.describe("text editing keys (film defects)", () => {
     expect(cut?.end).toBe(0);
   });
 
-  test("ED-3 — a Type-tool drag pulls out a frame with the caret in it, and later pointer moves do not pan @feat:editor-tools.text.caret-typing @feat:editor-tools.text.drag-drop @level:gesture", async ({
+  test("ED-3 — a Type-tool drag pulls out a frame with the caret in it, and later pointer moves do not pan @feat:editor-tools.text.caret-typing @feat:editor-tools.gesture-lifecycle @feat:editor-tools.nav.pan @level:gesture", async ({
     page,
   }) => {
     const d = new Designer(page);
