@@ -95,7 +95,7 @@ export interface Kit {
   /** Press a shortcut; with a label it shows on screen as a keycap. */
   key(combo: string, label?: string, shown?: string): Promise<void>;
   /** A chip for what the picture cannot show (a file picked, a file saved). */
-  chip(text: string, icon: "file" | "save" | "done"): void;
+  chip(text: string, icon: "file" | "save" | "done" | "key", kbd?: string): void;
   /** Punch the camera in on a page rectangle, in points. */
   focus(page: [number, number, number, number], max?: number): void;
   /** Back to the whole window. */
@@ -207,8 +207,8 @@ export function film(slug: string, body: (k: Kit) => Promise<void>): void {
         }
         await page.keyboard.press(combo);
       },
-      chip(text, icon) {
-        mark({ mark: "chip", wall: Date.now(), text, icon });
+      chip(text, icon, kbd) {
+        mark({ mark: "chip", wall: Date.now(), text, icon, ...(kbd ? { kbd } : {}) });
       },
       focus(rect, max) {
         mark({ mark: "focus", wall: Date.now(), page: rect, ...(max ? { max } : {}) });

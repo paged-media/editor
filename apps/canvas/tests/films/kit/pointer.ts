@@ -130,6 +130,36 @@ export class Pointer {
     this.log({ ...this.at, down: false, click: true });
   }
 
+  /** Press where the pointer is, follow `path` along straight segments at
+   *  `pxPerSec` CSS px per second, release: a retouching stroke, which an
+   *  arcing path would let wander off what it is meant to cover. */
+  async paint(path: Point[], pxPerSec = 160): Promise<void> {
+    await this.page.mouse.down();
+    this.down = true;
+    this.log({ ...this.at, down: true });
+    const t0 = Date.now();
+    let travelled = 0;
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i - 1];
+      const b = path[i];
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      const steps = Math.max(1, Math.ceil(len / 4));
+      for (let j = 1; j <= steps; j++) {
+        const x = a.x + ((b.x - a.x) * j) / steps;
+        const y = a.y + ((b.y - a.y) * j) / steps;
+        await this.page.mouse.move(x, y);
+        this.at = { x, y };
+        this.log({ x, y, down: true });
+        travelled += len / steps;
+        const wait = t0 + (travelled / pxPerSec) * 1000 - Date.now();
+        if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      }
+    }
+    await this.page.mouse.up();
+    this.down = false;
+    this.log({ ...this.at, down: false });
+  }
+
   /** Press at `from`, travel to `to` with the button held, release. */
   async drag(from: Point, to: Point, opts: { speed?: number } = {}): Promise<void> {
     await this.moveTo(from, { targetWidth: 12 });
