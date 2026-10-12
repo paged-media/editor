@@ -175,7 +175,7 @@ function ContextSegment({ frame }: { frame: EditContextFrame }) {
       ))}
       {model.noTools && (
         <span style={{ opacity: 0.7, whiteSpace: "nowrap" }}>
-          No canvas tools apply here
+          no canvas tools apply here
         </span>
       )}
       <span style={{ opacity: 0.6, whiteSpace: "nowrap" }}>Esc to leave</span>
