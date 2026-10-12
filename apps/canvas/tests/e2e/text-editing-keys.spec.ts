@@ -26,6 +26,7 @@
 //
 //   ED-1  Escape did not end text editing: the next key typed into the text.
 //   ED-2  No text paste: Cmd+V with a caret did nothing (nor copy / cut).
+//   ED-3  After a Type-tool drag, pointer moves with no button panned the view.
 //   ED-18 The first key after End was lost: "for" + End + " A" → "forA".
 
 import { expect, test, type Page } from "@playwright/test";
@@ -94,6 +95,11 @@ const contentSelection = (page: Page) =>
 const elementSelection = (page: Page) =>
   page.evaluate(
     () => (globalThis as unknown as CanvasGlobal).__canvas.elementSelection,
+  );
+
+const camera = (page: Page) =>
+  page.evaluate(() =>
+    (globalThis as unknown as CanvasGlobal).__canvas.client.camera.read(),
   );
 
 /** A blank document holding one text frame with `text` in its story. */
@@ -255,5 +261,38 @@ test.describe("text editing keys (film defects)", () => {
     const cut = await contentSelection(page);
     expect(cut?.start).toBe(0);
     expect(cut?.end).toBe(0);
+  });
+
+  test("ED-3 — a Type-tool drag pulls out a frame with the caret in it, and later pointer moves do not pan @feat:editor-tools.text.caret-typing @feat:editor-tools.text.drag-drop @level:gesture", async ({
+    page,
+  }) => {
+    const d = new Designer(page);
+    await d.open();
+    await d.newDocument();
+    await d.activate("type");
+
+    const a = await screenPoint(page, 72, 72);
+    const b = await screenPoint(page, 300, 200);
+    await page.mouse.move(a.x, a.y);
+    await page.mouse.down();
+    await page.mouse.move(b.x, b.y, { steps: 8 });
+    await page.mouse.up();
+
+    // The new frame holds the caret, so typing goes straight into it.
+    await expect
+      .poll(async () => (await contentSelection(page))?.storyId ?? null)
+      .not.toBeNull();
+    const sel = (await contentSelection(page))!;
+    expect(sel.start).toBe(0);
+
+    // Moving the pointer with no button held is a hover, never a pan.
+    const before = await camera(page);
+    await page.mouse.move(b.x + 120, b.y + 90, { steps: 6 });
+    await page.mouse.move(b.x - 60, b.y + 30, { steps: 6 });
+    await page.waitForTimeout(200);
+    expect(await camera(page)).toEqual(before);
+
+    await page.keyboard.type("Typed");
+    await expect.poll(() => storyText(page, sel.storyId)).toBe("Typed");
   });
 });

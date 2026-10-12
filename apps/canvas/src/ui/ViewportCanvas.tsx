@@ -941,6 +941,11 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         // state armed at pointer-down is still there to fall through on.
         if (!(wasClick && legacyAlso)) {
           e.currentTarget.releasePointerCapture(e.pointerId);
+          // A dual tool's DRAG belonged to the handler, but pointer-down
+          // armed the legacy drag state too (as a "pan", for the click
+          // it might have been). Left armed, every later button-less
+          // move panned the view until the next press (ED-3).
+          dragStateRef.current = null;
           return;
         }
       }
