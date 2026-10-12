@@ -31,6 +31,7 @@ import {
 import { AI_ASK_COMMAND } from "../ai/editor-ai";
 import { PoweredByClaude } from "../ai/powered-by-claude";
 import { Icon } from "../icons";
+import { paletteScore } from "./palette-score";
 import type { CommandContribution } from "../registries";
 import { useRegistries } from "../state/registries-context";
 import { useOptionalPaged } from "../state/paged-editor";
@@ -265,6 +266,7 @@ export function CommandPalette() {
       // Kit command-bar.jsx: 660px, parked high (11vh) like a
       // launcher, not centred like a modal form.
       contentClassName="max-w-[660px] top-[11vh] translate-y-0"
+      filter={paletteScore}
     >
       <CommandInput
         placeholder="Ask or search anything…"
@@ -279,6 +281,8 @@ export function CommandPalette() {
             <CommandGroup heading="Assistant">
               <CommandItem
                 value={`assistant ${query}`}
+                // The assistant answers any query; ranking must not hide it.
+                forceMount
                 onSelect={() => {
                   setOpen(false);
                   void commands.invoke(AI_ASK_COMMAND, query);
@@ -359,7 +363,10 @@ export function CommandPalette() {
               {items.map((cmd) => (
                 <CommandItem
                   key={cmd.id}
-                  value={`${category} ${cmd.title} ${cmd.id}`}
+                  // Ranked by `paletteScore`: the id is the value (unique),
+                  // the title and category the words a person searches.
+                  value={cmd.id}
+                  keywords={[cmd.title, category]}
                   onSelect={() => run(cmd)}
                 >
                   <span>{cmd.title}</span>
