@@ -50,6 +50,10 @@
 // the frame that held it with the Selection tool in hand — instead of
 // leaving the caret live for the next key to type into.
 //
+// Paste (ED-2) arrives as the DOM `paste` event, whose plain-text payload
+// needs no clipboard permission; copy and cut read the range from the
+// engine and write it through `navigator.clipboard`.
+//
 // Listener runs in the CAPTURE phase: the page-navigation shortcuts
 // (`useKeyboardShortcuts`) bind Home/End/PageUp/PageDown on `window`
 // too, and listener order between two `window` keydown handlers isn't
@@ -195,6 +199,34 @@ export function useTextEditing(ctx: TextEditingContext) {
         return;
       }
 
+      // Copy / cut a range. Pastes arrive as the `paste` event below.
+      const letter = key.toLowerCase();
+      if (cmd && !e.altKey && !e.shiftKey && (letter === "c" || letter === "x")) {
+        const sel = selRef.current;
+        if (sel.start === sel.end) return;
+        e.preventDefault();
+        const cut = letter === "x";
+        enqueue(async (s, c) => {
+          if (s.start === s.end) return;
+          const text = await rangeText(c, s);
+          if (text === null) return;
+          try {
+            await navigator.clipboard.writeText(text);
+          } catch {
+            // Nothing reached the clipboard, so nothing may leave the
+            // story either: a cut that lost the text would be data loss.
+            return;
+          }
+          if (!cut) return;
+          void c.mutate({
+            op: "deleteRange",
+            args: { storyId: s.storyId, start: s.start, end: s.end, cell: s.cell ?? undefined },
+          });
+          setSel({ ...s, end: s.start, affinity: false });
+        });
+        return;
+      }
+
       if (key === "Backspace") {
         e.preventDefault();
         anchorRef.current = null;
@@ -317,10 +349,27 @@ export function useTextEditing(ctx: TextEditingContext) {
       }
     };
 
+    // Paste — the DOM event carries the clipboard's plain text without a
+    // permission prompt. Lands through the same insert as typing; a range
+    // is replaced in ONE batch, so one undo takes the whole paste back.
+    const onPaste = (e: ClipboardEvent) => {
+      if (isEditableTarget(e.target)) return;
+      if (!selRef.current || leavingRef.current || !ctxRef.current.client) return;
+      const raw = e.clipboardData?.getData("text/plain") ?? "";
+      if (!raw) return;
+      e.preventDefault();
+      // Another app's line breaks (CRLF, CR) are each one paragraph break.
+      const text = raw.replace(/\r\n?/g, "\n");
+      anchorRef.current = null;
+      enqueue((sel, c) => insertAt(c, sel, text, setSel));
+    };
+
     // Capture phase — preempt the bubble-phase page-nav shortcuts.
     window.addEventListener("keydown", onKey, true);
+    window.addEventListener("paste", onPaste, true);
     return () => {
       window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("paste", onPaste, true);
     };
   }, []);
 }
@@ -356,6 +405,28 @@ function insertAt(
   }
   const caret = sel.start + byteLength(text);
   setSel({ ...sel, start: caret, end: caret, affinity: false });
+}
+
+/** The text of a body range, read from the engine. Paragraphs join with
+ *  the engine's own "\n" boundary and the offsets are UTF-8 bytes, so the
+ *  range is cut from the encoded text. `null` when the story cannot be
+ *  read or the range sits in a table cell (whose text the story content
+ *  read does not carry). */
+async function rangeText(
+  client: CanvasClient,
+  sel: ContentSelection,
+): Promise<string | null> {
+  if (sel.cell) return null;
+  const reply = await client.send({
+    kind: "requestStoryContent",
+    payload: { storyId: sel.storyId },
+  });
+  if (reply.kind !== "storyContentResult" || !reply.payload.content) return null;
+  const text = reply.payload.content.paragraphs
+    .map((p) => p.runs.map((r) => r.text).join(""))
+    .join("\n");
+  const bytes = utf8.encode(text);
+  return new TextDecoder().decode(bytes.slice(sel.start, sel.end));
 }
 
 /** The frame that holds the caret — where it is laid out, or, for an

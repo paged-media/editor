@@ -25,6 +25,7 @@
 // 2026-10-12 caught:
 //
 //   ED-1  Escape did not end text editing: the next key typed into the text.
+//   ED-2  No text paste: Cmd+V with a caret did nothing (nor copy / cut).
 //   ED-18 The first key after End was lost: "for" + End + " A" → "forA".
 
 import { expect, test, type Page } from "@playwright/test";
@@ -199,5 +200,60 @@ test.describe("text editing keys (film defects)", () => {
     await page.keyboard.press("v");
     await page.waitForTimeout(300);
     expect(await storyText(page, storyId)).toBe("Headline");
+  });
+
+  test("ED-2 — Cmd+V pastes plain text at the caret as one undoable insert; Cmd+C / Cmd+X copy and cut the range @feat:stories-text.text.insert @feat:stories-text.text.delete @feat:editor-tools.text.caret-typing @level:happy", async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    const { d, storyId } = await docWithText(page, "Hello world");
+    await clickCaret(page, d, storyId, 5);
+    await page.keyboard.press("End");
+    await expect.poll(async () => (await contentSelection(page))?.start).toBe(11);
+
+    // Two lines in, two paragraphs out; CRLF from another app is one break.
+    await page.evaluate(() =>
+      navigator.clipboard.writeText(", again\r\nSecond paragraph"),
+    );
+    await page.keyboard.press("ControlOrMeta+V");
+    await expect
+      .poll(() => storyText(page, storyId))
+      .toBe("Hello world, again\nSecond paragraph");
+    // The caret follows the pasted text.
+    const after = await contentSelection(page);
+    expect(after?.start).toBe(after?.end);
+    expect(after?.start).toBe("Hello world, again\nSecond paragraph".length);
+
+    // One undo step takes the whole paste back.
+    await page.keyboard.press("ControlOrMeta+Z");
+    await expect.poll(() => storyText(page, storyId)).toBe("Hello world");
+
+    // Copy a range, then cut it.
+    await page.evaluate(
+      ({ sid }) => {
+        const c = (globalThis as unknown as {
+          __canvas: { setContentSelection: (s: unknown) => void };
+        }).__canvas;
+        c.setContentSelection({ storyId: sid, start: 0, end: 5 });
+      },
+      { sid: storyId },
+    );
+    await expect.poll(async () => (await contentSelection(page))?.end).toBe(5);
+    await page.keyboard.press("ControlOrMeta+C");
+    await expect
+      .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+      .toBe("Hello");
+    expect(await storyText(page, storyId)).toBe("Hello world");
+
+    await page.evaluate(() => navigator.clipboard.writeText(""));
+    await page.keyboard.press("ControlOrMeta+X");
+    await expect.poll(() => storyText(page, storyId)).toBe(" world");
+    await expect
+      .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+      .toBe("Hello");
+    const cut = await contentSelection(page);
+    expect(cut?.start).toBe(0);
+    expect(cut?.end).toBe(0);
   });
 });
