@@ -250,6 +250,7 @@ export function film(slug: string, body: (k: Kit) => Promise<void>): void {
           dpr: DPR,
           gpuActive,
           frames,
+          ...(process.env.AI_TAPE_DIR ? { rehearsal: "AI replies came from scratch tapes (AI_TAPE_DIR): not publishable" } : {}),
         },
         null,
         2,

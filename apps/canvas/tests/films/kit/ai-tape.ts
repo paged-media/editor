@@ -43,7 +43,9 @@ export interface Tape {
 }
 
 export async function aiTape(page: Page, mediaRoot: string, film: string): Promise<"record" | "replay"> {
-  const dir = join(mediaRoot, "tapes", film);
+  // AI_TAPE_DIR points a rehearsal at scratch tapes; a take recorded that way
+  // is marked in take.json and must never be published.
+  const dir = process.env.AI_TAPE_DIR ?? join(mediaRoot, "tapes", film);
   if (process.env.AI_TAPE === "record") {
     mkdirSync(dir, { recursive: true });
     for (const f of readdirSync(dir)) if (f.endsWith(".json")) throw new Error(`${dir} already has tapes: remove them to record again`);
