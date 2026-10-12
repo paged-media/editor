@@ -1647,22 +1647,6 @@ const GEOMETRY_PROBES: Probe[] = [
     setupUndo: 1,
   },
   {
-    op: "setConditionVisible",
-    build: async ({ page }) => {
-      const condition = await lastCollectionId(page, "conditions");
-      return condition
-        ? { op: "setConditionVisible", args: { condition, visible: false } }
-        : null;
-    },
-  },
-  {
-    op: "activateConditionSet",
-    build: async ({ page }) => {
-      const set = await lastCollectionId(page, "conditionSets");
-      return set ? { op: "activateConditionSet", args: { set } } : null;
-    },
-  },
-  {
     op: "applyMasterToPage",
     build: async ({ fx }) => ({
       // master:null = detach — exercises the op without needing a
@@ -2177,6 +2161,30 @@ const GEOMETRY_PROBES: Probe[] = [
 // six ops target the cell's story + table id + row/col index; insert/
 // delete are reversible (one undo). Row height / column width set an
 // absolute value (reversible). The cell is resolved once and stashed
+// ── probes on the `conditions` fixture (conditional text, v28) ─────
+// The `text` fixture carries no conditions, so these two ops classified
+// "unsupported" for want of something to address, not because the engine
+// refused them. The generated `conditions` fixture has both conditions and
+// a condition set.
+const CONDITION_PROBES: Probe[] = [
+  {
+    op: "setConditionVisible",
+    build: async ({ page }) => {
+      const condition = await lastCollectionId(page, "conditions");
+      return condition
+        ? { op: "setConditionVisible", args: { condition, visible: false } }
+        : null;
+    },
+  },
+  {
+    op: "activateConditionSet",
+    build: async ({ page }) => {
+      const set = await lastCollectionId(page, "conditionSets");
+      return set ? { op: "activateConditionSet", args: { set } } : null;
+    },
+  },
+];
+
 // on a module-level ref the build()s read.
 let TABLE_CELL: {
   storyId: string;
@@ -2451,6 +2459,9 @@ test("AC-E2E-CAPS — every wire op's engine support matches the table", async (
 
   const geoFx = await loadFixture(page, "geometry");
   await runProbes(page, GEOMETRY_PROBES, geoFx, results);
+
+  const condFx = await loadFixture(page, "conditions");
+  await runProbes(page, CONDITION_PROBES, condFx, results);
 
   // ── v30 table ops on the `tables` fixture ──────────────────────
   const tableFx = await loadFixture(page, "tables");
