@@ -30,6 +30,7 @@ import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { openCanvas, loadIdml, openPanel } from "./fidelity/canvas-driver";
+import { Designer } from "./journey/driver/designer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -89,3 +90,74 @@ test.describe("Output readiness panel", () => {
     ).toHaveText("Not ready");
   });
 });
+
+// ED-16 — an image whose effective PPI the document does not record is
+// UNVERIFIED, not "ok". A placement made in the editor (bytes replaced
+// into a frame, the way every showcase photo arrives) carries no
+// `<Image EffectivePpi>`, so the wire answers `effectivePpi: null`. The
+// check used to count only KNOWN low-res placements, so a document whose
+// every image was unmeasured read "Images ≥ 150 PPI: ok" and the X-4
+// verdict went green on a check that never ran.
+test.describe("Output readiness — unknown resolution", () => {
+  test("AC-READY-2 — an image with unknown PPI leaves the PPI check unverified, never ok @feat:editor-shell.panels.output-readiness @level:edge", async ({
+    page,
+  }) => {
+    const designer = new Designer(page);
+    await designer.open();
+    await designer.newDocument();
+    const frame = await designer.drawRectangle({ x0: 80, y0: 80, x1: 380, y1: 280 });
+    expect(await designer.placeImageLink(frame), "placed a link").toBe(true);
+    const replaced = await page.evaluate(async (elementId) => {
+      const cv = new OffscreenCanvas(64, 48);
+      const ctx = cv.getContext("2d")!;
+      ctx.fillStyle = "#3060c0";
+      ctx.fillRect(0, 0, 64, 48);
+      const blob = await cv.convertToBlob({ type: "image/png" });
+      const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()));
+      const c = (
+        globalThis as unknown as {
+          __canvas: { client: { mutate: (m: unknown) => Promise<{ kind: string }> } };
+        }
+      ).__canvas;
+      return (await c.client.mutate({ op: "replaceImageBytes", args: { elementId, bytes } })).kind;
+    }, frame);
+    expect(replaced).toBe("mutationApplied");
+
+    // The precondition, on the wire: a resolved placement whose PPI is
+    // unknown.
+    await expect
+      .poll(async () =>
+        (await wireLinks(page)).filter((l) => l.status !== "missing" && l.effectivePpi == null).length,
+      )
+      .toBeGreaterThan(0);
+
+    await openPanel(page, "paged.output-readiness");
+    const ppiRow = page.locator('[data-readiness-row="ppi"]');
+    await expect(ppiRow).toHaveAttribute("data-readiness-pass", "unknown");
+    await expect(ppiRow).toContainText("1 unknown");
+    await expect(ppiRow).not.toContainText(/\bok\b/);
+    // An unverified check cannot make the document ready.
+    await expect(page.locator('[data-status-pill="readiness-x4"]')).not.toHaveText(
+      "PDF/X-4 ready",
+    );
+  });
+});
+
+async function wireLinks(
+  page: Page,
+): Promise<Array<{ status?: string; effectivePpi?: number | null }>> {
+  return page.evaluate(async () => {
+    const c = (
+      globalThis as unknown as {
+        __canvas: {
+          client: {
+            collection: (
+              n: string,
+            ) => Promise<Array<{ status?: string; effectivePpi?: number | null }>>;
+          };
+        };
+      }
+    ).__canvas;
+    return c.client.collection("links");
+  });
+}
