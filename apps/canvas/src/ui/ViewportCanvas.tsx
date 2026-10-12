@@ -39,10 +39,13 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   OverlayHost,
   pageToContentPoint,
+  TEXT_TOOL_ID,
   useContentSelection,
   useEditContextEntry,
   useOptionalEditContextStack,
+  useOptionalTool,
   useOverlaySignals,
+  useSelection,
   type MarqueeRectPageLocal,
   type SelectionState,
 } from "@paged-media/shell";
@@ -252,6 +255,8 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
   // consults this BEFORE group descent: a polygon enters the
   // vectorGraphic context, a webFrame enters its source context.
   const { tryEnterEditContext, tryEnterOwnedContent } = useEditContextEntry();
+  const tool = useOptionalTool();
+  const { activeGroup } = useSelection();
 
   // K-1 — the edit-context STACK (optional: the canvas mounts standalone
   // in some specs). While a context is active, a pointer over the active
@@ -1391,6 +1396,42 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
           if (reply.kind !== "hitResult") return;
           const chain = reply.payload.groupChain ?? [];
           const element = reply.payload.element ?? null;
+          // TEXT FIRST, as in InDesign: a double-click on a text frame's
+          // text switches to the Type tool with the caret at the point —
+          // in the cell, when the point is in a table cell. Without this
+          // the first claim to answer was paged.draw's, which takes every
+          // path-bearing kind including text frames, so double-clicking a
+          // table entered vector editing. Content a plugin OWNS (a lowered
+          // sheet table, a web frame) still goes to that plugin.
+          const hit = reply.payload;
+          // A grouped frame descends into its group first (Track L); the
+          // next double-click, inside the group, reaches the text.
+          const inGroupScope =
+            chain.length === 0 || (activeGroup !== null && chain.includes(activeGroup));
+          if (
+            element?.kind === "textFrame" &&
+            inGroupScope &&
+            hit.storyId &&
+            hit.offsetWithinStory != null
+          ) {
+            const owned = await tryEnterOwnedContent({
+              element,
+              groupChain: chain,
+              pageId,
+              pagePoint,
+            });
+            if (owned) return;
+            const tc = hit.tableContext ?? null;
+            tool?.setBaseTool(TEXT_TOOL_ID);
+            setContentSelection({
+              storyId: hit.storyId,
+              start: hit.offsetWithinStory,
+              end: hit.offsetWithinStory,
+              affinity: false,
+              cell: tc ? { tableId: tc.tableId, row: tc.row, col: tc.col } : undefined,
+            });
+            return;
+          }
           // W3.2 — consult the edit-context / object-type registries
           // FIRST: a webFrame (object type) opens its source context, a
           // polygon (edit context by kind) enters vectorGraphic. Only
@@ -1412,7 +1453,15 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         }
       })();
     },
-    [props, rects, tryEnterEditContext],
+    [
+      props,
+      rects,
+      tryEnterEditContext,
+      tryEnterOwnedContent,
+      tool,
+      setContentSelection,
+      activeGroup,
+    ],
   );
 
   return (

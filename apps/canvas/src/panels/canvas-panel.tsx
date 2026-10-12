@@ -53,6 +53,25 @@ import type {
 import { ViewportCanvas } from "../ui/ViewportCanvas";
 import { useGestureSpine } from "../ui/useGestureSpine";
 
+/** A cell's page-space AABB `[top, left, bottom, right]` from its
+ *  engine geometry (bounds through the item transform). */
+function cellAabb(item: {
+  bounds: [number, number, number, number];
+  itemTransform?: [number, number, number, number, number, number] | null;
+}): [number, number, number, number] {
+  const [top, left, bottom, right] = item.bounds;
+  const t = item.itemTransform ?? [1, 0, 0, 1, 0, 0];
+  const corners: Array<[number, number]> = [
+    [left, top],
+    [right, top],
+    [left, bottom],
+    [right, bottom],
+  ].map(([x, y]) => [t[0] * x + t[2] * y + t[4], t[1] * x + t[3] * y + t[5]]);
+  const xs = corners.map((p) => p[0]);
+  const ys = corners.map((p) => p[1]);
+  return [Math.min(...ys), Math.min(...xs), Math.max(...ys), Math.max(...xs)];
+}
+
 export function CanvasPanel(_props: PanelProps) {
   // Phase 2 — the gesture spine. `toolGesture` is non-null only while
   // the effective tool carries a handler (Rectangle, …); select/text
@@ -83,7 +102,7 @@ export function CanvasPanel(_props: PanelProps) {
     pathEditMode,
     pathEditSession,
   } = useSelection();
-  const { setContentSelection } = useContentSelection();
+  const { contentSelection, setContentSelection } = useContentSelection();
   const tableSelection = useOptionalTableSelection();
   const { fps, gpuActive, layoutCacheStats } = useInstrumentation();
   const { hitSelection, setHitSelection } = useOverlaySignals();
@@ -128,28 +147,7 @@ export function CanvasPanel(_props: PanelProps) {
         .then((items) => {
           const item = items[0];
           if (!item) return;
-          const [top, left, bottom, right] = item.bounds;
-          const t = item.itemTransform ?? [1, 0, 0, 1, 0, 0];
-          const corners: Array<[number, number]> = [
-            [left, top],
-            [right, top],
-            [left, bottom],
-            [right, bottom],
-          ].map(([x, y]) => [
-            t[0] * x + t[2] * y + t[4],
-            t[1] * x + t[3] * y + t[5],
-          ]);
-          const xs = corners.map((p) => p[0]);
-          const ys = corners.map((p) => p[1]);
-          tableSelection.selectCell({
-            ...base,
-            cellRect: [
-              Math.min(...ys),
-              Math.min(...xs),
-              Math.max(...ys),
-              Math.max(...xs),
-            ],
-          });
+          tableSelection.selectCell({ ...base, cellRect: cellAabb(item) });
         })
         .catch(() => {
           /* engine can't resolve per-cell geometry yet — frame AABB
@@ -158,6 +156,48 @@ export function CanvasPanel(_props: PanelProps) {
     },
     [client, tableSelection],
   );
+
+  // ED-8 — a cell CARET selects its cell for the table surfaces too. The
+  // Table panel and the cell outline read the table-cell selection, which
+  // only the canvas click above wrote; a caret placed in a cell any other
+  // way (automation, a double-click entering the text, a script) reached
+  // no panel. The caret's cell qualifier now drives it, its page and
+  // outline resolved from the engine's per-cell geometry.
+  useEffect(() => {
+    if (!tableSelection) return;
+    const caret = contentSelection;
+    const at = caret?.cell ?? null;
+    if (!caret || !at) return;
+    const now = tableSelection.cell;
+    if (
+      now &&
+      now.storyId === caret.storyId &&
+      now.tableId === at.tableId &&
+      now.row === at.row &&
+      now.col === at.col
+    ) {
+      return;
+    }
+    const base: TableCellSelection = {
+      storyId: caret.storyId,
+      tableId: at.tableId,
+      row: at.row,
+      col: at.col,
+      // Until the geometry answers: the panel works, the outline waits.
+      pageId: "" as TableCellSelection["pageId"],
+      frameBounds: null,
+      cellRect: null,
+    };
+    tableSelection.selectCell(base);
+    void client
+      .elementGeometry([tableCellElementId(base)])
+      .then((items) => {
+        const item = items[0];
+        if (!item?.pageId) return;
+        tableSelection.selectCell({ ...base, pageId: item.pageId, cellRect: cellAabb(item) });
+      })
+      .catch(() => {});
+  }, [client, contentSelection, tableSelection]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
 
