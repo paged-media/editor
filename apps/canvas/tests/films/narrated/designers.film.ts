@@ -215,7 +215,7 @@ film("designers", async (k) => {
     k.unfocus();
     await k.key("End");
     await menu(k, ["Type", "Glyphs…"]);
-    await press(k, page.locator('[data-glyph="†"]').first());
+    await press(k, page.locator('[data-glyph="†"]:visible').first());
     await expect.poll(async () => (await story(page, storyId))[0]?.text).toBe(`${HEAD}†`);
     k.focus(COPY);
     await k.hold(900);
