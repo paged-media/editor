@@ -1,0 +1,47 @@
+name: plugin-slide from source
+description: >-
+  STOPGAP until @paged-media/slide is published. The editor consumes it through
+  a pnpm `link:` to ../plugins/plugin-slide, so every workflow that installs the
+  editor needs the repo checked out there, its deps installed and its engine
+  wasm built. DELETE this action (and every `uses:` of it) once the package
+  publishes and a version pin replaces the link.
+
+# Same layout and prerequisites as plugin-doc-from-source: the editor at
+# `editor/`, rustup + pnpm + node on PATH.
+
+runs:
+  using: composite
+  steps:
+    - name: checkout plugin-slide (link-consumed until its first publish)
+      uses: actions/checkout@v4
+      with:
+        repository: paged-media/plugin-slide
+        path: plugins/plugin-slide
+
+    - name: install plugin-slide (the link target needs its own deps)
+      shell: bash
+      working-directory: plugins/plugin-slide
+      run: pnpm install --frozen-lockfile
+
+    # Its own root, not ~/.cargo/bin: plugin-doc pins a different
+    # wasm-bindgen, and sharing the binary would make the two actions
+    # reinstall each other's version on every run.
+    - name: install pinned wasm-bindgen-cli (plugin-slide Cargo.lock version)
+      shell: bash
+      working-directory: plugins/plugin-slide
+      run: |
+        V=$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | grep version | head -1 | cut -d'"' -f2)
+        ROOT="$RUNNER_TEMP/wasm-bindgen-slide"
+        cargo install wasm-bindgen-cli --version "$V" --locked --root "$ROOT"
+        echo "WASM_BINDGEN=$ROOT/bin/wasm-bindgen" >> "$GITHUB_ENV"
+
+    # bin/*.js is gitignored and Vite resolves it at transform time, so the
+    # app does not boot without it (the same reason as plugin-doc's).
+    - name: build the paged.slide engine wasm
+      shell: bash
+      working-directory: plugins/plugin-slide
+      run: |
+        rustup target add wasm32-unknown-unknown
+        bash scripts/build-wasm.sh
+        test -f packages/slide-bundle/bin/slide_js.js \
+          || { echo "::error::slide wasm glue absent after build"; exit 1; }

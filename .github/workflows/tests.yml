@@ -408,6 +408,8 @@ jobs:
       # the package publishes and a pin replaces the link.
       - name: plugin-doc from source (stopgap until @paged-media/doc publishes)
         uses: ./editor/.github/actions/plugin-doc-from-source
+      - name: plugin-slide from source (stopgap until @paged-media/slide publishes)
+        uses: ./editor/.github/actions/plugin-slide-from-source
 
       - name: install editor (engine wasm + all plugin bundles resolve from npm)
         working-directory: editor

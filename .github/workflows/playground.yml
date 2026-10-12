@@ -61,6 +61,8 @@ jobs:
 
       - name: plugin-doc from source (stopgap until @paged-media/doc publishes)
         uses: ./editor/.github/actions/plugin-doc-from-source
+      - name: plugin-slide from source (stopgap until @paged-media/slide publishes)
+        uses: ./editor/.github/actions/plugin-slide-from-source
 
       - name: install editor
         working-directory: editor
