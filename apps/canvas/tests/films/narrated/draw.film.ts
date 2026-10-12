@@ -81,12 +81,13 @@ async function census(page: Page): Promise<string> {
   return counts.join(" ");
 }
 
-/** Click an empty part of the page with the selection tool, so handles do
- *  not hide the shape; asserts the click made nothing. */
+/** Click the pasteboard beside the page with the selection tool, so handles
+ *  do not hide the shape; asserts the click made nothing. (Not the empty
+ *  page: a click there leaves the hit marker's crosshair behind.) */
 async function deselect(k: Kit): Promise<void> {
   const before = await census(k.page);
   await k.key("v");
-  await k.pointer.click(await pt(k, 300, 700), { targetWidth: 200 });
+  await k.pointer.click(await pt(k, -110, 420), { targetWidth: 120 });
   await k.hold(200);
   expect(await census(k.page), "the deselect click created nothing").toBe(before);
 }
