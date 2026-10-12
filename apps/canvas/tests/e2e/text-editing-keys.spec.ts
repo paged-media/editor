@@ -24,6 +24,7 @@
 // Each test here pins a defect that recording the product films on
 // 2026-10-12 caught:
 //
+//   ED-1  Escape did not end text editing: the next key typed into the text.
 //   ED-18 The first key after End was lost: "for" + End + " A" → "forA".
 
 import { expect, test, type Page } from "@playwright/test";
@@ -87,6 +88,11 @@ async function storyText(page: Page, storyId: string): Promise<string | null> {
 const contentSelection = (page: Page) =>
   page.evaluate(
     () => (globalThis as unknown as CanvasGlobal).__canvas.contentSelection,
+  );
+
+const elementSelection = (page: Page) =>
+  page.evaluate(
+    () => (globalThis as unknown as CanvasGlobal).__canvas.elementSelection,
   );
 
 /** A blank document holding one text frame with `text` in its story. */
@@ -169,5 +175,29 @@ test.describe("text editing keys (film defects)", () => {
     const sel = await contentSelection(page);
     expect(sel?.start).toBe(5);
     expect(sel?.end).toBe(5);
+  });
+
+  test("ED-1 — Escape ends text editing: the frame is selected, the Selection tool is active, and V types nothing @feat:editor-tools.text.caret-typing @feat:editor-shell.keyboard-shortcuts @level:edge", async ({
+    page,
+  }) => {
+    const { d, frameId, storyId } = await docWithText(page, "Headline");
+    await clickCaret(page, d, storyId, 4);
+
+    await page.keyboard.press("Escape");
+
+    // Out of the text: no caret, the frame that held it selected, and the
+    // Selection tool in hand (InDesign's Escape from the Type tool).
+    await expect.poll(() => contentSelection(page)).toBeNull();
+    await expect
+      .poll(async () => (await elementSelection(page)).map((e) => e.id))
+      .toEqual([frameId]);
+    await expect(
+      page.locator('[data-tool-slot="select"][data-active="true"]'),
+    ).toBeVisible();
+
+    // The key that used to be typed into the headline.
+    await page.keyboard.press("v");
+    await page.waitForTimeout(300);
+    expect(await storyText(page, storyId)).toBe("Headline");
   });
 });

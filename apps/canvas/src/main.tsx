@@ -317,7 +317,7 @@ import { useAnimatedCamera } from "./ui/useAnimatedCamera";
 import { useKeyboardShortcuts } from "./ui/useKeyboardShortcuts";
 import { documentBounds, fitCamera, layoutPages } from "./ui/layout";
 import { usePathEditMode } from "./ui/usePathEditMode";
-import { useTextEditing } from "./ui/useTextEditing";
+import { frameHoldingCaret, useTextEditing } from "./ui/useTextEditing";
 import { CorpusPicker } from "./ui/CorpusPicker";
 
 // Default overlay contributions for the canvas app. Order is
@@ -1823,6 +1823,27 @@ function CanvasAppIntegration() {
     setSelection: setContentSelection,
     undoOwnedByContext: () =>
       !!editContextRef.current?.activeContribution?.onUndo,
+    escapeOwnedByContext: () => !!editContextRef.current?.active,
+    // ED-1 — Escape out of the text is InDesign's: the frame that held
+    // the caret becomes the selection and the Selection tool is in hand,
+    // so the next key is a shortcut again rather than more text.
+    onLeaveText: (left) => {
+      selectionRef.current.setActiveTool("select");
+      void (async () => {
+        const frameId = await frameHoldingCaret(client, left);
+        if (!frameId) return;
+        const applied = await client.setElementSelection(
+          [{ kind: "textFrame", id: frameId }],
+          "replace",
+        );
+        selectionRef.current.setElementSelection(applied);
+        selectionRef.current.setElementGeometry(
+          await client.elementGeometry(applied),
+        );
+      })().catch(() => {
+        /* worker reload / disconnect — the caret is gone either way */
+      });
+    },
   });
   usePathEditMode();
 

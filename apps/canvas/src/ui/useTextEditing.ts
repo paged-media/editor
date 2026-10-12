@@ -46,6 +46,10 @@
 // advances the caret by the text's UTF-8 length, not its UTF-16 length —
 // "ü" is two bytes, and advancing by one left the caret inside it.
 //
+// Escape (ED-1) leaves the text — the caret clears and the host selects
+// the frame that held it with the Selection tool in hand — instead of
+// leaving the caret live for the next key to type into.
+//
 // Listener runs in the CAPTURE phase: the page-navigation shortcuts
 // (`useKeyboardShortcuts`) bind Home/End/PageUp/PageDown on `window`
 // too, and listener order between two `window` keydown handlers isn't
@@ -78,6 +82,13 @@ export interface TextEditingContext {
    *  `onUndo`). The edit-context controller routes Cmd-Z to that context;
    *  this hook must then leave the document stack alone. */
   undoOwnedByContext?: () => boolean;
+  /** True while an edit context is active: its controller owns Escape
+   *  (it cancels the context), so leaving the text is not ours to do. */
+  escapeOwnedByContext?: () => boolean;
+  /** Escape left the text. The caret is already cleared; the host puts
+   *  the user back on the object level (InDesign: the frame that held
+   *  the caret selected, the Selection tool in hand). */
+  onLeaveText?: (left: ContentSelection) => void;
 }
 
 /** One key's work, run against the selection the previous key left. */
@@ -106,9 +117,13 @@ export function useTextEditing(ctx: TextEditingContext) {
   // handler's own writes cannot roll it back.
   const selRef = useRef<ContentSelection | null>(ctx.selection);
   const seenRef = useRef<ContentSelection | null>(ctx.selection);
+  // Set by Escape until the queued exit runs, so keys pressed in between
+  // (the "v" after Escape) are not typed into the text being left.
+  const leavingRef = useRef(false);
   if (seenRef.current !== ctx.selection) {
     seenRef.current = ctx.selection;
     selRef.current = ctx.selection;
+    leavingRef.current = false;
   }
   const queueRef = useRef<Promise<void>>(Promise.resolve());
 
@@ -164,7 +179,21 @@ export function useTextEditing(ctx: TextEditingContext) {
       }
 
       // The remaining shortcuts require an active selection.
-      if (!selRef.current) return;
+      if (!selRef.current || leavingRef.current) return;
+
+      if (key === "Escape") {
+        if (e.defaultPrevented || ctx.escapeOwnedByContext?.()) return;
+        e.preventDefault();
+        e.stopPropagation();
+        leavingRef.current = true;
+        anchorRef.current = null;
+        enqueue((left) => {
+          leavingRef.current = false;
+          setSel(null);
+          ctxRef.current.onLeaveText?.(left);
+        });
+        return;
+      }
 
       if (key === "Backspace") {
         e.preventDefault();
@@ -327,6 +356,26 @@ function insertAt(
   }
   const caret = sel.start + byteLength(text);
   setSel({ ...sel, start: caret, end: caret, affinity: false });
+}
+
+/** The frame that holds the caret — where it is laid out, or, for an
+ *  overset caret with no geometry, the last frame of the story's thread. */
+export async function frameHoldingCaret(
+  client: CanvasClient,
+  sel: ContentSelection,
+): Promise<string | null> {
+  try {
+    const caret = await client.caretGeometry({ ...sel, end: sel.start });
+    if (caret?.frameId) return caret.frameId;
+  } catch {
+    /* fall through to the thread */
+  }
+  try {
+    const links = await client.frameChain(sel.storyId);
+    return links[links.length - 1]?.frameId ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** The steerable end of the selection. For a collapsed caret both ends
