@@ -165,7 +165,14 @@ export function PlaygroundController(): React.ReactElement | null {
 
   return (
     <>
-      <button type="button" data-playground-toggle onClick={() => setOpen((v) => !v)} style={chipStyle}>
+      <button
+        type="button"
+        data-playground-toggle
+        data-playground-status={state.status}
+        data-playground-error={state.error ?? undefined}
+        onClick={() => setOpen((v) => !v)}
+        style={chipStyle}
+      >
         {open ? "× script" : "</> script"}
       </button>
 

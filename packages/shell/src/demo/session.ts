@@ -71,7 +71,12 @@ export function splitTopLevelStatements(source: string): Statement[] {
   };
   const push = (end: number): void => {
     const text = source.slice(stmtStart, end).trim();
-    if (text && !/^\/\//.test(text)) {
+    // A statement is skipped only when it is nothing but comments. The
+    // comments ABOVE a statement belong to its span, so testing the text's
+    // first characters would drop the first statement of every script that
+    // opens with a header comment.
+    const code = text.replace(/^(?:\s*(?:\/\/[^\n]*|\/\*[\s\S]*?\*\/))+/, "").trim();
+    if (code) {
       const realStart = stmtStart + (source.slice(stmtStart, end).length - source.slice(stmtStart, end).trimStart().length);
       out.push({
         index: out.length,
