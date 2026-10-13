@@ -34,6 +34,9 @@
 
 import { expect, test, type Page } from "@playwright/test";
 
+import type { ElementGeometryItem, PageId, WorkerToMain } from "@paged-media/client";
+
+import { pageOrigin } from "../../../../packages/shell/src/state/page-space";
 import { openCanvas } from "../fidelity/canvas-driver";
 import { sampleFixture } from "./harness/fixtures";
 import { selectElements } from "./harness/ui";
@@ -133,5 +136,57 @@ test.describe("ED-9 — selection geometry in page space", () => {
         return Math.max(Math.abs(box[0] - expected.x), Math.abs(box[1] - expected.y));
       })
       .toBeLessThan(3);
+  });
+});
+
+// The measurement itself, against a scripted engine: a frame straddling
+// the spine of a facing spread, owned by the recto, hit from the verso.
+// Once the engine answers elementGeometry in page space, that frame's box
+// is recto-local while the hit's frameBounds is verso-local, so measuring
+// the verso from it reads the difference between the two pages' origins.
+test.describe("ED-9 — the page-origin measurement", () => {
+  test("AC-PAGESPACE-4 — a page is measured only from an element it owns @feat:editor-shell.context-toolbars @level:edge", async () => {
+    const verso = "uverso" as PageId;
+    const recto = "urecto" as PageId;
+    const straddler = { kind: "frame", id: "ustraddle" };
+    const owned = { kind: "frame", id: "uowned" };
+    // Page-local engine (the fixed core): every box is in its owner's space.
+    const geometry: Record<string, ElementGeometryItem> = {
+      ustraddle: {
+        id: straddler,
+        pageId: recto,
+        bounds: [100, -40, 200, 60],
+        itemTransform: [1, 0, 0, 1, 0, 0],
+      } as unknown as ElementGeometryItem,
+      uowned: {
+        id: owned,
+        pageId: verso,
+        bounds: [300, 100, 400, 200],
+        itemTransform: [1, 0, 0, 1, 0, 0],
+      } as unknown as ElementGeometryItem,
+    };
+    const client = {
+      subscribe: () => () => undefined,
+      collection: async () => [
+        { selfId: verso, sizePt: [540, 720] },
+        { selfId: recto, sizePt: [540, 720] },
+      ],
+      elementGeometry: async (ids: Array<{ id: string }>) => ids.map((i) => geometry[i.id]!),
+      // The first probe point lands on the straddler (its verso half,
+      // verso-local), every later one on the verso's own frame.
+      send: (() => {
+        let calls = 0;
+        return async (): Promise<WorkerToMain> =>
+          ({
+            kind: "hitResult",
+            payload:
+              calls++ === 0
+                ? { element: straddler, frameBounds: { left: 500, top: 100, right: 600, bottom: 200 } }
+                : { element: owned, frameBounds: { left: 100, top: 300, right: 200, bottom: 400 } },
+          }) as unknown as WorkerToMain;
+      })(),
+    };
+    const origin = await pageOrigin(client as never, verso);
+    expect(origin, "a page-local engine leaves the verso unshifted").toEqual([0, 0]);
   });
 });

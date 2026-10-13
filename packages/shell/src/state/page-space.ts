@@ -204,7 +204,12 @@ async function measure(
         continue;
       }
     }
-    if (!geometry) continue;
+    // Only an element this page owns measures this page. Its geometry
+    // composes against its OWN page: in spread space today, so any hit
+    // would do, but page-local once the engine is fixed, where an item
+    // straddling the spine, hit from the page that does not own it, would
+    // measure the difference between the two pages' origins.
+    if (!geometry || geometry.pageId !== pageId) continue;
     const box = aabb(geometry);
     // A rotated spread view is not a translation away: leave it be.
     if (
