@@ -66,6 +66,7 @@ import {
   type WritableFileHandle,
 } from "./state/open-file-handle";
 import { DocumentProvider, useDocument } from "./state/document-context";
+import { usePageThumbnails } from "./state/page-thumbnails";
 import { setPendingImportSource } from "./state/import-source";
 import {
   InstrumentationProvider,
@@ -510,6 +511,9 @@ function ShellChrome({
   const handleRef = useRef(handle);
   const refreshingPagesRef = useRef(false);
   handleRef.current = handle;
+
+  // Thumbnails for pages added or edited after the load pass.
+  usePageThumbnails();
 
   // Publish main-thread FPS for the canvas HUD.
   const fps = useFps();

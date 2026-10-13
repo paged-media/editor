@@ -188,6 +188,18 @@ function warnDefaultFontUnavailable(cb: DocumentLoaderCallbacks): void {
   );
 }
 
+/** One page's thumbnail as an object URL (the caller revokes it). The
+ *  load pass and the thumbnail keeper (`usePageThumbnails`) both take
+ *  them here, so a re-taken thumbnail matches the one it replaces. */
+export async function requestPageThumbnail(
+  client: CanvasClient,
+  pageId: PageId,
+): Promise<string> {
+  const snap = await client.requestSnapshot(pageId, SNAPSHOT_WIDTH_PX);
+  const blob = new Blob([new Uint8Array(snap.pngBytes)], { type: "image/png" });
+  return URL.createObjectURL(blob);
+}
+
 /**
  * Sequential per-page snapshot requests + ready flag, shared by the
  * open-file and new-document paths. Sequential because the worker is
@@ -201,12 +213,7 @@ async function snapshotAllPages(
 ): Promise<void> {
   for (const pageId of handle.pageIds) {
     try {
-      const snap = await client.requestSnapshot(pageId, SNAPSHOT_WIDTH_PX);
-      const blob = new Blob([new Uint8Array(snap.pngBytes)], {
-        type: "image/png",
-      });
-      const url = URL.createObjectURL(blob);
-      cb.addSnapshot(pageId, url);
+      cb.addSnapshot(pageId, await requestPageThumbnail(client, pageId));
     } catch (err) {
       cb.pushWarning(`snapshot ${pageId}: ${String(err)}`);
     }

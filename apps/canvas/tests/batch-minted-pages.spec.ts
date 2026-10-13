@@ -157,6 +157,44 @@ test.describe("Batch-minted pages", () => {
     expect(names).toEqual(["Cover", "Page 2", "Page 3"]);
   });
 
+  test("AC-BATCHPAGES-2 — batch-minted pages get filmstrip thumbnails @feat:editor-shell.panels.pages-navigator @level:edge", async ({
+    page,
+  }) => {
+    await batchInsertPages(page, 2);
+    await expect.poll(() => pageCount(page)).toBe(3);
+
+    await expect
+      .poll(async () => (await railThumbnails(page)).map((t) => `${t.label}:${t.loaded}`))
+      .toEqual(["Cover:true", "2:true", "3:true"]);
+  });
+
+  test("AC-BATCHPAGES-3 — an edit repaints the edited page's thumbnail @feat:editor-shell.panels.pages-navigator @level:edge", async ({
+    page,
+  }) => {
+    const before = (await railThumbnails(page))[0]!;
+    expect(before.loaded, "the load pass gave page 1 a thumbnail").toBe(true);
+
+    const pageId = await page.evaluate(
+      () => (globalThis as unknown as CanvasGlobal).__canvas.handle!.pageIds[0]!,
+    );
+    const reply = await page.evaluate(
+      (id) =>
+        (globalThis as unknown as CanvasGlobal).__canvas.client.mutate({
+          op: "insertFrame",
+          args: { pageId: id, bounds: [72, 72, 360, 540] },
+        }),
+      pageId,
+    );
+    expect(reply.kind).toBe("mutationApplied");
+
+    await expect
+      .poll(async () => {
+        const now = (await railThumbnails(page))[0]!;
+        return now.loaded && now.src !== before.src;
+      })
+      .toBe(true);
+  });
+
   test("AC-BATCHPAGES-5 — a batch that adds pages updates the page list without a script's help @feat:layout-model.spreads-pages @level:edge", async ({
     page,
   }) => {
