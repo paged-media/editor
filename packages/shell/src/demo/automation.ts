@@ -111,10 +111,16 @@ export interface AutomationOptions {
   isSilent?: () => boolean;
 }
 
-export function buildAutomation(h: CanvasHandleLike, opts: AutomationOptions = {}): DemoGlobals {
+export function buildAutomation(handle: CanvasHandleLike, opts: AutomationOptions = {}): DemoGlobals {
   const silent = () => opts.isSilent?.() ?? false;
+  // `window.__canvas` is republished on every render (PagedShell), so the
+  // object a script was started with goes stale: after `paged.file.new` its
+  // `handle` still names no document and `editor.pageIds()` stays empty. Every
+  // read goes to the live publication, falling back to the handle given (a
+  // host without the global, or a test double).
+  const live = (): CanvasHandleLike => (globalThis as { __canvas?: CanvasHandleLike }).__canvas ?? handle;
   const commandInvoke = (id: string, payload?: unknown): Promise<unknown> => {
-    const c = h.registries.commands;
+    const c = live().registries.commands;
     const fn = c.invoke ?? c.execute ?? c.run;
     if (!fn) return Promise.reject(new Error("command registry has no invoke/execute/run"));
     return Promise.resolve(fn.call(c, id, payload));
@@ -122,28 +128,34 @@ export function buildAutomation(h: CanvasHandleLike, opts: AutomationOptions = {
 
   const paged: PagedScriptApi = {
     async run(source: string): Promise<string[]> {
-      const reply = await h.client.executeScript(source);
+      const reply = await live().client.executeScript(source);
       if (reply.error) throw new Error(`paged.run: ${reply.error}`);
       return reply.output;
     },
   };
 
   const editor: EditorAutomationApi = {
-    openPanel: (id) => h.openPanel?.(id),
+    openPanel: (id) => live().openPanel?.(id),
     runCommand: (id, payload) => commandInvoke(id, payload),
-    setTool: (tool) => h.setActiveTool?.(tool),
-    setMode: (mode) => h.setMode?.(mode),
-    select: (ids, mode = "replace") => h.setElementSelection?.(ids, mode),
-    pageIds: () => h.handle?.pageIds ?? [],
+    setTool: (tool) => live().setActiveTool?.(tool),
+    setMode: (mode) => live().setMode?.(mode),
+    select: (ids, mode = "replace") => {
+      // A bad id would reach the panels and take the whole UI down; a script
+      // gets an error it can read instead.
+      const bad = ids.find((x) => !x || typeof x !== "object" || !("kind" in x) || !("id" in x));
+      if (bad !== undefined) throw new Error(`editor.select: ${JSON.stringify(bad) ?? String(bad)} is not an element id ({ kind, id })`);
+      live().setElementSelection?.(ids, mode);
+    },
+    pageIds: () => live().handle?.pageIds ?? [],
     async setProperty(path, value) {
-      const sel = h.elementSelection ?? [];
+      const sel = live().elementSelection ?? [];
       for (const elementId of sel) {
-        await h.client.mutate({ op: "setElementProperty", args: { elementId, path, value } });
+        await live().client.mutate({ op: "setElementProperty", args: { elementId, path, value } });
       }
     },
-    mutate: (op) => h.client.mutate(op),
+    mutate: (op) => live().client.mutate(op),
     // ADR 323 — get/set/query/batch/schema over `host.objects`.
-    ...buildObjectAutomation(() => h.objects),
+    ...buildObjectAutomation(() => live().objects),
   };
 
   const demo: DemoNarrationApi = {
