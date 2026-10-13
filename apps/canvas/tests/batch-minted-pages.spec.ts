@@ -209,4 +209,35 @@ test.describe("Batch-minted pages", () => {
     await batchInsertPages(page, 2);
     await expect.poll(() => pageCount(page)).toBe(3);
   });
+
+  test("AC-BATCHPAGES-4 — adding pages keeps the view; replacing the document fits it @feat:editor-tools.nav.zoom @level:edge", async ({
+    page,
+  }) => {
+    // A deliberate view: 100%, not the on-load fit.
+    await page.evaluate(() =>
+      (globalThis as unknown as CanvasGlobal).__canvas.registries.commands.invoke(
+        "paged.view.zoom100",
+      ),
+    );
+    await expect.poll(async () => (await readCamera(page)).scale).toBeCloseTo(1, 3);
+    const kept = await readCamera(page);
+
+    await batchInsertPages(page, 8);
+    await expect.poll(() => pageCount(page)).toBe(9);
+    // The page list reached React (the map lists every page), so any
+    // re-fit keyed on it has run by the time the rows are there.
+    await expect(
+      page.locator("[data-document-map-panel] [data-document-map-spread]"),
+    ).toHaveCount(9);
+    await page.waitForTimeout(750);
+    const after = await readCamera(page);
+    expect(after.scale, "zoom kept after the batch").toBeCloseTo(kept.scale, 3);
+    expect(after.tx, "pan kept after the batch").toBeCloseTo(kept.tx, 1);
+    expect(after.ty, "pan kept after the batch").toBeCloseTo(kept.ty, 1);
+
+    // A REPLACED document still fits: File ▸ New lands on the fit, not
+    // on the 100% the previous document was left at.
+    await newDocument(page);
+    await expect.poll(async () => (await readCamera(page)).scale).toBeLessThan(0.9);
+  });
 });
