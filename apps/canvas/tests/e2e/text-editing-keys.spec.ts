@@ -376,4 +376,31 @@ test.describe("Select All (film defect ED-14)", () => {
       .poll(async () => (await elementSelection(page)).map((e) => e.id).sort())
       .toEqual([frameId, rectId as string].sort());
   });
+
+  test("ED-14 — Cmd+A in a text field selects the field's text, not the page items @feat:editor-shell.keyboard-shortcuts @level:edge", async ({
+    page,
+  }) => {
+    const d = new Designer(page);
+    await d.open();
+    await d.newDocument();
+    await d.addTextFrame({ x0: 72, y0: 72, x1: 300, y1: 200 });
+    await page.evaluate(async () => {
+      await (globalThis as unknown as CanvasGlobal).__canvas.client.setElementSelection([], "replace");
+    });
+
+    const field = page.locator("[data-document-map-search]").first();
+    await field.click();
+    await field.pressSequentially("cover");
+    await page.keyboard.press("ControlOrMeta+A");
+    expect(
+      await field.evaluate((el) => {
+        const i = el as HTMLInputElement;
+        return [i.selectionStart, i.selectionEnd];
+      }),
+      "the field's text is selected",
+    ).toEqual([0, 5]);
+    expect(await elementSelection(page), "no page item was selected").toEqual([]);
+    await page.keyboard.type("x");
+    await expect(field).toHaveValue("x");
+  });
 });
