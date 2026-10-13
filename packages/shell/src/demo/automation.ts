@@ -39,6 +39,9 @@ export interface CanvasHandleLike {
   client: {
     executeScript(source: string): Promise<{ output: string[]; error: string | null }>;
     mutate(mutation: unknown): Promise<unknown>;
+    /** The worker's selection; answers the ids it applied. */
+    setElementSelection?(ids: unknown[], mode: string): Promise<unknown[]>;
+    elementGeometry?(ids: unknown[]): Promise<unknown[]>;
   };
   registries: {
     commands: {
@@ -51,6 +54,8 @@ export interface CanvasHandleLike {
   setActiveTool?: (tool: string) => void;
   setMode?: (mode: string) => void;
   setElementSelection?: (ids: unknown[], mode: string) => void;
+  /** The geometry mirror the selection box is drawn from. */
+  setElementGeometry?: (items: unknown[]) => void;
   elementSelection?: unknown[];
   handle?: { pageIds?: string[]; pageCount?: number } | null;
   /** ADR 323 — the app's shared object registry (`host.objects`). */
@@ -71,8 +76,9 @@ export interface EditorAutomationApi extends ObjectAutomationApi {
   setTool(tool: string): void;
   /** Switch workflow mode. */
   setMode(mode: string): void;
-  /** Replace the element selection. */
-  select(ids: unknown[], mode?: string): void;
+  /** Select elements as a click does: the engine, the panels and the
+   *  selection box all follow. */
+  select(ids: unknown[], mode?: string): Promise<void>;
   /** Page ids of the open document (empty until a document exists). */
   pageIds(): string[];
   /** Set a property on the current selection (panel + document update together). */
@@ -139,12 +145,24 @@ export function buildAutomation(handle: CanvasHandleLike, opts: AutomationOption
     runCommand: (id, payload) => commandInvoke(id, payload),
     setTool: (tool) => live().setActiveTool?.(tool),
     setMode: (mode) => live().setMode?.(mode),
-    select: (ids, mode = "replace") => {
+    select: async (ids, mode = "replace") => {
       // A bad id would reach the panels and take the whole UI down; a script
       // gets an error it can read instead.
       const bad = ids.find((x) => !x || typeof x !== "object" || !("kind" in x) || !("id" in x));
       if (bad !== undefined) throw new Error(`editor.select: ${JSON.stringify(bad) ?? String(bad)} is not an element id ({ kind, id })`);
-      live().setElementSelection?.(ids, mode);
+      // The click path's three steps. Setting only the panels' mirror left
+      // the engine's selection where it was (so `paged.selection()` and the
+      // commands that read it disagreed with the panels) and the selection
+      // box on whatever was selected before.
+      const c = live();
+      const applied = c.client.setElementSelection ? await c.client.setElementSelection(ids, mode) : ids;
+      c.setElementSelection?.(applied, mode);
+      if (!c.client.elementGeometry || !c.setElementGeometry) return;
+      try {
+        c.setElementGeometry(await c.client.elementGeometry(applied));
+      } catch {
+        // Geometry is selection chrome; the selection itself is set.
+      }
     },
     pageIds: () => live().handle?.pageIds ?? [],
     async setProperty(path, value) {
