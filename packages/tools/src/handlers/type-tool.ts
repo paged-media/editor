@@ -53,6 +53,52 @@ import { CLICK_DRAG_THRESHOLD_PX, mutateAndSelect } from "./shared";
  *  shape-sized box would fight the user. */
 const MIN_TEXT_FRAME_PT = 8;
 
+/** Pull out the frame, then put the caret in it — "drag a box, type", as
+ *  in InDesign. Without the caret the frame was selected but the keys
+ *  typed next went nowhere.
+ *
+ *  The reply names the frame but not its story (`minted` stays empty for
+ *  a plain insert, and the frame has no story pointer on the wire), and a
+ *  hit-test cannot find an EMPTY frame's story either — the frame under
+ *  it answers. So the story is the one the stories collection gained
+ *  across the insert, the same diff Insert ▸ Table relies on. */
+async function createAndEnter(
+  paged: PagedEditor,
+  pageId: string,
+  bounds: [number, number, number, number],
+): Promise<void> {
+  const storyIds = async () =>
+    new Set(
+      (await paged.client.collection<{ selfId: string }>("stories")).map(
+        (s) => s.selfId,
+      ),
+    );
+  let before: Set<string>;
+  try {
+    before = await storyIds();
+  } catch {
+    before = new Set();
+  }
+  const reply = await mutateAndSelect(
+    paged,
+    { op: "insertTextFrame", args: { pageId, bounds } },
+    "insertTextFrame",
+  );
+  if (reply?.kind !== "mutationApplied") return;
+  try {
+    const minted = [...(await storyIds())].filter((id) => !before.has(id));
+    if (minted.length !== 1) return;
+    paged.contentSelection.setContentSelection({
+      storyId: minted[0],
+      start: 0,
+      end: 0,
+      affinity: false,
+    });
+  } catch {
+    /* the frame stands, selected; only the caret is missing */
+  }
+}
+
 export function createTypeHandler(): GestureHandler {
   let paged: PagedEditor | null = null;
   let startPageId: string | null = null;
@@ -139,11 +185,7 @@ export function createTypeHandler(): GestureHandler {
       if (bottom - top < MIN_TEXT_FRAME_PT || right - left < MIN_TEXT_FRAME_PT) {
         return;
       }
-      mutateAndSelect(
-        paged,
-        { op: "insertTextFrame", args: { pageId, bounds } },
-        "insertTextFrame",
-      );
+      void createAndEnter(paged, pageId, bounds);
     },
   };
 }

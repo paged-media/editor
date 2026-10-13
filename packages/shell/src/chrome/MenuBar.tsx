@@ -285,19 +285,29 @@ function buildMenuTree(
       }
       level = sub.children;
     }
-    level.push(leaf);
+    // One command, one row per level: a second registration of the same
+    // command at the same place would render a second row under the same
+    // React key.
+    if (!level.some((n) => n.type === "leaf" && n.command === leaf.command)) {
+      level.push(leaf);
+    }
   }
   // Fold every plugin-contributed top-level menu into Plugins ▸ <name>,
   // beside that plugin's panels (registered as `Plugins/<name>/<panel>`).
   // The original top-level entry stays for the context-menu display.
+  //
+  // MERGED, not concatenated. Concatenation listed a panel twice when the
+  // plugin's own menu also opens it (Data ▸ Data sources… beside the
+  // shell's Data sources — one command, two rows, one React key), and
+  // kept two submenus when both sides named one.
   const plugins = tops.get("Plugins") ?? [];
   for (const [top, nodes] of tops) {
     if (CORE_MENUS.includes(top)) continue;
     const existing = plugins.find(
       (n): n is MenuSubmenu => n.type === "submenu" && n.label === top,
     );
-    if (existing) existing.children = [...nodes, ...existing.children];
-    else plugins.push({ type: "submenu", label: top, children: [...nodes], order: 0 });
+    if (existing) existing.children = mergeNodes(cloneNodes(nodes), existing.children);
+    else plugins.push({ type: "submenu", label: top, children: cloneNodes(nodes), order: 0 });
   }
   // One section, alphabetical (the label tie-break in sortLevel).
   for (const n of plugins) {
@@ -305,12 +315,72 @@ function buildMenuTree(
     n.order = 0;
     n.group = "plugins";
     n.groupLabel = undefined;
+    nestPanelsUnderNamesakes(n.children);
   }
   if (plugins.length > 0) tops.set("Plugins", plugins);
   for (const nodes of tops.values()) sortLevel(nodes);
   return Array.from(tops.entries()).sort(
     ([a], [b]) => topLevelOrder(a) - topLevelOrder(b),
   );
+}
+
+/** Deep copy of a node list: the fold edits the Plugins copy, and the
+ *  original top-level menu is still rendered as the context menu. */
+function cloneNodes(nodes: MenuNode[]): MenuNode[] {
+  return nodes.map((n) =>
+    n.type === "submenu" ? { ...n, children: cloneNodes(n.children) } : { ...n },
+  );
+}
+
+/** `into` + `from`, with submenus of one label merged (recursively) and
+ *  a leaf whose command `into` already holds dropped — the first
+ *  contributor's row wins. */
+function mergeNodes(into: MenuNode[], from: MenuNode[]): MenuNode[] {
+  const out = [...into];
+  for (const node of from) {
+    if (node.type === "leaf") {
+      if (!out.some((n) => n.type === "leaf" && n.command === node.command)) {
+        out.push(node);
+      }
+      continue;
+    }
+    const same = out.find(
+      (n): n is MenuSubmenu => n.type === "submenu" && n.label === node.label,
+    );
+    if (same) {
+      same.children = mergeNodes(same.children, node.children);
+      if (node.order < same.order) same.order = node.order;
+    } else {
+      out.push(node);
+    }
+  }
+  return out;
+}
+
+const PANEL_SHOW = "paged.panel.show.";
+
+/** A plugin panel named like one of the plugin's command submenus
+ *  (Draw ▸ Appearance the commands, Appearance the panel) was listed
+ *  twice under one name — two rows a user cannot tell apart. The panel
+ *  moves into its namesake submenu, first, as "<name> panel". */
+function nestPanelsUnderNamesakes(nodes: MenuNode[]): void {
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const n = nodes[i];
+    if (n.type !== "leaf" || !n.command.startsWith(PANEL_SHOW)) continue;
+    const namesake = nodes.find(
+      (m): m is MenuSubmenu => m.type === "submenu" && m.label === n.label,
+    );
+    if (!namesake) continue;
+    nodes.splice(i, 1);
+    const first = Math.min(...namesake.children.map((c) => c.order), n.order);
+    namesake.children.unshift({
+      ...n,
+      label: `${n.label} panel`,
+      group: "namesake-panel",
+      groupLabel: undefined,
+      order: first - 1,
+    });
+  }
 }
 
 /** Groups rank by their lowest member order; members sort inside. */

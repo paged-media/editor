@@ -43,7 +43,11 @@ What the editor ships and what it does not, read from the code at commit `6d098e
 - **Diagnostics.** A Problems panel (plugin diagnostics, failed saves, missing default
   font) and a Journal panel over a local event log that can be exported as a file.
 - **Playground build.** `build:demo` keeps the automation handle, a script playground and
-  an iframe bridge for running `paged.*` source from an embedding page.
+  an iframe bridge for running `paged.*` source from an embedding page. Live scripts
+  (`*-live.js`) run hands-free with `?autoplay&embed`, checked end to end by
+  `tests/live-scripts.spec.ts`.
+- **Films.** The paged.media films are recorded by a Playwright project (`films`, local only,
+  [ADR 224](adr/224-films-are-recorded-by-the-editor.md)); the paged.draw film is the first.
 
 ## Object model in the panels (ADR 323, in progress on a branch)
 

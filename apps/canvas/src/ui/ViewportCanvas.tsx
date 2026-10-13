@@ -39,10 +39,13 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   OverlayHost,
   pageToContentPoint,
+  TEXT_TOOL_ID,
   useContentSelection,
   useEditContextEntry,
   useOptionalEditContextStack,
+  useOptionalTool,
   useOverlaySignals,
+  useSelection,
   type MarqueeRectPageLocal,
   type SelectionState,
 } from "@paged-media/shell";
@@ -88,6 +91,10 @@ export interface PointerModifiers {
 
 export interface ViewportCanvasProps {
   client: CanvasClient;
+  /** The loaded document's id (`DocumentHandle.docId`). The view fits
+   *  the document when this changes — a document was opened — and is
+   *  left alone when only its page list changes. */
+  docId: string;
   pageIds: ReadonlyArray<PageId>;
   pageSizesPt: ReadonlyArray<readonly [number, number]>;
   camera: Camera;
@@ -252,6 +259,8 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
   // consults this BEFORE group descent: a polygon enters the
   // vectorGraphic context, a webFrame enters its source context.
   const { tryEnterEditContext, tryEnterOwnedContent } = useEditContextEntry();
+  const tool = useOptionalTool();
+  const { activeGroup } = useSelection();
 
   // K-1 — the edit-context STACK (optional: the canvas mounts standalone
   // in some specs). While a context is active, a pointer over the active
@@ -302,7 +311,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
     }
     // We deliberately depend on `client` only — fit-to-document
     // takes the current rects/dims; subsequent re-fits are driven
-    // by the document-id signature effect below.
+    // by the document-id effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.client]);
 
@@ -340,17 +349,19 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
     });
   }, [props.client, setSnapLines]);
 
-  // Re-fit camera when the document changes (page-id signature).
-  const pageIdSig = useMemo(() => props.pageIds.join("|"), [props.pageIds]);
-  const lastFitSigRef = useRef<string>("");
+  // Re-fit the camera when the DOCUMENT changes, not when its page list
+  // does. Keyed on the page-id signature, every inserted or deleted page
+  // re-fitted to the whole document: a fifty-record Data Merge left the
+  // view at 3%. Adding or removing pages keeps the user's view.
+  const lastFitDocRef = useRef<string | null>(null);
   useEffect(() => {
-    if (pageIdSig === lastFitSigRef.current) return;
+    if (props.docId === lastFitDocRef.current) return;
     if (!wrapperRef.current || rects.length === 0) return;
     const { width, height } = wrapperRef.current.getBoundingClientRect();
     if (width < 10 || height < 10) return;
     props.onCameraChange(fitCamera(width, height, documentBounds(rects)));
-    lastFitSigRef.current = pageIdSig;
-  }, [pageIdSig, rects, props]);
+    lastFitDocRef.current = props.docId;
+  }, [rects, props]);
 
   // Resolve a DOM pointer event to the document-coordinate
   // CanvasPointerEvent a GestureHandler expects.
@@ -941,6 +952,11 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         // state armed at pointer-down is still there to fall through on.
         if (!(wasClick && legacyAlso)) {
           e.currentTarget.releasePointerCapture(e.pointerId);
+          // A dual tool's DRAG belonged to the handler, but pointer-down
+          // armed the legacy drag state too (as a "pan", for the click
+          // it might have been). Left armed, every later button-less
+          // move panned the view until the next press (ED-3).
+          dragStateRef.current = null;
           return;
         }
       }
@@ -1391,6 +1407,42 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
           if (reply.kind !== "hitResult") return;
           const chain = reply.payload.groupChain ?? [];
           const element = reply.payload.element ?? null;
+          // TEXT FIRST, as in InDesign: a double-click on a text frame's
+          // text switches to the Type tool with the caret at the point —
+          // in the cell, when the point is in a table cell. Without this
+          // the first claim to answer was paged.draw's, which takes every
+          // path-bearing kind including text frames, so double-clicking a
+          // table entered vector editing. Content a plugin OWNS (a lowered
+          // sheet table, a web frame) still goes to that plugin.
+          const hit = reply.payload;
+          // A grouped frame descends into its group first (Track L); the
+          // next double-click, inside the group, reaches the text.
+          const inGroupScope =
+            chain.length === 0 || (activeGroup !== null && chain.includes(activeGroup));
+          if (
+            element?.kind === "textFrame" &&
+            inGroupScope &&
+            hit.storyId &&
+            hit.offsetWithinStory != null
+          ) {
+            const owned = await tryEnterOwnedContent({
+              element,
+              groupChain: chain,
+              pageId,
+              pagePoint,
+            });
+            if (owned) return;
+            const tc = hit.tableContext ?? null;
+            tool?.setBaseTool(TEXT_TOOL_ID);
+            setContentSelection({
+              storyId: hit.storyId,
+              start: hit.offsetWithinStory,
+              end: hit.offsetWithinStory,
+              affinity: false,
+              cell: tc ? { tableId: tc.tableId, row: tc.row, col: tc.col } : undefined,
+            });
+            return;
+          }
           // W3.2 — consult the edit-context / object-type registries
           // FIRST: a webFrame (object type) opens its source context, a
           // polygon (edit context by kind) enters vectorGraphic. Only
@@ -1412,7 +1464,15 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         }
       })();
     },
-    [props, rects, tryEnterEditContext],
+    [
+      props,
+      rects,
+      tryEnterEditContext,
+      tryEnterOwnedContent,
+      tool,
+      setContentSelection,
+      activeGroup,
+    ],
   );
 
   return (
@@ -1591,7 +1651,8 @@ function ViewportHud(props: {
           ? "var(--status-review)"
           : "var(--status-error)";
   return (
-    <div style={hudStyle}>
+    // data-viewport-hud: the films (tests/films) hide this readout by it.
+    <div style={hudStyle} data-viewport-hud="">
       <span style={{ color: gpuBadge.color, fontWeight: 600 }}>
         {gpuBadge.label}
       </span>

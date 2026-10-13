@@ -39,6 +39,29 @@ import {
 } from "./tool-commands";
 
 /**
+ * Where a tool's shortcut ranks among the bindings on its key (see
+ * `KeybindingContribution.precedence`). A tool no edit context claims
+ * is an ordinary guarded binding (1). A FRAME tool — one an edit
+ * context declares in `toolIds` — outranks every other binding on its
+ * key while a context claiming it is active (2: J is the healing brush
+ * inside a raster frame, whatever the fill/stroke cluster binds), and
+ * yields to all of them elsewhere (-1: outside the frame J stays the
+ * host's). Read live, so a context registered after the tool counts.
+ */
+export function framePrecedence(
+  registries: Pick<ShellRegistries, "editContexts">,
+  toolId: string,
+  state: unknown,
+): number {
+  const claimed = registries.editContexts
+    .list()
+    .some((ec) => ec.toolIds?.includes(toolId));
+  if (!claimed) return 1;
+  const active = (state as Partial<PagedEditor> | null)?.editContext;
+  return active?.toolIds?.includes(toolId) ? 2 : -1;
+}
+
+/**
  * Install the derivations over the current registry contents and
  * keep them in sync via `onChange`. Returns one Disposable that
  * tears down every derived contribution + both subscriptions.
@@ -76,6 +99,7 @@ export function installRegistryDerivedContributions(
           key: tool.shortcut,
           command,
           when: contentSelectionInactive,
+          precedence: (state) => framePrecedence(registries, tool.id, state),
         }),
       );
     }

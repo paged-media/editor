@@ -30,8 +30,8 @@
 //
 // The documents are blank (File ▸ New), whose spread origin IS the page
 // origin, so "where it is in the engine's element space" and "where it
-// is on the page" are the same numbers (engine-findings §17 for the
-// documents where they are not).
+// is on the page" are the same numbers (engine-findings §17: since core
+// 0.71.8 they are on every document).
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -419,10 +419,6 @@ test.describe("E2E engine anchor — the space element geometry is in", () => {
   test("AC-XY-ENGINE-1 — on an InDesign document, element geometry composes against the PAGE @feat:editor-shell.panels.object-transform @level:edge", async ({
     page,
   }) => {
-    test.fail(
-      true,
-      "engine-findings §17: elementGeometry composes in spread space; the page origin is on no read",
-    );
     await openCanvas(page);
     const fx = await loadFixture(page, "sample");
     const { pageId, widthPt, heightPt } = fx.pages[0];

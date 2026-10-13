@@ -20,6 +20,7 @@ signal.
 | `doc-memo.docx` | `plugin-doc/docx-conformance/src/lib.rs` → `memo_docx()` | re-emit from that fn |
 | `slide-deck.pptx` | `plugin-slide/slide-conformance/fixtures/placeholders.pptx` (authored in PowerPoint: one slide per built-in layout) | copy again |
 | `data-people.csv` | authored here (plain CSV, no generator) | edit in place |
+| `annual-layers.psd` | `website/media/assets/annual-layers.psd` (400 × 300 px, layered RGB) | copy again |
 
 All four `.xlsx` are byte-identical to their source as of 2026-08-19,
 only renamed with a `sheet-` prefix. To refresh after

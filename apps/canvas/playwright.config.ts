@@ -112,7 +112,7 @@ export default defineConfig({
       // behaviour-surface suite so each runs once. The showcase is its
       // own project too — it builds a sixteen-page document and takes
       // minutes, so it must not ride the behaviour suite.
-      testIgnore: [...LEAN_DROP, "journey/**", "showcase/**"],
+      testIgnore: [...LEAN_DROP, "journey/**", "showcase/**", "films/**"],
       use: {
         ...devices["Desktop Chrome"],
         // WebGPU lights up when BACKEND=gpu — but headless Chromium
@@ -242,6 +242,39 @@ export default defineConfig({
             "--headless=new",
             "--enable-unsafe-webgpu",
             "--use-angle=metal",
+          ],
+        },
+      },
+    },
+    {
+      // Marketing films and screenshots for paged.media, recorded from the
+      // real editor (ADR 224). Local only: the specs skip unless
+      // PAGED_MEDIA_ROOT points at the website's media/ package, which
+      // owns the storyboards, narration plans and the composition.
+      name: "films",
+      testDir: "./tests/films",
+      testMatch: "**/*.film.ts",
+      retries: 0,
+      timeout: 15 * 60_000,
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: "chrome",
+        viewport: { width: 1600, height: 900 },
+        deviceScaleFactor: 2,
+        colorScheme: "dark",
+        locale: "en-US",
+        timezoneId: "Europe/Vienna",
+        headless: false,
+        launchOptions: {
+          args: [
+            "--headless=new",
+            "--enable-unsafe-webgpu",
+            "--use-angle=metal",
+            "--force-color-profile=srgb",
+            "--hide-scrollbars",
+            // Without it the screencast delivers CSS-pixel frames even with
+            // an emulated deviceScaleFactor of 2 (measured, spike S1).
+            "--force-device-scale-factor=2",
           ],
         },
       },

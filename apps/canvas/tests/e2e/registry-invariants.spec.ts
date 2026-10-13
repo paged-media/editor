@@ -24,7 +24,11 @@
 // slot). Asserts over the LIVE registries after boot — built-ins,
 // loadBundle contributions, everything:
 //
-//   INV-REG-1  no two tools claim the same single-key shortcut
+//   INV-REG-1  no two tools claim the same single-key shortcut, and a
+//              tool shortcut that shares its key with any OTHER binding
+//              is scoped: inside an edit context claiming the tool the
+//              key arms the tool, everywhere else the other binding
+//              keeps it (an unscoped tool may not share a key at all)
 //   INV-REG-2  at most one isGroupDefault per flyout slot (group)
 //   INV-REG-3  no duplicate keybindings (key+command pairs unique;
 //              one key may fan out only to DIFFERENT guarded commands)
@@ -108,6 +112,91 @@ test.describe("registry invariants (built-ins + bundles)", () => {
         .map(([k, ids]) => `"${k}" → ${ids.join(", ")}`)
         .join("; ")}`,
     ).toEqual([]);
+  });
+
+  // IMG-3 — paged.image's healing brush and the fill/stroke cluster
+  // both bind `j`, both guarded alike, so registration order (history)
+  // chose: inside a raster frame J toggled formatting. Checked through
+  // the registry's own dispatch rule, with the state each side needs.
+  test("INV-REG-1 — a tool shortcut never collides unscoped with another binding @feat:editor-shell.tool-rail @level:edge", async ({
+    page,
+  }) => {
+    const problems = await page.evaluate(() => {
+      type Kb = { key: string; command: string; when?: (s: unknown) => boolean };
+      type Ev = { key: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean };
+      const r = (
+        globalThis as unknown as {
+          __canvas: {
+            registries: {
+              tools: { list: () => Array<{ id: string; shortcut?: string; status?: string }> };
+              editContexts: { list: () => Array<{ type: string; toolIds?: string[] }> };
+              keybindings: {
+                list: () => Kb[];
+                resolve: (e: Ev, state?: unknown) => Kb | null;
+              };
+            };
+          };
+        }
+      ).__canvas.registries;
+      const eventFor = (combo: string): Ev => {
+        const parts = combo.toLowerCase().split("+");
+        const key = parts.pop()!;
+        const has = (...m: string[]) => parts.some((p) => m.includes(p));
+        return {
+          key,
+          metaKey: has("cmd", "meta"),
+          ctrlKey: has("ctrl", "control"),
+          altKey: has("alt", "option"),
+          shiftKey: has("shift"),
+        };
+      };
+      // No caret: the state every single-key binding is guarded on.
+      const base = { contentSelection: { contentSelection: null } };
+      const out: string[] = [];
+      const bindings = r.keybindings.list();
+      for (const tool of r.tools.list()) {
+        if (!tool.shortcut || tool.status === "planned") continue;
+        const own = `paged.tool.activate.${tool.id}`;
+        const key = tool.shortcut.toLowerCase();
+        const others = bindings.filter(
+          (b) => b.key.toLowerCase() === key && b.command !== own,
+        );
+        if (others.length === 0) continue;
+        const claiming = r.editContexts
+          .list()
+          .filter((c) => c.toolIds?.includes(tool.id));
+        if (claiming.length === 0) {
+          out.push(
+            `"${key}": ${tool.id} shares its key with ${others.map((o) => o.command).join(", ")} and no edit context scopes it`,
+          );
+          continue;
+        }
+        const ev = eventFor(key);
+        for (const c of claiming) {
+          const won = r.keybindings.resolve(ev, {
+            ...base,
+            editContext: { type: c.type, toolIds: c.toolIds },
+          });
+          if (won?.command !== own) {
+            out.push(`inside ${c.type}, "${key}" fires ${won?.command ?? "nothing"}, not ${tool.id}`);
+          }
+        }
+        const outside = { ...base, editContext: null };
+        const live = others.filter((o) => {
+          try {
+            return o.when ? Boolean(o.when(outside)) : true;
+          } catch {
+            return false;
+          }
+        });
+        const won = r.keybindings.resolve(ev, outside);
+        if (live.length > 0 && won?.command === own) {
+          out.push(`outside its frame, "${key}" arms ${tool.id} over ${live.map((o) => o.command).join(", ")}`);
+        }
+      }
+      return out;
+    });
+    expect(problems, problems.join("; ")).toEqual([]);
   });
 
   test("INV-REG-2 — one group default per flyout slot @feat:editor-shell.tool-rail @level:happy", async ({ page }) => {

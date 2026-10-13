@@ -39,6 +39,10 @@ import type { FontSummary, LinkSummary } from "@paged-media/client";
  *  this effective PPI warn (the editor's "warn, not fail" floor). */
 const LOW_RES_PPI = 150;
 
+/** Placements with no pixel grid of their own — a resolution check
+ *  does not apply to them. */
+const VECTOR_PLACEMENT = /\.(pdf|ai|eps|svg)$/i;
+
 /** Content mode — story inspector. The live story count is real;
  *  per-story words/risk/approval await the stories collection +
  *  collaboration backend. */
@@ -66,11 +70,13 @@ export function StoryInspectorPanel(_props: PanelProps) {
 }
 
 /** A single output-readiness check. `pass` null = the data source
- *  isn't wired (honest seam, "soon"); true/false = a real verdict. */
+ *  isn't wired (honest seam, "soon"); true/false = a real verdict;
+ *  "unknown" = the check ran but the document does not carry what it
+ *  measures, so it can neither pass nor fail. */
 interface ReadinessCheck {
   key: string;
   label: string;
-  pass: boolean | null;
+  pass: boolean | null | "unknown";
   /** Mono detail shown on the right when the check has run. */
   detail?: string;
 }
@@ -97,6 +103,19 @@ export function OutputReadinessPanel(_props: PanelProps) {
   const lowRes = links
     ? links.filter(
         (l) => l.effectivePpi != null && l.effectivePpi < LOW_RES_PPI,
+      ).length
+    : null;
+  // A placement the document records no effective PPI for (one made in
+  // the editor, a synthetic IDML) has an UNKNOWN resolution. Counting
+  // only the known-low ones read "ok" for a document whose every image
+  // was unmeasured. Missing links are the links check's finding, and a
+  // vector placement has no pixels to count.
+  const ppiUnknown = links
+    ? links.filter(
+        (l) =>
+          l.status !== "missing" &&
+          l.effectivePpi == null &&
+          !VECTOR_PLACEMENT.test(l.uri),
       ).length
     : null;
 
@@ -131,20 +150,32 @@ export function OutputReadinessPanel(_props: PanelProps) {
     {
       key: "ppi",
       label: `Images ≥ ${LOW_RES_PPI} PPI`,
-      pass: lowRes == null ? null : lowRes === 0,
+      pass:
+        lowRes == null || ppiUnknown == null
+          ? null
+          : lowRes > 0
+            ? false
+            : ppiUnknown > 0
+              ? "unknown"
+              : true,
       detail:
-        lowRes == null
+        lowRes == null || ppiUnknown == null
           ? undefined
-          : lowRes === 0
-            ? "ok"
-            : `${lowRes} low-res`,
+          : lowRes > 0
+            ? `${lowRes} low-res`
+            : ppiUnknown > 0
+              ? `${ppiUnknown} unknown`
+              : "ok",
     },
     // HONEST seam — no bleed-coverage accessor on the wire yet.
     { key: "bleed", label: "Bleed 3 mm", pass: null },
   ];
 
   // The X-4 verdict is the AND of the live checks (seams don't block).
+  // An unverified check does not fail the document, but it cannot
+  // declare it ready either.
   const liveChecks = checks.filter((c) => c.pass != null);
+  const anyFail = liveChecks.some((c) => c.pass === false);
   const allPass = liveChecks.every((c) => c.pass === true);
 
   return (
@@ -156,8 +187,11 @@ export function OutputReadinessPanel(_props: PanelProps) {
         title="Output readiness"
         action={
           loaded ? (
-            <StatusPill tone={allPass ? "ready" : "warn"} testId="readiness-x4">
-              {allPass ? "PDF/X-4 ready" : "Not ready"}
+            <StatusPill
+              tone={allPass ? "ready" : anyFail ? "warn" : "info"}
+              testId="readiness-x4"
+            >
+              {allPass ? "PDF/X-4 ready" : anyFail ? "Not ready" : "Unverified"}
             </StatusPill>
           ) : undefined
         }
@@ -179,10 +213,11 @@ export function OutputReadinessPanel(_props: PanelProps) {
 
 function ReadinessRow({ check }: { check: ReadinessCheck }) {
   const seam = check.pass == null;
+  const unknown = check.pass === "unknown";
   return (
     <div
       data-readiness-row={check.key}
-      data-readiness-pass={seam ? undefined : check.pass ? "true" : "false"}
+      data-readiness-pass={seam ? undefined : String(check.pass)}
       data-seam={seam ? "" : undefined}
       style={{
         display: "flex",
@@ -206,12 +241,14 @@ function ReadinessRow({ check }: { check: ReadinessCheck }) {
         />
       ) : (
         <Icon
-          name={check.pass ? "ui-check" : "ui-x"}
+          name={unknown ? "ui-warn" : check.pass ? "ui-check" : "ui-x"}
           size={14}
           style={{
-            color: check.pass
-              ? "var(--status-approved)"
-              : "var(--status-error)",
+            color: unknown
+              ? "var(--status-review)"
+              : check.pass
+                ? "var(--status-approved)"
+                : "var(--status-error)",
             flexShrink: 0,
           }}
         />

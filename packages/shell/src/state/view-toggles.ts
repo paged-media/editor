@@ -35,7 +35,7 @@
 // grow. A subscription that the store itself notifies cannot drift that
 // way.
 
-export type ViewToggle = "textThreads" | "snapToPoints";
+export type ViewToggle = "textThreads" | "snapToPoints" | "headingAnchors";
 
 type Listener = () => void;
 
@@ -48,6 +48,11 @@ const state: Record<ViewToggle, boolean> = {
   // the Pen and Direct Selection snap to the page's edges and centre and
   // to anchors (RFI C-68). Read by the tools, not an overlay.
   snapToPoints: true,
+  // Off by default. Where each heading anchor resolved (the engine's
+  // Tier 3 numbering) is a diagnostic of the resolver, not something the
+  // page carries: drawn always, every document with a heading wore a
+  // green badge nobody asked for.
+  headingAnchors: false,
 };
 
 const DEFAULTS: Readonly<Record<ViewToggle, boolean>> = { ...state };

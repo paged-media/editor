@@ -14,9 +14,9 @@
   },
   "dependencies": {
     "@paged-media/client": "workspace:*",
-    "@paged-media/draw": "0.1.0-canary.18",
-    "@paged-media/plugin-api": "0.2.52-canary.0",
-    "@paged-media/plugin-sdk": "0.2.52-canary.0",
+    "@paged-media/draw": "0.1.0-canary.19",
+    "@paged-media/plugin-api": "0.2.53-canary.0",
+    "@paged-media/plugin-sdk": "0.2.53-canary.0",
     "@paged-media/shell": "workspace:*"
   },
   "peerDependencies": {

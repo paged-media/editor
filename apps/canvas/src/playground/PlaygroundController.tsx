@@ -90,8 +90,15 @@ export function PlaygroundController(): React.ReactElement | null {
   // 2) (re)create the session whenever the running source changes
   useEffect(() => {
     if (!current) return;
-    const handle = (window as unknown as { __canvas?: CanvasHandleLike }).__canvas;
-    if (!handle) return;
+    const read = () => (window as unknown as { __canvas?: CanvasHandleLike }).__canvas;
+    if (!read()) return;
+    // LIVE, not a snapshot: the shell republishes `window.__canvas` on every
+    // render, so the object held at session creation kept the document it
+    // was born with — after the script's own File ▸ New, `editor.pageIds()`
+    // still named the old pages and its writes aimed at them.
+    const handle = new Proxy({} as CanvasHandleLike, {
+      get: (_t, prop) => Reflect.get(read() ?? {}, prop),
+    });
     const session = new DemoSession({ source: current, handle, onState: setState, speedMs });
     sessionRef.current = session;
     setStatements(session.statements);
@@ -165,7 +172,14 @@ export function PlaygroundController(): React.ReactElement | null {
 
   return (
     <>
-      <button type="button" data-playground-toggle onClick={() => setOpen((v) => !v)} style={chipStyle}>
+      <button
+        type="button"
+        data-playground-toggle
+        data-playground-status={state.status}
+        data-playground-error={state.error ?? undefined}
+        onClick={() => setOpen((v) => !v)}
+        style={chipStyle}
+      >
         {open ? "× script" : "</> script"}
       </button>
 

@@ -45,16 +45,18 @@
 //    transform is a pure translation. Anywhere else the edge readout is
 //    read-only, rather than a write that lands somewhere else.
 //
-// THE SPACE these numbers are in is the engine's `elementGeometry`
-// space. On a document made here (File ▸ New) and on the generated
-// fixtures that is the page. On an InDesign-authored document it is the
-// SPREAD: the page's own origin inside its spread is on no read the host
-// has, so a page-relative number is not available (engine-findings §17).
-// The selection chrome draws in the same space, for the same reason.
+// THE SPACE these numbers are in is the PAGE's. The engine's
+// `elementGeometry` composes to spread space, which is the page only
+// where the page starts at its spread's origin: a verso read L −476 on a
+// 540 pt page and every InDesign document was off (ED-9). The readout
+// goes through `toPageSpace` (shell page-space.ts, which measures the
+// page's origin against the engine's own page-local hit answers), as the
+// selection chrome does; an edge typed back is shifted back to spread
+// space before it becomes inner bounds.
 
 import { useCallback, useEffect, useState } from "react";
 import type { ElementId, Mutation } from "@paged-media/client";
-import { useCanvasClient, useSelection } from "@paged-media/shell";
+import { pageOrigin, toPageSpace, useCanvasClient, useSelection } from "@paged-media/shell";
 
 import {
   asOneMutation,
@@ -107,6 +109,9 @@ export function usePagePosition(): PagePosition {
   const [state, setState] = useState<{
     box: PageBox | null;
     edgeLeaf: PlacedLeaf | null;
+    /** The edge leaf's page origin in spread space (ED-9): the box is
+     *  shown in page space, the leaf's inner bounds live in spread space. */
+    edgeOrigin?: readonly [number, number];
   }>(EMPTY);
   const selectionKey = JSON.stringify(elementSelection);
 
@@ -128,24 +133,34 @@ export function usePagePosition(): PagePosition {
           if (!cancelled) setState(EMPTY);
           return;
         }
-        const boxes = geometry.map((g) => composedBox(g.bounds, g.itemTransform));
+        // Shown in page space (ED-9); `geometry` stays raw for the leaf.
+        const shown = await toPageSpace(client, geometry);
+        const boxes = shown.map((g) => composedBox(g.bounds, g.itemTransform));
         for (const group of groups) {
-          const entry = (await client.elementProperties(group))?.entries.find(
-            (e) => e.path === "frameBounds",
-          );
-          if (entry?.value?.type !== "bounds") {
+          // A group's box is the union of its members' boxes, read
+          // through its leaves so it lands in page space like they do
+          // (its `frameBounds` is that union in spread space).
+          const members = await client.groupLeaves(group.id as string);
+          const placed = await toPageSpace(client, await client.elementGeometry(members));
+          if (placed.length === 0) {
             if (!cancelled) setState(EMPTY);
             return;
           }
-          boxes.push(composedBox(entry.value.value, null));
+          boxes.push(...placed.map((g) => composedBox(g.bounds, g.itemTransform)));
         }
         const only = ids.length === 1 && geometry.length === 1 ? geometry[0] : null;
         const leaf: PlacedLeaf | null =
           only && isPageItem(only.id)
             ? { id: only.id, bounds: only.bounds, transform: only.itemTransform ?? null }
             : null;
+        const edgeOrigin =
+          only?.pageId && leaf ? await pageOrigin(client, only.pageId, [only]) : undefined;
         if (!cancelled) {
-          setState({ box: unionBox(boxes), edgeLeaf: edgesWritable(leaf) ? leaf : null });
+          setState({
+            box: unionBox(boxes),
+            edgeLeaf: edgesWritable(leaf) ? leaf : null,
+            edgeOrigin,
+          });
         }
       } catch {
         if (!cancelled) setState(EMPTY);
@@ -205,10 +220,19 @@ export function usePagePosition(): PagePosition {
   );
 
   const edgeLeaf = state.edgeLeaf;
+  const edgeOrigin = state.edgeOrigin;
   const setEdges = useCallback(
-    async (box: PageBox) => {
+    async (shownBox: PageBox) => {
       problemsSink.clear(OBJECT_DIAGNOSTIC_SOURCE);
       if (!edgeLeaf) return;
+      // Typed in page space; the leaf's inner bounds are in spread space.
+      const [ox, oy] = edgeOrigin ?? [0, 0];
+      const box: PageBox = {
+        left: shownBox.left + ox,
+        right: shownBox.right + ox,
+        top: shownBox.top + oy,
+        bottom: shownBox.bottom + oy,
+      };
       await send("Resize", [
         {
           op: "setElementProperty",
@@ -220,7 +244,7 @@ export function usePagePosition(): PagePosition {
         },
       ]);
     },
-    [edgeLeaf, send],
+    [edgeLeaf, edgeOrigin, send],
   );
 
   return { box: state.box, edgeLeaf, moveBy, setEdges };

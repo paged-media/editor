@@ -142,9 +142,12 @@ export function useDocumentMeta(): DocumentMeta | null {
         refetch();
       }
     });
+    // A save flips `dirty` with no worker message to say so.
+    const offSaved = client.onSaved(refetch);
     return () => {
       cancelled = true;
       off();
+      offSaved();
     };
   }, [client]);
 

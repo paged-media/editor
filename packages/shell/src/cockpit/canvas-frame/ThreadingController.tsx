@@ -59,16 +59,24 @@ import type { Mutation, PageId, StorySummary } from "@paged-media/client";
 import { useCamera } from "../../state/camera-context";
 import { useCanvasClient } from "../../state/canvas-client-context";
 import { useDocument } from "../../state/document-context";
+import { useOptionalOverlaySignals } from "../../state/overlay-signals-context";
 import { useSelection } from "../../state/selection-context";
 import { useThreading, type LoadedCursor } from "../../state/threading-context";
 import { layoutPageRects, type ShellPageRect } from "./page-layout";
 
 /** Default size (pt) of a frame drawn by a plain CLICK on empty canvas
- *  (no drag). A dragged bounds, when wired into ViewportCanvas, would
- *  override this; the controller's click path uses it centred on the
- *  drop point so TH-02 has a deterministic target. */
+ *  (no drag): its top-left corner sits at the click and it is kept on
+ *  the page. A DRAG draws the frame to the dragged box instead (ED-5). */
 const DEFAULT_FRAME_W = 160;
 const DEFAULT_FRAME_H = 200;
+
+/** Screen px a press must travel before it is a drag, not a click — the
+ *  canvas's own click/drag threshold. */
+const DRAG_THRESHOLD_PX = 4;
+
+/** Smallest dragged frame (pt); a smaller box is treated as a click, the
+ *  Type tool's minimum. */
+const MIN_DRAGGED_FRAME_PT = 8;
 
 /** A frame the pointer landed inside (an existing element), resolved
  *  through the worker hit-test. `storyId` is the hit's owning story
@@ -106,6 +114,9 @@ export function ThreadingController() {
   const { elementGeometry } = useSelection();
   const { loaded, clearCursor, setChainState, setOversetFrames } =
     useThreading();
+  const setToolPreview = useOptionalOverlaySignals()?.setToolPreview ?? null;
+  const setToolPreviewRef = useRef(setToolPreview);
+  setToolPreviewRef.current = setToolPreview;
 
   // Live refs so the once-per-load window listeners read fresh values
   // without re-subscribing every render.
@@ -191,14 +202,54 @@ export function ThreadingController() {
   /** Resolve a loaded-cursor drop. EITHER link an existing empty text
    *  frame (TH-01, one linkFrames) OR draw+link a new frame on empty
    *  canvas (TH-02, insertTextFrame then linkFrames — two undo steps;
-   *  see the file header for why this can't be one batch). */
+   *  see the file header for why this can't be one batch).
+   *
+   *  `end` is where a DRAG was released (ED-5): the new frame is then the
+   *  dragged box, like any frame tool draws, wherever the drag began. */
   const settleDrop = useCallback(
-    async (src: LoadedCursor, clientX: number, clientY: number) => {
+    async (
+      src: LoadedCursor,
+      clientX: number,
+      clientY: number,
+      end: { clientX: number; clientY: number } | null = null,
+    ) => {
       const doc = clientToDoc(clientX, clientY);
       if (!doc) return;
       const rects = layoutPageRects(handleRef.current?.pageSizesPt ?? []);
       const pageIds = handleRef.current?.pageIds ?? [];
       const hit = pageForDoc(rects, pageIds, doc[0], doc[1]);
+      const landingPage = hit?.pageId ?? src.sourcePageId ?? pageIds[0] ?? null;
+      const landingRect =
+        hit?.rect ?? rects[pageIds.indexOf(landingPage as PageId)] ?? rects[0];
+
+      const drawAndLink = async (bounds: [number, number, number, number]) => {
+        if (!landingPage) return;
+        // insertTextFrame returns the new frame's id on `mutationApplied`;
+        // use it as linkFrames' `to`. Two sequential mutations.
+        const created = await dispatch({
+          op: "insertTextFrame",
+          args: { pageId: landingPage, bounds },
+        });
+        if (typeof created !== "string") return;
+        await dispatch({
+          op: "linkFrames",
+          args: { from: src.sourceFrameId, to: created },
+        });
+      };
+
+      const endDoc = end ? clientToDoc(end.clientX, end.clientY) : null;
+      if (endDoc && landingRect) {
+        // Page-local [top, left, bottom, right] of the dragged box, on the
+        // page the drag began over.
+        const x0 = Math.min(doc[0], endDoc[0]) - landingRect.x;
+        const x1 = Math.max(doc[0], endDoc[0]) - landingRect.x;
+        const y0 = Math.min(doc[1], endDoc[1]) - landingRect.y;
+        const y1 = Math.max(doc[1], endDoc[1]) - landingRect.y;
+        if (x1 - x0 >= MIN_DRAGGED_FRAME_PT && y1 - y0 >= MIN_DRAGGED_FRAME_PT) {
+          await drawAndLink([y0, x0, y1, x1]);
+          return;
+        }
+      }
 
       // TH-01 — drop on an existing text frame: link into it. (EMPTY is
       // the engine's own precondition; a non-empty target rejects on
@@ -220,34 +271,21 @@ export function ThreadingController() {
         }
       }
 
-      // TH-02 — drop on empty canvas: insert a new text frame at a
-      // default box centred on the drop, then link into it. (A dragged
-      // bounds would replace the default; the click path centres the
-      // default box on the drop point.)
-      const landingPage = hit?.pageId ?? src.sourcePageId ?? pageIds[0] ?? null;
-      const landingRect =
-        hit?.rect ?? rects[pageIds.indexOf(landingPage as PageId)] ?? rects[0];
+      // TH-02 — click on empty canvas: insert a default-sized text frame
+      // with its top-left corner at the click, then link into it. On a
+      // page the frame is kept on that page (it used to be centred on
+      // the click and hang off the edge); on the pasteboard it stays
+      // where it was put.
       if (!landingPage || !landingRect) return;
-      // Page-local bounds [top, left, bottom, right], centred on drop.
-      const left = doc[0] - landingRect.x - DEFAULT_FRAME_W / 2;
-      const top = doc[1] - landingRect.y - DEFAULT_FRAME_H / 2;
-      const bounds: [number, number, number, number] = [
-        top,
-        left,
-        top + DEFAULT_FRAME_H,
-        left + DEFAULT_FRAME_W,
-      ];
-      // insertTextFrame returns the new frame's id on `mutationApplied`;
-      // use it as linkFrames' `to`. Two sequential mutations.
-      const created = await dispatch({
-        op: "insertTextFrame",
-        args: { pageId: landingPage, bounds },
-      });
-      if (typeof created !== "string") return;
-      await dispatch({
-        op: "linkFrames",
-        args: { from: src.sourceFrameId, to: created },
-      });
+      const w = hit ? Math.min(DEFAULT_FRAME_W, landingRect.w) : DEFAULT_FRAME_W;
+      const h = hit ? Math.min(DEFAULT_FRAME_H, landingRect.h) : DEFAULT_FRAME_H;
+      let left = doc[0] - landingRect.x;
+      let top = doc[1] - landingRect.y;
+      if (hit) {
+        left = Math.min(Math.max(left, 0), landingRect.w - w);
+        top = Math.min(Math.max(top, 0), landingRect.h - h);
+      }
+      await drawAndLink([top, left, top + h, left + w]);
     },
     [clientToDoc, hitFrame, dispatch],
   );
@@ -292,11 +330,69 @@ export function ThreadingController() {
       // The ports' own pointerdown handlers stop propagation, so a
       // pointerdown reaching the window did NOT land on a port — it is
       // a drop target. Consume it (so the canvas doesn't also begin a
-      // marquee/select) and settle the link.
+      // marquee/select) and wait for the release: a click links or drops
+      // a default frame, a DRAG draws the new frame to its box (ED-5 —
+      // the press used to settle at once, so a drag was ignored).
       e.preventDefault();
       e.stopPropagation();
-      clearCursor();
-      void settleRef.current(src, e.clientX, e.clientY);
+      const start = { clientX: e.clientX, clientY: e.clientY };
+      let dragged = false;
+      const finish = () => {
+        window.removeEventListener("pointermove", onMove, true);
+        window.removeEventListener("pointerup", onUp, true);
+        window.removeEventListener("pointercancel", onCancel, true);
+        setToolPreviewRef.current?.(null);
+      };
+      const onMove = (m: PointerEvent) => {
+        // The canvas never saw the press; keep the moves from it too.
+        m.stopPropagation();
+        if (!loadedRef.current) {
+          finish();
+          return;
+        }
+        dragged ||=
+          Math.hypot(m.clientX - start.clientX, m.clientY - start.clientY) >
+          DRAG_THRESHOLD_PX;
+        if (!dragged) return;
+        const a = clientToDoc(start.clientX, start.clientY);
+        const b = clientToDoc(m.clientX, m.clientY);
+        const rects = layoutPageRects(handleRef.current?.pageSizesPt ?? []);
+        const pageIds = handleRef.current?.pageIds ?? [];
+        if (!a || !b) return;
+        const page =
+          pageForDoc(rects, pageIds, a[0], a[1]) ??
+          (src.sourcePageId
+            ? { pageId: src.sourcePageId, rect: rects[pageIds.indexOf(src.sourcePageId)] }
+            : null);
+        if (!page?.rect) return;
+        setToolPreviewRef.current?.({
+          pageId: page.pageId,
+          rect: [
+            Math.min(a[1], b[1]) - page.rect.y,
+            Math.min(a[0], b[0]) - page.rect.x,
+            Math.max(a[1], b[1]) - page.rect.y,
+            Math.max(a[0], b[0]) - page.rect.x,
+          ],
+        });
+      };
+      const onUp = (u: PointerEvent) => {
+        u.preventDefault();
+        u.stopPropagation();
+        finish();
+        // Escape during the drag already unloaded the cursor.
+        if (!loadedRef.current) return;
+        clearCursor();
+        void settleRef.current(
+          src,
+          start.clientX,
+          start.clientY,
+          dragged ? { clientX: u.clientX, clientY: u.clientY } : null,
+        );
+      };
+      const onCancel = () => finish();
+      window.addEventListener("pointermove", onMove, true);
+      window.addEventListener("pointerup", onUp, true);
+      window.addEventListener("pointercancel", onCancel, true);
     };
 
     const onKey = (e: KeyboardEvent) => {
@@ -313,7 +409,7 @@ export function ThreadingController() {
       window.removeEventListener("pointerdown", onDown, true);
       window.removeEventListener("keydown", onKey, true);
     };
-  }, [cursorLoaded, clearCursor]);
+  }, [cursorLoaded, clearCursor, clientToDoc]);
 
   // ── overset frame set (engine-truth, live `stories` overset) ─────
   // StorySummary.overset is the only LIVE threading read on the wire,

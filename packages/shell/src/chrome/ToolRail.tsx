@@ -33,7 +33,7 @@ import { applicabilityOf, applicabilityStyle } from "./applicability";
 
 import { useRegistries } from "../state/registries-context";
 import { useEditContextStack } from "../state/edit-context-stack";
-import { useTool } from "../state/tool-context";
+import { VIEW_TOOL_IDS, useTool } from "../state/tool-context";
 import { Icon, hasIcon } from "../icons";
 import { ToolOptionsPopover } from "./ToolOptionsPopover";
 import {
@@ -379,7 +379,12 @@ export function ToolRail({
       // Honest stub — the click is acknowledged by the disabled
       // affordance, never by a tool switch that then does nothing.
       if (isPlanned(tool)) return;
-      if (restrictedTools && !restrictedTools.has(tool.id)) {
+      // Hand and Zoom look at the context's content; they never leave it.
+      if (
+        restrictedTools &&
+        !restrictedTools.has(tool.id) &&
+        !VIEW_TOOL_IDS.includes(tool.id)
+      ) {
         editContexts.commit();
       }
       setLastUsed((prev) => ({ ...prev, [tool.group]: tool.id }));

@@ -10,6 +10,11 @@
       "id": "tour",
       "title": "A guided tour",
       "description": "Open panels and switch workflow modes with editor.*, narrated with demo.showInfo."
+    },
+    {
+      "id": "draw-live",
+      "title": "paged.draw, live",
+      "description": "Hands-free: a curve by its anchors, live rounded corners and a Pathfinder union, drawn by a script in the real editor."
     }
   ]
 }

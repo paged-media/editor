@@ -262,6 +262,12 @@ export class CanvasClient {
   private fatal: Error | null = null;
   /** ADR 323 — answers a suspended script's `plugin:` calls. */
   private hostObjects: HostObjectsAnswerer | null = null;
+  /** See {@link markSaved}: replies that may have changed the document,
+   *  counted, and the count at the last save (`null`: never saved since
+   *  the load). */
+  private editCount = 0;
+  private savedAtEdit: number | null = null;
+  private readonly savedListeners = new Set<() => void>();
 
   constructor(options: CanvasClientOptions) {
     this.defaultFontProvider = options.defaultFontProvider;
@@ -634,9 +640,77 @@ export class CanvasClient {
     // page the user was looking at. Reparenting cannot repair it after
     // the fact either — `MoveNode`'s `new_parent` is deliberately not
     // on the wire.
-    return this.activePageHint && !meta.activePage
-      ? { ...meta, activePage: this.activePageHint }
-      : meta;
+    const folded =
+      this.activePageHint && !meta.activePage
+        ? { ...meta, activePage: this.activePageHint }
+        : meta;
+    // The engine's `dirty` means "edited since the LOAD" — it has no save
+    // point. Fold the host's in: nothing edited since the last save reads
+    // clean.
+    return folded.dirty && this.savedAtEdit === this.editCount
+      ? { ...folded, dirty: false }
+      : folded;
+  }
+
+  /**
+   * How many replies that may have changed the document have arrived.
+   * A save reads it the moment its export settles, so an edit landing
+   * while the bytes are being written does not count as saved.
+   */
+  get editMark(): number {
+    return this.editCount;
+  }
+
+  /**
+   * Record a save: from now until the next edit, `documentMeta()`
+   * answers `dirty: false`.
+   *
+   * The engine cannot do this itself. Its flag follows the undo log (an
+   * applied mutation dirties, undoing every one reads clean) and there
+   * is no save point on the wire, while whether the bytes reached a file
+   * is only known here — after the write, or the download, succeeded. So
+   * saving never cleared the flag: the next Open warned of unsaved edits
+   * and closing the tab raised "leave page?".
+   *
+   * Edits are counted from the replies that can change the document:
+   * mutations, undo, redo, committed gestures, plugin part writes, and
+   * every script result, because a script's writes arrive with no other
+   * notice. A read-only script after a save therefore reads as an edit;
+   * the flag errs on the side of asking.
+   *
+   * `mark` defaults to now; pass {@link editMark} as read when the export
+   * settled.
+   */
+  markSaved(mark?: number): void {
+    this.savedAtEdit = mark ?? this.editCount;
+    for (const l of this.savedListeners) l();
+  }
+
+  /** Notified after {@link markSaved}: the dirty flag may have flipped
+   *  without any worker message to say so. */
+  onSaved(listener: () => void): () => void {
+    this.savedListeners.add(listener);
+    return () => this.savedListeners.delete(listener);
+  }
+
+  private trackEdits(msg: WorkerToMain): void {
+    switch (msg.kind) {
+      case "documentLoaded":
+        // A fresh document starts clean in the engine; forget the old save.
+        this.savedAtEdit = null;
+        return;
+      case "mutationApplied":
+      case "undoApplied":
+      case "redoApplied":
+      case "gestureCommitted":
+      case "scriptResult":
+      case "pagedPartWritten":
+      case "pagedPartDeleted":
+        this.editCount += 1;
+        return;
+      default:
+        return;
+    }
   }
 
   /**
@@ -1885,6 +1959,7 @@ export class CanvasClient {
       // can subscribe).
       try {
         const parsed = JSON.parse(r.replyJson) as WorkerToMain;
+        this.trackEdits(parsed);
         for (const l of this.listeners) l(parsed);
       } catch {
         // already handled
@@ -1941,6 +2016,7 @@ export class CanvasClient {
         p.resolve(msg);
       }
     }
+    this.trackEdits(msg);
     // Fan out to subscribers regardless of seq. Lets multiple parts
     // of the UI react to the same reply (e.g. CanvasApp updates the
     // cache-stats HUD on `mutationApplied` while the original

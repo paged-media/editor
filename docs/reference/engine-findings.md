@@ -560,7 +560,7 @@ host-side.
 
 **Suite anchor.** AC-OBJ-ENGINE-6 (`test.fail`).
 
-## 17. Element geometry is in SPREAD space, and no read says where the page is (OPEN)
+## 17. Element geometry is in SPREAD space, and no read says where the page is (FIXED in 0.71.8)
 
 Found 2026-10-02 making Transform ▸ X / Y read where the object is.
 
@@ -609,8 +609,15 @@ chrome agree with each other. On an InDesign document all three are
 offset from the page by the page's spread origin; that cannot be
 corrected host-side without a read of the origin.
 
-**Suite anchor.** `e2e/transform-readout.spec.ts` AC-XY-ENGINE-1
-(`test.fail`).
+**Suite anchor.** `e2e/transform-readout.spec.ts` AC-XY-ENGINE-1.
+
+**RESOLVED (core v0.71.8, 2026-10-13).** The likely fix, both halves:
+`element_geometry`, `path_anchors` and the hit test's `item_transform`
+fold the owning page's origin in, each carries an optional `pageOrigin`,
+and `moveFrame` adds the origin back before storing. The `frameTransform`
+property stays the stored spread-space matrix. AC-XY-ENGINE-1 passes
+without `test.fail`; `shell/state/page-space.ts`, the editor's interim
+measurement, now measures zero and leaves geometry alone.
 
 ---
 

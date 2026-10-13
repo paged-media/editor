@@ -34,10 +34,15 @@ export interface SpreadEntry {
   pageIndices: number[];
 }
 
-/** IDML selfIds (`u196ae7`) make poor display names — fall back to
- *  the page range when the spread label is just its id. */
-function isIdLikeLabel(label: string): boolean {
-  return /^u[0-9a-f]{3,}$/i.test(label.trim());
+/** A spread label that names nothing: fall back to the editor's own
+ *  wording. InDesign spreads have no names. Engines before 0.71.8 label a
+ *  spread with its selfId (`u196ae7`, or `u3` / `us` in a fresh document,
+ *  hence any `u` + hex run and any repeat of the selfId); from 0.71.8 the
+ *  label is its pages' folios (`3`, `2–3`), which only repeats the range
+ *  shown beside it. A folio in another style (`i`, `A-1`) still shows. */
+export function isIdLikeLabel(label: string, selfId: string): boolean {
+  const l = label.trim();
+  return l === selfId || /^u[0-9a-f]+$/i.test(l) || /^\d+(?:\s*[–-]\s*\d+)?$/.test(l);
 }
 
 export function groupSpreads(
@@ -57,7 +62,7 @@ export function groupSpreads(
       const first = pageIndices[0] + 1;
       const last = pageIndices[pageIndices.length - 1] + 1;
       const range = first === last ? String(first) : `${first}–${last}`;
-      const labelUsable = s.label && !isIdLikeLabel(s.label);
+      const labelUsable = s.label && !isIdLikeLabel(s.label, s.selfId);
       entries.push({
         key: s.selfId,
         name:

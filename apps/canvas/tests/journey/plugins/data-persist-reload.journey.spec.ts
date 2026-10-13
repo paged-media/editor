@@ -235,11 +235,11 @@ test.describe("journey · paged.data persistence", () => {
       .poll(async () => (await dataFields(page)).map((f) => f.value), {
         timeout: 30_000,
       })
-      // Records are numbered in the engine's STABILIZED order (sorted by
-      // every column, so record N is the same row whatever order DuckDB
-      // delivers — plugin-data defect DP-4): Ada, Alan, Grace. Record 2 is
-      // Alan Turing, not the CSV's second line.
-      .toEqual(["Alan Turing"]);
+      // A scan of one table defines its order, so record N is the file's
+      // Nth row (plugin-data canary.16, DATA-1; as InDesign's Data Merge
+      // numbers them): Ada, Grace, Alan. Before it, records were numbered in
+      // a stabilized sort (Ada, Alan, Grace) and record 2 read Alan Turing.
+      .toEqual(["Grace Hopper"]);
     // Lower re-resolves the same field (record 1); it does not place a second.
     await page.getByRole("button", { name: /lower to document/i }).click();
     await expect
@@ -259,7 +259,7 @@ test.describe("journey · paged.data persistence", () => {
       .poll(async () => (await dataFields(page)).map((f) => f.value), {
         timeout: 20_000,
       })
-      .toEqual(["Alan Turing"]);
+      .toEqual(["Grace Hopper"]);
     expect(await partText(page, SESSION_PART)).toBe(partBefore);
   });
 });
