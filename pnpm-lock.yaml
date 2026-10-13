@@ -65,8 +65,8 @@ importers:
         specifier: 0.1.0-canary.0
         version: 0.1.0-canary.0(@paged-media/plugin-api@0.2.53-canary.0)(@paged-media/plugin-sdk@0.2.53-canary.0(react@18.3.1))
       '@paged-media/sheet':
-        specifier: 0.1.0-canary.19
-        version: 0.1.0-canary.19(@paged-media/plugin-api@0.2.53-canary.0)(@paged-media/plugin-sdk@0.2.53-canary.0(react@18.3.1))(react@18.3.1)
+        specifier: 0.1.0-canary.20
+        version: 0.1.0-canary.20(@paged-media/plugin-api@0.2.53-canary.0)(@paged-media/plugin-sdk@0.2.53-canary.0(react@18.3.1))(react@18.3.1)
       '@paged-media/shell':
         specifier: workspace:*
         version: link:../../packages/shell
@@ -998,8 +998,8 @@ packages:
       '@paged-media/plugin-api': 0.2.27-canary.0
       '@paged-media/plugin-sdk': 0.2.27-canary.0
 
-  '@paged-media/sheet@0.1.0-canary.19':
-    resolution: {integrity: sha512-nriUrYXXyoU2HSQBq+lFuanAyRpSCW14k5x6tyCSZNFVg37j7UDIiavuPfHYGnWckzg5eitUPLQa9P62q2b0ZQ==}
+  '@paged-media/sheet@0.1.0-canary.20':
+    resolution: {integrity: sha512-8dD6VrKZGZI8FLuzic4neIbSd+amx+GipfUkrIjJ00k0rkWL/O8rQq9sY3Z4IEGcLGyoU4KNqe4ROuNfO1MagA==}
     peerDependencies:
       '@paged-media/plugin-api': '>=0.2.45-canary.0'
       '@paged-media/plugin-sdk': '>=0.2.45-canary.0'
@@ -3102,7 +3102,7 @@ snapshots:
       '@paged-media/plugin-api': 0.2.53-canary.0
       '@paged-media/plugin-sdk': 0.2.53-canary.0(react@18.3.1)
 
-  '@paged-media/sheet@0.1.0-canary.19(@paged-media/plugin-api@0.2.53-canary.0)(@paged-media/plugin-sdk@0.2.53-canary.0(react@18.3.1))(react@18.3.1)':
+  '@paged-media/sheet@0.1.0-canary.20(@paged-media/plugin-api@0.2.53-canary.0)(@paged-media/plugin-sdk@0.2.53-canary.0(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@paged-media/plugin-api': 0.2.53-canary.0
       '@paged-media/plugin-sdk': 0.2.53-canary.0(react@18.3.1)
