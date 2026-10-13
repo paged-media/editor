@@ -12,7 +12,7 @@
       "params": "(address, path)",
       "returns": "value JSON | null",
       "kind": "read",
-      "summary": "Read one property of any addressed object, as its wire value JSON (the read twin of paged.set; RequestGet on the wire). A plugin: address asks the host's object registry: a Promise of the value's JSON (null when absent or mixed); a refusal rejects with .code."
+      "summary": "Read one property of any addressed object, as its wire value JSON (the read twin of paged.set; RequestGet on the wire). Text is read with path \"text\" (read-only): a story answers its paragraphs joined by \\n, a text frame its story's (the whole thread), a storyRange its characters. A plugin: address asks the host's object registry: a Promise of the value's JSON (null when absent or mixed); a refusal rejects with .code."
     },
     {
       "name": "paged.insertText",
@@ -96,7 +96,7 @@
       "params": "(id)",
       "returns": "ElementProperties JSON",
       "kind": "read",
-      "summary": "Full property snapshot for one element (or storyRange)."
+      "summary": "Full property snapshot for one element (or storyRange), or for a story (story:<id>: its text, then its story rows); null when the address names nothing."
     },
     {
       "name": "paged.tree",
@@ -131,7 +131,7 @@
       "params": "(selector)",
       "returns": "string[] JSON",
       "kind": "read",
-      "summary": "Canonical addresses of every object a selector matches, document order (ADR 131): `page:#3 > frame`, `frame[name=\"price\"]`, `[label.x-paged:oid=a1b2]`, unions with `,`. Throws SyntaxError (with the offset) on a malformed selector. A selector naming plugin: kinds or objects is evaluated by the host's object registry and returns a Promise of the same JSON."
+      "summary": "Canonical addresses of every object a selector matches, document order (ADR 131): `page:#3 > frame`, `frame[name=\"price\"]`, `[label.x-paged:oid=a1b2]`, `textFrame[style=Price]` (a style matches a page item's object style and, on a text frame or story, the paragraph and character styles its story applies), unions with `,`. Throws SyntaxError (with the offset) on a malformed selector. A selector naming plugin: kinds or objects is evaluated by the host's object registry and returns a Promise of the same JSON."
     },
     {
       "name": "paged.schema",
@@ -957,7 +957,7 @@
       "params": "([id, ...], [faceId, ...], mode)",
       "returns": "bool",
       "kind": "author",
-      "summary": "Keep or drop named faces of the planar arrangement; mode = keep | remove. Face ids come from paged.planarRegions."
+      "summary": "Build ONE element from faces of the planar arrangement, united: mode keep = the named faces, remove = every other face (none named: every face, so the inputs unite). The result goes onto the topmost input covering a selected face; every other input is removed, so faces outside the selection are not kept. Face ids come from paged.planarRegions."
     },
     {
       "name": "paged.planarRegions",
@@ -1423,6 +1423,19 @@
     "frameDirectionalFeatherNoise",
     "frameDirectionalFeatherChoke",
     "frameBlendMode",
+    "frameFillOpacity",
+    "frameFillBlendMode",
+    "frameStrokeOpacity",
+    "frameStrokeBlendMode",
+    "frameContentOpacity",
+    "frameContentBlendMode",
+    "groupIsolateBlending",
+    "groupKnockout",
+    "frameDropShadowBlendMode",
+    "frameDropShadowSpread",
+    "frameDropShadowNoise",
+    "frameDropShadowKnockedOut",
+    "frameDropShadowUseGlobalLight",
     "frameGradientFeather",
     "cellFillColor",
     "cellFillTint",
@@ -2051,7 +2064,34 @@
       "wire": "bounds",
       "nullable": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "GeometricBounds",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "GeometricBounds",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "GeometricBounds",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "GeometricBounds",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "GeometricBounds",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2063,7 +2103,29 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "FillColor",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "FillColor",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "FillColor",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "FillColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2075,7 +2137,34 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "StrokeColor",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "StrokeColor",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "StrokeColor",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "StrokeColor",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "StrokeColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2091,7 +2180,34 @@
       },
       "default": 1.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "StrokeWeight",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "StrokeWeight",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "StrokeWeight",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "StrokeWeight",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "StrokeWeight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2108,7 +2224,14 @@
       },
       "default": 100.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BlendingSetting",
+          "attribute": "Opacity",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2119,7 +2242,39 @@
       "wire": "transform",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "ItemTransform",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "ItemTransform",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "ItemTransform",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "ItemTransform",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "ItemTransform",
+          "kind": "attr"
+        },
+        {
+          "element": "Group",
+          "attribute": "ItemTransform",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2130,7 +2285,14 @@
       "wire": "transform",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Image",
+          "attribute": "ItemTransform",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2195,7 +2357,14 @@
       },
       "default": 12.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "PointSize",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -2210,7 +2379,19 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "Leading",
+          "kind": "attr"
+        },
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "Leading",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -2226,7 +2407,14 @@
       },
       "default": 0.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "Tracking",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -2238,7 +2426,14 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "FillColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -2251,7 +2446,14 @@
       "nullable": true,
       "default": 0.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "SpaceBefore",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -2264,7 +2466,14 @@
       "nullable": true,
       "default": 0.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "SpaceAfter",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -2277,7 +2486,14 @@
       "nullable": true,
       "default": 0.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "FirstLineIndent",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -2289,7 +2505,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "AppliedParagraphStyle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -2301,7 +2524,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "AppliedCharacterStyle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2313,7 +2543,34 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "AppliedObjectStyle",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "AppliedObjectStyle",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "AppliedObjectStyle",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "AppliedObjectStyle",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "AppliedObjectStyle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2325,7 +2582,34 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "ItemLayer",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "ItemLayer",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "ItemLayer",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "ItemLayer",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "ItemLayer",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -2337,7 +2621,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "AppliedCellStyle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "table",
@@ -2349,7 +2640,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Table",
+          "attribute": "AppliedTableStyle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -2361,7 +2659,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "AppliedConditions",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2373,7 +2678,19 @@
       "wire": "bounds",
       "nullable": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFramePreference",
+          "attribute": "InsetSpacing",
+          "kind": "properties-child"
+        },
+        {
+          "element": "TextFramePreference",
+          "attribute": "InsetSpacing",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -2396,7 +2713,14 @@
       "nullable": true,
       "default": "LeftAlign",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "Justification",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -2420,7 +2744,19 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "AppliedNumberingList",
+          "kind": "attr"
+        },
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "AppliedNumberingList",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2437,7 +2773,29 @@
       "nullable": true,
       "default": "ButtEndCap",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Rectangle",
+          "attribute": "EndCap",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "EndCap",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "EndCap",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "EndCap",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2463,7 +2821,19 @@
       "nullable": true,
       "default": "None",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "GraphicLine",
+          "attribute": "LeftLineEnd",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "LeftLineEnd",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2489,7 +2859,19 @@
       "nullable": true,
       "default": "None",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "GraphicLine",
+          "attribute": "RightLineEnd",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "RightLineEnd",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2509,7 +2891,14 @@
       "nullable": true,
       "default": "None",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextWrapPreference",
+          "attribute": "TextWrapMode",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2542,7 +2931,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ContourOption",
+          "attribute": "ContourType",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2554,7 +2950,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ContourOption",
+          "attribute": "IncludeInsideEdges",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2587,7 +2990,14 @@
       "nullable": true,
       "default": "None",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "FrameFittingOption",
+          "attribute": "FittingOnEmptyFrame",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2615,7 +3025,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DropShadowSetting",
+          "attribute": "Mode",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2627,7 +3044,14 @@
       "wire": "length",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DropShadowSetting",
+          "attribute": "XOffset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2639,7 +3063,14 @@
       "wire": "length",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DropShadowSetting",
+          "attribute": "YOffset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2654,7 +3085,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DropShadowSetting",
+          "attribute": "Size",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2671,7 +3109,14 @@
       },
       "default": 75.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DropShadowSetting",
+          "attribute": "Opacity",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2683,7 +3128,14 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DropShadowSetting",
+          "attribute": "EffectColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2712,7 +3164,29 @@
       },
       "default": 100.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "FillTint",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "FillTint",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "FillTint",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "FillTint",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2724,7 +3198,19 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "Nonprinting",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "Nonprinting",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2740,7 +3226,29 @@
         "max": 360.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "GradientFillAngle",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "GradientFillAngle",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "GradientFillAngle",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "GradientFillAngle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2755,7 +3263,29 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "GradientFillLength",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "GradientFillLength",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "GradientFillLength",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "GradientFillLength",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2771,7 +3301,29 @@
         "max": 360.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "GradientStrokeAngle",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "GradientStrokeAngle",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "GradientStrokeAngle",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "GradientStrokeAngle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2786,7 +3338,29 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "GradientStrokeLength",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "GradientStrokeLength",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "GradientStrokeLength",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "GradientStrokeLength",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2803,7 +3377,14 @@
       },
       "default": 1.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFramePreference",
+          "attribute": "TextColumnCount",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2819,7 +3400,14 @@
       },
       "default": 12.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFramePreference",
+          "attribute": "TextColumnGutter",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2831,7 +3419,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFramePreference",
+          "attribute": "VerticalBalanceColumns",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2849,7 +3444,14 @@
       "nullable": true,
       "default": "TopAlign",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFramePreference",
+          "attribute": "VerticalJustification",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2868,7 +3470,14 @@
       "nullable": true,
       "default": "Off",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFramePreference",
+          "attribute": "AutoSizingType",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2888,7 +3497,14 @@
       "nullable": true,
       "default": "AscentOffset",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFramePreference",
+          "attribute": "FirstBaselineOffset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2900,7 +3516,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextWrapPreference",
+          "attribute": "Inverse",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2924,7 +3547,14 @@
       "nullable": true,
       "default": "TopLeftPoint",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "FrameFittingOption",
+          "attribute": "FittingAlignment",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2936,7 +3566,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "FrameFittingOption",
+          "attribute": "AutoFit",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2959,7 +3596,34 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "StrokeType",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "StrokeType",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "StrokeType",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "StrokeType",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "StrokeType",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2977,7 +3641,24 @@
       "nullable": true,
       "default": "MiterEndJoin",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Rectangle",
+          "attribute": "EndJoin",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "EndJoin",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "EndJoin",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -2993,7 +3674,24 @@
       },
       "default": 4.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Rectangle",
+          "attribute": "MiterLimit",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "MiterLimit",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "MiterLimit",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3011,7 +3709,29 @@
       "nullable": true,
       "default": "CenterAlignment",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "StrokeAlignment",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "StrokeAlignment",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "StrokeAlignment",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "StrokeAlignment",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3023,7 +3743,34 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "GapColor",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "GapColor",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "GapColor",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "GapColor",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "GapColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3040,7 +3787,34 @@
       },
       "default": 100.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "GapTint",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "GapTint",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "GapTint",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "GapTint",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "GapTint",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3053,7 +3827,34 @@
       "wire": "lengths",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "StrokeDashAndGap",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "StrokeDashAndGap",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "StrokeDashAndGap",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "StrokeDashAndGap",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "StrokeDashAndGap",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3074,7 +3875,39 @@
       "nullable": true,
       "default": "None",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "TopLeftCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "TopLeftCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "TopLeftCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "TopLeftCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "TopLeftCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Group",
+          "attribute": "TopLeftCornerOption",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3095,7 +3928,39 @@
       "nullable": true,
       "default": "None",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "TopRightCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "TopRightCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "TopRightCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "TopRightCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "TopRightCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Group",
+          "attribute": "TopRightCornerOption",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3116,7 +3981,39 @@
       "nullable": true,
       "default": "None",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "BottomLeftCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "BottomLeftCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "BottomLeftCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "BottomLeftCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "BottomLeftCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Group",
+          "attribute": "BottomLeftCornerOption",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3137,7 +4034,39 @@
       "nullable": true,
       "default": "None",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "BottomRightCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "BottomRightCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "BottomRightCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "BottomRightCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "BottomRightCornerOption",
+          "kind": "attr"
+        },
+        {
+          "element": "Group",
+          "attribute": "BottomRightCornerOption",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3153,7 +4082,39 @@
       },
       "default": 12.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "TopLeftCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "TopLeftCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "TopLeftCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "TopLeftCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "TopLeftCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Group",
+          "attribute": "TopLeftCornerRadius",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3169,7 +4130,39 @@
       },
       "default": 12.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "TopRightCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "TopRightCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "TopRightCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "TopRightCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "TopRightCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Group",
+          "attribute": "TopRightCornerRadius",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3185,7 +4178,39 @@
       },
       "default": 12.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "BottomLeftCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "BottomLeftCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "BottomLeftCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "BottomLeftCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "BottomLeftCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Group",
+          "attribute": "BottomLeftCornerRadius",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3201,7 +4226,39 @@
       },
       "default": 12.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "BottomRightCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "BottomRightCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "BottomRightCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "BottomRightCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "BottomRightCornerRadius",
+          "kind": "attr"
+        },
+        {
+          "element": "Group",
+          "attribute": "BottomRightCornerRadius",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3278,7 +4335,29 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "OverprintFill",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "OverprintFill",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "OverprintFill",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "OverprintFill",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3290,7 +4369,34 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "OverprintStroke",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "OverprintStroke",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "OverprintStroke",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "OverprintStroke",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "OverprintStroke",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3302,7 +4408,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerShadowSetting",
+          "attribute": "Applied",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3332,7 +4445,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerShadowSetting",
+          "attribute": "BlendMode",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3344,7 +4464,14 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerShadowSetting",
+          "attribute": "EffectColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3360,7 +4487,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerShadowSetting",
+          "attribute": "Opacity",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3376,7 +4510,14 @@
         "max": 360.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerShadowSetting",
+          "attribute": "Angle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3391,7 +4532,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerShadowSetting",
+          "attribute": "Distance",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3406,7 +4554,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerShadowSetting",
+          "attribute": "Size",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3422,7 +4577,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerShadowSetting",
+          "attribute": "ChokeAmount",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3438,7 +4600,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerShadowSetting",
+          "attribute": "Noise",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3450,7 +4619,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "OuterGlowSetting",
+          "attribute": "Applied",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3480,7 +4656,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "OuterGlowSetting",
+          "attribute": "BlendMode",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3492,7 +4675,14 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "OuterGlowSetting",
+          "attribute": "EffectColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3508,7 +4698,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "OuterGlowSetting",
+          "attribute": "Opacity",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3524,7 +4721,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "OuterGlowSetting",
+          "attribute": "Spread",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3539,7 +4743,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "OuterGlowSetting",
+          "attribute": "Size",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3555,7 +4766,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "OuterGlowSetting",
+          "attribute": "Noise",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3567,7 +4785,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerGlowSetting",
+          "attribute": "Applied",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3597,7 +4822,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerGlowSetting",
+          "attribute": "BlendMode",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3609,7 +4841,14 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerGlowSetting",
+          "attribute": "EffectColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3625,7 +4864,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerGlowSetting",
+          "attribute": "Opacity",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3641,7 +4887,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerGlowSetting",
+          "attribute": "Spread",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3656,7 +4909,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerGlowSetting",
+          "attribute": "Size",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3671,7 +4931,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerGlowSetting",
+          "attribute": "Source",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3687,7 +4954,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "InnerGlowSetting",
+          "attribute": "Noise",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3699,7 +4973,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BevelAndEmbossSetting",
+          "attribute": "Applied",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3717,7 +4998,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BevelAndEmbossSetting",
+          "attribute": "Style",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3734,7 +5022,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BevelAndEmbossSetting",
+          "attribute": "Technique",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3750,7 +5045,14 @@
         "max": 1000.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BevelAndEmbossSetting",
+          "attribute": "Depth",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3766,7 +5068,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BevelAndEmbossSetting",
+          "attribute": "Direction",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3781,7 +5090,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BevelAndEmbossSetting",
+          "attribute": "Size",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3796,7 +5112,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BevelAndEmbossSetting",
+          "attribute": "Soften",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3812,7 +5135,14 @@
         "max": 360.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BevelAndEmbossSetting",
+          "attribute": "Angle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3828,7 +5158,14 @@
         "max": 360.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BevelAndEmbossSetting",
+          "attribute": "Altitude",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3840,7 +5177,14 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BevelAndEmbossSetting",
+          "attribute": "HighlightColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3852,7 +5196,14 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BevelAndEmbossSetting",
+          "attribute": "ShadowColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3868,7 +5219,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BevelAndEmbossSetting",
+          "attribute": "HighlightOpacity",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3884,7 +5242,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BevelAndEmbossSetting",
+          "attribute": "ShadowOpacity",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3896,7 +5261,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "SatinSetting",
+          "attribute": "Applied",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3926,7 +5298,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "SatinSetting",
+          "attribute": "BlendMode",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3938,7 +5317,14 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "SatinSetting",
+          "attribute": "EffectColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3954,7 +5340,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "SatinSetting",
+          "attribute": "Opacity",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3970,7 +5363,14 @@
         "max": 360.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "SatinSetting",
+          "attribute": "Angle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -3985,7 +5385,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "SatinSetting",
+          "attribute": "Distance",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4000,7 +5407,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "SatinSetting",
+          "attribute": "Size",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4012,7 +5426,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "SatinSetting",
+          "attribute": "InvertEffect",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4039,7 +5460,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "FeatherSetting",
+          "attribute": "Width",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4056,7 +5484,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "FeatherSetting",
+          "attribute": "CornerType",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4072,7 +5507,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "FeatherSetting",
+          "attribute": "Noise",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4088,7 +5530,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "FeatherSetting",
+          "attribute": "ChokeAmount",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4100,7 +5549,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DirectionalFeatherSetting",
+          "attribute": "Applied",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4115,7 +5571,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DirectionalFeatherSetting",
+          "attribute": "LeftWidth",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4130,7 +5593,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DirectionalFeatherSetting",
+          "attribute": "RightWidth",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4145,7 +5615,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DirectionalFeatherSetting",
+          "attribute": "TopWidth",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4160,7 +5637,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DirectionalFeatherSetting",
+          "attribute": "BottomWidth",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4176,7 +5660,14 @@
         "max": 360.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DirectionalFeatherSetting",
+          "attribute": "Angle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4192,7 +5683,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DirectionalFeatherSetting",
+          "attribute": "Noise",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4208,7 +5706,14 @@
         "max": 100.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DirectionalFeatherSetting",
+          "attribute": "ChokeAmount",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4239,7 +5744,362 @@
       "nullable": true,
       "default": "Normal",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BlendingSetting",
+          "attribute": "BlendMode",
+          "kind": "attr"
+        }
+      ]
+    },
+    {
+      "addressKind": "frame",
+      "path": "frameFillOpacity",
+      "type": {
+        "kind": "number",
+        "unit": "percent"
+      },
+      "wire": "length",
+      "nullable": true,
+      "range": {
+        "min": 0.0,
+        "max": 100.0
+      },
+      "default": 100.0,
+      "access": "readWrite",
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BlendingSetting",
+          "attribute": "Opacity",
+          "kind": "attr"
+        }
+      ]
+    },
+    {
+      "addressKind": "frame",
+      "path": "frameFillBlendMode",
+      "type": {
+        "kind": "enum",
+        "members": [
+          "Normal",
+          "Multiply",
+          "Screen",
+          "Overlay",
+          "SoftLight",
+          "HardLight",
+          "ColorDodge",
+          "ColorBurn",
+          "Darken",
+          "Lighten",
+          "Difference",
+          "Exclusion",
+          "Hue",
+          "Saturation",
+          "Color",
+          "Luminosity"
+        ],
+        "open": true
+      },
+      "wire": "text",
+      "nullable": true,
+      "default": "Normal",
+      "access": "readWrite",
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BlendingSetting",
+          "attribute": "BlendMode",
+          "kind": "attr"
+        }
+      ]
+    },
+    {
+      "addressKind": "frame",
+      "path": "frameStrokeOpacity",
+      "type": {
+        "kind": "number",
+        "unit": "percent"
+      },
+      "wire": "length",
+      "nullable": true,
+      "range": {
+        "min": 0.0,
+        "max": 100.0
+      },
+      "default": 100.0,
+      "access": "readWrite",
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BlendingSetting",
+          "attribute": "Opacity",
+          "kind": "attr"
+        }
+      ]
+    },
+    {
+      "addressKind": "frame",
+      "path": "frameStrokeBlendMode",
+      "type": {
+        "kind": "enum",
+        "members": [
+          "Normal",
+          "Multiply",
+          "Screen",
+          "Overlay",
+          "SoftLight",
+          "HardLight",
+          "ColorDodge",
+          "ColorBurn",
+          "Darken",
+          "Lighten",
+          "Difference",
+          "Exclusion",
+          "Hue",
+          "Saturation",
+          "Color",
+          "Luminosity"
+        ],
+        "open": true
+      },
+      "wire": "text",
+      "nullable": true,
+      "default": "Normal",
+      "access": "readWrite",
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BlendingSetting",
+          "attribute": "BlendMode",
+          "kind": "attr"
+        }
+      ]
+    },
+    {
+      "addressKind": "frame",
+      "path": "frameContentOpacity",
+      "type": {
+        "kind": "number",
+        "unit": "percent"
+      },
+      "wire": "length",
+      "nullable": true,
+      "range": {
+        "min": 0.0,
+        "max": 100.0
+      },
+      "default": 100.0,
+      "access": "readWrite",
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BlendingSetting",
+          "attribute": "Opacity",
+          "kind": "attr"
+        }
+      ]
+    },
+    {
+      "addressKind": "frame",
+      "path": "frameContentBlendMode",
+      "type": {
+        "kind": "enum",
+        "members": [
+          "Normal",
+          "Multiply",
+          "Screen",
+          "Overlay",
+          "SoftLight",
+          "HardLight",
+          "ColorDodge",
+          "ColorBurn",
+          "Darken",
+          "Lighten",
+          "Difference",
+          "Exclusion",
+          "Hue",
+          "Saturation",
+          "Color",
+          "Luminosity"
+        ],
+        "open": true
+      },
+      "wire": "text",
+      "nullable": true,
+      "default": "Normal",
+      "access": "readWrite",
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BlendingSetting",
+          "attribute": "BlendMode",
+          "kind": "attr"
+        }
+      ]
+    },
+    {
+      "addressKind": "frame",
+      "path": "groupIsolateBlending",
+      "type": {
+        "kind": "bool"
+      },
+      "wire": "bool",
+      "nullable": false,
+      "default": false,
+      "access": "readWrite",
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BlendingSetting",
+          "attribute": "IsolateBlending",
+          "kind": "attr"
+        }
+      ]
+    },
+    {
+      "addressKind": "frame",
+      "path": "groupKnockout",
+      "type": {
+        "kind": "bool"
+      },
+      "wire": "bool",
+      "nullable": false,
+      "default": false,
+      "access": "readWrite",
+      "bindable": true,
+      "idml": [
+        {
+          "element": "BlendingSetting",
+          "attribute": "KnockoutGroup",
+          "kind": "attr"
+        }
+      ]
+    },
+    {
+      "addressKind": "frame",
+      "path": "frameDropShadowBlendMode",
+      "type": {
+        "kind": "enum",
+        "members": [
+          "Normal",
+          "Multiply",
+          "Screen",
+          "Overlay",
+          "SoftLight",
+          "HardLight",
+          "ColorDodge",
+          "ColorBurn",
+          "Darken",
+          "Lighten",
+          "Difference",
+          "Exclusion",
+          "Hue",
+          "Saturation",
+          "Color",
+          "Luminosity"
+        ],
+        "open": true
+      },
+      "wire": "text",
+      "nullable": true,
+      "default": "Multiply",
+      "access": "readWrite",
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DropShadowSetting",
+          "attribute": "BlendMode",
+          "kind": "attr"
+        }
+      ]
+    },
+    {
+      "addressKind": "frame",
+      "path": "frameDropShadowSpread",
+      "type": {
+        "kind": "number",
+        "unit": "percent"
+      },
+      "wire": "length",
+      "nullable": true,
+      "range": {
+        "min": 0.0,
+        "max": 100.0
+      },
+      "default": 0.0,
+      "access": "readWrite",
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DropShadowSetting",
+          "attribute": "Spread",
+          "kind": "attr"
+        }
+      ]
+    },
+    {
+      "addressKind": "frame",
+      "path": "frameDropShadowNoise",
+      "type": {
+        "kind": "number",
+        "unit": "percent"
+      },
+      "wire": "length",
+      "nullable": true,
+      "range": {
+        "min": 0.0,
+        "max": 100.0
+      },
+      "default": 0.0,
+      "access": "readWrite",
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DropShadowSetting",
+          "attribute": "Noise",
+          "kind": "attr"
+        }
+      ]
+    },
+    {
+      "addressKind": "frame",
+      "path": "frameDropShadowKnockedOut",
+      "type": {
+        "kind": "bool"
+      },
+      "wire": "bool",
+      "nullable": false,
+      "default": true,
+      "access": "readWrite",
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DropShadowSetting",
+          "attribute": "KnockedOut",
+          "kind": "attr"
+        }
+      ]
+    },
+    {
+      "addressKind": "frame",
+      "path": "frameDropShadowUseGlobalLight",
+      "type": {
+        "kind": "bool"
+      },
+      "wire": "bool",
+      "nullable": false,
+      "default": false,
+      "access": "readWrite",
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DropShadowSetting",
+          "attribute": "UseGlobalLight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4263,7 +6123,14 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "FillColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4295,7 +6162,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "TextTopInset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4310,7 +6184,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "TextLeftInset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4325,7 +6206,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "TextBottomInset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4340,7 +6228,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "TextRightInset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4358,7 +6253,14 @@
       "nullable": true,
       "default": "TopAlign",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "VerticalJustification",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4370,7 +6272,14 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "TopEdgeStrokeColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4385,7 +6294,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "TopEdgeStrokeWeight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4402,7 +6318,14 @@
       },
       "default": 100.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "TopEdgeStrokeTint",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4414,7 +6337,14 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "BottomEdgeStrokeColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4429,7 +6359,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "BottomEdgeStrokeWeight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4446,7 +6383,14 @@
       },
       "default": 100.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "BottomEdgeStrokeTint",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4458,7 +6402,14 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "LeftEdgeStrokeColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4473,7 +6424,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "LeftEdgeStrokeWeight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4490,7 +6448,14 @@
       },
       "default": 100.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "LeftEdgeStrokeTint",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4502,7 +6467,14 @@
       "wire": "colorRef",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "RightEdgeStrokeColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4517,7 +6489,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "RightEdgeStrokeWeight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -4534,7 +6513,14 @@
       },
       "default": 100.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "RightEdgeStrokeTint",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4564,7 +6550,14 @@
       "nullable": true,
       "default": "InlinePosition",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "AnchoredObjectSetting",
+          "attribute": "AnchoredPosition",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4587,7 +6580,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "AnchoredObjectSetting",
+          "attribute": "AnchorPoint",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4600,7 +6600,14 @@
       "nullable": true,
       "default": 0.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "AnchoredObjectSetting",
+          "attribute": "AnchorXoffset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4613,7 +6620,14 @@
       "nullable": true,
       "default": 0.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "AnchoredObjectSetting",
+          "attribute": "AnchorYoffset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4624,7 +6638,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "AnchoredObjectSetting",
+          "attribute": "HorizontalReferencePoint",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4635,7 +6656,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "AnchoredObjectSetting",
+          "attribute": "VerticalReferencePoint",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4646,7 +6674,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "AnchoredObjectSetting",
+          "attribute": "HorizontalAlignment",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4657,7 +6692,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "AnchoredObjectSetting",
+          "attribute": "VerticalAlignment",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4669,7 +6711,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "AnchoredObjectSetting",
+          "attribute": "SpineRelative",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4681,7 +6730,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "AnchoredObjectSetting",
+          "attribute": "LockPosition",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4693,7 +6749,34 @@
       "nullable": false,
       "default": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "Visible",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "Visible",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "Visible",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "Visible",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "Visible",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -4705,7 +6788,34 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "Locked",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "Locked",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "Locked",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "Locked",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "Locked",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4717,7 +6827,19 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "AppliedFont",
+          "kind": "attr"
+        },
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "AppliedFont",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4728,7 +6850,19 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "FontStyle",
+          "kind": "attr"
+        },
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "FontStyle",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4746,7 +6880,14 @@
       "nullable": true,
       "default": "Metrics",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "KerningMethod",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4757,7 +6898,7 @@
           "Normal",
           "AllCaps",
           "SmallCaps",
-          "OTSmallCaps"
+          "CapToSmallCap"
         ],
         "open": true
       },
@@ -4765,7 +6906,14 @@
       "nullable": true,
       "default": "Normal",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "Capitalization",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4787,7 +6935,14 @@
       "nullable": true,
       "default": "Normal",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "Position",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4799,7 +6954,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "AppliedLanguage",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4812,7 +6974,14 @@
       "nullable": true,
       "default": 0.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "BaselineShift",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4829,7 +6998,14 @@
       },
       "default": 100.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "HorizontalScale",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4846,7 +7022,14 @@
       },
       "default": 100.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "VerticalScale",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4863,7 +7046,14 @@
       },
       "default": 0.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "Skew",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4875,7 +7065,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "Underline",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4887,7 +7084,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "StrikeThru",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4899,7 +7103,14 @@
       "nullable": false,
       "default": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyleRange",
+          "attribute": "Ligatures",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4923,7 +7134,14 @@
       "nullable": true,
       "default": 0.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "LeftIndent",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4936,7 +7154,14 @@
       "nullable": true,
       "default": 0.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "RightIndent",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4953,7 +7178,14 @@
       },
       "default": 0.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "DropCapCharacters",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4970,7 +7202,14 @@
       },
       "default": 0.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "DropCapLines",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4982,7 +7221,14 @@
       "nullable": false,
       "default": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "Hyphenation",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -4997,7 +7243,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "HyphenationZone",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5009,7 +7262,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "KeepLinesTogether",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5026,7 +7286,14 @@
       },
       "default": 0.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "KeepWithNext",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5038,7 +7305,14 @@
       "nullable": false,
       "default": false,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "KeepAllLinesTogether",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5055,7 +7329,14 @@
       },
       "default": 2.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "KeepFirstLines",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5072,7 +7353,14 @@
       },
       "default": 2.0,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "KeepLastLines",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5092,7 +7380,14 @@
       "nullable": true,
       "default": "Anywhere",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "StartParagraph",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5109,7 +7404,14 @@
       "nullable": true,
       "default": "SingleColumn",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "SpanColumnType",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5127,7 +7429,14 @@
         "min": 1.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "SpanSplitColumnCount",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5142,7 +7451,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "SpanColumnMinSpaceBefore",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5157,7 +7473,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "SpanColumnMinSpaceAfter",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5172,7 +7495,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "SplitColumnInsideGutter",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5187,7 +7517,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "SplitColumnOutsideGutter",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5241,7 +7578,14 @@
       "nullable": true,
       "default": "NoList",
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "BulletsAndNumberingListType",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5252,7 +7596,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "BulletChar",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5263,7 +7614,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "NumberingFormat",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5274,7 +7632,19 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "BulletsTextAfter",
+          "kind": "attr"
+        },
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "BulletsTextAfter",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5285,7 +7655,19 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "NumberingExpression",
+          "kind": "attr"
+        },
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "NumberingExpression",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5300,7 +7682,14 @@
         "min": 0.0
       },
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "NumberingStartAt",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5312,7 +7701,14 @@
       "nullable": true,
       "default": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "NumberingContinue",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5324,7 +7720,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "BulletsCharacterStyle",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5336,7 +7739,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "NumberingCharacterStyle",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -5347,7 +7757,39 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "Name",
+          "kind": "attr"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "Name",
+          "kind": "attr"
+        },
+        {
+          "element": "Oval",
+          "attribute": "Name",
+          "kind": "attr"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "Name",
+          "kind": "attr"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "Name",
+          "kind": "attr"
+        },
+        {
+          "element": "Group",
+          "attribute": "Name",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "storyRange",
@@ -5365,7 +7807,14 @@
       "wire": "text",
       "nullable": true,
       "access": "readWrite",
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyleRange",
+          "attribute": "Composer",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "layer",
@@ -5381,7 +7830,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Layer",
+          "attribute": "Visible",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "layer",
@@ -5397,7 +7853,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Layer",
+          "attribute": "Locked",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "layer",
@@ -5413,7 +7876,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Layer",
+          "attribute": "Printable",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "layer",
@@ -5428,7 +7898,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Layer",
+          "attribute": "Name",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "page",
@@ -5444,7 +7921,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Page",
+          "attribute": "GeometricBounds",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "page",
@@ -5464,7 +7948,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "MarginPreference",
+          "attribute": "Top",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "page",
@@ -5484,7 +7975,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "MarginPreference",
+          "attribute": "Bottom",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "page",
@@ -5504,7 +8002,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "MarginPreference",
+          "attribute": "Left",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "page",
@@ -5524,7 +8029,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "MarginPreference",
+          "attribute": "Right",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "page",
@@ -5545,7 +8057,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "MarginPreference",
+          "attribute": "ColumnCount",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "page",
@@ -5565,7 +8084,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "MarginPreference",
+          "attribute": "ColumnGutter",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "doc",
@@ -5585,7 +8111,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DocumentPreference",
+          "attribute": "DocumentBleedTopOffset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "doc",
@@ -5605,7 +8138,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DocumentPreference",
+          "attribute": "DocumentBleedBottomOffset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "doc",
@@ -5625,7 +8165,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DocumentPreference",
+          "attribute": "DocumentBleedInsideOrLeftOffset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "doc",
@@ -5645,7 +8192,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DocumentPreference",
+          "attribute": "DocumentBleedOutsideOrRightOffset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "doc",
@@ -5665,7 +8219,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DocumentPreference",
+          "attribute": "SlugTopOffset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "doc",
@@ -5685,7 +8246,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DocumentPreference",
+          "attribute": "SlugBottomOffset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "doc",
@@ -5705,7 +8273,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DocumentPreference",
+          "attribute": "SlugInsideOrLeftOffset",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "doc",
@@ -5725,7 +8300,70 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DocumentPreference",
+          "attribute": "SlugRightOrOutsideOffset",
+          "kind": "attr"
+        }
+      ]
+    },
+    {
+      "addressKind": "doc",
+      "path": "documentGlobalLightAngle",
+      "type": {
+        "kind": "number",
+        "unit": "degrees"
+      },
+      "wire": "length",
+      "nullable": true,
+      "range": {
+        "min": -360.0,
+        "max": 360.0
+      },
+      "default": 120.0,
+      "access": "readWrite",
+      "virtual": {
+        "op": "setProperty",
+        "field": "value"
+      },
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TransparencyPreference",
+          "attribute": "GlobalLightAngle",
+          "kind": "attr"
+        }
+      ]
+    },
+    {
+      "addressKind": "doc",
+      "path": "documentGlobalLightAltitude",
+      "type": {
+        "kind": "number",
+        "unit": "degrees"
+      },
+      "wire": "length",
+      "nullable": true,
+      "range": {
+        "min": -360.0,
+        "max": 360.0
+      },
+      "default": 30.0,
+      "access": "readWrite",
+      "virtual": {
+        "op": "setProperty",
+        "field": "value"
+      },
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TransparencyPreference",
+          "attribute": "GlobalLightAltitude",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "textVariable",
@@ -5740,7 +8378,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextVariable",
+          "attribute": "Name",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "textVariable",
@@ -5770,7 +8415,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextVariable",
+          "attribute": "VariableType",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "textVariable",
@@ -5785,7 +8437,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CustomTextVariablePreference",
+          "attribute": "Contents",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "textVariable",
@@ -5800,7 +8459,44 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "MatchParagraphStylePreference",
+          "attribute": "TextBefore",
+          "kind": "attr"
+        },
+        {
+          "element": "MatchCharacterStylePreference",
+          "attribute": "TextBefore",
+          "kind": "attr"
+        },
+        {
+          "element": "PageNumberVariablePreference",
+          "attribute": "TextBefore",
+          "kind": "attr"
+        },
+        {
+          "element": "ChapterNumberVariablePreference",
+          "attribute": "TextBefore",
+          "kind": "attr"
+        },
+        {
+          "element": "FileNameVariablePreference",
+          "attribute": "TextBefore",
+          "kind": "attr"
+        },
+        {
+          "element": "DateVariablePreference",
+          "attribute": "TextBefore",
+          "kind": "attr"
+        },
+        {
+          "element": "CustomTextVariablePreference",
+          "attribute": "TextBefore",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "textVariable",
@@ -5815,7 +8511,44 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "MatchParagraphStylePreference",
+          "attribute": "TextAfter",
+          "kind": "attr"
+        },
+        {
+          "element": "MatchCharacterStylePreference",
+          "attribute": "TextAfter",
+          "kind": "attr"
+        },
+        {
+          "element": "PageNumberVariablePreference",
+          "attribute": "TextAfter",
+          "kind": "attr"
+        },
+        {
+          "element": "ChapterNumberVariablePreference",
+          "attribute": "TextAfter",
+          "kind": "attr"
+        },
+        {
+          "element": "FileNameVariablePreference",
+          "attribute": "TextAfter",
+          "kind": "attr"
+        },
+        {
+          "element": "DateVariablePreference",
+          "attribute": "TextAfter",
+          "kind": "attr"
+        },
+        {
+          "element": "CustomTextVariablePreference",
+          "attribute": "TextAfter",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "textVariable",
@@ -5830,7 +8563,14 @@
         "op": "setProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "DateVariablePreference",
+          "attribute": "Format",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -5854,7 +8594,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "PointSize",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -5877,7 +8624,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "Tracking",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -5896,7 +8650,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "FillColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -5915,7 +8676,19 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "AppliedFont",
+          "kind": "attr"
+        },
+        {
+          "element": "ParagraphStyle",
+          "attribute": "AppliedFont",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -5933,7 +8706,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "FontStyle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -5955,7 +8735,19 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "Leading",
+          "kind": "attr"
+        },
+        {
+          "element": "ParagraphStyle",
+          "attribute": "Leading",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -5975,7 +8767,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "SpaceBefore",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -5995,7 +8794,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "SpaceAfter",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6015,7 +8821,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "FirstLineIndent",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6045,7 +8858,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "Justification",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6064,7 +8884,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "NextStyle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6084,7 +8911,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "LeftIndent",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6104,7 +8938,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "RightIndent",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6126,7 +8967,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "HyphenationZone",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6150,7 +8998,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "KeepWithNext",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6169,7 +9024,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "KeepLinesTogether",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6188,7 +9050,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "KeepAllLinesTogether",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6212,7 +9081,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "KeepFirstLines",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6236,7 +9112,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "KeepLastLines",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6263,7 +9146,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "StartParagraph",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6288,7 +9178,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "Composer",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6312,7 +9209,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "SpanColumnType",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6337,7 +9241,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "SpanSplitColumnCount",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6359,7 +9270,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "SpanColumnMinSpaceBefore",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6381,7 +9299,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "SpanColumnMinSpaceAfter",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6403,7 +9328,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "SplitColumnInsideGutter",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6425,7 +9357,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "SplitColumnOutsideGutter",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6444,7 +9383,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "Hyphenation",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6468,7 +9414,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "BulletsAndNumberingListType",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6486,7 +9439,19 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "NumberingFormat",
+          "kind": "properties-child"
+        },
+        {
+          "element": "ParagraphStyle",
+          "attribute": "NumberingFormat",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6505,7 +9470,19 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "AppliedNumberingList",
+          "kind": "attr"
+        },
+        {
+          "element": "ParagraphStyle",
+          "attribute": "AppliedNumberingList",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6523,7 +9500,19 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "BulletsTextAfter",
+          "kind": "attr"
+        },
+        {
+          "element": "ParagraphStyle",
+          "attribute": "BulletsTextAfter",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6541,7 +9530,19 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "NumberingExpression",
+          "kind": "attr"
+        },
+        {
+          "element": "ParagraphStyle",
+          "attribute": "NumberingExpression",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6563,7 +9564,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "NumberingStartAt",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6582,7 +9590,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "NumberingContinue",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6601,7 +9616,19 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "BulletsCharacterStyle",
+          "kind": "properties-child"
+        },
+        {
+          "element": "ParagraphStyle",
+          "attribute": "BulletsCharacterStyle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6620,7 +9647,19 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "NumberingCharacterStyle",
+          "kind": "properties-child"
+        },
+        {
+          "element": "ParagraphStyle",
+          "attribute": "BulletsAndNumberingDigitsCharacterStyle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6638,7 +9677,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "BulletChar",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6672,7 +9718,7 @@
           "Normal",
           "AllCaps",
           "SmallCaps",
-          "OTSmallCaps"
+          "CapToSmallCap"
         ],
         "open": true
       },
@@ -6684,7 +9730,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "Capitalization",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6713,7 +9766,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "Position",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6733,7 +9793,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "BaselineShift",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6752,7 +9819,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "Underline",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6771,7 +9845,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "StrikeThru",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6839,7 +9920,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyle",
+          "attribute": "PointSize",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6862,7 +9950,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyle",
+          "attribute": "Tracking",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6881,7 +9976,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyle",
+          "attribute": "FillColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6900,7 +10002,19 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyle",
+          "attribute": "AppliedFont",
+          "kind": "attr"
+        },
+        {
+          "element": "CharacterStyle",
+          "attribute": "AppliedFont",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6918,7 +10032,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyle",
+          "attribute": "FontStyle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6940,7 +10061,19 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyle",
+          "attribute": "Leading",
+          "kind": "attr"
+        },
+        {
+          "element": "CharacterStyle",
+          "attribute": "Leading",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6954,7 +10087,7 @@
           "Normal",
           "AllCaps",
           "SmallCaps",
-          "OTSmallCaps"
+          "CapToSmallCap"
         ],
         "open": true
       },
@@ -6966,7 +10099,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyle",
+          "attribute": "Capitalization",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -6995,7 +10135,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyle",
+          "attribute": "Position",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7015,7 +10162,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyle",
+          "attribute": "BaselineShift",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7034,7 +10188,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyle",
+          "attribute": "Underline",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7053,7 +10214,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyle",
+          "attribute": "StrikeThru",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7072,7 +10240,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyle",
+          "attribute": "Ligatures",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7097,7 +10272,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CharacterStyle",
+          "attribute": "KerningMethod",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7116,7 +10298,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ObjectStyle",
+          "attribute": "FillColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7140,7 +10329,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ObjectStyle",
+          "attribute": "FillTint",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7159,7 +10355,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ObjectStyle",
+          "attribute": "StrokeColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7182,7 +10385,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ObjectStyle",
+          "attribute": "StrokeWeight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7205,7 +10415,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ObjectStyle",
+          "attribute": "StrokeTint",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7227,7 +10444,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ObjectStyle",
+          "attribute": "CornerRadius",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7254,7 +10478,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ObjectStyle",
+          "attribute": "CornerOption",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7273,7 +10504,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CellStyle",
+          "attribute": "FillColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7298,7 +10536,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CellStyle",
+          "attribute": "VerticalJustification",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7321,7 +10566,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CellStyle",
+          "attribute": "RotationAngle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7340,7 +10592,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CellStyle",
+          "attribute": "TopEdgeStrokeColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7362,7 +10621,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CellStyle",
+          "attribute": "TopEdgeStrokeWeight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7381,7 +10647,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CellStyle",
+          "attribute": "BottomEdgeStrokeColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7403,7 +10676,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CellStyle",
+          "attribute": "BottomEdgeStrokeWeight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7422,7 +10702,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CellStyle",
+          "attribute": "LeftEdgeStrokeColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7444,7 +10731,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CellStyle",
+          "attribute": "LeftEdgeStrokeWeight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7463,7 +10757,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CellStyle",
+          "attribute": "RightEdgeStrokeColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7485,7 +10786,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "CellStyle",
+          "attribute": "RightEdgeStrokeWeight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7504,7 +10812,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "HeaderRegionCellStyle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7523,7 +10838,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "BodyRegionCellStyle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7542,7 +10864,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "FooterRegionCellStyle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7561,7 +10890,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "LeftColumnRegionCellStyle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7580,7 +10916,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "RightColumnRegionCellStyle",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7599,7 +10942,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "TopBorderStrokeColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7621,7 +10971,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "TopBorderStrokeWeight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7640,7 +10997,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "BottomBorderStrokeColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7662,7 +11026,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "BottomBorderStrokeWeight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7681,7 +11052,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "LeftBorderStrokeColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7703,7 +11081,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "LeftBorderStrokeWeight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7722,7 +11107,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "RightBorderStrokeColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7744,7 +11136,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "RightBorderStrokeWeight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7767,7 +11166,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "AlternatingFills",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7786,7 +11192,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "StartRowFillColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7808,7 +11221,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "StartRowFillCount",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7831,7 +11251,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "StartRowFillTint",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7850,7 +11277,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "EndRowFillColor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7872,7 +11306,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "EndRowFillCount",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -7895,7 +11336,14 @@
         "op": "setStyleProperty",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TableStyle",
+          "attribute": "EndRowFillTint",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "doc",
@@ -8118,7 +11566,14 @@
         "op": "setDocumentMetadata",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Document",
+          "attribute": "Label",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "swatch",
@@ -8133,7 +11588,19 @@
         "op": "editSwatch",
         "field": "name"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Color",
+          "attribute": "Name",
+          "kind": "attr"
+        },
+        {
+          "element": "Tint",
+          "attribute": "Name",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "swatch",
@@ -8154,7 +11621,19 @@
         "op": "editSwatch",
         "field": "space"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Color",
+          "attribute": "Space",
+          "kind": "attr"
+        },
+        {
+          "element": "Tint",
+          "attribute": "Space",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "swatch",
@@ -8171,7 +11650,19 @@
         "op": "editSwatch",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Color",
+          "attribute": "ColorValue",
+          "kind": "attr"
+        },
+        {
+          "element": "Tint",
+          "attribute": "ColorValue",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "swatch",
@@ -8190,7 +11681,19 @@
         "op": "editSwatch",
         "field": "model"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Color",
+          "attribute": "Model",
+          "kind": "attr"
+        },
+        {
+          "element": "Tint",
+          "attribute": "Model",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "swatch",
@@ -8211,7 +11714,19 @@
         "op": "editSwatch",
         "field": "alternateSpace"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Color",
+          "attribute": "AlternateSpace",
+          "kind": "attr"
+        },
+        {
+          "element": "Tint",
+          "attribute": "AlternateSpace",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "swatch",
@@ -8228,7 +11743,19 @@
         "op": "editSwatch",
         "field": "alternateValue"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Color",
+          "attribute": "AlternateColorValue",
+          "kind": "attr"
+        },
+        {
+          "element": "Tint",
+          "attribute": "AlternateColorValue",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "swatch",
@@ -8264,7 +11791,19 @@
         "op": "editSwatch",
         "field": "tint"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Color",
+          "attribute": "TintValue",
+          "kind": "attr"
+        },
+        {
+          "element": "Tint",
+          "attribute": "TintValue",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "swatch",
@@ -8284,7 +11823,19 @@
         "op": "editSwatch",
         "field": "alpha"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Color",
+          "attribute": "AlphaPercentage",
+          "kind": "attr"
+        },
+        {
+          "element": "Tint",
+          "attribute": "AlphaPercentage",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "swatch",
@@ -8331,7 +11882,14 @@
         "op": "editGradient",
         "field": "name"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Gradient",
+          "attribute": "Name",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "gradient",
@@ -8350,7 +11908,14 @@
         "op": "editGradient",
         "field": "kind"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Gradient",
+          "attribute": "Type",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "gradient",
@@ -8382,7 +11947,14 @@
         "op": "editColorGroup",
         "field": "name"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ColorGroup",
+          "attribute": "Name",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "colorGroup",
@@ -8399,7 +11971,14 @@
         "op": "editColorGroup",
         "field": "members"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ColorGroup",
+          "attribute": "ColorGroupSwatches",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "numberingList",
@@ -8414,7 +11993,14 @@
         "op": "editNumberingList",
         "field": "name"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "NumberingList",
+          "attribute": "Name",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "numberingList",
@@ -8430,7 +12016,14 @@
         "op": "editNumberingList",
         "field": "continueAcrossStories"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "NumberingList",
+          "attribute": "ContinueNumbersAcrossStories",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "numberingList",
@@ -8446,7 +12039,14 @@
         "op": "editNumberingList",
         "field": "continueAcrossDocuments"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "NumberingList",
+          "attribute": "ContinueNumbersAcrossDocuments",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "style",
@@ -8461,7 +12061,34 @@
         "op": "rename<Family>Style",
         "field": "name"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "ParagraphStyle",
+          "attribute": "Name",
+          "kind": "attr"
+        },
+        {
+          "element": "CharacterStyle",
+          "attribute": "Name",
+          "kind": "attr"
+        },
+        {
+          "element": "ObjectStyle",
+          "attribute": "Name",
+          "kind": "attr"
+        },
+        {
+          "element": "CellStyle",
+          "attribute": "Name",
+          "kind": "attr"
+        },
+        {
+          "element": "TableStyle",
+          "attribute": "Name",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "guide",
@@ -8477,7 +12104,14 @@
         "op": "moveGuide",
         "field": "position"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Guide",
+          "attribute": "Location",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "condition",
@@ -8493,7 +12127,14 @@
         "op": "setConditionVisible",
         "field": "visible"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Condition",
+          "attribute": "Visible",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "story",
@@ -8560,7 +12201,14 @@
         "op": "applyMasterToPage",
         "field": "master"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Page",
+          "attribute": "AppliedMaster",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "page",
@@ -8575,7 +12223,14 @@
         "op": "setPageMetadata",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Page",
+          "attribute": "Label",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "master",
@@ -8590,7 +12245,14 @@
         "op": "renameMaster",
         "field": "name"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "MasterSpread",
+          "attribute": "Name",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "section",
@@ -8605,7 +12267,14 @@
         "op": "editSection",
         "field": "prefix"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Section",
+          "attribute": "SectionPrefix",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "section",
@@ -8628,7 +12297,14 @@
         "op": "editSection",
         "field": "numberingStyle"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Section",
+          "attribute": "PageNumberStyle",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "section",
@@ -8647,7 +12323,14 @@
         "op": "editSection",
         "field": "startAt"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Section",
+          "attribute": "PageNumberStart",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "table",
@@ -8666,7 +12349,14 @@
         "op": "setRowHeight",
         "field": "height"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Row",
+          "attribute": "SingleRowHeight",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "table",
@@ -8685,7 +12375,14 @@
         "op": "setColumnWidth",
         "field": "width"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Column",
+          "attribute": "SingleColumnWidth",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -8704,7 +12401,14 @@
         "op": "setCellSpan",
         "field": "rowSpan"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "RowSpan",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "cell",
@@ -8723,7 +12427,14 @@
         "op": "setCellSpan",
         "field": "columnSpan"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Cell",
+          "attribute": "ColumnSpan",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "field",
@@ -8754,7 +12465,34 @@
         "op": "placeImage",
         "field": "uri"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Image",
+          "attribute": "LinkResourceURI",
+          "kind": "attr"
+        },
+        {
+          "element": "EPS",
+          "attribute": "LinkResourceURI",
+          "kind": "attr"
+        },
+        {
+          "element": "PDF",
+          "attribute": "LinkResourceURI",
+          "kind": "attr"
+        },
+        {
+          "element": "ImportedPage",
+          "attribute": "LinkResourceURI",
+          "kind": "attr"
+        },
+        {
+          "element": "Link",
+          "attribute": "LinkResourceURI",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -8769,7 +12507,34 @@
         "op": "setPluginMetadata",
         "field": "value"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "Label",
+          "kind": "properties-child"
+        },
+        {
+          "element": "Rectangle",
+          "attribute": "Label",
+          "kind": "properties-child"
+        },
+        {
+          "element": "Oval",
+          "attribute": "Label",
+          "kind": "properties-child"
+        },
+        {
+          "element": "GraphicLine",
+          "attribute": "Label",
+          "kind": "properties-child"
+        },
+        {
+          "element": "Polygon",
+          "attribute": "Label",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "group",
@@ -8784,7 +12549,14 @@
         "op": "setGroupTransform",
         "field": "transform"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Group",
+          "attribute": "ItemTransform",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -8800,7 +12572,14 @@
         "op": "replaceImageBytes",
         "field": "bytes"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "Image",
+          "attribute": "Contents",
+          "kind": "properties-child"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -8817,7 +12596,14 @@
         "field": "to",
         "clearOp": "unlinkFrames"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "TextFrame",
+          "attribute": "NextTextFrame",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -8869,7 +12655,14 @@
         "op": "pathPointSet",
         "field": "position"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "PathPointType",
+          "attribute": "Anchor",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -8887,7 +12680,14 @@
         "op": "pathPointSet",
         "field": "position"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "PathPointType",
+          "attribute": "LeftDirection",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",
@@ -8905,7 +12705,14 @@
         "op": "pathPointSet",
         "field": "position"
       },
-      "bindable": true
+      "bindable": true,
+      "idml": [
+        {
+          "element": "PathPointType",
+          "attribute": "RightDirection",
+          "kind": "attr"
+        }
+      ]
     },
     {
       "addressKind": "frame",

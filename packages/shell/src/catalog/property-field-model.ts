@@ -165,7 +165,7 @@ export function optionsFor(
   // A segmented control is a curated set of icon buttons: it keeps the
   // panel's options (those the schema still has), where a select lists
   // every member. Listing all of them here grew Align and Position by
-  // members with no glyph (ToBindingSide, …) and Case by OTSmallCaps.
+  // members with no glyph (ToBindingSide, …) and Case by CapToSmallCap.
   if (presentation?.style === "segments" && given.length > 0) {
     return given
       .filter((o) => type.members.includes(o.value))
