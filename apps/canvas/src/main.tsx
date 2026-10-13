@@ -317,7 +317,12 @@ import { useAnimatedCamera } from "./ui/useAnimatedCamera";
 import { useKeyboardShortcuts } from "./ui/useKeyboardShortcuts";
 import { documentBounds, fitCamera, layoutPages } from "./ui/layout";
 import { usePathEditMode } from "./ui/usePathEditMode";
-import { useTextEditing } from "./ui/useTextEditing";
+import { frameHoldingCaret, useTextEditing } from "./ui/useTextEditing";
+import {
+  SELECT_ALL_COMMAND,
+  SELECT_ALL_KEYBINDINGS,
+  SELECT_ALL_MENU_ITEM,
+} from "./select-all";
 import { CorpusPicker } from "./ui/CorpusPicker";
 
 // Default overlay contributions for the canvas app. Order is
@@ -1823,6 +1828,27 @@ function CanvasAppIntegration() {
     setSelection: setContentSelection,
     undoOwnedByContext: () =>
       !!editContextRef.current?.activeContribution?.onUndo,
+    escapeOwnedByContext: () => !!editContextRef.current?.active,
+    // ED-1 — Escape out of the text is InDesign's: the frame that held
+    // the caret becomes the selection and the Selection tool is in hand,
+    // so the next key is a shortcut again rather than more text.
+    onLeaveText: (left) => {
+      selectionRef.current.setActiveTool("select");
+      void (async () => {
+        const frameId = await frameHoldingCaret(client, left);
+        if (!frameId) return;
+        const applied = await client.setElementSelection(
+          [{ kind: "textFrame", id: frameId }],
+          "replace",
+        );
+        selectionRef.current.setElementSelection(applied);
+        selectionRef.current.setElementGeometry(
+          await client.elementGeometry(applied),
+        );
+      })().catch(() => {
+        /* worker reload / disconnect — the caret is gone either way */
+      });
+    },
   });
   usePathEditMode();
 
@@ -2050,6 +2076,9 @@ function CanvasAppIntegration() {
             );
           }
           const bytes = await client.exportPaged();
+          // What the bytes hold: an edit landing while they are written
+          // out is not part of this save.
+          const savedMark = client.editMark;
           let baseName = sourceName || "document";
           try {
             const meta = await client.documentMeta();
@@ -2068,7 +2097,14 @@ function CanvasAppIntegration() {
           // prompt, a moved file.  returns false rather
           // than throwing for exactly that reason: a save that did not
           // happen must not look like one that did.
-          if (await writeToOpenFile(bytes, "application/x-paged+zip")) return;
+          //
+          // ED-4 — either way the document is saved, so the edited flag
+          // clears (until the next edit). Until now nothing cleared it:
+          // after a save the next Open still warned of unsaved edits.
+          if (await writeToOpenFile(bytes, "application/x-paged+zip")) {
+            client.markSaved(savedMark);
+            return;
+          }
           const blob = new Blob([bytes.slice()], {
             type: "application/x-paged+zip",
           });
@@ -2078,6 +2114,7 @@ function CanvasAppIntegration() {
           a.download = `${baseName.replace(/\.(paged|idml)$/i, "")}.paged`;
           a.click();
           URL.revokeObjectURL(url);
+          client.markSaved(savedMark);
         } catch (err) {
           // A failed save that reaches only the devtools console is a
           // failed save the user believes succeeded — and with no
@@ -2210,7 +2247,16 @@ function CanvasAppIntegration() {
       ellipse: freshInsert((p) => insertEllipse(p, insertReport)),
       line: freshInsert((p) => insertLine(p, insertReport)),
       table: freshInsert((p) => insertTable(p, insertReport)),
-      placeImage: freshInsert((p) => placeImage(p, insertReport)),
+      // IMG-2 — Place's errors (a file it cannot read) are reported where
+      // the user sees them, not only into a panel nobody has open.
+      placeImage: freshInsert((p) =>
+        placeImage(p, (severity, message) => {
+          insertReport(severity, message);
+          if (severity === "error") {
+            void registries.commands.invoke("paged.panel.show.paged.problems");
+          }
+        }),
+      ),
       newPage: freshInsert((p) => addPage(p, insertReport)),
     });
     // ADR 323 — Align / Distribute as a TYPED command over
@@ -2245,11 +2291,13 @@ function CanvasAppIntegration() {
       ...objectCommands,
       ...insertCommands,
       ...alignCommands,
+      SELECT_ALL_COMMAND,
       // ADR 323 §4 — the typed core commands' menu / palette doors.
       ...buildCoreCommandEntries(),
     ].map((c) => registries.commands.register(c));
     const menuDisposables = [
       ...APP_MENU_ITEMS,
+      SELECT_ALL_MENU_ITEM,
       ...OBJECT_MENU_ITEMS,
       ...INSERT_MENU_ITEMS,
       ...CORE_COMMAND_MENU_ITEMS,
@@ -2264,6 +2312,7 @@ function CanvasAppIntegration() {
       .map((m) => registries.menus.register(m));
     const keyDisposables = [
       ...APP_KEYBINDINGS,
+      ...SELECT_ALL_KEYBINDINGS,
       ...OBJECT_KEYBINDINGS,
       ...INSERT_KEYBINDINGS,
     ].map((k) => registries.keybindings.register(k));

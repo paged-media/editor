@@ -79,8 +79,13 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { openCanvas } from "../fidelity/canvas-driver";
 import { selectElements } from "./harness/ui";
-import { loadViaReactPath, screenPoint, treeCount } from "./harness/viewport";
-import type { ElementRef } from "./harness/fixtures";
+import {
+  loadViaReactPath,
+  screenPoint,
+  treeCount,
+  treeIds,
+} from "./harness/viewport";
+import { elementPageRectPt, type ElementRef } from "./harness/fixtures";
 
 /** Apply one mutation through the worker; resolve the reply kind +
  *  created id. `mutate()` resolves the envelope on BOTH paths (it
@@ -258,7 +263,7 @@ test.describe("gestures.md TH — text-frame threading ports", () => {
     await expect.poll(() => portState(page, "out")).toBe("loaded");
 
     // Click empty canvas low on the page → insertTextFrame (a new frame
-    // centred on the drop) + linkFrames. Two sequential mutations (the
+    // with its corner at the drop) + linkFrames. Two sequential mutations (the
     // new frame's id isn't known until the insert applies, so this is
     // NOT one batch — see the controller header).
     const empty = await screenPoint(page, p0.widthPt * 0.5, p0.heightPt * 0.82);
@@ -333,6 +338,100 @@ test.describe("gestures.md TH — text-frame threading ports", () => {
     await page.keyboard.press("Escape");
     await expect.poll(() => portState(page, "out")).toBe("empty");
     await expect.poll(rootCursor, { timeout: 5_000 }).toBe(idle);
+  });
+});
+
+test.describe("ED-5 — the loaded thread cursor draws like a frame tool", () => {
+  /** Load the thread cursor from the first text frame's out-port. */
+  async function loadCursor(page: Page): Promise<{
+    source: ElementRef;
+    p0: { pageId: string; widthPt: number; heightPt: number };
+    before: Array<{ kind: string; id: string }>;
+  }> {
+    await openCanvas(page);
+    const fx = await loadViaReactPath(page, "text");
+    const source = fx.firstTextFrame as ElementRef;
+    expect(source).not.toBeNull();
+    const before = await treeIds(page, "textFrame");
+    await selectElements(page, [source]);
+    await expect.poll(() => portState(page, "out")).toBe("empty");
+    const outPt = await portPoint(page, "out");
+    await page.mouse.click(outPt.x, outPt.y);
+    await expect.poll(() => portState(page, "out")).toBe("loaded");
+    return { source, p0: fx.pages[0], before };
+  }
+
+  /** The one text frame that was not there before. */
+  async function newFrame(
+    page: Page,
+    before: Array<{ kind: string; id: string }>,
+  ): Promise<ElementRef> {
+    await expect
+      .poll(() => treeCount(page, "textFrame"), { timeout: 8_000 })
+      .toBe(before.length + 1);
+    const after = await treeIds(page, "textFrame");
+    const created = after.find((f) => !before.some((b) => b.id === f.id));
+    expect(created, "the drawn frame").toBeTruthy();
+    return created as ElementRef;
+  }
+
+  test("TH-06: a drag with the loaded cursor draws the new frame to the dragged size and links it @feat:editor-tools.text.threading-ports @feat:layout-model.text-frame-chain @level:gesture", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const { source, p0, before } = await loadCursor(page);
+
+    // Drag a box low on the page, corner to corner, the way a frame tool
+    // draws: this box, not a fixed 160 × 200 pt one centred on the press.
+    const x0 = p0.widthPt * 0.15;
+    const y0 = p0.heightPt * 0.72;
+    const x1 = x0 + 180;
+    const y1 = y0 + 90;
+    const a = await screenPoint(page, x0, y0);
+    const b = await screenPoint(page, x1, y1);
+    await page.mouse.move(a.x, a.y);
+    await page.mouse.down();
+    await page.mouse.move(b.x, b.y, { steps: 8 });
+    await page.mouse.up();
+
+    const created = await newFrame(page, before);
+    const rect = await elementPageRectPt(page, created);
+    expect(rect).not.toBeNull();
+    // One screen pixel is ~2 pt at the fitted zoom.
+    const tol = 2.5;
+    expect(Math.abs(rect!.left - x0)).toBeLessThan(tol);
+    expect(Math.abs(rect!.top - y0)).toBeLessThan(tol);
+    expect(Math.abs(rect!.right - x1)).toBeLessThan(tol);
+    expect(Math.abs(rect!.bottom - y1)).toBeLessThan(tol);
+
+    // And the thread runs into it.
+    await selectElements(page, [created]);
+    await expect.poll(() => portState(page, "in")).toBe("chained");
+    await selectElements(page, [source]);
+    await expect.poll(() => portState(page, "out")).toBe("chained");
+  });
+
+  test("TH-07: a click with the loaded cursor puts the new frame's corner at the click, on the page @feat:editor-tools.text.threading-ports @feat:layout-model.text-frame-chain @level:edge", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const { p0, before } = await loadCursor(page);
+
+    // Close to the right edge: a frame centred on this point hung off the
+    // page. It now starts at the click and stays on the page.
+    const x = p0.widthPt - 30;
+    const y = p0.heightPt * 0.7;
+    const at = await screenPoint(page, x, y);
+    await page.mouse.click(at.x, at.y);
+
+    const created = await newFrame(page, before);
+    const rect = await elementPageRectPt(page, created);
+    expect(rect).not.toBeNull();
+    expect(Math.abs(rect!.top - y)).toBeLessThan(2.5);
+    expect(rect!.left).toBeGreaterThanOrEqual(0);
+    expect(rect!.right).toBeLessThanOrEqual(p0.widthPt + 0.5);
+    expect(rect!.bottom).toBeLessThanOrEqual(p0.heightPt + 0.5);
+    expect(rect!.right - rect!.left).toBeGreaterThan(20);
   });
 });
 

@@ -732,6 +732,7 @@ export {
   awaitPlacementPoint,
   cancelPendingPlacement,
   placementArmed,
+  type PlacementOptions,
   type PlacementPoint,
 } from "./state/pending-placement";
 

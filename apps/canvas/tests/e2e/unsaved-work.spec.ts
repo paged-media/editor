@@ -281,3 +281,104 @@ test.describe("A5 — Save writes back to the file it opened", () => {
     expect(failures, "Save threw instead of falling back to a download").toBeNull();
   });
 });
+
+test.describe("ED-4 — saving clears the edited flag", () => {
+  test("AC-SAFE-5 — Save (.paged) marks the document clean until the next edit @feat:editor-shell.file-intake @level:edge", async ({
+    page,
+  }) => {
+    await instrumentBeforeUnload(page);
+    // Every dialog the editor raises is recorded: after a save, File ▸ New
+    // must not ask to discard anything.
+    const dialogs: string[] = [];
+    page.on("dialog", (d) => dialogs.push(d.message()));
+    await openCanvas(page);
+    await page.setInputFiles('input[type="file"]', fixturePath("geometry"));
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () => (globalThis as unknown as { __canvas: { ready: boolean } }).__canvas.ready,
+          ),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+    const clean = await guardCount(page);
+    const dirty = () =>
+      page.evaluate(
+        async () =>
+          (
+            await (
+              globalThis as unknown as {
+                __canvas: { client: { documentMeta: () => Promise<{ dirty: boolean }> } };
+              }
+            ).__canvas.client.documentMeta()
+          ).dirty,
+      );
+    const edit = () =>
+      page.evaluate(async () => {
+        await (
+          globalThis as unknown as {
+            __canvas: { client: { mutate: (m: unknown) => Promise<unknown> } };
+          }
+        ).__canvas.client.mutate({ op: "insertPage", args: {} });
+      });
+
+    await edit();
+    await expect.poll(dirty).toBe(true);
+    await expect.poll(() => guardCount(page), { timeout: 8_000 }).toBe(clean + 1);
+
+    // Save through the command Cmd+S runs. Headless there is no file handle,
+    // so this is the download fallback — still a save the user asked for.
+    const download = page.waitForEvent("download");
+    await page.evaluate(async () => {
+      await (
+        globalThis as unknown as {
+          __canvas: { registries: { commands: { invoke: (id: string) => Promise<unknown> } } };
+        }
+      ).__canvas.registries.commands.invoke("paged.file.savePaged");
+    });
+    expect((await download).suggestedFilename()).toMatch(/\.paged$/);
+
+    // Clean where it is read: the meta every confirm asks, and the unload
+    // guard, which follows the chrome's own meta subscription (so this
+    // also proves the chrome hears about a save no worker message
+    // announces).
+    await expect.poll(dirty).toBe(false);
+    await expect.poll(() => guardCount(page), { timeout: 8_000 }).toBe(clean);
+
+    // The next edit makes it dirty again.
+    await edit();
+    await expect.poll(dirty).toBe(true);
+    await expect.poll(() => guardCount(page), { timeout: 8_000 }).toBe(clean + 1);
+
+    // Saved once more, File ▸ New replaces the document without asking:
+    // the film's "Open… warns of unsaved edits" after a save.
+    await page.evaluate(async () => {
+      await (
+        globalThis as unknown as {
+          __canvas: { registries: { commands: { invoke: (id: string) => Promise<unknown> } } };
+        }
+      ).__canvas.registries.commands.invoke("paged.file.savePaged");
+    });
+    await expect.poll(dirty).toBe(false);
+    const pagesBefore = await page.evaluate(
+      () => (globalThis as unknown as { __canvas: { handle: { pageCount: number } } }).__canvas.handle.pageCount,
+    );
+    expect(pagesBefore).toBeGreaterThan(1);
+    await page.evaluate(async () => {
+      await (
+        globalThis as unknown as {
+          __canvas: { registries: { commands: { invoke: (id: string) => Promise<unknown> } } };
+        }
+      ).__canvas.registries.commands.invoke("paged.file.new");
+    });
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (globalThis as unknown as { __canvas: { handle: { pageCount: number } | null } }).__canvas.handle?.pageCount,
+        ),
+      )
+      .toBe(1);
+    expect(dialogs).toEqual([]);
+  });
+});

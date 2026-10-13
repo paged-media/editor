@@ -76,6 +76,7 @@
 
 import type {
   CommandContribution,
+  ImporterContribution,
   KeybindingContribution,
   MenuItemContribution,
   PagedEditor,
@@ -115,6 +116,12 @@ export const SHAPE_SIZE_PT: readonly [number, number] = [160, 160];
 export const LINE_LENGTH_PT = 200;
 export const TABLE_FRAME_SIZE_PT: readonly [number, number] = [320, 180];
 export const TABLE_ROWS = 4;
+/** Each new row's height (pt) — the engine's own height for a row it
+ *  mints. A row the insert leaves unsized lays out 0 pt tall while its
+ *  cells are empty, so a new table drew as one black bar of stacked
+ *  strokes (ED-7). The renderer sizes a row as max(this, content), so a
+ *  row still grows with what is typed into it. */
+export const TABLE_ROW_HEIGHT_PT = 20;
 export const TABLE_COLS = 3;
 /** Place… fits the image within this fraction of the page (never
  *  upscaling past natural size — InDesign places at 100%). */
@@ -506,6 +513,28 @@ async function rollBackFirstStep(paged: PagedEditor): Promise<void> {
   }
 }
 
+function newRowHeights(): number[] {
+  return Array.from({ length: TABLE_ROWS }, () => TABLE_ROW_HEIGHT_PT);
+}
+
+/** Put the caret in the new table's first cell, as InDesign does: the
+ *  next keys fill the table. Without it the caret stayed where it was —
+ *  in the empty paragraph the engine leaves ABOVE a table it appends — so
+ *  the text typed next landed above the table (ED-7). */
+function enterFirstCell(paged: PagedEditor, outcome: InsertOutcome): void {
+  const id = outcome.createdId;
+  if (!outcome.applied || id?.kind !== "table") return;
+  const table = id.id as unknown as { story_id?: string; table_id?: string };
+  if (!table.story_id || !table.table_id) return;
+  paged.contentSelection.setContentSelection({
+    storyId: table.story_id,
+    start: 0,
+    end: 0,
+    affinity: false,
+    cell: { tableId: table.table_id, row: 0, col: 0 },
+  });
+}
+
 /**
  * Insert a `TABLE_ROWS × TABLE_COLS` table with even column widths.
  *
@@ -532,6 +561,7 @@ export async function insertTable(
           storyId: caret.storyId,
           rows: TABLE_ROWS,
           cols: TABLE_COLS,
+          rowHeights: newRowHeights(),
           ...(width != null
             ? { columnWidths: evenColumnWidths(width, TABLE_COLS) }
             : {}),
@@ -540,7 +570,9 @@ export async function insertTable(
       "insertTable",
       refusedTap(report, "Insert table"),
     );
-    return outcomeOf(reply);
+    const outcome = outcomeOf(reply);
+    enterFirstCell(paged, outcome);
+    return outcome;
   }
 
   const target = currentPageTarget(paged);
@@ -590,6 +622,7 @@ export async function insertTable(
         rows: TABLE_ROWS,
         cols: TABLE_COLS,
         columnWidths: evenColumnWidths(frameWidth, TABLE_COLS),
+        rowHeights: newRowHeights(),
       },
     },
     "insertTable",
@@ -600,6 +633,7 @@ export async function insertTable(
     await rollBackFirstStep(paged);
     return REFUSED;
   }
+  enterFirstCell(paged, table);
   // Report the TABLE as the creation (the verb's object); the frame
   // is its host and the fallback if the reply carried no table id.
   return { applied: true, createdId: table.createdId ?? frame.createdId };
@@ -625,6 +659,67 @@ async function naturalImageSize(
   }
 }
 
+/** A Photoshop file's pixel size, read from its header — browsers decode
+ *  neither PSD nor PSB, so `createImageBitmap` cannot size one. The
+ *  header is `8BPS`, version, six reserved bytes, the channel count, then
+ *  height and width as big-endian u32 at bytes 14 and 18. */
+export function psdHeaderSize(
+  bytes: Uint8Array,
+): { width: number; height: number } | null {
+  if (bytes.length < 26) return null;
+  if (bytes[0] !== 0x38 || bytes[1] !== 0x42 || bytes[2] !== 0x50 || bytes[3] !== 0x53) {
+    return null;
+  }
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const height = view.getUint32(14);
+  const width = view.getUint32(18);
+  return width > 0 && height > 0 ? { width, height } : null;
+}
+
+/** Smallest frame (pt) a place drag draws; a smaller box is a click. */
+const PLACE_MIN_DRAG_PT = 4;
+
+/** The box a place DRAG draws for an image of `size`: the largest box of
+ *  the image's proportions inside the dragged one, anchored at the press
+ *  (it grows the way the drag went). Document space; `null` when too
+ *  small to be meant. */
+export function placeDragBox(
+  from: [number, number],
+  to: [number, number],
+  size: { width: number; height: number },
+): { left: number; top: number; w: number; h: number } | null {
+  const scale = Math.min(
+    Math.abs(to[0] - from[0]) / size.width,
+    Math.abs(to[1] - from[1]) / size.height,
+  );
+  const w = size.width * scale;
+  const h = size.height * scale;
+  if (!(w >= PLACE_MIN_DRAG_PT && h >= PLACE_MIN_DRAG_PT)) return null;
+  return {
+    left: to[0] >= from[0] ? from[0] : from[0] - w,
+    top: to[1] >= from[1] ? from[1] : from[1] - h,
+    w,
+    h,
+  };
+}
+
+/** The selection when it is exactly one EMPTY graphic frame — where a
+ *  Place puts the picture instead of asking for a point (ED-6). */
+async function selectedEmptyFrame(paged: PagedEditor): Promise<ElementId | null> {
+  const selected = paged.selection.elementSelection;
+  if (selected.length !== 1) return null;
+  const [id] = selected;
+  if (id.kind !== "rectangle" && id.kind !== "oval" && id.kind !== "polygon") {
+    return null;
+  }
+  try {
+    const [geometry] = await paged.client.elementGeometry([id]);
+    return geometry && !geometry.hasImage ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * File ▸ Place… — pick an image, ask WHERE with the pointer, then mint
  * an aspect-fit frame with its top-left at the clicked point
@@ -642,6 +737,20 @@ async function naturalImageSize(
  * cancels and places NOTHING, because a place that landed anyway after
  * a cancel is worse than one that always centred.
  *
+ * DRAG-TO-SIZE and PLACE-INTO (ED-6). A drag with the armed cursor draws
+ * the frame — the image's proportions inside the dragged box, previewed
+ * while dragging — instead of the press alone deciding a natural-size
+ * frame. And with exactly one empty graphic frame selected there is
+ * nothing to ask: the picture goes into that frame.
+ *
+ * FORMATS THE BROWSER CANNOT DECODE (IMG-2). A PSD sized through the
+ * browser's decoder failed, so Place stopped with a message in a panel
+ * nobody had open. Now a file an importer claims (paged.image claims
+ * .psd / .psb) is sized from its header, the frame is minted and selected
+ * as for any image, and the bytes go to that importer, which reads the
+ * frame selection to know where the layers belong. Errors reach the user:
+ * the host's report opens the Problems panel.
+ *
  * A click that misses every page still places — page-local bounds may
  * sit outside the page rect, which is the pasteboard, and putting an
  * image on the pasteboard while you decide is ordinary DTP practice.
@@ -651,13 +760,72 @@ export async function placeImage(
   report: InsertReport,
 ): Promise<InsertOutcome> {
   if (blockedFor(paged, report, "Place image")) return REFUSED;
-  const [file] = await pickFiles({ accept: ["image/*"] });
+  const [file] = await pickFiles({ accept: ["image/*", ".psd", ".psb"] });
   if (!file) return REFUSED; // cancelled — an ordinary answer, no report.
-  const size = await naturalImageSize(file.bytes, file.mimeType);
+
+  // The browser decodes PNG, JPEG and the like itself. What it cannot
+  // decode, an importer may: its size then comes from the file's header.
+  let size = await naturalImageSize(file.bytes, file.mimeType);
+  let importer: ImporterContribution | null = null;
+  if (!size) {
+    const psd = psdHeaderSize(file.bytes);
+    if (psd) {
+      importer = paged.registries.importers.resolve(file.name, file.mimeType);
+      if (!importer) {
+        report(
+          "error",
+          `Place image: "${file.name}" is a Photoshop file, and no loaded plugin reads one.`,
+        );
+        return REFUSED;
+      }
+      size = psd;
+    }
+  }
   if (!size) {
     report("error", `Place image: could not decode "${file.name}" as an image.`);
     return REFUSED;
   }
+
+  /** Put the file into `frame` (selected). False when that refused. */
+  const fill = async (frame: ElementId): Promise<boolean> => {
+    if (importer) {
+      try {
+        await importer.import({
+          name: file.name,
+          bytes: file.bytes,
+          mimeType: file.mimeType,
+        });
+        return true;
+      } catch (err) {
+        report(
+          "error",
+          `Place image: ${importer.title} could not read "${file.name}" — ` +
+            (err instanceof Error ? err.message : String(err)),
+        );
+        return false;
+      }
+    }
+    const reply = await mutateAndSelect(
+      paged,
+      {
+        op: "replaceImageBytes",
+        args: {
+          elementId: frame.id as string,
+          bytes: Array.from(file.bytes),
+        },
+      },
+      "placeImage",
+      refusedTap(report, "Place image"),
+    );
+    return outcomeOf(reply).applied;
+  };
+
+  // An empty frame is selected: that is where it goes.
+  const into = await selectedEmptyFrame(paged);
+  if (into) {
+    return (await fill(into)) ? { applied: true, createdId: into } : REFUSED;
+  }
+
   const target = currentPageTarget(paged);
   if (!target) return REFUSED;
   const maxW = target.rect.w * PLACE_IMAGE_MAX_PAGE_FRACTION;
@@ -665,13 +833,37 @@ export async function placeImage(
   const scale = Math.min(1, maxW / size.width, maxH / size.height);
   const w = size.width * scale;
   const h = size.height * scale;
+  const natural = size;
 
   // Ask where. Cancelling is an ordinary answer — no report, exactly
-  // like cancelling the picker above.
-  const point = await awaitPlacementPoint();
+  // like cancelling the picker above. A drag previews the frame it draws.
+  const point = await awaitPlacementPoint({
+    onDrag: (from, to) => {
+      const a = to ? clientPointToDoc(paged, from.clientX, from.clientY) : null;
+      const b = to ? clientPointToDoc(paged, to.clientX, to.clientY) : null;
+      const box = a && b ? placeDragBox(a, b, natural) : null;
+      const page = a ? (pageContaining(paged, a[0], a[1]) ?? target) : target;
+      paged.overlaySignals.setToolPreview(
+        box
+          ? {
+              pageId: page.pageId,
+              rect: [
+                box.top - page.rect.y,
+                box.left - page.rect.x,
+                box.top - page.rect.y + box.h,
+                box.left - page.rect.x + box.w,
+              ],
+            }
+          : null,
+      );
+    },
+  });
   if (!point) return REFUSED;
 
   const doc = clientPointToDoc(paged, point.clientX, point.clientY);
+  const dragEnd = point.to
+    ? clientPointToDoc(paged, point.to.clientX, point.to.clientY)
+    : null;
   let landing = target;
   let bounds: [number, number, number, number];
   if (doc) {
@@ -679,9 +871,16 @@ export async function placeImage(
     // while page 1 is "current" does what it looks like it does.
     const hit = pageContaining(paged, doc[0], doc[1]);
     if (hit) landing = hit;
-    const left = doc[0] - landing.rect.x;
-    const top = doc[1] - landing.rect.y;
-    bounds = [top, left, top + h, left + w];
+    const box = dragEnd ? placeDragBox(doc, dragEnd, natural) : null;
+    if (box) {
+      const left = box.left - landing.rect.x;
+      const top = box.top - landing.rect.y;
+      bounds = [top, left, top + box.h, left + box.w];
+    } else {
+      const left = doc[0] - landing.rect.x;
+      const top = doc[1] - landing.rect.y;
+      bounds = [top, left, top + h, left + w];
+    }
   } else {
     // No viewport to measure against (the canvas is unmounted, or the
     // camera has no scale). Falling back to centring is right here: the
@@ -697,19 +896,7 @@ export async function placeImage(
   );
   const frame = outcomeOf(frameReply);
   if (!frame.applied || !frame.createdId) return REFUSED;
-  const bytesReply = await mutateAndSelect(
-    paged,
-    {
-      op: "replaceImageBytes",
-      args: {
-        elementId: frame.createdId.id as string,
-        bytes: Array.from(file.bytes),
-      },
-    },
-    "placeImage",
-    refusedTap(report, "Place image"),
-  );
-  if (!outcomeOf(bytesReply).applied) {
+  if (!(await fill(frame.createdId))) {
     await rollBackFirstStep(paged);
     return REFUSED;
   }
