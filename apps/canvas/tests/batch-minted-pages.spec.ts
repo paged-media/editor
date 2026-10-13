@@ -156,4 +156,19 @@ test.describe("Batch-minted pages", () => {
     const names = (await rows.allInnerTexts()).map((t) => t.split("\n")[0]!.trim());
     expect(names).toEqual(["Cover", "Page 2", "Page 3"]);
   });
+
+  test("AC-BATCHPAGES-5 — a batch that adds pages updates the page list without a script's help @feat:layout-model.spreads-pages @level:edge", async ({
+    page,
+  }) => {
+    // The engine answers a batch of page inserts with
+    // `pageStructureChanged: false` and no page list. In Design mode the
+    // threading overlay's `paged.stories()` read after every mutation
+    // happened to make the shell re-read the pages; Export mode does not
+    // mount it, so the handle has to notice the new pages on its own.
+    await page.evaluate(() =>
+      (globalThis as unknown as CanvasGlobal).__canvas.setMode("export"),
+    );
+    await batchInsertPages(page, 2);
+    await expect.poll(() => pageCount(page)).toBe(3);
+  });
 });

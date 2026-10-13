@@ -1080,6 +1080,36 @@ function ShellChrome({
   // events into the right contexts; bulk traffic (camera, gestures)
   // bypasses this path via SAB / direct method calls.
   useEffect(() => {
+    // Re-read the page list and rebuild the handle when it differs — for
+    // the changes whose reply does not carry the list. The read is itself
+    // a script; the flag keeps its own result from re-triggering it.
+    const rereadPages = () => {
+      if (refreshingPagesRef.current || !handleRef.current) return;
+      refreshingPagesRef.current = true;
+      void client
+        .executeScript("console.log(paged.pages())")
+        .then((run) => {
+          const line = run.output[0]?.replace(/^\[\w+\] /, "");
+          if (!line) return;
+          const pages = JSON.parse(line) as Array<{ selfId: string; sizePt: [number, number] }>;
+          const now = handleRef.current;
+          if (!now) return;
+          const same =
+            pages.length === now.pageIds.length &&
+            pages.every((p, i) => p.selfId === now.pageIds[i] && p.sizePt[0] === now.pageSizesPt?.[i]?.[0] && p.sizePt[1] === now.pageSizesPt?.[i]?.[1]);
+          if (same) return;
+          setHandle({
+            ...now,
+            pageCount: pages.length,
+            pageIds: pages.map((p) => p.selfId) as typeof now.pageIds,
+            pageSizesPt: pages.map((p) => p.sizePt) as typeof now.pageSizesPt,
+          });
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          refreshingPagesRef.current = false;
+        });
+    };
     const off = client.subscribe((msg: WorkerToMain) => {
       if (msg.kind === "warning") {
         // ADR 025 — the worker ALREADY structures every failure it has
@@ -1130,8 +1160,8 @@ function ShellChrome({
         // list + sizes; rebuild the document handle so the page grid
         // follows without a reload. `pageIds` on these replies is the
         // full post-mutation page list, ordered like `pageSizesPt`.
+        const prev = handleRef.current;
         if (msg.payload.pageStructureChanged && msg.payload.pageSizesPt) {
-          const prev = handleRef.current;
           if (prev) {
             setHandle({
               ...prev,
@@ -1140,38 +1170,19 @@ function ShellChrome({
               pageSizesPt: msg.payload.pageSizesPt,
             });
           }
+        } else if (prev && msg.payload.pageIds.some((id) => !prev.pageIds.includes(id))) {
+          // A BATCH that inserts pages (Data Merge, a plugin's batch) is
+          // answered unflagged: the engine flags only a top-level page
+          // op, so the reply names the new pages among its changed pages
+          // but carries no page list. A page the handle has never seen
+          // means the list changed — re-read it.
+          rereadPages();
         }
-      } else if (msg.kind === "scriptResult" && !refreshingPagesRef.current) {
+      } else if (msg.kind === "scriptResult") {
         // A script (the Script panel, Claude) can add or resize pages
         // without the mutationApplied that carries the page list, so the
-        // page grid, map and navigator re-read it. The read is itself a
-        // script; the flag keeps its own result from re-triggering it.
-        const prev = handleRef.current;
-        if (!prev) return;
-        refreshingPagesRef.current = true;
-        void client
-          .executeScript("console.log(paged.pages())")
-          .then((run) => {
-            const line = run.output[0]?.replace(/^\[\w+\] /, "");
-            if (!line) return;
-            const pages = JSON.parse(line) as Array<{ selfId: string; sizePt: [number, number] }>;
-            const now = handleRef.current;
-            if (!now) return;
-            const same =
-              pages.length === now.pageIds.length &&
-              pages.every((p, i) => p.selfId === now.pageIds[i] && p.sizePt[0] === now.pageSizesPt?.[i]?.[0] && p.sizePt[1] === now.pageSizesPt?.[i]?.[1]);
-            if (same) return;
-            setHandle({
-              ...now,
-              pageCount: pages.length,
-              pageIds: pages.map((p) => p.selfId) as typeof now.pageIds,
-              pageSizesPt: pages.map((p) => p.sizePt) as typeof now.pageSizesPt,
-            });
-          })
-          .catch(() => undefined)
-          .finally(() => {
-            refreshingPagesRef.current = false;
-          });
+        // page grid, map and navigator re-read it.
+        rereadPages();
       }
     });
     client
