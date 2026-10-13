@@ -104,6 +104,22 @@ export async function selectAll(paged: PagedEditor): Promise<void> {
   paged.selection.setElementGeometry(await paged.client.elementGeometry(applied));
 }
 
+/** A text field has focus. Cmd+A is then the field's own: it selects the
+ *  field's text, as in any app. Without this the binding took the key from
+ *  every field (a panel's search box, the sheet's formula bar) and
+ *  selected page items instead. A focused `<select>` or button does not
+ *  count: Cmd+A there means the page. */
+function textFieldHasFocus(): boolean {
+  const el = typeof document === "undefined" ? null : document.activeElement;
+  if (!(el instanceof HTMLElement)) return false;
+  if (el.isContentEditable || el.tagName === "TEXTAREA") return true;
+  if (el.tagName !== "INPUT") return false;
+  const type = (el as HTMLInputElement).type;
+  return ["", "text", "search", "number", "email", "url", "tel", "password"].includes(type);
+}
+
+const selectAllKeyApplies = (state: unknown): boolean => selectAllApplies(state) && !textFieldHasFocus();
+
 export const SELECT_ALL_COMMAND: CommandContribution = {
   id: PAGED_EDIT_SELECT_ALL,
   title: "Select all",
@@ -121,6 +137,6 @@ export const SELECT_ALL_MENU_ITEM: MenuItemContribution = {
 };
 
 export const SELECT_ALL_KEYBINDINGS: KeybindingContribution[] = [
-  { key: "cmd+a", command: PAGED_EDIT_SELECT_ALL, when: selectAllApplies },
-  { key: "ctrl+a", command: PAGED_EDIT_SELECT_ALL, when: selectAllApplies },
+  { key: "cmd+a", command: PAGED_EDIT_SELECT_ALL, when: selectAllKeyApplies },
+  { key: "ctrl+a", command: PAGED_EDIT_SELECT_ALL, when: selectAllKeyApplies },
 ];

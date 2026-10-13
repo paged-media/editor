@@ -44,7 +44,10 @@ playground and fails on any error. The playground chip carries the run status.
   splitter dropped the first statement of any script with a header comment; scripts read a
   stale copy of `window.__canvas`, so `editor.pageIds()` stayed empty after `paged.file.new`;
   and `editor.select` with a bad id took the whole UI into the error boundary.
-- It also found two shape-builder defects that the films do not show: an oval is merged by its
-  bounding box, and a cross-shaped overlap loses regions.
+- It also found two shape-builder defects that the films did not show: an oval was merged by its
+  bounding box, and a cross-shaped overlap lost regions. Both were fixed in engine 0.71.8 and
+  paged.draw canary.19 (2026-10-13), and the draw film was re-shot on two overlapping ellipses.
+  The sheet film likewise left out placing the workbook's chart until its placement was fixed
+  (paged.sheet canary.20); it now places it.
 - Films are re-taken whenever the product changes what they show; a take recorded from an
   editor with uncommitted changes says so in its disclosure.
