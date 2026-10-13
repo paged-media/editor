@@ -62,7 +62,7 @@ export const textWrapComposition: CompositionNode = asPropertyFields({
         options: [
           { value: "None", label: "ui-x" },
           { value: "BoundingBoxTextWrap", label: "panel-text-wrap" },
-          { value: "ContourTextWrap", label: "panel-conditions" },
+          { value: "Contour", label: "panel-conditions" },
           { value: "JumpObjectTextWrap", label: "ui-rows" },
         ],
       },
@@ -106,7 +106,7 @@ export const textWrapComposition: CompositionNode = asPropertyFields({
       bindings: {},
     },
     {
-      // LIVE (W2.4) — contour source for ContourTextWrap. Bound to the
+      // LIVE (W2.4) — contour source for Contour wrap. Bound to the
       // new `frameTextWrapContourType` path (Value::Text enum string).
       // Empty value clears the override. Meaningful only when Wrap =
       // Contour; the apply arm preserves mode/offsets/invert.

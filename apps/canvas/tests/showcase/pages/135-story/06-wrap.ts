@@ -213,7 +213,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   await doc.batch([
     wrapSet("polygon", island, "frameTextWrapMode", {
       type: "text",
-      value: "ContourTextWrap",
+      value: "Contour",
     }),
     wrapSet("polygon", island, "frameTextWrapContourType", {
       type: "text",
