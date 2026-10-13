@@ -61,6 +61,33 @@ async function subpathOpen(page: Page, id: string): Promise<boolean | undefined>
   }, id);
 }
 
+/** The current selection, as element refs. */
+async function selection(page: Page): Promise<Array<{ kind: string; id: string }>> {
+  return page.evaluate(async () => {
+    const c = (globalThis as unknown as { __canvas: { client: { executeScript(s: string): Promise<{ output: string[] }> } } }).__canvas;
+    const r = await c.client.executeScript("paged.selection()");
+    return JSON.parse(r.output[0] ?? "[]") as Array<{ kind: string; id: string }>;
+  });
+}
+
+/** A path's contours and how many of its anchors carry a curve handle (a
+ *  handle away from its anchor); a box traced around an ellipse has none. */
+async function anchors(page: Page, id: string): Promise<{ subpathOpen?: boolean[]; count: number; curved: number } | null> {
+  return page.evaluate(async (pid) => {
+    type Pt = [number, number];
+    type R = { anchors: Array<{ anchor: Pt; left: Pt; right: Pt }>; subpathOpen?: boolean[] };
+    const c = (globalThis as unknown as { __canvas: { client: { pathAnchors(r: unknown): Promise<R | null> } } }).__canvas;
+    const r = await c.client.pathAnchors({ kind: "polygon", id: pid });
+    if (!r) return null;
+    const off = (a: Pt, b: Pt) => Math.hypot(a[0] - b[0], a[1] - b[1]) > 0.5;
+    return {
+      subpathOpen: r.subpathOpen,
+      count: r.anchors.length,
+      curved: r.anchors.filter((a) => off(a.left, a.anchor) || off(a.right, a.anchor)).length,
+    };
+  }, id);
+}
+
 /** Fill the selection from the Swatches panel's Fill field. The field is a
  *  native select, whose popup headless Chrome does not paint: the pointer
  *  goes to the field and the value changes in it, as it does for a person
@@ -161,26 +188,39 @@ film("draw", async (k) => {
     await k.hold(2200);
   });
 
-  // ── Two overlapping shapes merged by the shape builder. (Side by side,
-  //    the case the builder gets right: it reads an oval's bounding box
-  //    rather than its curve, and a cross-shaped overlap loses regions.) ──
+  // ── Two overlapping ellipses, each in its own colour. ──
   await k.scene("builder", async () => {
     k.unfocus();
-    await k.key("m", "Rectangle tool");
-    await pointer.drag(await pt(k, 90, 320), await pt(k, 250, 440), { speed: 1.6 });
+    await k.key("l", "Ellipse tool");
+    const ovals = (await ids(page, "oval")).length;
+    await pointer.drag(await pt(k, 80, 320), await pt(k, 250, 450), { speed: 1.6 });
+    await expect.poll(async () => (await ids(page, "oval")).length).toBe(ovals + 1);
     await fillWith(k, "Rose");
-    await pointer.drag(await pt(k, 190, 340), await pt(k, 350, 460), { speed: 1.6 });
+    await pointer.drag(await pt(k, 180, 320), await pt(k, 350, 450), { speed: 1.6 });
+    await expect.poll(async () => (await ids(page, "oval")).length).toBe(ovals + 2);
     await fillWith(k, "Violet");
   });
 
+  // ── Both selected, the shape builder drags across them: the three
+  //    regions (each ellipse's own part and the lens they share) become one
+  //    closed path that keeps the ellipses' curves. ──
   await k.scene("merge", async () => {
-    const shapes = async () => (await ids(page, "rectangle")).length + (await ids(page, "polygon")).length;
-    const before = await shapes();
+    const before = { ovals: await ids(page, "oval"), polygons: await ids(page, "polygon") };
+    await k.key("v");
+    await pointer.drag(await pt(k, 60, 300), await pt(k, 372, 472), { speed: 1.4 });
+    await expect
+      .poll(async () => (await selection(page)).filter((e) => e.kind === "oval").length, { timeout: 6000 })
+      .toBe(2);
     await press(k, page.locator('[data-tool-slot="shapeBuilder"]'));
     k.focus(PAIR);
     await k.hold(700);
-    await pointer.drag(await pt(k, 120, 380), await pt(k, 330, 400), { speed: 0.8 });
-    await expect.poll(shapes, { timeout: 6000 }).toBe(before - 1);
+    await pointer.drag(await pt(k, 105, 385), await pt(k, 325, 385), { speed: 0.8 });
+    await expect.poll(async () => (await ids(page, "oval")).length, { timeout: 6000 }).toBe(before.ovals.length - 2);
+    const made = (await ids(page, "polygon")).filter((id) => !before.polygons.includes(id));
+    expect(made, "the two ellipses became one path").toHaveLength(1);
+    const outline = await anchors(page, made[0]);
+    expect(outline?.subpathOpen ?? [false], "one closed contour").toEqual([false]);
+    expect(outline?.curved, "the path keeps the ellipses' curves, not their bounding boxes").toBeGreaterThan(4);
     await deselect(k);
     await k.hold(1500);
   });
