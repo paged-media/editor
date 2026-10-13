@@ -50,9 +50,8 @@ export function SpreadsPanel() {
             rows={items.map((s, i) => ({
               key: s.selfId,
               icon: "panel-spreads",
-              // An unnamed spread's label is its IDML id ("u630080", or
-              // "us" in a fresh document), which names nothing a designer
-              // recognises.
+              // An unnamed spread's label is its id ("u630080", "us") or,
+              // from engine 0.71.8, its folios ("2–3"): neither is a name.
               primary: isIdLikeLabel(s.label, s.selfId) ? `Spread ${i + 1}` : displayName(s.label),
               secondary: `${s.pageCount} page${s.pageCount === 1 ? "" : "s"}`,
             }))}

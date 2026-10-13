@@ -34,8 +34,11 @@
 //
 // Fixture: `text-overset`'s threaded chain — story `ue3375e` flows
 // through two 360×40 pt frames (`uf13304` → `u1bd24e`), ten one-line
-// paragraphs, three in the first frame. Resolved by SHAPE (the story
-// whose chain has two links), never by story-table position.
+// paragraphs, two in the first frame. (Three until core 0.71.8: the
+// default face was laid out as a substitute, its first baseline at 0.8 em;
+// it now sits at the face's own ascender, as InDesign sets it, and the
+// third line no longer fits.) Resolved by SHAPE (the story whose chain
+// has two links), never by story-table position.
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -75,7 +78,10 @@ const BULLETS = '[data-bullets-panel="ready"]';
 // Paragraph starts in the threaded story (one line each).
 const P0 = 0;
 const P1 = 45;
-const P2 = 86;
+// The keep tests' paragraph: the last line of frame 1, its follower (the
+// paragraph at offset 86) opening frame 2. Its paragraph break is at KEPT_END.
+const KEPT = P1;
+const KEPT_END = 85;
 
 function range(storyId: string, start: number, end = start + 1): StoryRangeRef {
   return { kind: "storyRange", id: { story_id: storyId, start, end } };
@@ -247,43 +253,45 @@ test.describe("E2E paragraph flow (protocol 64) — Paragraph panel", () => {
   test("AC-E2E-FLOW-keepWithNext — Keep with next 2 lines pulls the paragraph into the next frame with its follower @feat:editor-shell.panels.paragraph @feat:layout-model.text-frame-chain @level:happy", async ({
     page,
   }) => {
-    // Paragraph 3 is the last line of frame 1; paragraph 4 opens frame 2.
-    expect((await caretAt(page, chain.storyId, P2)).frameId).toBe(chain.frames[0]);
-    await setCaret(page, chain.storyId, P2, P2 + 1);
+    // Paragraph 2 is the last line of frame 1; paragraph 3 opens frame 2.
+    expect((await caretAt(page, chain.storyId, KEPT)).frameId).toBe(chain.frames[0]);
+    await setCaret(page, chain.storyId, KEPT, KEPT + 1);
     await openSection(page, PARA, "Keep options");
     await sandwich(page, {
-      at: P2,
+      at: KEPT,
       apply: async () => {
         await fillRowMetric(page, PARA, "Keep with next", 2);
       },
       expectModel: async () => {
         // A line COUNT on the wire (Value::Length), not a boolean.
-        expect(await readProp(page, range(chain.storyId, P2), "paragraphKeepWithNext")).toEqual({
+        expect(await readProp(page, range(chain.storyId, KEPT), "paragraphKeepWithNext")).toEqual({
           type: "length",
           value: 2,
         });
-        expect((await caretAt(page, chain.storyId, P2)).frameId).toBe(chain.frames[1]);
+        expect((await caretAt(page, chain.storyId, KEPT)).frameId).toBe(chain.frames[1]);
       },
       expectRestored: async () => {
-        expect((await caretAt(page, chain.storyId, P2)).frameId).toBe(chain.frames[0]);
+        expect((await caretAt(page, chain.storyId, KEPT)).frameId).toBe(chain.frames[0]);
       },
     });
   });
 
-  /** Lengthen paragraph 3 so it breaks across the two frames: its first
-   *  line ends frame 1, its second opens frame 2. */
+  const EXTRA = " Extra words here wrap this paragraph onto a second line.";
+
+  /** Lengthen the kept paragraph so it breaks across the two frames: its
+   *  first line ends frame 1, its second opens frame 2. */
   async function splitParagraphAcrossFrames(page: Page): Promise<number> {
     const reply = (await mutate(page, {
       op: "insertText",
       args: {
         storyId: chain.storyId,
-        offset: 122,
-        text: " Extra words here wrap this paragraph onto a second line.",
+        offset: KEPT_END,
+        text: EXTRA,
       },
     })) as { kind: string };
     expect(reply.kind).toBe("mutationApplied");
-    const lastChar = 178;
-    expect((await caretAt(page, chain.storyId, P2)).frameId, "setup: first line in frame 1").toBe(
+    const lastChar = KEPT_END + EXTRA.length;
+    expect((await caretAt(page, chain.storyId, KEPT)).frameId, "setup: first line in frame 1").toBe(
       chain.frames[0],
     );
     expect((await caretAt(page, chain.storyId, lastChar)).frameId, "setup: last line in frame 2").toBe(
@@ -296,23 +304,23 @@ test.describe("E2E paragraph flow (protocol 64) — Paragraph panel", () => {
     page,
   }) => {
     await splitParagraphAcrossFrames(page);
-    await setCaret(page, chain.storyId, P2, P2 + 1);
+    await setCaret(page, chain.storyId, KEPT, KEPT + 1);
     await openSection(page, PARA, "Keep options");
     await sandwich(page, {
-      at: P2,
+      at: KEPT,
       apply: async () => {
         await togglePill(page, PARA, "Keep lines together");
       },
       expectModel: async () => {
-        expect(await readProp(page, range(chain.storyId, P2), "paragraphKeepLinesTogether")).toEqual({
+        expect(await readProp(page, range(chain.storyId, KEPT), "paragraphKeepLinesTogether")).toEqual({
           type: "bool",
           value: true,
         });
         // Two lines, start count 2 (the default): the orphan line moves.
-        expect((await caretAt(page, chain.storyId, P2)).frameId).toBe(chain.frames[1]);
+        expect((await caretAt(page, chain.storyId, KEPT)).frameId).toBe(chain.frames[1]);
       },
       expectRestored: async () => {
-        expect((await caretAt(page, chain.storyId, P2)).frameId).toBe(chain.frames[0]);
+        expect((await caretAt(page, chain.storyId, KEPT)).frameId).toBe(chain.frames[0]);
       },
     });
   });
@@ -321,23 +329,23 @@ test.describe("E2E paragraph flow (protocol 64) — Paragraph panel", () => {
     page,
   }) => {
     await splitParagraphAcrossFrames(page);
-    const r = range(chain.storyId, P2);
+    const r = range(chain.storyId, KEPT);
     await setProp(page, r, "paragraphKeepLinesTogether", { type: "bool", value: true });
     await setProp(page, r, "paragraphKeepLastLines", { type: "length", value: 1 });
-    expect((await caretAt(page, chain.storyId, P2)).frameId, "setup: kept whole").toBe(chain.frames[1]);
-    await setCaret(page, chain.storyId, P2, P2 + 1);
+    expect((await caretAt(page, chain.storyId, KEPT)).frameId, "setup: kept whole").toBe(chain.frames[1]);
+    await setCaret(page, chain.storyId, KEPT, KEPT + 1);
     await openSection(page, PARA, "Keep options");
     await sandwich(page, {
-      at: P2,
+      at: KEPT,
       apply: async () => {
         await fillClusterMetric(page, PARA, "Start lines", 1);
       },
       expectModel: async () => {
         expect(await readProp(page, r, "paragraphKeepFirstLines")).toEqual({ type: "length", value: 1 });
-        expect((await caretAt(page, chain.storyId, P2)).frameId).toBe(chain.frames[0]);
+        expect((await caretAt(page, chain.storyId, KEPT)).frameId).toBe(chain.frames[0]);
       },
       expectRestored: async () => {
-        expect((await caretAt(page, chain.storyId, P2)).frameId).toBe(chain.frames[1]);
+        expect((await caretAt(page, chain.storyId, KEPT)).frameId).toBe(chain.frames[1]);
       },
     });
     // And the End-lines field writes its own path.
@@ -351,24 +359,24 @@ test.describe("E2E paragraph flow (protocol 64) — Paragraph panel", () => {
     page,
   }) => {
     await splitParagraphAcrossFrames(page);
-    const r = range(chain.storyId, P2);
+    const r = range(chain.storyId, KEPT);
     await setProp(page, r, "paragraphKeepLinesTogether", { type: "bool", value: true });
     await setProp(page, r, "paragraphKeepFirstLines", { type: "length", value: 1 });
     await setProp(page, r, "paragraphKeepLastLines", { type: "length", value: 1 });
-    expect((await caretAt(page, chain.storyId, P2)).frameId, "setup: split allowed").toBe(chain.frames[0]);
-    await setCaret(page, chain.storyId, P2, P2 + 1);
+    expect((await caretAt(page, chain.storyId, KEPT)).frameId, "setup: split allowed").toBe(chain.frames[0]);
+    await setCaret(page, chain.storyId, KEPT, KEPT + 1);
     await openSection(page, PARA, "Keep options");
     await sandwich(page, {
-      at: P2,
+      at: KEPT,
       apply: async () => {
         await togglePill(page, PARA, "All lines in paragraph");
       },
       expectModel: async () => {
         expect(await readProp(page, r, "paragraphKeepAllLinesTogether")).toEqual({ type: "bool", value: true });
-        expect((await caretAt(page, chain.storyId, P2)).frameId).toBe(chain.frames[1]);
+        expect((await caretAt(page, chain.storyId, KEPT)).frameId).toBe(chain.frames[1]);
       },
       expectRestored: async () => {
-        expect((await caretAt(page, chain.storyId, P2)).frameId).toBe(chain.frames[0]);
+        expect((await caretAt(page, chain.storyId, KEPT)).frameId).toBe(chain.frames[0]);
       },
     });
   });

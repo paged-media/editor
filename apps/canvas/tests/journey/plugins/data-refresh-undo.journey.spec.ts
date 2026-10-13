@@ -115,8 +115,10 @@ test.describe("journey · paged.data refresh and undo", () => {
     await page.getByRole("button", { name: /refresh data/i }).click();
     await expect(page.getByText(/Data refreshed from sources/)).toBeVisible({ timeout: 30_000 });
     await page.getByRole("button", { name: /refresh fields/i }).click();
-    // The stabilized record order without Ada: Alan Turing, Grace Hopper.
-    await expect.poll(() => values(page), { timeout: 20_000 }).toEqual(["Alan Turing", "Theorist"]);
+    // Record 1 without Ada is the file's next row, Grace Hopper (plugin-data
+    // canary.16, DATA-1: a scan of one table keeps its file order; it read
+    // Alan Turing under the old stabilized sort). `values` sorts.
+    await expect.poll(() => values(page), { timeout: 20_000 }).toEqual(["Engineer", "Grace Hopper"]);
     let refreshed: string | null = null;
     if (LABELLED) {
       refreshed = await sessionLabel(page);
