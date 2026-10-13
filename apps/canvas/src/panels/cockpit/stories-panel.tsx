@@ -63,6 +63,7 @@ import {
   useDocument,
   useSelection,
   type ListRowSpec,
+  toPageSpace,
 } from "@paged-media/shell";
 import type { ElementId, StorySummary } from "@paged-media/client";
 import { NumberInput } from "@paged-media/ui";
@@ -96,13 +97,25 @@ export function StoriesPanel() {
       setElementSelection(applied);
       const geoms = await client.elementGeometry(applied);
       setElementGeometry(geoms);
-      const g = geoms[0];
+      // The frame's box on its page: page space, through its transform
+      // (ED-9 — the raw bounds are neither).
+      const g = (await toPageSpace(client, geoms))[0];
       if (!g || !g.pageId || !handle) return;
       const pageIndex = handle.pageIds.indexOf(g.pageId);
       if (pageIndex < 0) return;
       const pageRect = layoutPages(handle.pageSizesPt)[pageIndex];
       if (!pageRect) return;
-      const [top, left, bottom, right] = g.bounds;
+      const [a, b, c, d, tx, ty] = g.itemTransform ?? [1, 0, 0, 1, 0, 0];
+      const corners = [
+        [g.bounds[1], g.bounds[0]],
+        [g.bounds[3], g.bounds[0]],
+        [g.bounds[1], g.bounds[2]],
+        [g.bounds[3], g.bounds[2]],
+      ].map(([x, y]) => [a * x + c * y + tx, b * x + d * y + ty]);
+      const top = Math.min(...corners.map((p) => p[1]));
+      const left = Math.min(...corners.map((p) => p[0]));
+      const bottom = Math.max(...corners.map((p) => p[1]));
+      const right = Math.max(...corners.map((p) => p[0]));
       const frameRect = {
         x: pageRect.x + left,
         y: pageRect.y + top,

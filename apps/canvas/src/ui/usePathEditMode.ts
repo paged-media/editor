@@ -67,6 +67,7 @@ import {
   useCanvasClient,
   useOptionalTool,
   useSelection,
+  pageSpacePathAnchors,
 } from "@paged-media/shell";
 import { DirectSelectSession, engineSnapPoint, isPathEditKey } from "@paged-media/tools";
 
@@ -114,7 +115,15 @@ export function usePathEditMode() {
     const element = targetRef.current;
     if (!element) return;
     const session = new DirectSelectSession({
-      client,
+      // ED-9 — the anchors are drawn and hit-tested on the PAGE, so the
+      // session reads them with the page's origin folded into the
+      // transform (anchor positions stay in the path's inner space, so
+      // every write is unchanged).
+      client: {
+        pathAnchors: (id) => pageSpacePathAnchors(client, id),
+        mutate: client.mutate.bind(client),
+        subscribe: client.subscribe.bind(client),
+      },
       target: element,
       onSelectionChange: setSelectedAnchors,
       // v67 (RFI C-68) — the engine snaps a dragged anchor to everything
