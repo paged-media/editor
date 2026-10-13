@@ -98,7 +98,7 @@ async function exportIdml(page: Page): Promise<Buffer> {
   return Buffer.from(bytes);
 }
 
-/** Scroll the canvas with the wheel, in small steps like a hand, until
+/** Scroll the canvas with the wheel, in a few steps like a hand, until
  *  page point `y` sits at the top of the view. */
 async function scrollPageTo(k: Kit, y: number): Promise<void> {
   const page = k.page;
@@ -112,13 +112,17 @@ async function scrollPageTo(k: Kit, y: number): Promise<void> {
     return best.top;
   });
   const want = top + 4 - y * (await cameraScale(page));
-  for (let i = 0; i < 40; i++) {
+  for (let pass = 0; pass < 4; pass++) {
     const left = (await screenPoint(page, 0, 0)).y - want;
     if (Math.abs(left) < 3) return;
-    await page.mouse.wheel(0, Math.sign(left) * Math.min(Math.abs(left), 14));
-    await k.hold(40);
+    const steps = Math.max(1, Math.round(Math.abs(left) / 30));
+    for (let i = 0; i < steps; i++) {
+      await page.mouse.wheel(0, left / steps);
+      await k.hold(60);
+    }
+    await k.hold(150);
   }
-  throw new Error(`could not scroll page y=${y} to the top of the view`);
+  if (Math.abs((await screenPoint(page, 0, 0)).y - want) >= 3) throw new Error(`could not scroll page y=${y} to the top of the view`);
 }
 
 /** Where the chart lands, in page points: under the table, at its left. */
@@ -381,7 +385,7 @@ film("sheet", async (k) => {
     }
     // A label cut short would be overset.
     await expect.poll(() => overset(page), { timeout: 8_000 }).toBe("0");
-    await k.hold(1200);
+    await k.hold(2400);
   });
 
   // ── Excel out, from the export centre. ──
