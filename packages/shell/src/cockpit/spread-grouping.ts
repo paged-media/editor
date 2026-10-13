@@ -35,9 +35,13 @@ export interface SpreadEntry {
 }
 
 /** IDML selfIds (`u196ae7`) make poor display names — fall back to
- *  the page range when the spread label is just its id. */
-function isIdLikeLabel(label: string): boolean {
-  return /^u[0-9a-f]{3,}$/i.test(label.trim());
+ *  the page range when the spread label is just its id. The engine's
+ *  spread label IS its selfId, and ids it mints in a fresh document are
+ *  short (`u3`, `us`), so any `u` + hex run counts, and so does a label
+ *  that merely repeats the selfId. */
+function isIdLikeLabel(label: string, selfId: string): boolean {
+  const l = label.trim();
+  return l === selfId || /^u[0-9a-f]+$/i.test(l);
 }
 
 export function groupSpreads(
@@ -57,7 +61,7 @@ export function groupSpreads(
       const first = pageIndices[0] + 1;
       const last = pageIndices[pageIndices.length - 1] + 1;
       const range = first === last ? String(first) : `${first}–${last}`;
-      const labelUsable = s.label && !isIdLikeLabel(s.label);
+      const labelUsable = s.label && !isIdLikeLabel(s.label, s.selfId);
       entries.push({
         key: s.selfId,
         name:
