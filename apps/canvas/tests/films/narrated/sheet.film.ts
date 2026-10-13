@@ -125,8 +125,10 @@ async function scrollPageTo(k: Kit, y: number): Promise<void> {
   if (Math.abs((await screenPoint(page, 0, 0)).y - want) >= 3) throw new Error(`could not scroll page y=${y} to the top of the view`);
 }
 
-/** Where the chart lands, in page points: under the table, at its left. */
-const CHART: [number, number, number, number] = [0, 160, 380, 420];
+/** The close-up on the chart, in page points: from the white space under
+ *  the table to the chart's category labels, centred on the chart (it lands
+ *  under the table, at its left). */
+const CHART: [number, number, number, number] = [-5, 140, 421, 420];
 
 /** Every page item in the document, as "kind:id". */
 async function pageItems(page: Page): Promise<string[]> {
@@ -353,11 +355,12 @@ film("sheet", async (k) => {
   //    the bars drawn from the edited figures. ──
   await k.scene("vectors", async () => {
     // The chart runs below the bottom of the view: a hand scrolls the page
-    // up until the table's top and the chart's labels are both in view.
-    await k.pointer.moveTo(await screenPoint(page, 200, 300), { targetWidth: 200 });
+    // up until the table's top and the chart's labels are both in view. It
+    // scrolls beside the chart, so the cursor rests outside the close-up.
+    await k.pointer.moveTo(await screenPoint(page, 520, 330), { targetWidth: 120 });
     await scrollPageTo(k, 18);
     await k.recamera();
-    k.focus(CHART, 1.6);
+    k.focus(CHART, 2.2);
     const probe = await chartProbe(page, before);
     writeFileSync(join(k.dir, "chart-probe.json"), JSON.stringify(probe, null, 2));
     const [pw, ph] = probe.page ?? [0, 0];
