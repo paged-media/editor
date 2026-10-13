@@ -91,6 +91,10 @@ export interface PointerModifiers {
 
 export interface ViewportCanvasProps {
   client: CanvasClient;
+  /** The loaded document's id (`DocumentHandle.docId`). The view fits
+   *  the document when this changes — a document was opened — and is
+   *  left alone when only its page list changes. */
+  docId: string;
   pageIds: ReadonlyArray<PageId>;
   pageSizesPt: ReadonlyArray<readonly [number, number]>;
   camera: Camera;
@@ -307,7 +311,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
     }
     // We deliberately depend on `client` only — fit-to-document
     // takes the current rects/dims; subsequent re-fits are driven
-    // by the document-id signature effect below.
+    // by the document-id effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.client]);
 
@@ -345,17 +349,19 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
     });
   }, [props.client, setSnapLines]);
 
-  // Re-fit camera when the document changes (page-id signature).
-  const pageIdSig = useMemo(() => props.pageIds.join("|"), [props.pageIds]);
-  const lastFitSigRef = useRef<string>("");
+  // Re-fit the camera when the DOCUMENT changes, not when its page list
+  // does. Keyed on the page-id signature, every inserted or deleted page
+  // re-fitted to the whole document: a fifty-record Data Merge left the
+  // view at 3%. Adding or removing pages keeps the user's view.
+  const lastFitDocRef = useRef<string | null>(null);
   useEffect(() => {
-    if (pageIdSig === lastFitSigRef.current) return;
+    if (props.docId === lastFitDocRef.current) return;
     if (!wrapperRef.current || rects.length === 0) return;
     const { width, height } = wrapperRef.current.getBoundingClientRect();
     if (width < 10 || height < 10) return;
     props.onCameraChange(fitCamera(width, height, documentBounds(rects)));
-    lastFitSigRef.current = pageIdSig;
-  }, [pageIdSig, rects, props]);
+    lastFitDocRef.current = props.docId;
+  }, [rects, props]);
 
   // Resolve a DOM pointer event to the document-coordinate
   // CanvasPointerEvent a GestureHandler expects.

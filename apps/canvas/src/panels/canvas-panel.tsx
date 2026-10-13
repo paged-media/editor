@@ -485,6 +485,7 @@ export function CanvasPanel(_props: PanelProps) {
     <div ref={containerRef} style={containerStyle}>
       <ViewportCanvas
         client={client}
+        docId={handle.docId}
         pageIds={handle.pageIds}
         pageSizesPt={handle.pageSizesPt}
         camera={camera}

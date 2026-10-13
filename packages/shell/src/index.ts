@@ -365,6 +365,7 @@ export {
   RightDock,
   cockpitActions,
   groupSpreads,
+  isIdLikeLabel,
   navigateToPages,
   setCockpitPageNavigator,
   useCockpitState,

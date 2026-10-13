@@ -31,7 +31,7 @@ export {
 } from "./cockpit-state-context";
 export { PanelHost } from "./PanelHost";
 export { RightDock } from "./RightDock";
-export { groupSpreads, type SpreadEntry } from "./spread-grouping";
+export { groupSpreads, isIdLikeLabel, type SpreadEntry } from "./spread-grouping";
 export {
   navigateToPages,
   setCockpitPageNavigator,
