@@ -29,6 +29,9 @@ import { dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { openCanvas, loadIdml } from "./fidelity/canvas-driver";
+import { Designer } from "./journey/driver/designer";
+import { selectElements } from "./e2e/harness/ui";
+import { treeIds } from "./e2e/harness/viewport";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -153,5 +156,124 @@ test.describe("Phase 4 — menu via commands", () => {
     // Moving to the next category swaps the open submenu.
     await page.locator('[data-menu-submenu="Styles"]').click();
     await expect(page.getByRole("menuitem", { name: "Swatches", exact: true })).toBeVisible();
+  });
+});
+
+// ED-13 — a plugin's submenu in Plugins ▸ <name> is assembled from two
+// sources: the plugin's own menu (folded in) and the shell's per-panel
+// entries. They were CONCATENATED, so a panel the plugin also listed in
+// its own menu appeared twice under one key (React warned "two children
+// with the same key" on every open of Plugins ▸ Data / Image), and a
+// panel named like one of the plugin's command submenus sat beside it
+// as a second "Appearance" — two rows, one label, different things.
+test.describe("ED-13 — plugin submenus", () => {
+  test("AC-MENU-ED13 — every Plugins submenu lists each entry once, with unique keys @feat:editor-shell.menus @level:edge", async ({
+    page,
+  }) => {
+    const keyWarnings: string[] = [];
+    page.on("console", (m) => {
+      if (m.type() === "error" && m.text().includes("same key")) {
+        keyWarnings.push(m.text().slice(0, 300));
+      }
+    });
+    await openCanvas(page);
+    await loadIdml(page, FIXTURE);
+
+    // Walk Plugins with the keyboard: hovering down the list crosses the
+    // previous row's submenu, which Radix keeps open in its grace area.
+    await page.locator('[data-menu-trigger="Plugins"]').click();
+    const plugins = await page
+      .locator('[role="menu"] [data-menu-submenu]')
+      .evaluateAll((els) => els.map((e) => e.getAttribute("data-menu-submenu")!));
+    expect(plugins.length, "plugins have submenus").toBeGreaterThan(2);
+
+    const clashes: string[] = [];
+    for (const name of plugins) {
+      await page.keyboard.press("ArrowDown");
+      const trigger = page.locator(`[role="menu"] [data-menu-submenu="${name}"]`).first();
+      await expect(trigger).toBeFocused();
+      await page.keyboard.press("ArrowRight");
+      await expect(trigger).toHaveAttribute("data-state", "open");
+      const contentId = await trigger.getAttribute("aria-controls");
+      const sub = page.locator(`[id="${contentId}"]`);
+      await expect(sub).toBeVisible();
+      const rows = await sub.evaluate((el) =>
+        Array.from(el.children)
+          .filter((c) => c.getAttribute("role")?.startsWith("menuitem"))
+          .map((c) => (c.textContent ?? "").trim()),
+      );
+      const seen = new Map<string, number>();
+      for (const row of rows) {
+        // An accelerator rides the label's text; compare the label alone.
+        const label = row.replace(/[⌘⇧⌥⌃].*$/, "").trim();
+        seen.set(label, (seen.get(label) ?? 0) + 1);
+      }
+      for (const [label, n] of seen) {
+        if (n > 1) clashes.push(`Plugins ▸ ${name}: "${label}" ×${n}`);
+      }
+      await page.keyboard.press("ArrowLeft");
+      await expect(trigger).toHaveAttribute("data-state", "closed");
+    }
+    expect(clashes, "a label appears twice in one plugin submenu").toEqual([]);
+    expect(keyWarnings, "React duplicate-key warnings").toEqual([]);
+  });
+});
+
+// ED-19 — a plugin's menu comes forward on the bar while its content is
+// selected, and the selection classifier answered only for a SINGLE
+// selection. So a command that needs two of the plugin's frames —
+// paged.web's "Thread web flow into frames" — was unreachable from the
+// bar: the moment the second frame joined the selection, the Web menu
+// left. Several items of one kind keep that kind's menu; mixed kinds
+// show none.
+test.describe("ED-19 — context menus follow a multi-selection", () => {
+  async function contextMenus(page: import("@playwright/test").Page): Promise<string[]> {
+    return page
+      .locator('[data-menu-trigger][data-menu-context="true"]')
+      .evaluateAll((els) => els.map((e) => e.getAttribute("data-menu-trigger")!));
+  }
+
+  test("AC-MENU-ED19-1 — two paths keep Draw on the bar; a path and an oval do not @feat:editor-shell.menus @level:edge", async ({
+    page,
+  }) => {
+    const designer = new Designer(page);
+    await designer.open();
+    await designer.newDocument();
+    const a = await designer.drawRectangle({ x0: 60, y0: 60, x1: 160, y1: 160 });
+    const b = await designer.drawRectangle({ x0: 200, y0: 60, x1: 300, y1: 160 });
+    await designer.selectElement("rectangle", a);
+    await expect.poll(() => contextMenus(page)).toContain("Draw");
+
+    await selectElements(page, [
+      { kind: "rectangle", id: a },
+      { kind: "rectangle", id: b },
+    ]);
+    await expect.poll(() => contextMenus(page)).toContain("Draw");
+
+    // An oval is no path the vector context claims: mixed → no menu.
+    await designer.runCommand("paged.insert.ellipse");
+    await expect.poll(async () => (await treeIds(page, "oval")).length).toBe(1);
+    const ovals = await treeIds(page, "oval");
+    expect(ovals.length).toBe(1);
+    await selectElements(page, [{ kind: "rectangle", id: a }, ovals[0]]);
+    await expect.poll(() => contextMenus(page)).not.toContain("Draw");
+  });
+
+  test("AC-MENU-ED19-2 — two web frames keep Web on the bar, and its two-frame command is reachable @feat:editor-shell.menus @level:edge", async ({
+    page,
+  }) => {
+    const designer = new Designer(page);
+    await designer.open();
+    await designer.newDocument();
+    await designer.runCommand("media.paged.web.command.insertWebFrame");
+    await designer.runCommand("media.paged.web.command.insertWebFrame");
+    const frames = [...(await treeIds(page, "textFrame")), ...(await treeIds(page, "rectangle"))];
+    expect(frames.length, "two web frames").toBe(2);
+    await selectElements(page, frames);
+    await expect.poll(() => contextMenus(page)).toContain("Web");
+    await page.locator('[data-menu-trigger="Web"]').click();
+    const thread = page.getByRole("menuitem", { name: /^Thread flow into frames/ });
+    await expect(thread).toBeVisible();
+    await expect(thread).not.toHaveAttribute("data-disabled", /.*/);
   });
 });

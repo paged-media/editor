@@ -41,7 +41,7 @@ import { panelServedBy } from "../catalog/panel-binding-surface";
 import { cockpitActions } from "../cockpit/cockpit-state-context";
 import { useEditContextStack } from "./edit-context-stack";
 import { useSelection } from "./selection-context";
-import { useOptionalTool } from "./tool-context";
+import { SELECT_TOOL_ID, VIEW_TOOL_IDS, useOptionalTool } from "./tool-context";
 import type { ToolId } from "../registries/tool";
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -314,11 +314,50 @@ export function EditContextController() {
     // Unchanged since entry — the user has not reached for anything.
     if (activeTool === toolAtEntryRef.current) return;
     if (active.toolIds.includes(activeTool)) return;
+    // Hand and Zoom are how you LOOK at what you are editing; picking
+    // one is not reaching for another editing tool. Leaving here sent
+    // the user out of the raster frame for zooming into its pixels.
+    if (VIEW_TOOL_IDS.includes(activeTool)) return;
     // COMMIT, not cancel: the user reached for another tool, they did
     // not press Esc. Discarding their in-flight edit because they
     // clicked the wrong thing would be its own defect.
     commit();
   }, [active, activeTool, commit, enteredKey]);
+
+  // PUT THE CONTEXT'S TOOL DOWN on the way out. Entry swaps in the
+  // context's primary tool (a raster brush, an anchor tool); leaving by
+  // Esc, the breadcrumb or a click elsewhere left it armed on the page,
+  // where it means nothing. When the stack empties with one of the
+  // context's own tools in hand, the tool held before entry comes back —
+  // or Selection. Leaving by picking another tool is untouched: that
+  // tool is outside the context's set by definition.
+  const toolBeforeEntryRef = useRef<string | null>(null);
+  const lastToolIdsRef = useRef<readonly string[] | null>(null);
+  const wasActiveRef = useRef(false);
+  useEffect(() => {
+    if (active) {
+      if (!wasActiveRef.current) {
+        // `activeToolRef` still reads the tool of the render before the
+        // entry swap landed: the one the user held.
+        toolBeforeEntryRef.current = activeToolRef.current;
+      }
+      wasActiveRef.current = true;
+      lastToolIdsRef.current = active.toolIds;
+      return;
+    }
+    if (!wasActiveRef.current) return;
+    wasActiveRef.current = false;
+    const left = lastToolIdsRef.current;
+    const inHand = tool?.toolState.base ?? null;
+    if (tool && inHand && left?.includes(inHand)) {
+      const back = toolBeforeEntryRef.current;
+      tool.setBaseTool(
+        (back && !left.includes(back) ? back : SELECT_TOOL_ID) as ToolId,
+      );
+    }
+    toolBeforeEntryRef.current = null;
+    lastToolIdsRef.current = null;
+  }, [active, tool]);
 
   // Auto-exit when the selection no longer includes the scope root (the
   // user selected something outside the context — a marquee elsewhere,

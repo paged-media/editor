@@ -39,6 +39,14 @@ export interface KeybindingContribution {
   key: string;
   command: string;
   when?: VisibilityPredicate;
+  /**
+   * Rank among the ENABLED bindings on the same key, read with the same
+   * state `when` is. Absent: 1 for a guarded binding, 0 for an
+   * unguarded one (the rule `resolveBinding` documents). A tool's
+   * shortcut uses it to outrank a host binding on its key inside the
+   * edit context that claims the tool, and to yield everywhere else.
+   */
+  precedence?: (state: unknown) => number;
 }
 
 export interface KeybindingRegistry {
@@ -52,6 +60,12 @@ export interface KeybindingRegistry {
   attach(): void;
   /** Remove the global keydown listener, keeping the bindings. */
   detach(): void;
+  /** The binding a key press would fire — with the live state, or with
+   *  `state` when given (diagnostics, the registry invariants). */
+  resolve(
+    event: KeyEventLike,
+    state?: unknown,
+  ): KeybindingContribution | null;
 }
 
 /** Internal: parsed key combo + the command to invoke. */
@@ -115,7 +129,7 @@ function parseCombo(key: string): KeyCombo {
   return combo;
 }
 
-type KeyEventLike = Pick<
+export type KeyEventLike = Pick<
   KeyboardEvent,
   "key" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey"
 >;
@@ -238,7 +252,15 @@ export function targetOwnsKey(
  * Which binding a key press fires. A disabled binding yields to any
  * other binding on the same combo. Among the enabled ones, a GUARDED
  * binding (a `when` that holds right now) beats an unguarded one, and
- * registration order breaks ties within each class.
+ * registration order breaks ties within each class. A binding that
+ * declares `precedence` ranks by it instead (guarded = 1, unguarded =
+ * 0 on the same scale).
+ *
+ * Why precedence exists: registration order is HISTORY, not intent. The
+ * fill/stroke cluster's `j` (registered at shell mount, re-registered
+ * whenever the rail remounts) and paged.image's healing brush `j` are
+ * both guarded, so inside a raster frame the toggle won for as long as
+ * the cluster happened to register first.
  *
  * Why guarded first: an unguarded binding is global by declaration,
  * while a guard narrows its binding to a situation — and when that
@@ -255,15 +277,27 @@ function resolveParsed(
   event: KeyEventLike,
   getState?: () => unknown,
 ): KeybindingContribution | null {
-  let unguarded: KeybindingContribution | null = null;
+  let best: KeybindingContribution | null = null;
+  let bestRank = -Infinity;
   for (const b of bindings) {
     if (!eventMatches(b.combo, event)) continue;
-    const when = b.contribution.when;
+    const { when, precedence } = b.contribution;
     if (!isEnabled(when, getState)) continue;
-    if (when !== undefined) return b.contribution;
-    unguarded ??= b.contribution;
+    let rank = when !== undefined ? 1 : 0;
+    if (precedence) {
+      try {
+        rank = precedence(getState?.());
+      } catch {
+        // A throwing rank keeps its class's default.
+      }
+    }
+    // Strictly greater: the first registration wins a tie.
+    if (rank > bestRank) {
+      best = b.contribution;
+      bestRank = rank;
+    }
   }
-  return unguarded;
+  return best;
 }
 
 /** The binding a key press would fire among `contributions` (in
@@ -342,6 +376,13 @@ export function createKeybindingRegistry(
     },
     attach,
     detach,
+    resolve(event, state) {
+      return resolveParsed(
+        bindings,
+        event,
+        state === undefined ? getState : () => state,
+      );
+    },
     dispose() {
       detach();
       bindings.length = 0;

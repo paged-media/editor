@@ -22,10 +22,10 @@ import { useOptionalOverlaySignals } from "../state/overlay-signals-context";
 
 /**
  * Click-marker chrome — page outline + frame outline + crosshair at
- * the clicked document point. Diagnostic value: makes the hit-test
- * pipeline observable. Older than the element-selection chrome and
- * may eventually retire, but kept while the hit pathway is still
- * the source of truth for text editing.
+ * the clicked document point. A DIAGNOSTIC: it makes the hit-test
+ * pipeline observable, and nothing else. It is not selection chrome —
+ * as a built-in overlay it left a red crosshair on the work at every
+ * click — so the editor mounts it only behind a debug flag.
  */
 function HitMarkerRender(props: OverlayProps) {
   const signals = useOptionalOverlaySignals();
@@ -39,7 +39,7 @@ function HitMarkerRender(props: OverlayProps) {
   const inv = 1 / props.camera.scale;
 
   return (
-    <g>
+    <g data-hit-marker="">
       <rect
         x={pr.x}
         y={pr.y}

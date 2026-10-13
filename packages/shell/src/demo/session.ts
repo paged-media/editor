@@ -235,13 +235,62 @@ export class DemoSession {
     return factory;
   }
 
+  /**
+   * The automation globals as one run sees them. The gate stops a run
+   * only BETWEEN statements, so a statement in flight when Restart (or a
+   * seek) was pressed ran to its end — its writes landed in the next
+   * document. Every call a stale run makes into paged.* / editor.* /
+   * demo.* now throws STOP, both on the way in and when an awaited call
+   * resolves after the run went stale, so the statement ends where it
+   * stood.
+   */
+  private guardedGlobals(token: number): DemoGlobals {
+    const stale = () => token !== this.runToken;
+    const wrap = (value: unknown): unknown => {
+      if (typeof value === "function") {
+        const fn = value as (...a: unknown[]) => unknown;
+        return function (this: unknown, ...a: unknown[]) {
+          if (stale()) throw STOP;
+          const out = fn.apply(this, a);
+          if (out && typeof (out as PromiseLike<unknown>).then === "function") {
+            return Promise.resolve(out).then((v) => {
+              if (stale()) throw STOP;
+              return v;
+            });
+          }
+          return out;
+        };
+      }
+      if (value && typeof value === "object") {
+        return new Proxy(value as object, {
+          get: (target, prop, receiver) => {
+            const v = Reflect.get(target, prop, receiver) as unknown;
+            return typeof v === "function"
+              ? (wrap(v) as (...a: unknown[]) => unknown).bind(target)
+              : wrap(v);
+          },
+        });
+      }
+      return value;
+    };
+    return {
+      paged: wrap(this.globals.paged) as DemoGlobals["paged"],
+      editor: wrap(this.globals.editor) as DemoGlobals["editor"],
+      demo: wrap(this.globals.demo) as DemoGlobals["demo"],
+    };
+  }
+
   private async exec(): Promise<void> {
     const token = ++this.runToken;
     demoResetOverlay();
     this.paused = false;
     this.resumeWaiters = [];
     const factory = this.buildInstrumented();
-    const args = [...Object.values(this.globals), this.gate];
+    const guarded = this.guardedGlobals(token);
+    const args = [
+      ...Object.keys(this.globals).map((k) => guarded[k as keyof DemoGlobals]),
+      this.gate,
+    ];
     try {
       await factory(...args);
       if (token === this.runToken) this.emit({ status: "done" });

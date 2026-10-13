@@ -103,12 +103,18 @@ export function useSelectionObjectType(): SelectionObjectType | null {
 }
 
 /**
- * The edit context a double-click on the current single selection would
- * ENTER — the full entry resolution (object types first, then contexts
- * claimed by kind or by their own metadata), not only the object-type
- * lane above. The menu bar uses it to bring a plugin's menu forward
- * while its content is selected (a path → Draw, a raster frame → Image),
- * before the user has entered anything.
+ * The edit context a double-click on the current selection would ENTER —
+ * the full entry resolution (object types first, then contexts claimed
+ * by kind or by their own metadata), not only the object-type lane
+ * above. The menu bar uses it to bring a plugin's menu forward while its
+ * content is selected (a path → Draw, a raster frame → Image), before
+ * the user has entered anything.
+ *
+ * A MULTI-selection answers too, when every item resolves to the same
+ * context (mixed kinds: none). It used to answer for one item only, so a
+ * command that needs two of a plugin's frames — paged.web's "Thread web
+ * flow into frames" — lost its menu the moment the second frame joined
+ * the selection.
  */
 export function useSelectionEditContext(): EditContextContribution | null {
   const client = useCanvasClient();
@@ -119,13 +125,25 @@ export function useSelectionEditContext(): EditContextContribution | null {
 
   useEffect(() => {
     const req = ++requestRef.current;
-    if (elementSelection.length !== 1 || editContexts.list().length === 0) {
+    if (
+      elementSelection.length === 0 ||
+      elementSelection.length > MAX_CLASSIFIED ||
+      editContexts.list().length === 0
+    ) {
       setResolved(null);
       return;
     }
-    const element = elementSelection[0];
-    const kind = (element as unknown as { kind?: string }).kind;
-    void (async () => {
+    const safe = (fn: () => boolean) => {
+      try {
+        return fn();
+      } catch {
+        return false; // A throwing plugin matcher claims nothing.
+      }
+    };
+    const classify = async (
+      element: (typeof elementSelection)[number],
+    ): Promise<EditContextContribution | null> => {
+      const kind = (element as unknown as { kind?: string }).kind;
       let entries: ReadonlyArray<{ value?: unknown }> = [];
       try {
         const props = await client.elementProperties(element);
@@ -133,36 +151,40 @@ export function useSelectionEditContext(): EditContextContribution | null {
       } catch {
         // Unreadable — classify by kind alone.
       }
-      if (req !== requestRef.current) return;
       const candidate = (metadataKey?: string) => ({
         id: element,
         kind,
         groupChain: [] as readonly string[],
         metadata: metadataKey ? readEnvelope(entries, metadataKey) : null,
       });
-      const safe = (fn: () => boolean) => {
-        try {
-          return fn();
-        } catch {
-          return false; // A throwing plugin matcher claims nothing.
-        }
-      };
       for (const ot of objectTypes.list()) {
         if (!ot.editContextType) continue;
         if (!safe(() => ot.matches(candidate(ot.metadataKey)))) continue;
         const ctx = editContexts.get(ot.editContextType);
-        if (ctx) return setResolved(ctx);
+        if (ctx) return ctx;
       }
       for (const ec of editContexts.list()) {
         if (ec.entry !== "doubleClick" || !ec.matches) continue;
-        if (safe(() => ec.matches!(candidate(ec.metadataKey)))) return setResolved(ec);
+        if (safe(() => ec.matches!(candidate(ec.metadataKey)))) return ec;
       }
-      setResolved(null);
+      return null;
+    };
+    void (async () => {
+      const each = await Promise.all(elementSelection.map(classify));
+      if (req !== requestRef.current) return;
+      const first = each[0] ?? null;
+      const agree = first !== null && each.every((c) => c?.type === first.type);
+      setResolved(agree ? first : null);
     })();
   }, [elementSelection, client, objectTypes, editContexts]);
 
   return resolved;
 }
+
+/** Past this many selected items the menu bar stops classifying: a
+ *  select-all over a long document is not a request for a plugin menu,
+ *  and each item costs a properties read. */
+const MAX_CLASSIFIED = 64;
 
 /**
  * The edit context whose plugin OWNS the current single selection by

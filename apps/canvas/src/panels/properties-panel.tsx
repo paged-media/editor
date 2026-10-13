@@ -32,6 +32,8 @@
 //
 // The AI Assistant lives in its own panel (ADR 221); this one links to it.
 
+import { useRef } from "react";
+
 import {
   CatalogRegistryProvider,
   CockpitBtn,
@@ -95,14 +97,27 @@ export function PropertiesPanel() {
     return typeof hit?.id.id === "string" ? hit.id.id : null;
   })();
 
-  // Live selection wins; the panel-rail steer covers the empty case.
+  // Live selection wins; the panel-rail steer covers the empty case —
+  // and one more. The rail's Image button pressed with a frame selected
+  // used to change nothing at all (the selection won, so the click had
+  // no visible effect). It now opens the Image inspector for THAT
+  // selection, which says plainly when the frame holds no image. The
+  // steer is pinned to the selection it was pressed on, so picking
+  // something else falls back to what that is.
+  const steer = cockpit?.inspectorContext ?? null;
+  const selectionKey = JSON.stringify(elementSelection);
+  const steerAt = useRef({ steer, key: selectionKey });
+  if (steerAt.current.steer !== steer) steerAt.current = { steer, key: selectionKey };
+  const imageSteer = steer === "image" && steerAt.current.key === selectionKey;
   const kind: InspectorKind = hasContent
     ? "text"
     : hasImage
       ? "image"
       : hasElement
-        ? "frame"
-        : (cockpit?.inspectorContext ?? "none");
+        ? imageSteer
+          ? "image"
+          : "frame"
+        : (steer ?? "none");
 
   const ownedTitle =
     kind === "frame" && owned ? humanizeType(owned.objectType.type) : null;
@@ -234,9 +249,19 @@ export function PropertiesPanel() {
               <CompositionRenderer composition={objectTransformComposition} />
             </div>
           ) : null}
-          {kind === "image" ? (
+          {kind === "image" && hasImage ? (
             <div data-properties-section="fitting">
               <CompositionRenderer composition={frameFittingComposition} />
+            </div>
+          ) : null}
+          {kind === "image" && hasElement && !hasImage ? (
+            <div
+              className="pg-ui-xs"
+              data-properties-no-image
+              style={{ padding: "4px 2px", lineHeight: 1.5 }}
+            >
+              The selection holds no placed image. File ▸ Place… puts one in
+              the selected frame.
             </div>
           ) : null}
           {hasElement ? (

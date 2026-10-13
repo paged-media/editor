@@ -22,6 +22,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren,
 } from "react";
@@ -37,6 +38,8 @@ import {
   SELECT_TOOL_ID,
   TEXT_TOOL_ID,
 } from "./tool-context";
+import { useOptionalCanvasClient } from "./canvas-client-context";
+import { toPageSpace, toPageSpaceNow } from "./page-space";
 import type { ToolId } from "../registries/tool";
 import type { PathEditSession } from "./path-edit-session";
 
@@ -129,8 +132,35 @@ function sameIndices(a: readonly number[], b: readonly number[]): boolean {
 
 export function SelectionProvider({ children }: PropsWithChildren) {
   const [elementSelection, setElementSelection] = useState<ElementId[]>([]);
-  const [elementGeometry, setElementGeometry] = useState<ElementGeometryItem[]>(
+  const [elementGeometry, setElementGeometryState] = useState<ElementGeometryItem[]>(
     [],
+  );
+  // ED-9 — the mirror holds geometry in PAGE space: what the chrome draws
+  // and the content pointers map through. The engine answers in spread
+  // space (see page-space.ts); every setter hands in its raw reply, so the
+  // shift happens here, once. Raw geometry for WRITES stays a direct
+  // `client.elementGeometry` read.
+  const client = useOptionalCanvasClient();
+  const geometrySeq = useRef(0);
+  const setElementGeometry = useCallback(
+    (items: ElementGeometryItem[]) => {
+      const seq = ++geometrySeq.current;
+      if (!client) {
+        setElementGeometryState(items);
+        return;
+      }
+      const now = toPageSpaceNow(client, items);
+      if (now) {
+        setElementGeometryState(now);
+        return;
+      }
+      void toPageSpace(client, items)
+        .catch(() => items)
+        .then((shifted) => {
+          if (seq === geometrySeq.current) setElementGeometryState(shifted);
+        });
+    },
+    [client],
   );
   // `activeTool` derives from the ToolContext when present. The
   // fallback `useState` keeps `SelectionProvider` usable standalone
@@ -195,6 +225,7 @@ export function SelectionProvider({ children }: PropsWithChildren) {
     [
       elementSelection,
       elementGeometry,
+      setElementGeometry,
       activeTool,
       pathEditMode,
       selectedAnchors,

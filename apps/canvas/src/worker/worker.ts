@@ -465,6 +465,36 @@ function packSceneTiles(
   return { rects, rgba };
 }
 
+/** Run the Tier 3 resolver and post its table (`resolutionDone`). */
+function postResolution(): void {
+  const resolutionJson = worker?.runResolveJson();
+  if (!resolutionJson) return;
+  try {
+    const payload = JSON.parse(resolutionJson);
+    postBack({
+      seq: null,
+      protocol: PROTOCOL_VERSION,
+      kind: "resolutionDone",
+      payload,
+    });
+  } catch (e) {
+    console.warn("resolution JSON parse failed:", e);
+  }
+}
+
+/** The resolver re-runs after edits, not only on load: a heading edited
+ *  after load kept its old text in every reader of the table. Debounced,
+ *  so a burst of mutations (a batch, typing, a script building a
+ *  document) costs one run once it settles. */
+let resolutionTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleResolution(): void {
+  if (resolutionTimer !== null) clearTimeout(resolutionTimer);
+  resolutionTimer = setTimeout(() => {
+    resolutionTimer = null;
+    postResolution();
+  }, 300);
+}
+
 /** The reply effects shared by the JSON channel and the binary doors:
  *  a fresh document re-lays the renderer; a change repaints the pages it
  *  names (all of them when it names none). */
@@ -473,20 +503,11 @@ function applyReplyEffects(reply: WorkerToMain): void {
     if (renderer) {
       renderer.refreshLayout();
     }
-    const resolutionJson = worker?.runResolveJson();
-    if (resolutionJson) {
-      try {
-        const payload = JSON.parse(resolutionJson);
-        postBack({
-          seq: null,
-          protocol: PROTOCOL_VERSION,
-          kind: "resolutionDone",
-          payload,
-        });
-      } catch (e) {
-        console.warn("resolution JSON parse failed:", e);
-      }
+    if (resolutionTimer !== null) {
+      clearTimeout(resolutionTimer);
+      resolutionTimer = null;
     }
+    postResolution();
   } else if (
     reply.kind === "mutationApplied" ||
     reply.kind === "undoApplied" ||
@@ -499,6 +520,7 @@ function applyReplyEffects(reply: WorkerToMain): void {
     if (renderer) {
       renderer.markDirty(reply.payload?.pageIds ?? []);
     }
+    scheduleResolution();
   } else if (reply.kind === "scriptResult") {
     // A paged.* run may have mutated the model. Its reply carries no
     // pageIds (a script can touch any page), so markDirty([]) clears all
@@ -507,6 +529,7 @@ function applyReplyEffects(reply: WorkerToMain): void {
     if (renderer) {
       renderer.markDirty([]);
     }
+    scheduleResolution();
   } else if (reply.kind === "sceneLayerApplied") {
     // v66 — a scene layer changes what a page draws, and nothing used to
     // flag the render loop: the GPU cache was dropped in the engine, but
@@ -518,6 +541,9 @@ function applyReplyEffects(reply: WorkerToMain): void {
       if (pageIds == null) renderer.markDirty([]);
       else if (pageIds.length > 0) renderer.markDirty(pageIds as never);
     }
+  } else if (reply.kind === "gestureCommitted") {
+    // A moved frame can carry its heading to another page.
+    scheduleResolution();
   }
 }
 
@@ -726,16 +752,7 @@ async function dispatch(data: IncomingMessage): Promise<void> {
       const reply = JSON.parse(replyJson) as WorkerToMain;
       if (reply.kind === "documentLoaded") {
         if (renderer) renderer.refreshLayout();
-        const resolutionJson = worker.runResolveJson();
-        if (resolutionJson) {
-          const payload = JSON.parse(resolutionJson);
-          postBack({
-            seq: null,
-            protocol: PROTOCOL_VERSION,
-            kind: "resolutionDone",
-            payload,
-          });
-        }
+        postResolution();
       }
     } catch (e) {
       console.warn("loadDocumentBinary post-process:", e);
