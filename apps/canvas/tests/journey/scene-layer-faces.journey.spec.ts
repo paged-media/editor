@@ -32,16 +32,15 @@
 //
 // WHAT THIS VERIFIES (values and pixels, not DOM):
 //   · the report: an unregistered family is listed, a registered one is
-//     not, a style derived from `weight` is named (`"Lora Bold"`);
+//     not, a style derived from `weight` is named (`"Inter Bold"`);
 //   · registering a font REBUILDS a frame whose layer names it, with no
 //     resubmit (the Lora run turns from the Inter fallback into Lora);
 //   · `weight` reaches the face: the variable Inter at 700 paints
 //     differently from 400.
 //
-// The editor registers its bundled Inter BY NAME before each load (ED-10:
-// a face the editor ships is not a missing font), so a run naming
-// "Inter" resolves from the start; registering it again below is
-// harmless and keeps the weight check honest.
+// The editor's default Inter is the document DEFAULT font, not a
+// registered family: a run naming "Inter" is reported as a fallback until
+// Inter is registered by name (it still draws in Inter — the default).
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -138,12 +137,8 @@ test.describe("journey · protocol 68 scene-layer text faces", () => {
       fontFallbacks: ["Lora"],
     });
     await designer.expectRenderChangesFrom(empty);
-    expect(await submit(page, frame, [text("Lora", 700)])).toEqual({
-      fontFallbacks: ["Lora Bold"],
-    });
-    // The face the editor ships is not reported (ED-10).
-    expect(await submit(page, frame, [text("Inter", 400)])).toEqual({
-      fontFallbacks: [],
+    expect(await submit(page, frame, [text("Inter", 700)])).toEqual({
+      fontFallbacks: ["Inter Bold"],
     });
     expect(await submit(page, frame, [text("NoSuchFace Sans")])).toEqual({
       fontFallbacks: ["NoSuchFace Sans"],
