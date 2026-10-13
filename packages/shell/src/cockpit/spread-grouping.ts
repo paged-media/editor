@@ -39,7 +39,7 @@ export interface SpreadEntry {
  *  spread label IS its selfId, and ids it mints in a fresh document are
  *  short (`u3`, `us`), so any `u` + hex run counts, and so does a label
  *  that merely repeats the selfId. */
-function isIdLikeLabel(label: string, selfId: string): boolean {
+export function isIdLikeLabel(label: string, selfId: string): boolean {
   const l = label.trim();
   return l === selfId || /^u[0-9a-f]+$/i.test(l);
 }

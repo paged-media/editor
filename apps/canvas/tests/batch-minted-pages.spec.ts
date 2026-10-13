@@ -35,7 +35,7 @@
 
 import { test, expect, type Page } from "@playwright/test";
 
-import { openCanvas } from "./fidelity/canvas-driver";
+import { openCanvas, openPanel } from "./fidelity/canvas-driver";
 
 interface Camera {
   scale: number;
@@ -155,6 +155,21 @@ test.describe("Batch-minted pages", () => {
     // the spread's selfId, so a name like "u3" is an id, never a name.
     const names = (await rows.allInnerTexts()).map((t) => t.split("\n")[0]!.trim());
     expect(names).toEqual(["Cover", "Page 2", "Page 3"]);
+  });
+
+  test("AC-BATCHPAGES-6 — the Spreads panel names batch-minted spreads by number, not by internal id @feat:editor-shell.panels.spreads @level:edge", async ({
+    page,
+  }) => {
+    await batchInsertPages(page, 2);
+    await expect.poll(() => pageCount(page)).toBe(3);
+
+    await openPanel(page, "paged.spreads");
+    const rows = page.locator('[data-spreads-panel="ready"] [data-list-row]');
+    await expect(rows).toHaveCount(3);
+    // A fresh document mints ids such as "us" that are no hex run, so only
+    // the comparison with the spread's own selfId catches them.
+    const names = (await rows.allInnerTexts()).map((t) => t.split("\n")[0]!.trim());
+    expect(names).toEqual(["Spread 1", "Spread 2", "Spread 3"]);
   });
 
   test("AC-BATCHPAGES-2 — batch-minted pages get filmstrip thumbnails @feat:editor-shell.panels.pages-navigator @level:edge", async ({
