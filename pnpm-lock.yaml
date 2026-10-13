@@ -32,8 +32,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ai
       '@paged-media/canvas-wasm':
-        specifier: 0.71.8
-        version: 0.71.8
+        specifier: 0.71.9
+        version: 0.71.9
       '@paged-media/catalog':
         specifier: workspace:*
         version: link:../../packages/catalog
@@ -135,8 +135,8 @@ importers:
   apps/devtools:
     dependencies:
       '@paged-media/introspect-wasm':
-        specifier: 0.71.8
-        version: 0.71.8
+        specifier: 0.71.9
+        version: 0.71.9
       '@radix-ui/react-accordion':
         specifier: ^1.2.20
         version: 1.2.20(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -258,8 +258,8 @@ importers:
   packages/client:
     dependencies:
       '@paged-media/canvas-wasm':
-        specifier: 0.71.8
-        version: 0.71.8
+        specifier: 0.71.9
+        version: 0.71.9
     devDependencies:
       typescript:
         specifier: ^5.9.3
@@ -948,8 +948,8 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@paged-media/canvas-wasm@0.71.8':
-    resolution: {integrity: sha512-udP1g/5i7eIb8Xakn4HhN59LEQ22d6cbDOorMvYj/1LPbkKHkNJFPGB1XQA06ka2z//r23RfzfAGr0aDpL3cWQ==}
+  '@paged-media/canvas-wasm@0.71.9':
+    resolution: {integrity: sha512-ZNScj/GKwOuxwS52wxhL4rTX+X+uocRZUv+6YbG6TIbb9Yr5ATKrMIpC6aDcFFuFa4GbsHnem9BCN3+EhAvoEw==}
 
   '@paged-media/data@0.1.0-canary.16':
     resolution: {integrity: sha512-z8/DC9Vht3wV6u45q/25tEWhmOiMme3H53zmW372TYErbM3AqUveGT3+bF1Y/0NZIsjsV8tF4AjZWD6hz2OIFQ==}
@@ -972,8 +972,8 @@ packages:
       '@paged-media/plugin-sdk': '>=0.2.45-canary.0'
       react: ^18.3.0
 
-  '@paged-media/introspect-wasm@0.71.8':
-    resolution: {integrity: sha512-lmPyIiYDmlnIOTz9TfgGlUlRJ3UGYGYMdHfgdgOG1XmkI9Ys+3b9Ew84X67Km4fdsNmyZA4BYOqqJU09gDvY6Q==}
+  '@paged-media/introspect-wasm@0.71.9':
+    resolution: {integrity: sha512-vafV+qD4HAtZ6fVhC1OMJm564/uPE5TlAzb5xiWnajpJJRMrOaFDrds4aWQik8cJM/EdwU/rtusu34+o0VFHWw==}
 
   '@paged-media/pdf@0.2.5-canary.0':
     resolution: {integrity: sha512-zBFcIxjWz1HlgyWZ/OZEEymRazGHfxWohWNRrFFen8DwP6IRPGWusZl5ML51ZBh2QDPzChTCI15VYRE9TPXH/g==}
@@ -3059,7 +3059,7 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.3
 
-  '@paged-media/canvas-wasm@0.71.8': {}
+  '@paged-media/canvas-wasm@0.71.9': {}
 
   '@paged-media/data@0.1.0-canary.16(@paged-media/plugin-api@0.2.54-canary.0)(@paged-media/plugin-sdk@0.2.54-canary.0(react@18.3.1))(react@18.3.1)':
     dependencies:
@@ -3079,7 +3079,7 @@ snapshots:
       '@paged-media/plugin-sdk': 0.2.54-canary.0(react@18.3.1)
       react: 18.3.1
 
-  '@paged-media/introspect-wasm@0.71.8': {}
+  '@paged-media/introspect-wasm@0.71.9': {}
 
   '@paged-media/pdf@0.2.5-canary.0(@paged-media/plugin-api@0.2.54-canary.0)(@paged-media/plugin-sdk@0.2.54-canary.0(react@18.3.1))':
     dependencies:

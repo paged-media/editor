@@ -84,9 +84,9 @@ test.describe("Phase 5 — Text Wrap panel", () => {
       if (!target) throw new Error("fixture has no TextFrame");
       const addr = `${target.kind}:${target.id}`;
 
-      // 1. Set mode → ContourTextWrap.
+      // 1. Set mode → Contour (InDesign spells it so).
       const setMode = await dbg.client.executeScript(
-        `paged.set(${JSON.stringify(addr)}, "frameTextWrapMode", "ContourTextWrap");`,
+        `paged.set(${JSON.stringify(addr)}, "frameTextWrapMode", "Contour");`,
       );
       if (setMode.error || setMode.output[0]?.trim() !== "true") {
         throw new Error(
@@ -95,7 +95,7 @@ test.describe("Phase 5 — Text Wrap panel", () => {
       }
       await new Promise((r) => setTimeout(r, 30));
 
-      // 2. Set offsets → [8, 8, 8, 8]. Mode must stay ContourTextWrap.
+      // 2. Set offsets → [8, 8, 8, 8]. Mode must stay Contour.
       await dbg.client.mutate({
         op: "setElementProperty",
         args: {
@@ -126,7 +126,7 @@ test.describe("Phase 5 — Text Wrap panel", () => {
       };
     });
 
-    expect(result.mode).toBe("ContourTextWrap");
+    expect(result.mode).toBe("Contour");
     expect(result.offsets).toEqual([8, 8, 8, 8]);
   });
 
@@ -269,13 +269,13 @@ test.describe("Phase 5 — Text Wrap panel", () => {
         return props?.entries.find((e) => e.path === path)?.value?.value ?? null;
       };
 
-      // Establish ContourTextWrap so the contour options are meaningful.
+      // Establish a contour wrap so the contour options are meaningful.
       await dbg.client.mutate({
         op: "setElementProperty",
         args: {
           elementId: target,
           path: "frameTextWrapMode",
-          value: { type: "text", value: "ContourTextWrap" },
+          value: { type: "text", value: "Contour" },
         },
       });
       await new Promise((r) => setTimeout(r, 30));
@@ -319,9 +319,9 @@ test.describe("Phase 5 — Text Wrap panel", () => {
     expect(result.after.contour).toBe("DetectEdges");
     expect(result.after.includeInside).toBe(true);
     // Contour options preserve the wrap mode.
-    expect(result.after.mode).toBe("ContourTextWrap");
+    expect(result.after.mode).toBe("Contour");
     // Undo of include-inside keeps the contour type + mode.
     expect(result.afterUndo.contour).toBe("DetectEdges");
-    expect(result.afterUndo.mode).toBe("ContourTextWrap");
+    expect(result.afterUndo.mode).toBe("Contour");
   });
 });
