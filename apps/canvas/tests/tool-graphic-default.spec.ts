@@ -260,7 +260,7 @@ test.describe("ED-22 — a tool-drawn shape wears InDesign's graphic default", (
     });
   });
 
-  test("AC-ED22-DEFAULTS — once the document has defaults of its own, the tools draw with those @feat:editor-tools.draw.rectangle @level:edge", async ({
+  test("AC-ED22-DEFAULTS — once the document has defaults of its own, the tools draw with those @feat:color-swatches.document-defaults @level:edge", async ({
     page,
   }) => {
     const designer = new Designer(page);
