@@ -109,13 +109,18 @@ test.describe("page position — the footprint and the edge rule", () => {
     const group: ElementId = { kind: "group", id: "g1" };
     const client = {
       sceneTree: async () => [],
+      // Leaves only: the pinned engine answers no geometry for a group, so
+      // the group's step is the page's (a nested group's step in its
+      // parent's frame is AC-OBJ-PURE-42).
       elementGeometry: async (ids: ElementId[]) =>
-        ids.map((id) => ({
-          id,
-          bounds: [0, 0, 10, 10],
-          itemTransform: [C30, S30, -S30, C30, 4, 2],
-          hasImage: false,
-        })),
+        ids
+          .filter((id) => id.kind !== "group")
+          .map((id) => ({
+            id,
+            bounds: [0, 0, 10, 10],
+            itemTransform: [C30, S30, -S30, C30, 4, 2],
+            hasImage: false,
+          })),
       elementProperties: async (id: ElementId) => ({
         id,
         kind: "Group",
@@ -138,6 +143,24 @@ test.describe("page position — the footprint and the edge rule", () => {
       ],
     });
     expect(await translationPlan(client, [group], 5, 0)).toEqual({
+      ok: true,
+      ops: [
+        { op: "setGroupTransform", args: { groupId: "g1", transform: [1, 0, 0, 1, 8, 3] } },
+      ],
+    });
+    // An engine that answers a TOP-LEVEL group's composed transform (it
+    // equals the stored one): the same write.
+    const answering = {
+      ...client,
+      elementGeometry: async (ids: ElementId[]) =>
+        ids.map((id) => ({
+          id,
+          bounds: [0, 0, 10, 10],
+          itemTransform: id.kind === "group" ? [1, 0, 0, 1, 3, 3] : [C30, S30, -S30, C30, 4, 2],
+          hasImage: false,
+        })),
+    } as unknown as TranslationClient;
+    expect(await translationPlan(answering, [group], 5, 0)).toEqual({
       ok: true,
       ops: [
         { op: "setGroupTransform", args: { groupId: "g1", transform: [1, 0, 0, 1, 8, 3] } },
