@@ -225,6 +225,37 @@ test.describe("Batch-minted pages", () => {
     await expect.poll(() => pageCount(page)).toBe(3);
   });
 
+  test("AC-BATCHPAGES-7 — a batch that moves a page updates the page order without a script's help @feat:layout-model.spreads-pages @level:edge", async ({
+    page,
+  }) => {
+    // A move names no page the handle has not seen, so "a new id in the
+    // reply" cannot tell the list changed; the order went stale until
+    // some script happened to run (paged.slide's new slide is inserted at
+    // the end and moved after the current one in one batch).
+    await page.evaluate(() =>
+      (globalThis as unknown as CanvasGlobal).__canvas.setMode("export"),
+    );
+    await batchInsertPages(page, 2);
+    await expect.poll(() => pageCount(page)).toBe(3);
+    const ids = await page.evaluate(
+      () => (globalThis as unknown as CanvasGlobal).__canvas.handle!.pageIds,
+    );
+    const reply = await page.evaluate(
+      ([last, first]) =>
+        (globalThis as unknown as CanvasGlobal).__canvas.client.mutate({
+          op: "batch",
+          args: { ops: [{ op: "movePage", args: { page: last, after: first } }] },
+        }),
+      [ids[2], ids[0]],
+    );
+    expect(reply.kind).toBe("mutationApplied");
+    await expect
+      .poll(() =>
+        page.evaluate(() => (globalThis as unknown as CanvasGlobal).__canvas.handle!.pageIds),
+      )
+      .toEqual([ids[0], ids[2], ids[1]]);
+  });
+
   test("AC-BATCHPAGES-4 — adding pages keeps the view; replacing the document fits it @feat:editor-tools.nav.zoom @level:edge", async ({
     page,
   }) => {

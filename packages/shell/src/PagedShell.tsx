@@ -1085,17 +1085,23 @@ function ShellChrome({
   // bypasses this path via SAB / direct method calls.
   useEffect(() => {
     // Re-read the page list and rebuild the handle when it differs — for
-    // the changes whose reply does not carry the list. The read is itself
-    // a script; the flag keeps its own result from re-triggering it.
+    // the changes whose reply does not carry the list: a script, and a
+    // BATCH (the engine flags only a top-level page op, so a batch that
+    // inserts, removes or MOVES pages is answered without the list). A
+    // collection read, not a `paged.pages()` script: a script run reads as
+    // a document change to every listener. Runs that arrive while one is
+    // in flight are one more read, not one each.
+    let rereadAgain = false;
     const rereadPages = () => {
-      if (refreshingPagesRef.current || !handleRef.current) return;
+      if (!handleRef.current) return;
+      if (refreshingPagesRef.current) {
+        rereadAgain = true;
+        return;
+      }
       refreshingPagesRef.current = true;
       void client
-        .executeScript("console.log(paged.pages())")
-        .then((run) => {
-          const line = run.output[0]?.replace(/^\[\w+\] /, "");
-          if (!line) return;
-          const pages = JSON.parse(line) as Array<{ selfId: string; sizePt: [number, number] }>;
+        .collection<{ selfId: string; sizePt: [number, number] }>("pages")
+        .then((pages) => {
           const now = handleRef.current;
           if (!now) return;
           const same =
@@ -1112,6 +1118,10 @@ function ShellChrome({
         .catch(() => undefined)
         .finally(() => {
           refreshingPagesRef.current = false;
+          if (rereadAgain) {
+            rereadAgain = false;
+            rereadPages();
+          }
         });
     };
     const off = client.subscribe((msg: WorkerToMain) => {
@@ -1174,12 +1184,12 @@ function ShellChrome({
               pageSizesPt: msg.payload.pageSizesPt,
             });
           }
-        } else if (prev && msg.payload.pageIds.some((id) => !prev.pageIds.includes(id))) {
-          // A BATCH that inserts pages (Data Merge, a plugin's batch) is
-          // answered unflagged: the engine flags only a top-level page
-          // op, so the reply names the new pages among its changed pages
-          // but carries no page list. A page the handle has never seen
-          // means the list changed — re-read it.
+        } else if (prev) {
+          // A BATCH that inserts, removes or reorders pages (Data Merge,
+          // a plugin's new slide) is answered unflagged: the reply names
+          // the pages it changed but carries no page list, and a move
+          // names no page the handle has not seen. Re-read the list; the
+          // handle changes only when it differs.
           rereadPages();
         }
       } else if (msg.kind === "scriptResult") {
