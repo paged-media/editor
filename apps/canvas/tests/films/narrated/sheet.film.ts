@@ -31,7 +31,8 @@ import { film, type Kit } from "../kit/film";
 import { typeHuman } from "../kit/pointer";
 import { hover, menu, press } from "../kit/ui";
 import { parsePlacedTables, selectedElement } from "../../journey/plugins/sheet-kit";
-import { readZipText, zipEntryNames } from "../../e2e/harness/read-zip";
+import { readZipText } from "../../e2e/harness/read-zip";
+import { textFramesInGroup, textOfFrames } from "../../e2e/harness/idml-stories";
 import { cameraScale, screenPoint } from "../../e2e/harness/viewport";
 import { openPanel } from "../../fidelity/canvas-driver";
 
@@ -412,11 +413,18 @@ film("sheet", async (k) => {
     const rows = parsePlacedTables(idml).tables[0]?.rows ?? [];
     expect([rows[1]?.[2], rows[1]?.[3], rows[6]?.[3]]).toEqual(["4.20", "168.00", "560.00"]);
     // The chart's labels are whole stories: the title is not cut short.
-    const stories = zipEntryNames(idml)
-      .filter((n) => n.startsWith("Stories/"))
-      .map((n) => [...(readZipText(idml, n) ?? "").matchAll(/<Content>([^<]*)<\/Content>/g)].map((m) => m[1]).join(""));
+    // Only the chart's own labels are read — the text frames inside the
+    // chart's group in the exported spreads, through their ParentStory:
+    // the table's cells carry the same item names, so a check over every
+    // story would pass with no chart labels at all.
+    const group = (await pageItems(page)).find((r) => r.startsWith("group:") && !before.includes(r));
+    expect(group, "the chart is placed as one group").toBeDefined();
+    const chartFrames = textFramesInGroup(idml, group!.slice("group:".length));
+    expect(chartFrames.length, "the chart's group holds its label frames").toBeGreaterThanOrEqual(6);
+    const labels = textOfFrames(idml, chartFrames);
+    expect(labels, "every chart label frame is in the package, with its story").not.toContain(null);
     for (const label of ["Amount by item", "Notebooks", "Pencils", "Erasers", "Rulers", "Markers"]) {
-      expect(stories, `the chart's "${label}" label`).toContain(label);
+      expect(labels, `the chart's "${label}" label`).toContain(label);
     }
   });
 });
