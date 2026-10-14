@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@paged-media/client": "workspace:*",
-    "@paged-media/draw": "0.1.0-canary.19",
+    "@paged-media/draw": "0.1.0-canary.20",
     "@paged-media/plugin-api": "0.2.55-canary.0",
     "@paged-media/plugin-sdk": "0.2.55-canary.0",
     "@paged-media/shell": "workspace:*"
