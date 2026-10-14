@@ -1422,6 +1422,53 @@ test.describe("E2E paged.object.nudge — against the real engine", () => {
     expect(boxAfter[3]).toBeCloseTo(boxBefore[3] + 10, 3);
   });
 
+  test("AC-OBJ-37 — a group nested in a ROTATED group moves along the page's axes @feat:editor-tools.move.translate @feat:frames-paths.groups @level:edge", async ({
+    page,
+  }) => {
+    // inner = {a, b}; outer = {inner, c}, turned 90°.
+    const [a, b, c] = await insertStack(page, 3);
+    await select(page, [a, b]);
+    await invokeCommand(page, GROUP);
+    const inner = (await selection(page))[0];
+    await select(page, [inner, c]);
+    await invokeCommand(page, GROUP);
+    const outer = (await selection(page))[0];
+    const turned = await mutate(page, {
+      op: "setGroupTransform",
+      args: { groupId: outer.id, transform: [0, 1, -1, 0, 300, 0] },
+    });
+    expect(turned.kind).toBe("mutationApplied");
+
+    // A nested group's stored transform is relative to its parent, so the
+    // step has to be expressed in the parent's frame — which takes the
+    // group's composed transform. An engine that answers no geometry for
+    // a group cannot say; the nudge then steps along the page as before,
+    // and this case has nothing to check.
+    test.skip(
+      (await geometry(page, [inner])).length === 0,
+      "this engine answers no geometry for a group (it arrives with the composed group transform)",
+    );
+
+    await select(page, [inner]);
+    const start = await geometry(page, [a, b, c]);
+    await invokeCommand(page, NUDGE_RIGHT_LARGE);
+    const moved = await geometry(page, [a, b, c]);
+    // The inner group's members move 10 pt right ON THE PAGE, not 10 pt
+    // along the turned parent's x axis (which would be down).
+    const minX = (g: Geometry) => Math.min(...corners(g).map((p) => p[0]));
+    const minY = (g: Geometry) => Math.min(...corners(g).map((p) => p[1]));
+    for (const [i, label] of [
+      [0, "a"],
+      [1, "b"],
+    ] as const) {
+      expect(minX(moved[i]) - minX(start[i]), `${label} x`).toBeCloseTo(10, 3);
+      expect(minY(moved[i]) - minY(start[i]), `${label} y`).toBeCloseTo(0, 3);
+    }
+    // The outer group's other member stays.
+    expect(minX(moved[2])).toBeCloseTo(minX(start[2]), 3);
+    expect(minY(moved[2])).toBeCloseTo(minY(start[2]), 3);
+  });
+
   test("AC-OBJ-22 — a mixed selection moves each thing ONCE, in one undo step @feat:editor-tools.move.translate @feat:frames-paths.groups @feat:round-tripping.undo-redo @level:edge", async ({
     page,
   }) => {

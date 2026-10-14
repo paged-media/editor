@@ -747,6 +747,40 @@ export function translated(
   return [a, b, c, d, tx + dx, ty + dy];
 }
 
+/**
+ * A page step `(dx, dy)` as the step a group's STORED transform takes.
+ *
+ * A nested group's transform is stored relative to its parent group, so
+ * inside a rotated or scaled ancestor a step along the page's axes is a
+ * different step in the parent's frame. `own` is the group's stored
+ * transform, `placed` its composed one (what `elementGeometry` answers
+ * for the group); the parent's linear part is `placed · own⁻¹`, so the
+ * step the stored transform takes is `own · placed⁻¹ · step` (linear
+ * parts only). A top-level group has `placed = own`: the step is
+ * unchanged.
+ *
+ * `placed` absent — an engine that answers no geometry for a group —
+ * returns the step as it is, which is right for every top-level group
+ * (and is what the nudge always did): applying `own`'s rotation without
+ * the parent's would turn a rotated top-level group's step. A singular
+ * `placed` does the same.
+ */
+export function stepInParentFrame(
+  own: readonly number[] | null | undefined,
+  placed: readonly number[] | null | undefined,
+  dx: number,
+  dy: number,
+): [number, number] {
+  if (!placed) return [dx, dy];
+  const [a, b, c, d] = own ?? [1, 0, 0, 1];
+  const [A, B, C, D] = placed;
+  const det = A * D - B * C;
+  if (!det) return [dx, dy];
+  const vx = (D * dx - C * dy) / det;
+  const vy = (-B * dx + A * dy) / det;
+  return [a * vx + c * vy, b * vx + d * vy];
+}
+
 /** The page items a nudge moves: the selection without content
  *  addresses, without repeats, and without anything inside a group
  *  that is itself selected — the group's move already carries its
@@ -1457,9 +1491,19 @@ export async function translationPlan(
           reason: `${describeElement(group)} is not in the document.`,
         };
       }
+      // A nested group steps in its parent's frame. Engines that answer
+      // no geometry for a group leave `placed` absent: the step as is.
+      let placed: readonly number[] | null = null;
+      try {
+        const [box] = await client.elementGeometry([group]);
+        if (box) placed = box.itemTransform ?? [1, 0, 0, 1, 0, 0];
+      } catch {
+        // No box: today's step.
+      }
+      const [lx, ly] = stepInParentFrame(own, placed, dx, dy);
       ops.push({
         op: "setGroupTransform",
-        args: { groupId: group.id, transform: translated(own, dx, dy) },
+        args: { groupId: group.id, transform: translated(own, lx, ly) },
       });
     }
     // Fact 13 — what is clipped inside a moving clipping path moves by
