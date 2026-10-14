@@ -63,7 +63,6 @@ import {
   useDocument,
   useSelection,
   type ListRowSpec,
-  toPageSpace,
 } from "@paged-media/shell";
 import type { ElementId, StorySummary } from "@paged-media/client";
 import { NumberInput } from "@paged-media/ui";
@@ -97,9 +96,8 @@ export function StoriesPanel() {
       setElementSelection(applied);
       const geoms = await client.elementGeometry(applied);
       setElementGeometry(geoms);
-      // The frame's box on its page: page space, through its transform
-      // (ED-9 — the raw bounds are neither).
-      const g = (await toPageSpace(client, geoms))[0];
+      // The frame's box on its page: its bounds through its transform.
+      const g = geoms[0];
       if (!g || !g.pageId || !handle) return;
       const pageIndex = handle.pageIds.indexOf(g.pageId);
       if (pageIndex < 0) return;

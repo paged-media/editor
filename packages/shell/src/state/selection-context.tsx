@@ -23,7 +23,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type PropsWithChildren,
 } from "react";
@@ -40,7 +39,6 @@ import {
   TEXT_TOOL_ID,
 } from "./tool-context";
 import { useOptionalCanvasClient } from "./canvas-client-context";
-import { toPageSpace, toPageSpaceNow } from "./page-space";
 import { followScriptSelection } from "./script-selection";
 import type { ToolId } from "../registries/tool";
 import type { PathEditSession } from "./path-edit-session";
@@ -134,42 +132,19 @@ function sameIndices(a: readonly number[], b: readonly number[]): boolean {
 
 export function SelectionProvider({ children }: PropsWithChildren) {
   const [elementSelection, setElementSelection] = useState<ElementId[]>([]);
-  const [elementGeometry, setElementGeometryState] = useState<ElementGeometryItem[]>(
+  // The mirror holds geometry in PAGE space — what the chrome draws and
+  // the content pointers map through — which is what the engine answers
+  // (element geometry is page-local since engine 0.71.8).
+  const [elementGeometry, setElementGeometry] = useState<ElementGeometryItem[]>(
     [],
   );
-  // ED-9 — the mirror holds geometry in PAGE space: what the chrome draws
-  // and the content pointers map through. The engine answers in spread
-  // space (see page-space.ts); every setter hands in its raw reply, so the
-  // shift happens here, once. Raw geometry for WRITES stays a direct
-  // `client.elementGeometry` read.
   const client = useOptionalCanvasClient();
-  const geometrySeq = useRef(0);
-  const setElementGeometry = useCallback(
-    (items: ElementGeometryItem[]) => {
-      const seq = ++geometrySeq.current;
-      if (!client) {
-        setElementGeometryState(items);
-        return;
-      }
-      const now = toPageSpaceNow(client, items);
-      if (now) {
-        setElementGeometryState(now);
-        return;
-      }
-      void toPageSpace(client, items)
-        .catch(() => items)
-        .then((shifted) => {
-          if (seq === geometrySeq.current) setElementGeometryState(shifted);
-        });
-    },
-    [client],
-  );
   // A selection a script makes (`paged.setElementSelection`) lands here
   // the way a click's does — see script-selection.ts.
   useEffect(() => {
     if (!client) return;
     return followScriptSelection(client, { setElementSelection, setElementGeometry });
-  }, [client, setElementGeometry]);
+  }, [client]);
   // `activeTool` derives from the ToolContext when present. The
   // fallback `useState` keeps `SelectionProvider` usable standalone
   // (e.g. focused unit tests that don't mount `ToolProvider`).

@@ -65,7 +65,6 @@ import type { ElementGeometryItem, ElementId } from "@paged-media/client";
 
 import type { OverlayContribution, OverlayProps } from "../registries/overlay";
 import { useCanvasClient } from "../state/canvas-client-context";
-import { toPageSpace } from "../state/page-space";
 import {
   getViewToggle,
   subscribeViewToggles,
@@ -149,8 +148,7 @@ function ThreadLinesRender(props: OverlayProps) {
         setGeometry(new Map());
         return;
       }
-      // Drawn on the pages: page space (ED-9, see page-space.ts).
-      const items = await toPageSpace(client, await client.elementGeometry(wanted));
+      const items = await client.elementGeometry(wanted);
       if (run !== runRef.current) return;
       const byId = new Map<string, ElementGeometryItem>();
       for (const item of items) {

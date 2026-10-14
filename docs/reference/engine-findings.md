@@ -616,8 +616,13 @@ corrected host-side without a read of the origin.
 fold the owning page's origin in, each carries an optional `pageOrigin`,
 and `moveFrame` adds the origin back before storing. The `frameTransform`
 property stays the stored spread-space matrix. AC-XY-ENGINE-1 passes
-without `test.fail`; `shell/state/page-space.ts`, the editor's interim
-measurement, now measures zero and leaves geometry alone.
+without `test.fail`. The editor's interim measurement
+(`shell/state/page-space.ts`, which folded a page origin measured from
+hit tests into every geometry read) measured zero on every page of
+`sample`, `sample-3`, `line-sheet`, `manual-sample` and the generated
+layout / masters / groups fixtures on 0.71.9, and was removed; the
+selection chrome, Transform ▸ X / Y, the thread lines and the path-edit
+session read the engine's geometry as it answers it.
 
 ---
 
