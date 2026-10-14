@@ -143,6 +143,25 @@ export interface CanvasClientOptions {
    * `undefined`.
    */
   defaultFontProvider?: () => Promise<Uint8Array | undefined>;
+  /**
+   * The default family's OTHER faces — the editor bundles Inter roman
+   * as the default face and Inter Italic beside it. A load carries one
+   * font, the roman; a variable face covers its `wght` axis but not
+   * italic, so an Inter Italic run drew upright. Each face this returns
+   * is registered with the engine (`registerFont`) after every
+   * `loadDocument` / `newBlankDocument`, before the handle is returned,
+   * so the first paint already uses it. A throw, or a face the engine
+   * refuses, leaves the load as it is.
+   */
+  defaultFontFaces?: () => Promise<readonly DefaultFontFace[]>;
+}
+
+/** One face of the default family, for {@link CanvasClientOptions.defaultFontFaces}. */
+export interface DefaultFontFace {
+  family: string;
+  /** The style name the document's runs ask for (`"Italic"`). */
+  style: string | null;
+  bytes: Uint8Array;
 }
 
 /** Render a `GestureFailure` with its payload intact. The engine's
@@ -254,6 +273,8 @@ export class CanvasClient {
   readonly gestureSab: GestureBuffer;
   /** See {@link CanvasClientOptions.defaultFontProvider}. */
   private readonly defaultFontProvider?: () => Promise<Uint8Array | undefined>;
+  /** See {@link CanvasClientOptions.defaultFontFaces}. */
+  private readonly defaultFontFaces?: () => Promise<readonly DefaultFontFace[]>;
   /** See {@link setActivePage}. Host-supplied, never engine-derived. */
   private activePageHint: string | null = null;
   /** Set once the worker can no longer answer (boot failed, protocol or SAB
@@ -271,6 +292,7 @@ export class CanvasClient {
 
   constructor(options: CanvasClientOptions) {
     this.defaultFontProvider = options.defaultFontProvider;
+    this.defaultFontFaces = options.defaultFontFaces;
     if (options.workerFactory) {
       this.worker = options.workerFactory();
     } else if (options.workerUrl) {
@@ -360,7 +382,9 @@ export class CanvasClient {
       // copy in V8.
       transfer,
     );
-    return promise;
+    const handle = await promise;
+    await this.registerDefaultFontFaces();
+    return handle;
   }
 
   /**
@@ -392,6 +416,7 @@ export class CanvasClient {
       },
     });
     if (reply.kind === "documentLoaded") {
+      await this.registerDefaultFontFaces();
       return reply.payload;
     }
     if (reply.kind === "loadFailed") {
@@ -407,6 +432,26 @@ export class CanvasClient {
     number,
     { resolve: (h: DocumentHandle) => void; reject: (e: Error) => void }
   >();
+
+  /** Register the default family's other faces (see
+   *  {@link CanvasClientOptions.defaultFontFaces}). Never fails the load
+   *  it follows. */
+  private async registerDefaultFontFaces(): Promise<void> {
+    if (!this.defaultFontFaces) return;
+    let faces: readonly DefaultFontFace[];
+    try {
+      faces = await this.defaultFontFaces();
+    } catch {
+      return;
+    }
+    for (const face of faces) {
+      try {
+        await this.registerFont(face.family, face.bytes, face.style);
+      } catch {
+        // The face is an improvement, not a precondition.
+      }
+    }
+  }
 
   /** The provider's answer, or `undefined` with no provider / on a
    *  provider failure — the load itself must never fail because the

@@ -27,6 +27,7 @@
 export {
   CanvasClient,
   type CanvasClientOptions,
+  type DefaultFontFace,
   type HostObjectAnswerWire,
   type HostObjectCallWire,
   type HostObjectsAnswerer,

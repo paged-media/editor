@@ -338,6 +338,7 @@ export { notifyExportPdfDialog } from "./chrome/ExportPdfDialog";
 export {
   loadDocumentFile,
   fetchDefaultFont,
+  fetchDefaultFontFaces,
   type DocumentLoaderCallbacks,
 } from "./state/document-loader";
 export {
