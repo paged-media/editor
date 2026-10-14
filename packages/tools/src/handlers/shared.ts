@@ -28,6 +28,7 @@ import type {
   CanvasPointerEvent,
   PagedEditor,
 } from "@paged-media/shell";
+import type { ElementId, Mutation } from "@paged-media/client";
 
 export const CLICK_DRAG_THRESHOLD_PX = 4;
 
@@ -159,6 +160,173 @@ export function gridCellsFor(
     }
   }
   return cells;
+}
+
+// ── The graphic default ─────────────────────────────────────────────
+//
+// InDesign draws a tool-made shape in its `[Normal Graphics Frame]`
+// object style: no fill, a 1 pt `Color/Black` stroke. The engine's
+// document defaults (`setDocumentDefaults`) feed every insert and start
+// unset, so a shape drawn in a new document came out with no paint at
+// all — invisible. Changing those defaults is not the fix: File ▸ Place,
+// plugin output (chart bars, barcode bars, web frames) and scripts mint
+// through the same inserts and would all gain an outline, which InDesign
+// does not give them either. So the DRAWING TOOLS paint their own shape,
+// in the same batch as the insert (one undo step), and only while the
+// document has no defaults of its own: once the user has set any, the
+// engine already applies them and they win.
+
+/** A shape's paint: swatch refs (`null` = none) and a stroke weight. */
+export interface GraphicPaint {
+  fill: string | null;
+  stroke: string | null;
+  strokeWeight: number | null;
+}
+
+/** The style InDesign applies to a shape drawn with a tool. */
+export const NORMAL_GRAPHICS_FRAME_STYLE = "ObjectStyle/$ID/[Normal Graphics Frame]";
+
+/** `[Normal Graphics Frame]` as InDesign ships it — what a document
+ *  without that style (one made with File ▸ New) gets. */
+export const INDESIGN_GRAPHIC_PAINT: GraphicPaint = {
+  fill: null,
+  stroke: "Color/Black",
+  strokeWeight: 1,
+};
+
+type Client = PagedEditor["client"];
+
+/** The document's own `[Normal Graphics Frame]`, when it has one. */
+async function normalGraphicsFramePaint(client: Client): Promise<GraphicPaint | null> {
+  const reply = await client.send({
+    kind: "requestStyleProperties",
+    payload: { collection: "object", styleId: NORMAL_GRAPHICS_FRAME_STYLE },
+  });
+  if (reply.kind !== "styleProperties" || !reply.payload.result) return null;
+  const entry = (path: string) =>
+    reply.payload.result?.entries.find((e) => e.path === path)?.value ?? null;
+  const fill = entry("frameFillColor");
+  const stroke = entry("frameStrokeColor");
+  const weight = entry("frameStrokeWeight");
+  return {
+    fill: fill?.type === "colorRef" ? fill.value : null,
+    stroke: stroke?.type === "colorRef" ? stroke.value : null,
+    strokeWeight: weight?.type === "length" ? weight.value : null,
+  };
+}
+
+/**
+ * The paint a drawing tool gives its new shape, or `null` when the
+ * document has defaults of its own (the engine paints the shape with
+ * them; adding ours would override the user's choice).
+ */
+export async function graphicPaintFor(client: Client): Promise<GraphicPaint | null> {
+  const [meta, style] = await Promise.all([
+    client.documentMeta().catch(() => null),
+    normalGraphicsFramePaint(client).catch(() => null),
+  ]);
+  if (
+    meta &&
+    (meta.defaultFillColor != null ||
+      meta.defaultStrokeColor != null ||
+      meta.defaultStrokeWeight != null)
+  ) {
+    return null;
+  }
+  return style ?? INDESIGN_GRAPHIC_PAINT;
+}
+
+type InsertOp = Extract<
+  Mutation,
+  { op: "insertFrame" | "insertOval" | "insertLine" | "insertPath" }
+>;
+
+const KIND_OF: Record<InsertOp["op"], "rectangle" | "oval" | "graphicLine" | "polygon"> = {
+  insertFrame: "rectangle",
+  insertOval: "oval",
+  insertLine: "graphicLine",
+  insertPath: "polygon",
+};
+
+function isShapeInsert(m: Mutation): m is InsertOp {
+  return m.op in KIND_OF;
+}
+
+/** The property writes that paint the shape the batch minted last
+ *  (`$created`). A `null` fill is skipped: an insert with no document
+ *  defaults already has none. A line never gets a fill. */
+function paintOps(kind: InsertOp["op"], paint: GraphicPaint): Mutation[] {
+  const elementId = { kind: KIND_OF[kind], id: "$created" } as ElementId;
+  const ops: Mutation[] = [];
+  if (paint.fill !== null && kind !== "insertLine") {
+    ops.push({
+      op: "setElementProperty",
+      args: { elementId, path: "frameFillColor", value: { type: "colorRef", value: paint.fill } },
+    });
+  }
+  if (paint.stroke !== null) {
+    ops.push({
+      op: "setElementProperty",
+      args: { elementId, path: "frameStrokeColor", value: { type: "colorRef", value: paint.stroke } },
+    });
+    if (paint.strokeWeight !== null) {
+      ops.push({
+        op: "setElementProperty",
+        args: {
+          elementId,
+          path: "frameStrokeWeight",
+          value: { type: "length", value: paint.strokeWeight },
+        },
+      });
+    }
+  }
+  return ops;
+}
+
+/**
+ * `mutation` with `paint` applied to every shape it inserts, as ONE
+ * batch. Each insert is followed by its own property writes, so
+ * `$created` (the batch's most recent insert) names that shape — a
+ * gridified rectangle paints every cell. Anything else in a batch (the
+ * pencil's variable-width outline) keeps its place after the paint.
+ */
+export function withGraphicPaint(mutation: Mutation, paint: GraphicPaint | null): Mutation {
+  if (!paint) return mutation;
+  const children = mutation.op === "batch" ? mutation.args.ops : [mutation];
+  const ops: Mutation[] = [];
+  let painted = false;
+  for (const child of children) {
+    ops.push(child);
+    if (isShapeInsert(child)) {
+      const extra = paintOps(child.op, paint);
+      painted ||= extra.length > 0;
+      ops.push(...extra);
+    }
+  }
+  return painted ? { op: "batch", args: { ops } } : mutation;
+}
+
+/** What a shape-drawing handler makes. A SHAPE tool's shape wears the
+ *  graphic default; a FRAME tool's frame (Rectangle / Ellipse / Polygon
+ *  Frame) is a placeholder for an image or text and stays unpainted, as
+ *  InDesign leaves it, so a photo placed into it later is not outlined. */
+export interface DrawHandlerOptions {
+  frame?: boolean;
+}
+
+/**
+ * {@link mutateAndSelect} for a shape a drawing tool made: the shape
+ * wears the graphic default ({@link graphicPaintFor}) from the moment
+ * it exists, in the same undo step as the insert.
+ */
+export async function mutateGraphicAndSelect(
+  paged: PagedEditor,
+  mutation: Mutation,
+  label: string,
+  onRefused?: (reply: MutateReply) => void,
+): Promise<MutateReply | null> {
+  const paint = await graphicPaintFor(paged.client).catch(() => null);
+  return mutateAndSelect(paged, withGraphicPaint(mutation, paint), label, onRefused);
 }
 
 /** The worker reply `mutate` resolves with (refusals RESOLVE as

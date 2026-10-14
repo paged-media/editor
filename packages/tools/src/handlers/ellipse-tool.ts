@@ -45,8 +45,10 @@ import {
   drawBoundsFor,
   endLocalFor,
   mutateAndSelect,
+  mutateGraphicAndSelect,
   CLICK_DRAG_THRESHOLD_PX,
   type Bounds,
+  type DrawHandlerOptions,
   type PageDrag,
 } from "./shared";
 
@@ -71,7 +73,8 @@ function ellipsePreviewPoints(bounds: Bounds): [number, number][] {
   return points;
 }
 
-export function createEllipseHandler(): GestureHandler {
+export function createEllipseHandler(options: DrawHandlerOptions = {}): GestureHandler {
+  const commit = options.frame ? mutateAndSelect : mutateGraphicAndSelect;
   let paged: PagedEditor | null = null;
   let drag: PageDrag | null = null;
 
@@ -115,7 +118,7 @@ export function createEllipseHandler(): GestureHandler {
       // A click (no real drag) creates nothing — InDesign opens an
       // options dialog there; that's a follow-up (matches Rectangle).
       if (bottom - top < MIN_SIZE_PT || right - left < MIN_SIZE_PT) return;
-      mutateAndSelect(
+      void commit(
         paged,
         { op: "insertOval", args: { pageId, bounds } },
         "insertOval",

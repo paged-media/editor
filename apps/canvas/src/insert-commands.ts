@@ -44,7 +44,10 @@
 //  2. THE POST-INSERT FLOW IS THE TOOLS'. `mutateAndSelect`
 //     (@paged-media/tools) is the same mutate → select-created →
 //     geometry-refresh chain every drawing tool commits through, so a
-//     palette insert lands indistinguishably from a drawn one.
+//     palette insert lands indistinguishably from a drawn one — the
+//     rectangle, ellipse and line through `mutateGraphicAndSelect`, so
+//     they wear the drawing tools' graphic default (no fill, 1 pt black
+//     stroke) rather than appearing invisible in a new document.
 //
 //  3. COMPOUND INSERTS ARE SEQUENTIAL, MEASURED NOT CHOSEN. "Insert
 //     table" with no caret mints a text frame AND its table; "Place
@@ -84,7 +87,11 @@ import type {
 import { awaitPlacementPoint } from "@paged-media/shell";
 import type { ElementId, Mutation, PageId } from "@paged-media/client";
 import { viewportToDoc } from "@paged-media/client";
-import { mutateAndSelect, type MutateReply } from "@paged-media/tools";
+import {
+  mutateAndSelect,
+  mutateGraphicAndSelect,
+  type MutateReply,
+} from "@paged-media/tools";
 
 import { layoutPages, type PageRect } from "./ui/layout";
 import { pickFiles } from "./shell-file-picker";
@@ -395,12 +402,13 @@ async function insertCenteredShape(
   size: readonly [number, number],
   build: (pageId: PageId, bounds: [number, number, number, number]) => Mutation,
   label: string,
+  commit: typeof mutateAndSelect = mutateAndSelect,
 ): Promise<InsertOutcome> {
   if (blockedFor(paged, report, verb)) return REFUSED;
   const target = currentPageTarget(paged);
   if (!target) return REFUSED;
   const bounds = centeredBoundsOn(target.rect, size[0], size[1]);
-  const reply = await mutateAndSelect(
+  const reply = await commit(
     paged,
     build(target.pageId, bounds),
     label,
@@ -434,6 +442,7 @@ export function insertRectangle(
     SHAPE_SIZE_PT,
     (pageId, bounds) => ({ op: "insertFrame", args: { pageId, bounds } }),
     "insertFrame",
+    mutateGraphicAndSelect,
   );
 }
 
@@ -448,6 +457,7 @@ export function insertEllipse(
     SHAPE_SIZE_PT,
     (pageId, bounds) => ({ op: "insertOval", args: { pageId, bounds } }),
     "insertOval",
+    mutateGraphicAndSelect,
   );
 }
 
@@ -463,7 +473,7 @@ export async function insertLine(
   const len = Math.min(LINE_LENGTH_PT, target.rect.w);
   const cx = target.rect.w / 2;
   const cy = target.rect.h / 2;
-  const reply = await mutateAndSelect(
+  const reply = await mutateGraphicAndSelect(
     paged,
     {
       op: "insertLine",

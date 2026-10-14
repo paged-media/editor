@@ -261,12 +261,15 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
 
   // The three FRAME tools drive the same handlers as their Shape-slot
   // twins. In InDesign a graphic frame differs from a shape only in its
-  // default fill; in the paged model there is no separate placeholder
-  // node kind at all — `insertFrame` / `insertOval` / `insertPath`
-  // produce the Rectangle / Oval / Polygon that `placeImage` targets,
-  // i.e. the frame. Wiring them to the existing handlers is therefore
-  // exactly what the rail promises (and `f` is also a live pill on the
-  // Design-mode context toolbar), not a second, parallel implementation.
+  // paint: the shape tools draw in the graphic default (no fill, a 1 pt
+  // black stroke), a frame is a placeholder and stays unpainted, so a
+  // photo placed into it is not outlined. In the paged model there is no
+  // separate placeholder node kind at all — `insertFrame` / `insertOval`
+  // / `insertPath` produce the Rectangle / Oval / Polygon that
+  // `placeImage` targets, i.e. the frame. Wiring them to the existing
+  // handlers (with `frame: true`) is therefore exactly what the rail
+  // promises (and `f` is also a live pill on the Design-mode context
+  // toolbar), not a second, parallel implementation.
   {
     id: "paged.tool.rectangleFrame",
     title: "Rectangle Frame",
@@ -278,7 +281,7 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     cluster: "shapes",
     order: 0,
     isGroupDefault: true,
-    gesture: createRectangleHandler,
+    gesture: () => createRectangleHandler({ frame: true }),
   },
   {
     id: "paged.tool.ellipseFrame",
@@ -289,7 +292,7 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     section: "drawType",
     cluster: "shapes",
     order: 1,
-    gesture: createEllipseHandler,
+    gesture: () => createEllipseHandler({ frame: true }),
   },
   {
     id: "paged.tool.polygonFrame",
@@ -300,7 +303,7 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     section: "drawType",
     cluster: "shapes",
     order: 2,
-    gesture: createPolygonHandler,
+    gesture: () => createPolygonHandler({ frame: true }),
     // Sides / star inset are read from the `paged.tool.polygon`
     // settings key — InDesign likewise gives the Polygon and Polygon
     // Frame tools ONE shared Polygon Settings dialog.
@@ -324,7 +327,7 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     order: 0,
     isGroupDefault: true,
     // Phase 2 — the first real gesture handler: drag → insertFrame.
-    gesture: createRectangleHandler,
+    gesture: () => createRectangleHandler(),
   },
   {
     id: "paged.tool.ellipse",
@@ -338,7 +341,7 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     order: 1,
     // W2.6 — drag → bounds preview → one `insertOval` (Shift = circle,
     // Alt = from centre; DR-02/DR-03).
-    gesture: createEllipseHandler,
+    gesture: () => createEllipseHandler(),
   },
   {
     id: "paged.tool.polygon",
@@ -351,7 +354,7 @@ export const BUILT_IN_TOOLS: ToolContribution[] = [
     order: 2,
     // W2.6 — drag → N-gon/star preview → one `insertPath` (corner
     // anchors). Reads sides/starInset from tool-settings (T8 below).
-    gesture: createPolygonHandler,
+    gesture: () => createPolygonHandler(),
     // T8 — the canonical tool-options example (double-click the slot).
     options: {
       toolId: "paged.tool.polygon",

@@ -52,8 +52,10 @@ import {
   drawBoundsFor,
   endLocalFor,
   mutateAndSelect,
+  mutateGraphicAndSelect,
   CLICK_DRAG_THRESHOLD_PX,
   type Bounds,
+  type DrawHandlerOptions,
   type PageDrag,
 } from "./shared";
 
@@ -118,7 +120,8 @@ function cornerAnchor([x, y]: [number, number]): PathAnchorSpec {
   return { anchor: [x, y], left: [x, y], right: [x, y] };
 }
 
-export function createPolygonHandler(): GestureHandler {
+export function createPolygonHandler(options: DrawHandlerOptions = {}): GestureHandler {
+  const commit = options.frame ? mutateAndSelect : mutateGraphicAndSelect;
   let paged: PagedEditor | null = null;
   let drag: PageDrag | null = null;
 
@@ -172,7 +175,7 @@ export function createPolygonHandler(): GestureHandler {
       // options dialog there; that's a follow-up (matches Rectangle).
       if (bottom - top < MIN_SIZE_PT || right - left < MIN_SIZE_PT) return;
       const anchors = polygonVertices(bounds, sides, starInset).map(cornerAnchor);
-      mutateAndSelect(
+      void commit(
         paged,
         { op: "insertPath", args: { pageId, anchors, open: false, smooth: false } },
         "insertPath",
