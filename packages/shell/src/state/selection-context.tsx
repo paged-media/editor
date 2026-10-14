@@ -21,6 +21,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -40,6 +41,7 @@ import {
 } from "./tool-context";
 import { useOptionalCanvasClient } from "./canvas-client-context";
 import { toPageSpace, toPageSpaceNow } from "./page-space";
+import { followScriptSelection } from "./script-selection";
 import type { ToolId } from "../registries/tool";
 import type { PathEditSession } from "./path-edit-session";
 
@@ -162,6 +164,12 @@ export function SelectionProvider({ children }: PropsWithChildren) {
     },
     [client],
   );
+  // A selection a script makes (`paged.setElementSelection`) lands here
+  // the way a click's does — see script-selection.ts.
+  useEffect(() => {
+    if (!client) return;
+    return followScriptSelection(client, { setElementSelection, setElementGeometry });
+  }, [client, setElementGeometry]);
   // `activeTool` derives from the ToolContext when present. The
   // fallback `useState` keeps `SelectionProvider` usable standalone
   // (e.g. focused unit tests that don't mount `ToolProvider`).
