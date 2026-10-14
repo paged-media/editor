@@ -425,11 +425,11 @@ export function ThreadingController() {
 
   const refreshOverset = useCallback(async () => {
     try {
-      // `stories` is NOT a `client.collection` name; the StorySummary
-      // (with its live `overset` flag) is the `paged.stories()` script
-      // surface. Parse the JSON the script prints.
-      const res = await client.executeScript("paged.stories()");
-      const stories = JSON.parse(res.output[0] ?? "[]") as StorySummary[];
+      // The StorySummary collection carries the live `overset` flag. A
+      // collection read, not a `paged.stories()` script: a script run reads
+      // as a document change to every listener, and this runs after every
+      // edit.
+      const stories = await client.collection<StorySummary>("stories");
       const oversetStoryIds = new Set(
         stories.filter((s) => s.overset).map((s) => s.selfId),
       );
