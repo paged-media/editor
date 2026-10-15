@@ -624,6 +624,39 @@ layout / masters / groups fixtures on 0.71.9, and was removed; the
 selection chrome, Transform ▸ X / Y, the thread lines and the path-edit
 session read the engine's geometry as it answers it.
 
+## 18. A pasteboard item answers in spread space, and no read says where its spread's pages are (OPEN)
+
+Found 2026-10-15 drawing selection chrome for items hanging off the page.
+
+**Symptom.** An item whose centre is off every page (C-23) answers
+`elementGeometry` with `pageId: null`, its `spreadId`, and `bounds` +
+`itemTransform` composed in SPREAD space. The canvas lays out pages, not
+spreads, so a spread-space item has no place on it until it is tied to a
+page — and the only read that says where a page sits in its spread is
+`pageOrigin` on a PAGE-OWNED item's geometry (#17's fix). `PageSummary`,
+`SpreadSummary` and the document handle carry no page origin. A
+pasteboard item on a spread with no page-owned item that a marquee can
+reach (every other item on a hidden or locked layer, or none at all) has
+no read that places it.
+
+**Editor workaround.** `shell/state/spread-pages.ts` collects the
+`pageOrigin` of every page-owned item the selection mirror holds and,
+for a pasteboard item's spread with none yet, marquees the whole spread
+(a marquee on any page tests every item of its spread) and reads the hits'
+geometry. The pasteboard item is then re-expressed in the nearest known
+page's space, where the chrome draws and the gestures anchor. When
+nothing places it, it still draws no chrome.
+
+**Likely fix.** Carry the page origin on a page read: `pageOrigin` (and
+`spreadId`) on `PageSummary`, or, for a pageless item, the nearest page
+of its spread and its geometry in that page's space alongside the
+spread-space answer.
+
+**Suite anchor.** `e2e/pasteboard-chrome.spec.ts`: AC-PASTEBOARD-1
+places by the marquee (nothing the selection held was on that page),
+AC-PASTEBOARD-2 by an origin the selection held. A pasteboard item on a
+spread with nothing else on its pages would still show the gap.
+
 ---
 
 ### What works (verified byte-clean)

@@ -23,6 +23,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren,
 } from "react";
@@ -39,7 +40,16 @@ import {
   TEXT_TOOL_ID,
 } from "./tool-context";
 import { useOptionalCanvasClient } from "./canvas-client-context";
+import { useOptionalDocument } from "./document-context";
 import { followScriptSelection } from "./script-selection";
+import {
+  learnSpreadPages,
+  NO_SPREAD_PAGES,
+  placeOnPages,
+  probeSpreadPages,
+  unplacedSpreads,
+  type SpreadPages,
+} from "./spread-pages";
 import type { ToolId } from "../registries/tool";
 import type { PathEditSession } from "./path-edit-session";
 
@@ -74,6 +84,14 @@ interface SelectionContextValue {
    * without re-deriving the math in TS. */
   elementGeometry: ElementGeometryItem[];
   setElementGeometry: (items: ElementGeometryItem[]) => void;
+
+  /** `elementGeometry` with every PASTEBOARD item (no page: its centre
+   * is off every page, so the engine answers it in spread space) placed
+   * on the nearest page of its spread, in that page's space — which runs
+   * past the page's edges. What the chrome draws and the canvas's
+   * gestures speak; see `spread-pages`. An item no page can be found for
+   * stays pageless. */
+  placedGeometry: ElementGeometryItem[];
 
   /** Active mode: select = element gestures, text = caret/typing. */
   activeTool: ActiveTool;
@@ -145,6 +163,7 @@ export function SelectionProvider({ children }: PropsWithChildren) {
     if (!client) return;
     return followScriptSelection(client, { setElementSelection, setElementGeometry });
   }, [client]);
+  const placedGeometry = usePlacedGeometry(client, elementGeometry);
   // `activeTool` derives from the ToolContext when present. The
   // fallback `useState` keeps `SelectionProvider` usable standalone
   // (e.g. focused unit tests that don't mount `ToolProvider`).
@@ -192,6 +211,7 @@ export function SelectionProvider({ children }: PropsWithChildren) {
       setElementSelection,
       elementGeometry,
       setElementGeometry,
+      placedGeometry,
       activeTool,
       setActiveTool,
       pathEditMode,
@@ -209,6 +229,7 @@ export function SelectionProvider({ children }: PropsWithChildren) {
       elementSelection,
       elementGeometry,
       setElementGeometry,
+      placedGeometry,
       activeTool,
       pathEditMode,
       selectedAnchors,
@@ -221,6 +242,61 @@ export function SelectionProvider({ children }: PropsWithChildren) {
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
+}
+
+/** The selection's geometry with its pasteboard items placed on pages.
+ *  Page origins are learned from every page-owned item the mirror holds
+ *  and asked for when a pasteboard item's spread has none; they are
+ *  forgotten when the document or its pages change. */
+function usePlacedGeometry(
+  client: ReturnType<typeof useOptionalCanvasClient>,
+  geometry: ElementGeometryItem[],
+): ElementGeometryItem[] {
+  const handle = useOptionalDocument()?.handle ?? null;
+  const pagesKey = handle
+    ? `${handle.docId}|${handle.pageIds.join(",")}|${handle.pageSizesPt.flat().join(",")}`
+    : "";
+  const [learned, setLearned] = useState<{ key: string; pages: SpreadPages }>({
+    key: pagesKey,
+    pages: NO_SPREAD_PAGES,
+  });
+  const base = learned.key === pagesKey ? learned.pages : NO_SPREAD_PAGES;
+  const known = useMemo(() => learnSpreadPages(base, geometry), [base, geometry]);
+  useEffect(() => {
+    if (known !== base || learned.key !== pagesKey) {
+      setLearned({ key: pagesKey, pages: known });
+    }
+  }, [known, base, learned.key, pagesKey]);
+
+  // Ask once per spread and page layout; a spread with no page-owned
+  // item to read an origin off answers nothing, and asking again would
+  // not change that.
+  const asked = useRef(new Set<string>());
+  useEffect(() => {
+    if (!client) return;
+    for (const spreadId of unplacedSpreads(geometry, known)) {
+      const ask = `${pagesKey}|${spreadId}`;
+      if (asked.current.has(ask)) continue;
+      asked.current.add(ask);
+      probeSpreadPages(client, spreadId)
+        .then((items) =>
+          setLearned((prev) =>
+            prev.key === pagesKey
+              ? { key: pagesKey, pages: learnSpreadPages(prev.pages, items) }
+              : prev,
+          ),
+        )
+        .catch(() => {});
+    }
+  }, [client, geometry, known, pagesKey]);
+
+  return useMemo(() => {
+    const sizeOf = (pageId: string): readonly [number, number] | null => {
+      const i = handle ? handle.pageIds.indexOf(pageId) : -1;
+      return i >= 0 ? (handle!.pageSizesPt[i] ?? null) : null;
+    };
+    return placeOnPages(geometry, known, sizeOf);
+  }, [geometry, known, handle]);
 }
 
 export function useSelection(): SelectionContextValue {

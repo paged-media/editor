@@ -95,7 +95,7 @@ export function CanvasPanel(_props: PanelProps) {
     elementSelection,
     setElementSelection,
     setElementGeometry,
-    elementGeometry,
+    placedGeometry,
     activeTool,
     activeGroup,
     setActiveGroup,
@@ -502,7 +502,9 @@ export function CanvasPanel(_props: PanelProps) {
         // its pointer.
         pathEdit={pathEditMode && !toolGesture ? pathEditSession : null}
         elementSelection={elementSelection}
-        elementGeometry={elementGeometry}
+        // Pasteboard items placed on a page: the chrome is drawn there,
+        // so the canvas hit-tests and anchors gestures in the same space.
+        elementGeometry={placedGeometry}
         onHit={onHit}
         onMarquee={onMarquee}
         onGestureCommitted={onGestureCommitted}

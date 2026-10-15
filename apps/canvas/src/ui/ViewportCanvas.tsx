@@ -61,6 +61,7 @@ import type {
 import type {
   ElementGeometryItem,
   ElementId,
+  GestureAnchor,
   GestureHandle,
   GestureType,
   LayoutCacheStats,
@@ -631,15 +632,26 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         const geometry = props.elementGeometry ?? [];
         const selectedGeom = geometry.length === 1 ? geometry[0] : null;
         const isMultiSelect = geometry.length > 1;
-        const bodyHitElement =
-          !handleAttr && containing
-            ? findSelectedElementUnderPointer(
-                selection,
-                geometry,
-                containing[0],
-                [docX - containing[1].x, docY - containing[1].y],
-              )
-            : null;
+        // Each item is hit in the space of the page it is drawn on, so a
+        // press on the part of it past the page's edge — on the
+        // pasteboard, or over the next page down — still lands on it.
+        const bodyHit = !handleAttr
+          ? findSelectedElementUnderPointer(selection, geometry, (pageId) => {
+              const r = rects[props.pageIds.indexOf(pageId)];
+              return r ? [docX - r.x, docY - r.y] : null;
+            })
+          : null;
+        const bodyHitElement = bodyHit?.id ?? null;
+        // The page a gesture's anchor speaks in: the one the selection's
+        // chrome is drawn on, which is not always the page under the
+        // pointer (a handle past the page's edge has none, or the next
+        // page's).
+        const gesturePage: PageId | null = handleAttr
+          ? (readHandlePage(e.target) ??
+            selectedGeom?.pageId ??
+            geometry.find((g) => g.pageId)?.pageId ??
+            null)
+          : (bodyHit?.pageId ?? null);
         // Phase F / W2.10 — Cmd-drag on the body of a single-selected
         // image-bearing frame drives the content grabber: plain Cmd
         // translates the placed image, Cmd+Alt scales it, Cmd+Shift
@@ -720,16 +732,18 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
             target: targets,
           };
           // Phase D — Rotate / Scale need an anchor (pointer position
-          // at gesture start, in the clicked page's local coords).
+          // at gesture start, page-local on the selection's page).
           // Translate / Resize don't need one but we send it anyway
           // for future use.
-          const anchor = containing
+          const gestureRect = gesturePage
+            ? rects[props.pageIds.indexOf(gesturePage)]
+            : undefined;
+          const anchorAt: [PageId, PageRect] | null =
+            gesturePage && gestureRect ? [gesturePage, gestureRect] : containing;
+          const anchor: GestureAnchor | null = anchorAt
             ? {
-                pageId: containing[0],
-                pointInPage: [
-                  docX - containing[1].x,
-                  docY - containing[1].y,
-                ] as [number, number],
+                pageId: anchorAt[0],
+                pointInPage: [docX - anchorAt[1].x, docY - anchorAt[1].y],
               }
             : null;
           // Fire-and-forget — the handle returns asynchronously; any
@@ -1232,22 +1246,24 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
   }
 
   /** Phase B — return the first selected element whose AABB
-   * (transformed corners → axis-aligned bbox) contains the page-local
-   * pointer. AABB rather than oriented-rect: fast, no transform math
-   * in TS, and a false positive at the AABB corner of a rotated frame
-   * is acceptable since the worker's `begin_gesture` then rejects it.
-   * Matches what the renderer paints for the selection chrome at the
-   * same point in time. */
+   * (transformed corners → axis-aligned bbox) contains the pointer,
+   * with the page it was hit on. `pointerOn` gives the pointer in a
+   * page's local space. AABB rather than oriented-rect: fast, no
+   * transform math in TS, and a false positive at the AABB corner of a
+   * rotated frame is acceptable since the worker's `begin_gesture` then
+   * rejects it. Matches what the renderer paints for the selection
+   * chrome at the same point in time. */
   function findSelectedElementUnderPointer(
     selection: ReadonlyArray<ElementId>,
     geometry: ReadonlyArray<ElementGeometryItem>,
-    pageId: PageId,
-    pageLocal: [number, number],
-  ): ElementId | null {
+    pointerOn: (pageId: PageId) => [number, number] | null,
+  ): { id: ElementId; pageId: PageId } | null {
     const inSel = new Set(selection.map((e) => `${e.kind}:${e.id}`));
     for (const g of geometry) {
-      if (g.pageId !== pageId) continue;
+      if (!g.pageId) continue;
       if (!inSel.has(`${g.id.kind}:${g.id.id}`)) continue;
+      const pageLocal = pointerOn(g.pageId);
+      if (!pageLocal) continue;
       const [top, left, bottom, right] = g.bounds;
       const corners: Array<[number, number]> = [
         applyAffineLocal(g.itemTransform, left, top),
@@ -1271,7 +1287,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         pageLocal[1] >= minY &&
         pageLocal[1] <= maxY
       ) {
-        return g.id;
+        return { id: g.id, pageId: g.pageId };
       }
     }
     return null;
@@ -1312,6 +1328,13 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       return v;
     }
     return null;
+  }
+
+  /** The page a handle's box is drawn in (`data-handle-page`, on the
+   * handle's group). */
+  function readHandlePage(target: EventTarget | null): PageId | null {
+    if (!(target instanceof Element)) return null;
+    return target.closest("[data-handle-page]")?.getAttribute("data-handle-page") ?? null;
   }
 
   function findContainingPage(

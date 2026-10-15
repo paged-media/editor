@@ -41,7 +41,7 @@ const ROTATE_R = 5;
  * routes that dataset to a Rotate gesture.
  */
 function RotateHandleRender(props: OverlayProps) {
-  const { elementGeometry, pathEditMode } = useSelection();
+  const { placedGeometry: elementGeometry, pathEditMode } = useSelection();
   // Path-edit mode edits the element's POINTS, and every press on the
   // canvas is the path's there — a frame handle would be drawn and
   // dead. The outline stays; the handles come back with the mode off.
@@ -54,7 +54,7 @@ function RotateHandleRender(props: OverlayProps) {
 }
 
 function renderSingle(item: ElementGeometryItem, props: OverlayProps) {
-  // C-23 — pageless ⇒ no page-local space to draw in.
+  // C-23 — no page found for it ⇒ no space to draw in.
   const pr = item.pageId ? props.pageRects.get(item.pageId) : undefined;
   if (!pr) return null;
   const [top, left, _bottom, right] = item.bounds;
