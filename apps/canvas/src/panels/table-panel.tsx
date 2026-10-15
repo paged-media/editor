@@ -180,12 +180,8 @@ const CELL_PATHS = [
 
 /** Cell paths with no bespoke control: schema-driven `PropertyField`s on
  *  the cell address (the span — core's `Set` lowers `rowSpan` /
- *  `columnSpan` to `setCellSpan`).
- *
- *  KNOWN GAP — no "Fill tint": the engine models no per-cell tint
- *  (`cellFillTint` reads null, a write is accepted and dropped, the SDK
- *  seam marks the row read-only). A field here would offer an edit that
- *  does nothing; it returns when core stores the tint. */
+ *  `columnSpan` to `setCellSpan`). The fill tint sits under the fill
+ *  colour, as in InDesign's Cell Options ▸ Strokes and Fills. */
 const CELL_SCHEMA_FIELDS: ReadonlyArray<{ path: string; label: string }> = [
   { path: "rowSpan", label: "Row span" },
   { path: "columnSpan", label: "Column span" },
@@ -617,6 +613,14 @@ export function TablePanel() {
             />
           </span>
 </ObjectFieldFrame>
+        </CockpitRow>
+        <CockpitRow label="Tint">
+          <PropertyField
+            path="cellFillTint"
+            targets={cellAddress ? [cellAddress] : NO_TARGETS}
+            schemaKind="cell"
+            chrome={{ suffix: "%" }}
+          />
         </CockpitRow>
         <CockpitRow label="Insets (T L B R)">
           <div className="grid grid-cols-4 gap-1">

@@ -211,8 +211,91 @@ function withTableSeam(core: CoreObjects): CoreObjects {
   };
 }
 
+// ------------------------------------------------------------------
+// Engine rows ahead of the SDK — the SDK's object model types core rows
+// from a catalog it VENDORS, synced from an older engine than the one
+// this app pins. Core's `Set` and `RequestGet` take these rows already;
+// only the schema row (the field's type, the registry's validation) is
+// missing or stale. Each entry is the pinned engine's own catalog row,
+// and applies only while the SDK's rows disagree, so a re-synced SDK
+// retires it without an edit here.
+//
+//   · `style:cell` cellFillTint: a cell style's fill tint (engine
+//     0.71.11, core ADR 152). The SDK has no row.
+//   · `cell` cellFillTint: the SDK marks it read-only ("not stored by
+//     the engine"); since engine 0.71.11 a cell stores its tint and
+//     inherits its style's.
+// ------------------------------------------------------------------
+
+type SchemaRow = ReturnType<CoreObjects["schema"]>[number];
+
+const PERCENT: SchemaRow["type"] = { kind: "number", unit: "percent" } as SchemaRow["type"];
+
+const ENGINE_ROWS: Record<string, ReadonlyArray<{ row: SchemaRow; wire: string }>> = {
+  "style:cell": [
+    {
+      row: {
+        addressKind: "style",
+        appliesTo: ["cell"],
+        path: "cellFillTint",
+        type: PERCENT,
+        nullable: true,
+        range: { min: 0, max: 100 },
+        default: 100,
+        access: "readWrite",
+        virtual: { op: "setStyleProperty", field: "value" },
+        idml: { element: "CellStyle", attribute: "FillTint" },
+        bindable: true,
+        since: 71,
+      } as SchemaRow,
+      wire: "length",
+    },
+  ],
+};
+
+/** Rows the SDK makes read-only that the pinned engine stores. */
+const ENGINE_STORES: Record<string, ReadonlySet<string>> = {
+  cell: new Set(["cellFillTint"]),
+};
+
+function kindOfParsed(a: Parsed): string {
+  return a.kind === "style" ? `style:${(a as { family: string }).family}` : a.kind;
+}
+
+function withEngineRows(core: CoreObjects): CoreObjects {
+  return {
+    ...core,
+    schema(kind) {
+      const rows = core.schema(kind);
+      const stored = ENGINE_STORES[kind];
+      const fixed = stored
+        ? rows.map((r) =>
+            stored.has(r.path) && r.access === "readOnly"
+              ? ({ ...r, access: "readWrite", bindable: true, summary: undefined } as SchemaRow)
+              : r,
+          )
+        : rows;
+      const have = new Set(rows.map((r) => r.path));
+      const ahead = (ENGINE_ROWS[kind] ?? []).filter((e) => !have.has(e.row.path)).map((e) => e.row);
+      return ahead.length > 0 ? [...fixed, ...ahead] : fixed;
+    },
+    async planSet(a, path, value, ...rest) {
+      const plan = await core.planSet(a, path, value, ...rest);
+      if (plan.ok || plan.code !== "unknownPath" || a.kind === "handle") return plan;
+      const ahead = ENGINE_ROWS[kindOfParsed(a)]?.find((e) => e.row.path === path);
+      if (!ahead) return plan;
+      return {
+        ok: true,
+        mutations: [
+          { op: "set", args: { address: formatAddress(a), path, value: { type: ahead.wire, value } } } as never,
+        ],
+      };
+    },
+  };
+}
+
 export const objectRegistry: ObjectRegistry = createObjectRegistry({
-  core: withTableSeam(createCoreObjects(getEditor)),
+  core: withEngineRows(withTableSeam(createCoreObjects(getEditor))),
 });
 
 // ADR 221 — scripts may ask Claude through the host bridge:

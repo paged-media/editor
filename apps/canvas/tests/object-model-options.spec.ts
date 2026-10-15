@@ -323,7 +323,7 @@ test.describe("ADR 323 — core options panels over host.objects", () => {
     await roundTrip(page, panel, address, "itemName", "Headline box");
   });
 
-  test("OM-OPT-13 — Table ▸ Cell options: the span on the cell address → one undo; no fill tint field (the engine stores no per-cell tint) @feat:editor-shell.panels.table @feat:tables.model @feat:round-tripping.undo-redo @level:happy", async ({
+  test("OM-OPT-13 — Table ▸ Cell options: the span on the cell address → one undo; the cell's fill tint writes through host.objects (stored since engine 0.71.11) @feat:editor-shell.panels.table @feat:tables.model @feat:round-tripping.undo-redo @level:happy", async ({
     page,
   }) => {
     const fx = await loadViaReactPath(page, "tables");
@@ -351,19 +351,22 @@ test.describe("ADR 323 — core options panels over host.objects", () => {
     const fields = panel.locator("[data-cell-schema-fields]");
     await expect(fields).toHaveAttribute("data-cell-schema-fields", /^cell:/);
     const address = (await fields.getAttribute("data-cell-schema-fields"))!;
-    // KNOWN GAP (core 71): no per-cell tint is modelled — a read answers
-    // null, the seam refuses the write as read-only, and the panel offers
-    // no field for it.
-    await expect(fieldOf(fields, "cellFillTint")).toHaveCount(0);
-    expect(await objGet(page, address, "cellFillTint")).toBeNull();
-    const refused = await page.evaluate(
+    // Engine 0.71.11 stores a cell's fill tint (core ADR 152). The SDK
+    // still marks the row read-only; the editor's seam lifts that, so the
+    // write lands and undoes in one step. (Its field is Cell ▸ Tint,
+    // cell-fill-tint.spec.ts.)
+    const before = await objGet(page, address, "cellFillTint");
+    const written = await page.evaluate(
       (a) =>
         (globalThis as unknown as {
           __canvas: { objects: { set(a: string, p: string, v: unknown): Promise<{ applied: boolean; code?: string }> } };
         }).__canvas.objects.set(a, "cellFillTint", 40),
       address,
     );
-    expect(refused).toMatchObject({ applied: false, code: "readOnly" });
+    expect(written).toMatchObject({ applied: true });
+    await expect.poll(() => objGet(page, address, "cellFillTint")).toBe(40);
+    await undoOnce(page);
+    await expect.poll(() => objGet(page, address, "cellFillTint")).toEqual(before);
     // The span is the cell's live schema field.
     const span = await objGet(page, address, "columnSpan");
     expect(typeof span).toBe("number");

@@ -195,7 +195,10 @@ const CELL_SECTIONS: readonly SectionSpec[] = [
   },
   {
     title: "Fill",
-    fields: [{ path: "cellFillColor", label: "Fill", collection: "swatches" }],
+    fields: [
+      { path: "cellFillColor", label: "Fill", collection: "swatches" },
+      { path: "cellFillTint", label: "Tint" },
+    ],
   },
   {
     title: "Strokes",
