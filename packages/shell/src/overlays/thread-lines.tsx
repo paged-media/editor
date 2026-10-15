@@ -54,7 +54,7 @@
 //
 // COST. Off by default, and every fetch is gated on that flag: with
 // the toggle off this overlay issues ZERO wire traffic. On, it costs
-// one `paged.stories()` + one `frameChain` per story + one batched
+// one `stories` collection read + one `frameChain` per story + one batched
 // `elementGeometry`, refreshed on the same pushes the threading
 // controller listens to.
 
@@ -65,7 +65,6 @@ import type { ElementGeometryItem, ElementId } from "@paged-media/client";
 
 import type { OverlayContribution, OverlayProps } from "../registries/overlay";
 import { useCanvasClient } from "../state/canvas-client-context";
-import { toPageSpace } from "../state/page-space";
 import {
   getViewToggle,
   subscribeViewToggles,
@@ -122,13 +121,10 @@ function ThreadLinesRender(props: OverlayProps) {
   const refresh = useCallback(async () => {
     const run = ++runRef.current;
     try {
-      // `stories` is not a `client.collection` name; StorySummary comes
-      // from the `paged.stories()` script surface, as ThreadingController
-      // documents at its own call site.
-      const res = await client.executeScript("paged.stories()");
-      const stories = JSON.parse(
-        res.output[0] ?? "[]",
-      ) as StorySummaryLite[];
+      // A collection read, not a `paged.stories()` script: a script run
+      // reads as a document change to every listener (plugins' onDidChange
+      // fires on scriptResult), and this runs after every edit.
+      const stories = await client.collection<StorySummaryLite>("stories");
       if (run !== runRef.current) return;
 
       const built: { frames: string[]; overset: boolean }[] = [];
@@ -149,8 +145,7 @@ function ThreadLinesRender(props: OverlayProps) {
         setGeometry(new Map());
         return;
       }
-      // Drawn on the pages: page space (ED-9, see page-space.ts).
-      const items = await toPageSpace(client, await client.elementGeometry(wanted));
+      const items = await client.elementGeometry(wanted);
       if (run !== runRef.current) return;
       const byId = new Map<string, ElementGeometryItem>();
       for (const item of items) {

@@ -58,14 +58,17 @@ import {
   drawBoundsFor,
   gridCellsFor,
   mutateAndSelect,
+  mutateGraphicAndSelect,
   GRIDIFY_GUTTER_PT,
   CLICK_DRAG_THRESHOLD_PX,
   type Bounds,
+  type DrawHandlerOptions,
 } from "./shared";
 
 const MIN_SIZE_PT = 1;
 
-export function createRectangleHandler(): GestureHandler {
+export function createRectangleHandler(options: DrawHandlerOptions = {}): GestureHandler {
+  const commit = options.frame ? mutateAndSelect : mutateGraphicAndSelect;
   let paged: PagedEditor | null = null;
   let startPageId: string | null = null;
   // Page origin in document pt = docPoint − pagePoint at pointer-down.
@@ -181,7 +184,7 @@ export function createRectangleHandler(): GestureHandler {
       // landed with protocol v24; the reply's `createdId` selects the
       // fresh frame (shared post-insert flow).
       if (cells.length === 1) {
-        mutateAndSelect(
+        void commit(
           paged,
           { op: "insertFrame", args: { pageId, bounds: cells[0] } },
           "insertFrame",
@@ -195,7 +198,7 @@ export function createRectangleHandler(): GestureHandler {
         .filter(([t, l, b, r]) => b - t >= MIN_SIZE_PT && r - l >= MIN_SIZE_PT)
         .map((cell) => ({ op: "insertFrame", args: { pageId, bounds: cell } }));
       if (ops.length === 0) return;
-      mutateAndSelect(
+      void commit(
         paged,
         { op: "batch", args: { ops } },
         "insertFrame (gridify)",

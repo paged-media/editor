@@ -173,6 +173,31 @@ export async function fetchDefaultFont(): Promise<Uint8Array | undefined> {
   return undefined;
 }
 
+/** The bundled default family's italic, beside its roman (`Inter.ttf`):
+ *  the variable roman covers weights, not italic, so the client
+ *  registers this as Inter's "Italic" after every load
+ *  (`CanvasClient`'s `defaultFontFaces`). Fetched once per session. */
+let defaultItalic: Promise<Uint8Array | undefined> | null = null;
+
+export async function fetchDefaultFontFaces(): Promise<
+  Array<{ family: string; style: string; bytes: Uint8Array }>
+> {
+  defaultItalic ??= (async () => {
+    try {
+      const resp = await fetch("/fonts/Inter-Italic.ttf");
+      if (!resp.ok) return undefined;
+      const bytes = new Uint8Array(await resp.arrayBuffer());
+      return isFontFile(bytes) ? bytes : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+  const italic = await defaultItalic;
+  // A failed fetch is not cached: the next load tries again.
+  if (!italic) defaultItalic = null;
+  return italic ? [{ family: "Inter", style: "Italic", bytes: italic }] : [];
+}
+
 /** TrueType / OpenType / collection magic: 0x00010000, "OTTO", "true", "ttcf". */
 function isFontFile(bytes: Uint8Array): boolean {
   if (bytes.length < 12) return false;

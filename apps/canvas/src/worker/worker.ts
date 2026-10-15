@@ -544,6 +544,18 @@ function applyReplyEffects(reply: WorkerToMain): void {
   } else if (reply.kind === "gestureCommitted") {
     // A moved frame can carry its heading to another page.
     scheduleResolution();
+  } else if (
+    reply.kind === "fontRegistered" ||
+    reply.kind === "fontRegistryCleared"
+  ) {
+    // A document face registered (or the registry cleared) re-lays out
+    // the text that names it, and the reply lists the pages that moved.
+    // Nothing else flags the render loop, so those pages kept their old
+    // glyphs until the next camera move or edit. An empty list: no text
+    // names the face, nothing to repaint.
+    const pageIds = reply.payload.pageIds ?? [];
+    if (renderer && pageIds.length > 0) renderer.markDirty(pageIds);
+    scheduleResolution();
   }
 }
 

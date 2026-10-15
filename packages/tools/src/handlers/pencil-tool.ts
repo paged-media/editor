@@ -50,7 +50,7 @@ import { simplifyRdp, strokeWidthFromPressure } from "@paged-media/draw/geometry
 import {
   beginPageDrag,
   endLocalFor,
-  mutateAndSelect,
+  mutateGraphicAndSelect,
   pxToPt,
   type PageDrag,
 } from "./shared";
@@ -153,7 +153,7 @@ export function createPencilHandler(): GestureHandler {
         // child targets the freshly-minted path via `$created` (the
         // sentinel's `kind` is irrelevant — the engine replaces the whole
         // id with the real one before applying).
-        mutateAndSelect(
+        void mutateGraphicAndSelect(
           paged,
           {
             op: "batch",
@@ -185,7 +185,7 @@ export function createPencilHandler(): GestureHandler {
           "insertPath(variable-width)",
         );
       } else {
-        mutateAndSelect(paged, insert, "insertPath");
+        void mutateGraphicAndSelect(paged, insert, "insertPath");
       }
     },
     onKey(e: KeyboardEvent) {

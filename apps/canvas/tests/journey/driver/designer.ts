@@ -346,6 +346,21 @@ export class Designer {
     });
   }
 
+  /** Take a frame's stroke off (colour and weight back to none). A shape
+   *  drawn with a tool wears the graphic default — a 1 pt black stroke —
+   *  so a journey that starts from an unstroked shape says so. */
+  async clearStroke(kind: string, id: string): Promise<void> {
+    for (const [path, value] of [
+      ["frameStrokeColor", { type: "colorRef", value: null }],
+      ["frameStrokeWeight", { type: "length", value: null }],
+    ] as const) {
+      await mutate(this.page, {
+        op: "setElementProperty",
+        args: { elementId: { kind, id }, path, value },
+      });
+    }
+  }
+
   /** Enable a drop shadow on a frame (Effects panel). */
   async applyDropShadow(kind: string, id: string, sizePt = 11): Promise<void> {
     await mutate(this.page, {

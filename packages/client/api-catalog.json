@@ -5,7 +5,7 @@
   "counts": {
     "clientMembers": 75,
     "wireKinds": 52,
-    "exports": 71
+    "exports": 72
   },
   "wireKinds": [
     "beginGesture",
@@ -528,6 +528,12 @@
           "name": "CanvasClientOptions",
           "kind": "type",
           "signature": "CanvasClientOptions",
+          "summary": null
+        },
+        {
+          "name": "DefaultFontFace",
+          "kind": "type",
+          "signature": "DefaultFontFace",
           "summary": null
         },
         {

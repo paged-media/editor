@@ -20,8 +20,8 @@
 // Editor-ops — the Line tool's gesture handler.
 //
 // Drag → live polyline preview → a single `insertLine` Mutation on
-// pointer-up (engine creates a GraphicLine with the document-default
-// stroke). Shift constrains the line to 45° increments, matching
+// pointer-up (engine creates a GraphicLine; it wears the document's
+// defaults, or the graphic default while there are none — shared.ts). Shift constrains the line to 45° increments, matching
 // InDesign. Both endpoints resolve against the START page (the
 // Rectangle handler's rule) so crossing onto the pasteboard or a
 // neighbouring page mid-drag keeps the geometry correct.
@@ -35,7 +35,7 @@ import type {
 import {
   beginPageDrag,
   endLocalFor,
-  mutateAndSelect,
+  mutateGraphicAndSelect,
   CLICK_DRAG_THRESHOLD_PX,
   type PageDrag,
 } from "./shared";
@@ -100,7 +100,7 @@ export function createLineHandler(): GestureHandler {
       if (Math.hypot(end[0] - startLocal[0], end[1] - startLocal[1]) < MIN_LENGTH_PT) {
         return;
       }
-      mutateAndSelect(
+      void mutateGraphicAndSelect(
         paged,
         { op: "insertLine", args: { pageId, start: startLocal, end } },
         "insertLine",

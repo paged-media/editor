@@ -114,6 +114,9 @@ test.describe("journey · paged.draw render output", () => {
     //    fill must RENDER over the (until now empty) frame. ──
     const r1 = await designer.drawRectangle({ x0: 160, y0: 170, x1: 420, y1: 360 });
     expect(r1, "drew a rectangle").not.toBe("");
+    // The Rectangle tool draws with a 1 pt black stroke; step 2 proves the
+    // stroke command paints an edge, so the frame starts without one.
+    await designer.clearStroke("rectangle", r1);
     await designer.selectElement("rectangle", r1);
 
     const beforeFill = await designer.renderBytes();

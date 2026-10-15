@@ -72,6 +72,7 @@ import {
   nudgeTargets,
   objectVerbApplies,
   parentGroupOf,
+  stepInParentFrame,
   translated,
   ungroupSelection,
   zSlots,
@@ -792,6 +793,27 @@ test.describe("paged.object — nudge", () => {
     expect(translated(rotated, 10, 0)).toEqual([
       0.8660254, 0.5, -0.5, 0.8660254, 50, 60,
     ]);
+  });
+
+  test("AC-OBJ-PURE-42 — a nested group steps in its parent's frame; without a placed transform the step is the page's @feat:editor-tools.move.translate @feat:frames-paths.groups @level:edge", () => {
+    // Parent rotated 90° (x → y, y → −x), the group itself unrotated:
+    // its composed transform IS the parent's rotation. A page step to
+    // the right is a step "up" in the parent's own axes.
+    const rot90 = [0, 1, -1, 0, 0, 0];
+    const [x, y] = stepInParentFrame([1, 0, 0, 1, 5, 5], rot90, 10, 0);
+    expect(x).toBeCloseTo(0, 9);
+    expect(y).toBeCloseTo(-10, 9);
+    // A top-level group: composed = own, whatever its rotation.
+    const own = [0.8660254, 0.5, -0.5, 0.8660254, 40, 60];
+    const [tx, ty] = stepInParentFrame(own, own, 10, -3);
+    expect(tx).toBeCloseTo(10, 6);
+    expect(ty).toBeCloseTo(-3, 6);
+    // No geometry for the group (an engine that answers none): the step
+    // as it is — NOT turned by the group's own rotation.
+    expect(stepInParentFrame(own, null, 10, -3)).toEqual([10, -3]);
+    expect(stepInParentFrame(own, undefined, 10, -3)).toEqual([10, -3]);
+    // A degenerate placed transform leaves the step alone too.
+    expect(stepInParentFrame(null, [0, 0, 0, 0, 0, 0], 4, 2)).toEqual([4, 2]);
   });
 
   test("AC-OBJ-PURE-23 — a group's own members are not moved a second time @feat:editor-tools.move.translate @feat:frames-paths.groups @level:edge", () => {

@@ -40,6 +40,7 @@ import {
   threadLinesContribution,
   loadDocumentFile,
   fetchDefaultFont,
+  fetchDefaultFontFaces,
   takePendingImportSource,
   useCamera,
   useCanvasClient,
@@ -2395,6 +2396,9 @@ function CanvasAppRoot() {
         }
         return bytes;
       },
+      // Inter's italic beside the roman default face: registered after
+      // every load, so Inter Italic runs set in a slanted face.
+      defaultFontFaces: fetchDefaultFontFaces,
     });
     setClient(c);
     return () => {

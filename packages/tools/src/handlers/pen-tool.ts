@@ -84,7 +84,7 @@ import {
 import {
   beginPageDrag,
   endLocalFor,
-  mutateAndSelect,
+  mutateGraphicAndSelect,
   pxToPt,
   type PageDrag,
 } from "./shared";
@@ -349,9 +349,9 @@ export function createPenHandler(): GestureHandler {
     if (!paged) return;
     const mutation = penPlanMutation(plan, pageId);
     if (plan.kind === "insertPath") {
-      // A new element: the created path is selected (the post-insert
-      // flow every drawing tool shares).
-      await mutateAndSelect(paged, mutation, "insertPath");
+      // A new element: it wears the graphic default, and the created
+      // path is selected (the post-insert flow every drawing tool shares).
+      await mutateGraphicAndSelect(paged, mutation, "insertPath");
       return;
     }
     const label = `pen ${plan.kind}`;

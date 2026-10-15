@@ -160,15 +160,6 @@ export {
   type TableCellSelection,
 } from "./state/table-selection-context";
 
-// ED-9 — element geometry in page space, for display (the engine
-// composes it to spread space; see page-space.ts).
-export {
-  pageOrigin,
-  toPageSpace,
-  toPageSpaceNow,
-  pageSpacePathAnchors,
-} from "./state/page-space";
-
 // Concept 2 — the gradient ramp (pure; reused by the editor panel
 // and the FillStrokeCluster chips).
 export {
@@ -347,6 +338,7 @@ export { notifyExportPdfDialog } from "./chrome/ExportPdfDialog";
 export {
   loadDocumentFile,
   fetchDefaultFont,
+  fetchDefaultFontFaces,
   type DocumentLoaderCallbacks,
 } from "./state/document-loader";
 export {

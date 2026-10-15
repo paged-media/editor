@@ -29,8 +29,9 @@
 //
 // The mirror is asserted against what a click would have written for the
 // same selection: the engine's `elementGeometry` for the selected ids.
-// A group answers no geometry (engine 0.71.8), so a selected group shows
-// no box, on every path alike.
+// A group answers its own box (engine 0.71.11: the union of its members
+// in the group's frame), so a selected group shows one box, on every path
+// alike.
 
 import { expect, test, type Page } from "@playwright/test";
 import { dirname, resolve as pathResolve } from "node:path";
@@ -142,9 +143,11 @@ test.describe("selection box follows a programmatic selection", () => {
     const designer = new Designer(page);
     await designer.open();
     await designer.newDocument();
-    const table = await filledRect(designer, { x0: 60, y0: 600, x1: 200, y1: 700 });
+    // High on the page: the chart lands under the selected frame, and a
+    // chart that hangs off the page has no page to draw its box on.
+    const table = await filledRect(designer, { x0: 60, y0: 100, x1: 200, y1: 200 });
 
-    await clickAt(page, 130, 650);
+    await clickAt(page, 130, 150);
     await expect.poll(async () => (await selectionState(page)).box).toEqual([key(table)]);
     await expect(drawnBoxes(page)).toHaveCount(1);
 
@@ -167,7 +170,7 @@ test.describe("selection box follows a programmatic selection", () => {
     // The box reads what a click on the chart reads — and never the table.
     await expect.poll(async () => (await selectionState(page)).box).toEqual(await clickGeometry(page));
     expect((await selectionState(page)).box).not.toContain(key(table));
-    await expect(drawnBoxes(page)).toHaveCount(0);
+    await expect(drawnBoxes(page)).toHaveCount(1);
   });
 
   test("a live script's editor.select selects in the engine and moves the box @feat:editor-tools.overlays @feat:scripting.visible-results @level:happy", async ({

@@ -117,6 +117,9 @@ test.describe("journey · paged.draw appearance stack", () => {
     expect(id, "drew a rectangle").not.toBe("");
     const ref = { kind: "rectangle", id };
     await designer.applyFill("rectangle", id, "Color/Black");
+    // The Rectangle tool draws with a 1 pt black stroke; the stroke layer
+    // below must be what paints the edge, so take it off first.
+    await designer.clearStroke("rectangle", id);
     await designer.selectElement("rectangle", id);
 
     // The frame starts with no stroke.

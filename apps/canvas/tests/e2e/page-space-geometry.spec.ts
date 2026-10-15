@@ -19,24 +19,23 @@
 
 // ED-9 — selection chrome and the control bar in PAGE space.
 //
-// The engine's `elementGeometry` answers in SPREAD space (its bounds and
-// item transform are the IDML item's, never moved by the page's origin
-// inside its spread), while the canvas draws each page at its own
-// origin and every other read — hit tests, carets, cell rects — is
-// page-local. So wherever a page does not start at its spread's origin
+// The engine's `elementGeometry` used to answer in SPREAD space (its
+// bounds and item transform were the IDML item's, never moved by the
+// page's origin inside its spread), while the canvas draws each page at
+// its own origin and every other read — hit tests, carets, cell rects —
+// is page-local. So wherever a page did not start at its spread's origin
 // the selection landed beside the object: on a verso of a facing spread
 // the control bar read L −476 / R −232 and the frame was drawn on the
 // pasteboard, and on an InDesign document (spread origin at the spine,
 // half a page up) every page was off. sample.idml is such a document.
 //
 // The oracle is the engine's own page-local answer for the same
-// element: the hit test's `frameBounds`.
+// element: the hit test's `frameBounds`. Since engine 0.71.8 element
+// geometry is page-local itself, and the chrome and the control bar read
+// it as it comes (the editor's interim page-origin shift is gone).
 
 import { expect, test, type Page } from "@playwright/test";
 
-import type { ElementGeometryItem, PageId, WorkerToMain } from "@paged-media/client";
-
-import { pageOrigin } from "../../../../packages/shell/src/state/page-space";
 import { openCanvas } from "../fidelity/canvas-driver";
 import { sampleFixture } from "./harness/fixtures";
 import { selectElements } from "./harness/ui";
@@ -136,57 +135,5 @@ test.describe("ED-9 — selection geometry in page space", () => {
         return Math.max(Math.abs(box[0] - expected.x), Math.abs(box[1] - expected.y));
       })
       .toBeLessThan(3);
-  });
-});
-
-// The measurement itself, against a scripted engine: a frame straddling
-// the spine of a facing spread, owned by the recto, hit from the verso.
-// Once the engine answers elementGeometry in page space, that frame's box
-// is recto-local while the hit's frameBounds is verso-local, so measuring
-// the verso from it reads the difference between the two pages' origins.
-test.describe("ED-9 — the page-origin measurement", () => {
-  test("AC-PAGESPACE-4 — a page is measured only from an element it owns @feat:editor-shell.context-toolbars @level:edge", async () => {
-    const verso = "uverso" as PageId;
-    const recto = "urecto" as PageId;
-    const straddler = { kind: "frame", id: "ustraddle" };
-    const owned = { kind: "frame", id: "uowned" };
-    // Page-local engine (the fixed core): every box is in its owner's space.
-    const geometry: Record<string, ElementGeometryItem> = {
-      ustraddle: {
-        id: straddler,
-        pageId: recto,
-        bounds: [100, -40, 200, 60],
-        itemTransform: [1, 0, 0, 1, 0, 0],
-      } as unknown as ElementGeometryItem,
-      uowned: {
-        id: owned,
-        pageId: verso,
-        bounds: [300, 100, 400, 200],
-        itemTransform: [1, 0, 0, 1, 0, 0],
-      } as unknown as ElementGeometryItem,
-    };
-    const client = {
-      subscribe: () => () => undefined,
-      collection: async () => [
-        { selfId: verso, sizePt: [540, 720] },
-        { selfId: recto, sizePt: [540, 720] },
-      ],
-      elementGeometry: async (ids: Array<{ id: string }>) => ids.map((i) => geometry[i.id]!),
-      // The first probe point lands on the straddler (its verso half,
-      // verso-local), every later one on the verso's own frame.
-      send: (() => {
-        let calls = 0;
-        return async (): Promise<WorkerToMain> =>
-          ({
-            kind: "hitResult",
-            payload:
-              calls++ === 0
-                ? { element: straddler, frameBounds: { left: 500, top: 100, right: 600, bottom: 200 } }
-                : { element: owned, frameBounds: { left: 100, top: 300, right: 200, bottom: 400 } },
-          }) as unknown as WorkerToMain;
-      })(),
-    };
-    const origin = await pageOrigin(client as never, verso);
-    expect(origin, "a page-local engine leaves the verso unshifted").toEqual([0, 0]);
   });
 });

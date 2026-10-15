@@ -664,9 +664,13 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
             gestureSpec = { kind: "scale" };
             targets = selection.slice();
           } else if (selectedGeom) {
-            gestureSpec = modifiers.cmd
-              ? { kind: "scale" }
-              : { kind: "resize", handle: handleAttr };
+            // A group has no bounds of its own to resize: its box is
+            // its members' union, so a handle drag scales the members
+            // (as InDesign scales a group's contents).
+            gestureSpec =
+              modifiers.cmd || selectedGeom.id.kind === "group"
+                ? { kind: "scale" }
+                : { kind: "resize", handle: handleAttr };
             targets = [selectedGeom.id];
           }
         } else if (bodyHitElement) {
