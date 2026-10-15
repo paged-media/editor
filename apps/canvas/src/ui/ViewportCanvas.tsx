@@ -63,6 +63,7 @@ import type {
   ElementId,
   GestureAnchor,
   GestureHandle,
+  GestureModifiers,
   GestureType,
   LayoutCacheStats,
   PageId,
@@ -216,11 +217,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
     /** Phase B — gesture-mode bookkeeping. `handle` is `null` until
      * the worker confirms the gesture started; updates that arrive
      * before then are buffered into `pendingDelta`. */
-    gestureState?: {
-      handle: GestureHandle | null;
-      pendingDelta: [number, number];
-      target: ElementId[];
-    };
+    gestureState?: GestureState;
   } | null>(null);
 
   // Phase 2 (Concept 1) — bookkeeping for a tool-gesture drag (the
@@ -523,6 +520,56 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
     [editContextStack, activeContentPointAt],
   );
 
+  // Begin a worker gesture. Fire-and-forget — the handle returns
+  // asynchronously; pointer moves that arrive before it does are
+  // accumulated into `pendingDelta` and flushed on resolve. A pointer
+  // that went up in the meantime (a fast drag) is committed then.
+  const beginWorkerGesture = useCallback(
+    (gs: GestureState, anchor: GestureAnchor | null) => {
+      void props.client
+        .beginGesture(gs.target, gs.spec, anchor)
+        .then((handle) => {
+          const drag = dragStateRef.current;
+          const live = drag?.mode === "gesture" && drag.gestureState === gs;
+          if (!live && gs.release !== "commit") {
+            // A click, Escape or a lost pointer before the worker
+            // confirmed; cancel immediately to keep worker state clean.
+            void props.client.cancelGesture(handle).catch(() => {});
+            return;
+          }
+          gs.handle = handle;
+          const pending = gs.pendingDelta;
+          if (gs.release === "commit") {
+            void props.client
+              .updateGesture(handle, pending, gs.modifiers, "json")
+              .then(() => props.client.commitGesture(handle))
+              .then(() => {
+                setSnapLines([]);
+                props.onGestureCommitted?.();
+              })
+              .catch(() => {});
+            return;
+          }
+          if (pending[0] !== 0 || pending[1] !== 0) {
+            // Step 5e — SAB mode. The worker drains the SAB on its
+            // next tick and posts a `gestureSnapLines` notify; the
+            // subscription above routes it into `setSnapLines`.
+            void props.client
+              .updateGesture(handle, pending, gs.modifiers, "sab")
+              .catch(() => {});
+          }
+        })
+        .catch(() => {
+          // Worker rejected — typically a rotated frame in Phase B.
+          // Downgrade to pan so the drag still does *something*
+          // sensible.
+          const drag = dragStateRef.current;
+          if (drag && drag.gestureState === gs) drag.mode = "pan";
+        });
+    },
+    [props.client, props.onGestureCommitted, setSnapLines],
+  );
+
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.button !== 0 && e.button !== 1) return;
@@ -665,6 +712,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         // Build gestureSpec + target list.
         let gestureSpec: GestureType | null = null;
         let targets: ElementId[] = [];
+        let scaleBox: HandleBox | null = null;
         if (handleAttr === "rotate" && (selectedGeom || isMultiSelect)) {
           gestureSpec = { kind: "rotate" };
           targets = selectedGeom ? [selectedGeom.id] : selection.slice();
@@ -675,6 +723,9 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
             // it's the only sensible per-element op for N>1.
             gestureSpec = { kind: "scale" };
             targets = selection.slice();
+            scaleBox = gesturePage
+              ? unionHandleBox(geometry.filter((g) => g.pageId === gesturePage))
+              : null;
           } else if (selectedGeom) {
             // A group has no bounds of its own to resize: its box is
             // its members' union, so a handle drag scales the members
@@ -684,6 +735,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
                 ? { kind: "scale" }
                 : { kind: "resize", handle: handleAttr };
             targets = [selectedGeom.id];
+            if (gestureSpec.kind === "scale") scaleBox = itemHandleBox(selectedGeom);
           }
         } else if (bodyHitElement) {
           // Body drag. For multi-select, move ALL selected items
@@ -726,11 +778,6 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         const hit = gestureSpec ? (targets[0] ?? null) : null;
         if (hit && gestureSpec && targets.length > 0) {
           mode = "gesture";
-          gestureState = {
-            handle: null,
-            pendingDelta: [0, 0],
-            target: targets,
-          };
           // Phase D — Rotate / Scale need an anchor (pointer position
           // at gesture start, page-local on the selection's page).
           // Translate / Resize don't need one but we send it anyway
@@ -746,43 +793,26 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
                 pointInPage: [docX - anchorAt[1].x, docY - anchorAt[1].y],
               }
             : null;
-          // Fire-and-forget — the handle returns asynchronously; any
-          // pointermove events that arrive before it does are
-          // accumulated into `pendingDelta` and flushed on resolve.
-          void props.client
-            .beginGesture(targets, gestureSpec, anchor)
-            .then((handle) => {
-              const drag = dragStateRef.current;
-              if (!drag || drag.mode !== "gesture" || !drag.gestureState) {
-                // Pointer released or escape fired before the worker
-                // confirmed; cancel immediately to keep worker state
-                // clean.
-                void props.client.cancelGesture(handle).catch(() => {});
-                return;
-              }
-              drag.gestureState.handle = handle;
-              const pending = drag.gestureState.pendingDelta;
-              if (pending[0] !== 0 || pending[1] !== 0) {
-                // Step 5e — SAB mode. The worker drains the SAB on its
-                // next tick and posts a `gestureSnapLines` notify; the
-                // subscription above routes it into `setSnapLines`.
-                void props.client
-                  .updateGesture(
-                    handle,
-                    pending,
-                    { shift: false, alt: false },
-                    "sab",
-                  )
-                  .catch(() => {});
-              }
-            })
-            .catch(() => {
-              // Worker rejected — typically a rotated frame in Phase B.
-              // Downgrade to pan so the drag still does *something*
-              // sensible.
-              const drag = dragStateRef.current;
-              if (drag) drag.mode = "pan";
-            });
+          // The box was measured on `gesturePage`; the pivot is named there.
+          const scale: HandleScale | null =
+            gesturePage && gestureRect && scaleBox && handleAttr && handleAttr !== "rotate"
+              ? {
+                  pageId: gesturePage,
+                  grabbed: scaleBox.at(handleAttr),
+                  opposite: scaleBox.at(OPPOSITE_HANDLE[handleAttr]),
+                  centre: scaleBox.centre,
+                  alt: e.altKey,
+                }
+              : null;
+          gestureState = {
+            handle: null,
+            pendingDelta: [0, 0],
+            target: targets,
+            spec: gestureSpec,
+            modifiers: { shift: e.shiftKey, alt: e.altKey },
+            scale: scale ?? undefined,
+          };
+          beginWorkerGesture(gestureState, scale ? scaleAnchor(scale) : anchor);
         } else {
           mode = "marquee";
         }
@@ -824,6 +854,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       props.forcePan,
       props.zoomClick,
       buildPathEditPointer,
+      beginWorkerGesture,
       rects,
     ],
   );
@@ -897,27 +928,37 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
           docX - drag.startDoc[0],
           docY - drag.startDoc[1],
         ];
-        if (!drag.gestureState) return;
-        if (drag.gestureState.handle === null) {
+        const gs = drag.gestureState;
+        if (!gs) return;
+        // Plan-2 §8.4 — Ctrl bypasses snap. Read `e.ctrlKey`
+        // independently of `metaKey`; on macOS the Ctrl key is its own
+        // thing (not Cmd), matching InDesign's "hold Ctrl to ignore
+        // snap targets" convention.
+        gs.modifiers = { shift: e.shiftKey, alt: e.altKey, disableSnap: e.ctrlKey };
+        if (gs.scale && gs.handle !== null && e.altKey !== gs.scale.alt) {
+          // Alt/Option moves the pivot between the opposite handle and
+          // the centre. The engine fixes the pivot when the gesture
+          // begins, so the drag is begun again about the other one; the
+          // restarted gesture replays the whole delta, as one undo step.
+          gs.scale.alt = e.altKey;
+          const stale = gs.handle;
+          gs.handle = null;
+          gs.pendingDelta = docDelta;
+          void props.client.cancelGesture(stale).catch(() => {});
+          beginWorkerGesture(gs, scaleAnchor(gs.scale));
+          return;
+        }
+        if (gs.handle === null) {
           // Begin hasn't resolved yet — buffer the delta; the
           // resolver flushes it once the handle lands.
-          drag.gestureState.pendingDelta = docDelta;
+          gs.pendingDelta = docDelta;
         } else {
           // Step 5e — SAB hot path. Fire-and-forget; the worker drains
           // the SAB at ~125 Hz and emits `gestureSnapLines` notifies
           // so the overlay still sees active guides. Falls back to
           // JSON automatically when crossOriginIsolated is false.
           void props.client
-            .updateGesture(
-              drag.gestureState.handle,
-              docDelta,
-              // Plan-2 §8.4 — Ctrl bypasses snap. Read `e.ctrlKey`
-              // independently of `metaKey`; on macOS the Ctrl key
-              // is its own thing (not Cmd), matching InDesign's
-              // "hold Ctrl to ignore snap targets" convention.
-              { shift: e.shiftKey, alt: e.altKey, disableSnap: e.ctrlKey },
-              "sab",
-            )
+            .updateGesture(gs.handle, docDelta, gs.modifiers, "sab")
             .catch(() => {});
         }
       } else if (drag.mode === "marquee") {
@@ -944,7 +985,7 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
         });
       }
     },
-    [props, rects, buildPathEditPointer],
+    [props, rects, buildPathEditPointer, beginWorkerGesture],
   );
 
   const onPointerUp = useCallback(
@@ -1124,8 +1165,9 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       } else if (drag.mode === "gesture" && drag.gestureState) {
         const handle = drag.gestureState.handle;
         if (handle === null) {
-          // Begin hasn't resolved — the resolver path will see the
-          // dragState gone and cancel. Nothing to do here.
+          // Begin hasn't resolved (a fast drag, or one Alt re-began):
+          // the resolver commits once the handle lands.
+          drag.gestureState.release = "commit";
         } else {
           void props.client
             .commitGesture(handle)
@@ -1547,6 +1589,112 @@ export function ViewportCanvas(props: ViewportCanvasProps) {
       />
     </div>
   );
+}
+
+/** A worker gesture in flight (Phase B). `handle` is `null` until the
+ *  worker confirms the begin. */
+interface GestureState {
+  handle: GestureHandle | null;
+  pendingDelta: [number, number];
+  target: ElementId[];
+  spec: GestureType;
+  /** The latest pointer sample's modifiers. */
+  modifiers: GestureModifiers;
+  /** A handle drag that scales: the points its pivot can be. */
+  scale?: HandleScale;
+  /** The pointer went up before the begin was confirmed: commit when it is. */
+  release?: "commit";
+}
+
+type Pt = [number, number];
+type Affine = readonly [number, number, number, number, number, number];
+
+/**
+ * A handle drag that scales (a group, a multi-selection, Cmd on a
+ * frame), in the space of the page its box is drawn on. The engine
+ * scales each axis by the ratio of the pointer's and the anchor's
+ * offsets from the pivot, about a pivot fixed when the gesture begins.
+ * The anchor is the grabbed handle itself, so it follows the pointer
+ * exactly; the pivot is the opposite handle, which stays put, or the
+ * centre with Alt/Option — InDesign's rule. On a side handle the pivot
+ * shares the anchor's other coordinate, so that axis scales by 1.
+ */
+interface HandleScale {
+  pageId: PageId;
+  grabbed: Pt;
+  opposite: Pt;
+  centre: Pt;
+  alt: boolean;
+}
+
+function scaleAnchor(s: HandleScale): GestureAnchor {
+  return {
+    pageId: s.pageId,
+    pointInPage: s.grabbed,
+    pivotInPage: s.alt ? s.centre : s.opposite,
+  };
+}
+
+const OPPOSITE_HANDLE: Record<ResizeHandle, ResizeHandle> = {
+  north: "south",
+  south: "north",
+  east: "west",
+  west: "east",
+  northEast: "southWest",
+  southWest: "northEast",
+  northWest: "southEast",
+  southEast: "northWest",
+};
+
+/** Where the handles sit on a box, page space — where the resize-handles
+ *  overlay draws them. */
+interface HandleBox {
+  at(name: ResizeHandle): Pt;
+  centre: Pt;
+}
+
+function handleBox(bounds: readonly number[], m: Affine | null | undefined): HandleBox {
+  const [top, left, bottom, right] = bounds;
+  const cx = (left + right) / 2;
+  const cy = (top + bottom) / 2;
+  const local: Record<ResizeHandle, Pt> = {
+    northWest: [left, top],
+    north: [cx, top],
+    northEast: [right, top],
+    east: [right, cy],
+    southEast: [right, bottom],
+    south: [cx, bottom],
+    southWest: [left, bottom],
+    west: [left, cy],
+  };
+  const map = ([x, y]: Pt): Pt =>
+    m ? [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]] : [x, y];
+  return { at: (name) => map(local[name]), centre: map([cx, cy]) };
+}
+
+/** A single item's oriented box. */
+function itemHandleBox(g: ElementGeometryItem): HandleBox {
+  return handleBox(g.bounds, g.itemTransform);
+}
+
+/** The union box of a multi-selection's items on one page. */
+function unionHandleBox(items: readonly ElementGeometryItem[]): HandleBox | null {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const g of items) {
+    const box = itemHandleBox(g);
+    for (const name of ["northWest", "northEast", "southEast", "southWest"] as const) {
+      const [x, y] = box.at(name);
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  if (!Number.isFinite(minX)) return null;
+  return handleBox([minY, minX, maxY, maxX], null);
 }
 
 const MULTI_CLICK_MS = 500;
