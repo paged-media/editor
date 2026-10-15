@@ -36,7 +36,10 @@
 //   • Inner-glow source → EdgeGlow / CenterGlow
 //   • Feather corner type → Sharp / Rounded / Diffusion
 //
-// Still seamed: shadow Spread (no `frameDropShadowSpread` path).
+// Engine 0.71.8 (core ADR 135) adds the drop shadow's own blend mode,
+// spread, noise, "object knocks out shadow" and "use global light" — the
+// rest of InDesign's Drop Shadow dialog. The global light itself is a
+// document setting (Object ▸ Effects ▸ Global light…).
 
 import type { CompositionNode } from "@paged-media/catalog";
 import type { PropertyPath } from "@paged-media/client";
@@ -130,7 +133,8 @@ function section(title: string, children: CompositionNode[]): CompositionNode {
 
 // ── Drop shadow ────────────────────────────────────────────────
 // Kept on the legacy per-field `frameDropShadow*` arms; the enable
-// pill (in effects-panel) writes the `frameDropShadow` bool.
+// pill (in effects-panel) writes the `frameDropShadow` bool. Laid out
+// as InDesign's Drop Shadow dialog: blending, position, options.
 export const dropShadowComposition: CompositionNode = section("Drop shadow", [
   {
     catalogId: PAGED_INPUT_SELECT,
@@ -142,6 +146,21 @@ export const dropShadowComposition: CompositionNode = section("Drop shadow", [
       ],
     },
     bindings: bind("frameDropShadowMode"),
+  },
+  {
+    catalogId: PAGED_INPUT_SELECT,
+    props: { label: "Blend", options: BLEND_MODES },
+    bindings: bind("frameDropShadowBlendMode"),
+  },
+  {
+    catalogId: PAGED_INPUT_COLOR_SWATCH,
+    props: { label: "Color" },
+    bindings: bind("frameDropShadowColor"),
+  },
+  {
+    catalogId: PAGED_INPUT_NUMERIC_SCRUB,
+    props: { label: "Opacity", suffix: "%" },
+    bindings: bind("frameDropShadowOpacity"),
   },
   {
     catalogId: PAGED_LAYOUT_CLUSTER,
@@ -161,6 +180,11 @@ export const dropShadowComposition: CompositionNode = section("Drop shadow", [
     ],
   },
   {
+    catalogId: PAGED_INPUT_TOGGLE_SWITCH,
+    props: { label: "Use global light" },
+    bindings: bind("frameDropShadowUseGlobalLight"),
+  },
+  {
     catalogId: PAGED_LAYOUT_CLUSTER,
     props: { count: 2 },
     bindings: {},
@@ -171,22 +195,21 @@ export const dropShadowComposition: CompositionNode = section("Drop shadow", [
         bindings: bind("frameDropShadowSize"),
       },
       {
-        // Engine gap — no shadow-spread path yet.
         catalogId: PAGED_INPUT_NUMERIC_SCRUB,
-        props: { seam: true, placeholder: "Spread —" },
-        bindings: {},
+        props: { prefix: "Spread", suffix: "%" },
+        bindings: bind("frameDropShadowSpread"),
       },
     ],
   },
   {
-    catalogId: PAGED_INPUT_COLOR_SWATCH,
-    props: { label: "Color" },
-    bindings: bind("frameDropShadowColor"),
+    catalogId: PAGED_INPUT_NUMERIC_SCRUB,
+    props: { label: "Noise", suffix: "%" },
+    bindings: bind("frameDropShadowNoise"),
   },
   {
-    catalogId: PAGED_INPUT_NUMERIC_SCRUB,
-    props: { label: "Opacity", suffix: "%" },
-    bindings: bind("frameDropShadowOpacity"),
+    catalogId: PAGED_INPUT_TOGGLE_SWITCH,
+    props: { label: "Object knocks out shadow" },
+    bindings: bind("frameDropShadowKnockedOut"),
   },
 ]);
 

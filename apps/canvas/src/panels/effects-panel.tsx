@@ -49,6 +49,18 @@
 // the bespoke opacity metric, blend select and enable pills keep their
 // widgets but read/write through `host.objects` (`useObjectBindings`) and
 // sit in an `ObjectFieldFrame` ("Bind to data…" + badges).
+//
+// Transparency targets (engine 0.71.8, core ADR 135) — InDesign gives a
+// page item four targets, each with its own opacity and blend mode: the
+// Object, its Stroke, its Fill and its content (Text in a text frame,
+// Graphic in a graphic frame). The target list below the Opacity / Blend
+// row picks which one those two controls edit, and shows each target's
+// current setting. A group has only the Object target, plus the two
+// group options at the foot of the panel: Isolate blending and Knockout
+// group. The effect families stay on the object target (the engine has
+// no per-target effect paths).
+
+import { useState } from "react";
 
 import {
   CatalogRegistryProvider,
@@ -57,6 +69,8 @@ import {
   ObjectFieldFrame,
   TogglePill,
   useObjectBindings,
+  useSelection,
+  type ObjectField,
 } from "@paged-media/shell";
 import { KitSelect, NumberInput } from "@paged-media/ui";
 import type { CompositionNode } from "@paged-media/catalog";
@@ -104,10 +118,39 @@ const EFFECT_FAMILIES: {
   },
 ];
 
-const TOP_BINDINGS = {
-  opacity: elementProp("frameOpacity"),
-  blend: elementProp("frameBlendMode"),
+type TargetId = "object" | "stroke" | "fill" | "content";
+
+/** InDesign's transparency targets, in its panel order. */
+const TARGETS: readonly { id: TargetId; label: string }[] = [
+  { id: "object", label: "Object" },
+  { id: "stroke", label: "Stroke" },
+  { id: "fill", label: "Fill" },
+  { id: "content", label: "Text" },
+];
+
+// One opacity + blend pair per target (a module-level map: one hook per
+// key, in key order).
+const TARGET_BINDINGS = {
+  objectOpacity: elementProp("frameOpacity"),
+  objectBlend: elementProp("frameBlendMode"),
+  strokeOpacity: elementProp("frameStrokeOpacity"),
+  strokeBlend: elementProp("frameStrokeBlendMode"),
+  fillOpacity: elementProp("frameFillOpacity"),
+  fillBlend: elementProp("frameFillBlendMode"),
+  contentOpacity: elementProp("frameContentOpacity"),
+  contentBlend: elementProp("frameContentBlendMode"),
 };
+
+// A group's own transparency options (InDesign: the two checkboxes at
+// the foot of the Effects panel). Only a group carries them.
+const GROUP_BINDINGS = {
+  isolate: elementProp("groupIsolateBlending"),
+  knockout: elementProp("groupKnockout"),
+};
+const GROUP_OPTIONS: readonly { key: keyof typeof GROUP_BINDINGS; label: string }[] = [
+  { key: "isolate", label: "Isolate blending" },
+  { key: "knockout", label: "Knockout group" },
+];
 
 function unwrapBool(v: Value | null): boolean | null {
   if (!v) return null;
@@ -117,7 +160,7 @@ function unwrapBool(v: Value | null): boolean | null {
 
 function unwrapLength(v: Value | null): number | null {
   if (!v || v.type !== "length") return null;
-  return v.value ?? 0;
+  return v.value ?? null;
 }
 
 function unwrapText(v: Value | null): string {
@@ -179,31 +222,82 @@ function EffectDisclosure({
   );
 }
 
+/** A target's current setting as InDesign lists it ("Multiply 60%"):
+ *  an unset blend reads Normal, an unset opacity 100 %; mixed reads —. */
+function targetSummary(blend: ObjectField, opacity: ObjectField): string {
+  if (blend.state.state !== "value" || opacity.state.state !== "value") return "—";
+  const mode = BLEND_MODES.find((m) => m.value === unwrapText(blend.value))?.label ?? "Normal";
+  const pct = unwrapLength(opacity.value);
+  return `${mode} ${Math.round(pct ?? 100)}%`;
+}
+
+/** Isolate blending / Knockout group: a check row, live on a group. */
+function GroupOption({ field, label }: { field: ObjectField; label: string }) {
+  const on = unwrapBool(field.value);
+  const live = field.state.state === "value" && field.onCommit != null;
+  return (
+    <ObjectFieldFrame field={field} className="relative flex items-center gap-[9px] py-[4px]">
+      <TogglePill
+        checked={on === true}
+        mixed={on === null}
+        disabled={!live}
+        onToggle={(next) => field.onCommit?.({ type: "bool", value: next } as Value)}
+        testId={label}
+      />
+      <span
+        className="flex-1 text-xs"
+        style={{ color: live ? "var(--pg-fg)" : "var(--pg-muted-fg)" }}
+      >
+        {label}
+      </span>
+    </ObjectFieldFrame>
+  );
+}
+
 export function EffectsPanel() {
-  const top = useObjectBindings(TOP_BINDINGS);
-  const opacity = unwrapLength(top.opacity.value);
-  const blendId = unwrapText(top.blend.value);
-  const blendDisabled = top.blend.onCommit == null;
-  const blendMixed = top.blend.value == null;
+  const fields = useObjectBindings(TARGET_BINDINGS);
+  const group = useObjectBindings(GROUP_BINDINGS);
+  const { elementSelection } = useSelection();
+  const [picked, setPicked] = useState<TargetId>("object");
+
+  // A target the selection does not carry (a group has no stroke, fill
+  // or content target) is not listed; the Object target always is.
+  const opacityOf = (id: TargetId) => fields[`${id}Opacity` as const];
+  const blendOf = (id: TargetId) => fields[`${id}Blend` as const];
+  const carried = (id: TargetId) => id === "object" || opacityOf(id).state.state !== "absent";
+  const target: TargetId = carried(picked) ? picked : "object";
+  const opacityField = opacityOf(target);
+  const blendField = blendOf(target);
+  // InDesign names the content target by what the frame holds.
+  const contentLabel =
+    elementSelection.length > 0 && elementSelection.every((id) => id.kind !== "textFrame")
+      ? "Graphic"
+      : "Text";
+
+  const opacity = unwrapLength(opacityField.value);
+  const blendId = unwrapText(blendField.value) || "Normal";
+  const blendDisabled = blendField.onCommit == null;
+  const blendMixed = blendField.value == null;
 
   return (
     <CatalogRegistryProvider registry={appCatalogRegistry()}>
-      <div className="p-3 flex flex-col gap-[9px]" data-effects-panel="ready">
-        <ObjectFieldFrame field={top.opacity} className="relative grid grid-cols-[84px_1fr] items-center gap-2">
+      <div className="p-3 flex flex-col gap-[9px]" data-effects-panel="ready" data-effects-target-active={target}>
+        <ObjectFieldFrame field={opacityField} className="relative grid grid-cols-[84px_1fr] items-center gap-2">
           <span className="text-xs" style={{ color: "var(--pg-muted-fg)" }}>
             Opacity
           </span>
           <NumberInput
             icon="ui-size"
             suffix="%"
-            value={opacity}
+            // Unset reads as the schema default, 100 %.
+            value={opacityField.state.state === "value" ? (opacity ?? 100) : null}
             min={0}
             max={100}
             precision={0}
-            disabled={top.opacity.onCommit == null}
+            disabled={opacityField.onCommit == null}
             onChange={() => {}}
             onCommit={(next) => {
-              top.opacity.onCommit?.({
+              opacityField.onCommit?.({
                 type: "length",
                 value: next,
               } as Value);
@@ -211,8 +305,7 @@ export function EffectsPanel() {
             aria-label="opacity"
           />
         </ObjectFieldFrame>
-        {/* Object-level blend mode — LIVE (W2.2) on frameBlendMode. */}
-        <ObjectFieldFrame field={top.blend} className="relative grid grid-cols-[84px_1fr] items-center gap-2">
+        <ObjectFieldFrame field={blendField} className="relative grid grid-cols-[84px_1fr] items-center gap-2">
           <span className="text-xs" style={{ color: "var(--pg-muted-fg)" }}>
             Blend
           </span>
@@ -224,7 +317,7 @@ export function EffectsPanel() {
             data-mixed={blendMixed ? "" : undefined}
             onChange={(e) => {
               if (e.target.value === "__mixed__") return;
-              top.blend.onCommit?.({
+              blendField.onCommit?.({
                 type: "text",
                 value: e.target.value,
               } as Value);
@@ -242,8 +335,40 @@ export function EffectsPanel() {
             ))}
           </KitSelect>
         </ObjectFieldFrame>
+        <div className="flex flex-col" role="radiogroup" aria-label="Transparency target" data-effects-targets="">
+          {TARGETS.filter((t) => carried(t.id)).map((t) => {
+            const active = t.id === target;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                data-effects-target={t.id}
+                onClick={() => setPicked(t.id)}
+                className="flex items-center justify-between rounded-[5px] px-2 py-[3px] text-left text-xs"
+                style={{
+                  background: active ? "var(--pg-primary-soft)" : "transparent",
+                  color: active ? "var(--pg-fg)" : "var(--pg-muted-fg)",
+                }}
+              >
+                <span>{t.id === "content" ? contentLabel : t.label}</span>
+                <span className="pg-mono-meta" data-effects-target-summary={t.id}>
+                  {targetSummary(blendOf(t.id), opacityOf(t.id))}
+                </span>
+              </button>
+            );
+          })}
+        </div>
         <div className="-mx-3 border-t border-input px-3 pt-2">
-          <div className="pg-label mb-1">Effects</div>
+          <div className="pg-label mb-1">
+            Effects
+            {target !== "object" && (
+              <span className="ml-1 normal-case" style={{ color: "var(--pg-muted-fg)" }}>
+                · on the object
+              </span>
+            )}
+          </div>
           <div className="flex flex-col">
             {EFFECT_FAMILIES.map((fam) => (
               <EffectDisclosure
@@ -254,6 +379,11 @@ export function EffectsPanel() {
               />
             ))}
           </div>
+        </div>
+        <div className="-mx-3 border-t border-input px-3 pt-2" data-effects-group-options="">
+          {GROUP_OPTIONS.map((o) => (
+            <GroupOption key={o.key} field={group[o.key]} label={o.label} />
+          ))}
         </div>
       </div>
     </CatalogRegistryProvider>

@@ -100,7 +100,9 @@ export const COCKPIT_MENU_SEAMS: MenuItemContribution[] = [
   // MenuRegistry treats a path as its dedupe key and would throw on
   // the collision anyway.
   soon("Object/Transform", 10),
-  soon("Object/Effects…", 30),
+  // Object ▸ Effects: the Effects panel, and Global light… (registered
+  // with its dialog, panels/global-light-dialog.tsx).
+  panel("Object/Effects/Effects…", "paged.effects", 30, "effects"),
   // ── Data (the data-publishing surface) ──
   //
   // D1 — these three were `soon(...)` seams whose labels duplicated

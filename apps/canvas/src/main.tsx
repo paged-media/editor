@@ -146,6 +146,11 @@ import { DocumentReplaceDialog } from "./DocumentReplaceDialog";
 import { createEditorSecretStore } from "./plugin-secret-store";
 import { SecretPromptDialog } from "./SecretPromptDialog";
 import { CoreCommandDialog } from "./core-command-dialog";
+import {
+  GLOBAL_LIGHT_COMMANDS,
+  GLOBAL_LIGHT_MENU_ITEMS,
+  GlobalLightDialog,
+} from "./panels/global-light-dialog";
 import { buildCoreCommandEntries, CORE_COMMAND_MENU_ITEMS } from "./core-command-entries";
 import { createEditorNativeDocumentBackend } from "./plugin-native-document";
 import { pickFiles } from "./shell-file-picker";
@@ -2295,6 +2300,7 @@ function CanvasAppIntegration() {
       ...objectCommands,
       ...insertCommands,
       ...alignCommands,
+      ...GLOBAL_LIGHT_COMMANDS,
       SELECT_ALL_COMMAND,
       // ADR 323 §4 — the typed core commands' menu / palette doors.
       ...buildCoreCommandEntries(),
@@ -2305,6 +2311,7 @@ function CanvasAppIntegration() {
       ...OBJECT_MENU_ITEMS,
       ...INSERT_MENU_ITEMS,
       ...CORE_COMMAND_MENU_ITEMS,
+      ...GLOBAL_LIGHT_MENU_ITEMS,
       ...COCKPIT_MENU_SEAMS,
     ]
       // Solo keeps only the host menus its profile names. Whole-menu
@@ -2444,6 +2451,7 @@ function CanvasAppRoot() {
       <DocumentReplaceDialog controller={editorDocuments.controller} />
       <SecretPromptDialog controller={editorSecrets.controller} />
       <CoreCommandDialog />
+      <GlobalLightDialog />
       {/* The live-demo playground UI — only in the `demo` build, only when a
           ?script= is present (renders null otherwise). */}
       {(import.meta.env.MODE === "demo" || !import.meta.env.PROD) && (
