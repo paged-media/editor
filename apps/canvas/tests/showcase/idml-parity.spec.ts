@@ -41,7 +41,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { openCanvas } from "../fidelity/canvas-driver";
 import { diffPngPixels } from "../e2e/harness/pixel-diff";
@@ -56,22 +56,28 @@ import { isIdmlEntry, stripZip } from "./zip-strip";
 const WIDTH = 816;
 
 /**
- * How many pages may render differently. ZERO — measured, not hoped.
+ * Which pages may render differently: only those carrying an opacity
+ * mask the export itself NAMES as lost. Every other page must match.
  *
- * The three opacity-mask pages were expected to differ: IDML has no
- * opacity-mask element and the export names the loss. They do not, and
- * the reason matters — the mask does not PAINT on the WebGPU path
- * (it is a CPU/PDF-only construct), so both sides render the unmasked
- * artwork and agree. That makes them useless as an allowance and a
- * lie as an excuse, so the budget is zero and any divergence at all
- * fails. If a mask ever starts painting here, this gate goes red and
- * raising it becomes a deliberate, argued decision.
+ * IDML has no opacity-mask element, so the twin carries the mask's
+ * artwork unmasked and the export says so in its loss ledger. For a long
+ * time that difference was invisible here — the mask did not paint on
+ * the WebGPU path, both sides rendered the unmasked artwork and agreed —
+ * so the allowance was zero, and the gate was meant to go red the day a
+ * mask started painting. It did: the GPU lane composites soft masks now,
+ * and those pages differ exactly where the ledger says they must.
+ *
+ * So the allowance is not a count. It is derived per run from the
+ * export's own ledger: each `opacity mask on <id>` entry resolves to the
+ * page that item sits on, and only those pages are excused. A mask the
+ * ledger does not name excuses nothing, and a page with no named mask
+ * that differs still fails.
  *
  * The limit of this oracle, stated plainly: it proves that everything
  * the GPU renderer PAINTS survives the round trip. It cannot speak for
  * a construct the renderer never draws.
  */
-const MASK_PAGES_ALLOWED = 0;
+const NAMED_MASK = /opacity mask on `([^`]+)`/;
 
 /** Anti-aliasing floor: two renders of the same page are not always
  *  bit-identical, so a page counts as matching under this ratio. */
@@ -125,7 +131,9 @@ test.describe("idml parity", () => {
     // cannot read those, so the parity twin is exported here WITHOUT a
     // link base — image bytes inline — from the same loaded container.
     // The assembly's own file is still the one InDesign opens.
-    const exported = Buffer.from((await doc.exportIdmlWithLost({})).bytes);
+    const exportedWithLost = await doc.exportIdmlWithLost({});
+    const exported = Buffer.from(exportedWithLost.bytes);
+    const maskPages = await namedMaskPages(page, doc, exportedWithLost.lost);
     expect(existsSync(idmlPath), "the assembly's export exists beside it").toBe(true);
     const foreign = zipEntryNames(exported).filter((n) => !isIdmlEntry(n));
     const projectionPath = join(OUT, "showcase-projection.idml");
@@ -197,17 +205,72 @@ test.describe("idml parity", () => {
       writeFileSync(`${stem}-paged.png`, fromPaged[d.page - 1]);
       writeFileSync(`${stem}-idml.png`, await doc.renderPage(d.page - 1, WIDTH));
     }
+    const unexplained = diffs.filter((d) => !maskPages.has(d.page));
     // eslint-disable-next-line no-console
     console.log(
       `[parity] ${diffs.length} of ${ANNUAL_PAGES} pages differ beyond the ` +
-        `anti-aliasing floor; the budget is ${MASK_PAGES_ALLOWED}`,
+        `anti-aliasing floor; ${diffs.length - unexplained.length} carry an ` +
+        `opacity mask the export names as lost (pages ` +
+        `${[...maskPages].sort((a, b) => a - b).join(", ") || "none"})`,
     );
 
     expect(
-      diffs.length,
-      `pages whose IDML twin renders differently: ${diffs
-        .map((d) => `${d.page} (${(d.ratio * 100).toFixed(2)}%)`)
-        .join(", ")}`,
-    ).toBeLessThanOrEqual(MASK_PAGES_ALLOWED);
+      unexplained.map((d) => `${d.page} (${(d.ratio * 100).toFixed(2)}%)`),
+      "pages whose IDML twin renders differently, with no named mask loss to explain it",
+    ).toEqual([]);
   });
 });
+
+/**
+ * The 1-based pages carrying an item the export names as an opacity-mask
+ * loss. Resolved through the scene tree (for the item's kind) and the
+ * geometry door (for its page) on the document as loaded — the ledger's
+ * ids are that document's ids.
+ */
+async function namedMaskPages(
+  page: Page,
+  doc: ShowcaseDoc,
+  lost: string[],
+): Promise<Set<number>> {
+  const ids = lost
+    .map((l) => NAMED_MASK.exec(l)?.[1])
+    .filter((id): id is string => typeof id === "string");
+  if (ids.length === 0) return new Set();
+  const pageIds = await page.evaluate(async (wanted) => {
+    type Node = {
+      id?: { kind: string; id: unknown } | null;
+      children?: Node[] | null;
+    };
+    const c = (
+      globalThis as unknown as {
+        __canvas: {
+          client: {
+            sceneTree: () => Promise<Node[]>;
+            elementGeometry: (
+              ids: Array<{ kind: string; id: string }>,
+            ) => Promise<Array<{ pageId?: string | null }>>;
+          };
+        };
+      }
+    ).__canvas.client;
+    const refs: Array<{ kind: string; id: string }> = [];
+    const walk = (nodes: Node[] | null | undefined): void => {
+      for (const n of nodes ?? []) {
+        if (n.id && typeof n.id.id === "string" && wanted.includes(n.id.id)) {
+          refs.push({ kind: n.id.kind, id: n.id.id });
+        }
+        walk(n.children);
+      }
+    };
+    walk(await c.sceneTree());
+    if (refs.length === 0) return [];
+    return (await c.elementGeometry(refs)).map((g) => g.pageId ?? null);
+  }, ids);
+  const order = (await doc.pages()).map((p) => p.selfId);
+  const out = new Set<number>();
+  for (const id of pageIds) {
+    const at = id ? order.indexOf(id) : -1;
+    if (at >= 0) out.add(at + 1);
+  }
+  return out;
+}
