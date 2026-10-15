@@ -248,6 +248,23 @@ export type HostObjectsAnswerer = (
   calls: HostObjectCallWire[],
 ) => Promise<HostObjectAnswerWire[] | HostObjectsRound>;
 
+/** A face in the engine's DOCUMENT font registry, as this client sent it.
+ *  `owner` is the document it was given for ({@link
+ *  CanvasClient.registerDocumentFont}); `null` is a face for the session. */
+interface RegistryFace {
+  family: string;
+  style: string | null;
+  bytes: Uint8Array;
+  owner: string | null;
+}
+
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a === b) return true;
+  if (a.byteLength !== b.byteLength) return false;
+  for (let i = 0; i < a.byteLength; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
 export class CanvasClient {
   private readonly worker: Worker;
   private nextSeq = 1;
@@ -289,6 +306,16 @@ export class CanvasClient {
   private editCount = 0;
   private savedAtEdit: number | null = null;
   private readonly savedListeners = new Set<() => void>();
+  /** The engine's document font registry as this client filled it, in
+   *  order. The engine keeps ONE such registry, seeds every later load from
+   *  it and can only empty it whole, so this is what lets a load drop the
+   *  open document's faces and keep the session's (see
+   *  {@link registerDocumentFont}). */
+  private readonly fontRegistry: RegistryFace[] = [];
+  /** The open document's id (the last `documentLoaded`), or null. */
+  private openDocId: string | null = null;
+  /** The load in flight, if any. */
+  private loading: Promise<unknown> | null = null;
 
   constructor(options: CanvasClientOptions) {
     this.defaultFontProvider = options.defaultFontProvider;
@@ -320,7 +347,22 @@ export class CanvasClient {
    * notifications and flow through `subscribe(...)` instead.
    */
   async send(kind: MainToWorkerKind): Promise<WorkerToMain> {
-    if (this.fatal) throw this.fatal;
+    if (kind.kind === "loadDocument" || kind.kind === "newBlankDocument") {
+      return this.replacingDocument(
+        () => this.post(kind),
+        (reply) => reply.kind === "documentLoaded",
+      );
+    }
+    const face = this.noteFontRegistry(kind);
+    const reply = await this.post(kind);
+    if (face && reply.kind !== "fontRegistered") this.forgetFace(face);
+    return reply;
+  }
+
+  /** Post one message on the JSON channel. Synchronous up to the post, so
+   *  messages reach the worker in call order (and it answers in order). */
+  private post(kind: MainToWorkerKind): Promise<WorkerToMain> {
+    if (this.fatal) return Promise.reject(this.fatal);
     const seq = this.nextSeq++;
     const envelope: MainToWorker = {
       seq,
@@ -362,27 +404,32 @@ export class CanvasClient {
     // side-channel exactly like caller-passed bytes.
     const fontBytes = font ?? (await this.resolveDefaultFont());
     if (this.fatal) throw this.fatal;
-    const seq = this.nextSeq++;
-    const promise = new Promise<DocumentHandle>((resolve, reject) => {
-      this.loadDocPending.set(seq, { resolve, reject });
-    });
-    const transfer: Transferable[] = [bytes.buffer];
-    if (fontBytes) transfer.push(fontBytes.buffer);
-    if (cmykIccProfile) transfer.push(cmykIccProfile.buffer);
-    this.worker.postMessage(
-      {
-        kind: "loadDocumentBinary",
-        seq,
-        bytes,
-        font: fontBytes ?? null,
-        cmykIccProfile: cmykIccProfile ?? null,
+    const handle = await this.replacingDocument(
+      () => {
+        const seq = this.nextSeq++;
+        const promise = new Promise<DocumentHandle>((resolve, reject) => {
+          this.loadDocPending.set(seq, { resolve, reject });
+        });
+        const transfer: Transferable[] = [bytes.buffer];
+        if (fontBytes) transfer.push(fontBytes.buffer);
+        if (cmykIccProfile) transfer.push(cmykIccProfile.buffer);
+        this.worker.postMessage(
+          {
+            kind: "loadDocumentBinary",
+            seq,
+            bytes,
+            font: fontBytes ?? null,
+            cmykIccProfile: cmykIccProfile ?? null,
+          },
+          // Transfer ownership of the underlying buffers; the caller's
+          // Uint8Array references become unusable after this. Saves a
+          // copy in V8.
+          transfer,
+        );
+        return promise;
       },
-      // Transfer ownership of the underlying buffers; the caller's
-      // Uint8Array references become unusable after this. Saves a
-      // copy in V8.
-      transfer,
+      () => true,
     );
-    const handle = await promise;
     await this.registerDefaultFontFaces();
     return handle;
   }
@@ -743,6 +790,7 @@ export class CanvasClient {
       case "documentLoaded":
         // A fresh document starts clean in the engine; forget the old save.
         this.savedAtEdit = null;
+        this.openDocId = msg.payload.docId;
         return;
       case "mutationApplied":
       case "undoApplied":
@@ -1764,7 +1812,11 @@ export class CanvasClient {
     style: string | null = null,
     options: { scope?: FontScope } = {},
   ): Promise<void> {
-    const reply = await this.send({
+    const face =
+      (options.scope ?? "document") === "document"
+        ? this.addSessionFace(family, style, bytes)
+        : null;
+    const reply = await this.post({
       kind: "registerFont",
       payload: {
         family,
@@ -1774,7 +1826,140 @@ export class CanvasClient {
       },
     });
     if (reply.kind !== "fontRegistered") {
+      if (face) this.forgetFace(face);
       throw new Error(`unexpected reply: ${reply.kind}`);
+    }
+  }
+
+  /**
+   * Put a face in the engine's DOCUMENT font registry for the document
+   * open now (plugin-sdk ADR 330). Unlike {@link registerFont}, whose faces
+   * stay for the session, this face belongs to that document: it is dropped
+   * before the next document loads — File ▸ Open, File ▸ New, a plugin's
+   * open, the same file again — so no other document lays out with it, and
+   * a document that names the family without holding it reports it
+   * missing. Whoever gave the face gives it again when the document opens
+   * again. Resolves with the engine's reply (`fontRegistered`, with the
+   * pages laid out again). Rejects when no document is open, or when the
+   * document closed before the face could be registered.
+   */
+  async registerDocumentFont(
+    family: string,
+    bytes: Uint8Array,
+    style: string | null = null,
+  ): Promise<WorkerToMain> {
+    const owner = this.openDocId;
+    // A face asked for during a load is for the document that was open
+    // when it was asked for; once the load has settled, that may be gone.
+    while (this.loading) await this.loading.catch(() => undefined);
+    if (owner === null) throw new Error("no document is open to give the face to");
+    if (this.openDocId !== owner) {
+      throw new Error("the document the face was given for has closed");
+    }
+    const face: RegistryFace = { family, style, bytes: bytes.slice(), owner };
+    this.fontRegistry.push(face);
+    const reply = await this.post({
+      kind: "registerFont",
+      payload: { family, style, bytes: Array.from(bytes), scope: "document" },
+    });
+    if (reply.kind !== "fontRegistered") this.forgetFace(face);
+    return reply;
+  }
+
+  /** Record a session face; a face the registry already holds byte for
+   *  byte (the default family's other faces, registered after every load)
+   *  is not recorded twice. Answers the record, or null. */
+  private addSessionFace(
+    family: string,
+    style: string | null,
+    bytes: Uint8Array,
+  ): RegistryFace | null {
+    const held = this.fontRegistry.some(
+      (f) =>
+        f.owner === null &&
+        f.family === family &&
+        f.style === style &&
+        sameBytes(f.bytes, bytes),
+    );
+    if (held) return null;
+    const face: RegistryFace = { family, style, bytes: bytes.slice(), owner: null };
+    this.fontRegistry.push(face);
+    return face;
+  }
+
+  private forgetFace(face: RegistryFace): void {
+    const i = this.fontRegistry.indexOf(face);
+    if (i >= 0) this.fontRegistry.splice(i, 1);
+  }
+
+  /** Keep {@link fontRegistry} in step with a message about to be posted
+   *  through {@link send}. Answers the face a document-scope
+   *  `registerFont` adds, so a refusal can take it out again. */
+  private noteFontRegistry(kind: MainToWorkerKind): RegistryFace | null {
+    if (kind.kind === "registerFont") {
+      const p = kind.payload;
+      if ((p.scope ?? "document") !== "document") return null;
+      return this.addSessionFace(p.family, p.style ?? null, Uint8Array.from(p.bytes));
+    }
+    if (kind.kind === "clearFontRegistry") {
+      if ((kind.payload?.scope ?? "document") === "document") {
+        this.fontRegistry.length = 0;
+      }
+    }
+    return null;
+  }
+
+  /** Register a recorded face again (posted, not awaited). */
+  private repostFace(face: RegistryFace): void {
+    this.fontRegistry.push(face);
+    this.post({
+      kind: "registerFont",
+      payload: {
+        family: face.family,
+        style: face.style,
+        bytes: Array.from(face.bytes),
+        scope: "document",
+      },
+    }).then(
+      (reply) => {
+        if (reply.kind !== "fontRegistered") this.forgetFace(face);
+      },
+      () => this.forgetFace(face),
+    );
+  }
+
+  /**
+   * Every load that replaces the open document goes through here. The
+   * open document's faces are dropped BEFORE the load is posted: the
+   * registry is emptied and the session's faces registered again, and the
+   * worker answers in order, so the next document never lays out with
+   * them. Each of those changes re-lays out the outgoing document's text
+   * that names the families, and the worker repaints the pages the replies
+   * name. A load that fails leaves the document open, so its faces come
+   * back.
+   */
+  private async replacingDocument<T>(
+    start: () => Promise<T>,
+    loaded: (result: T) => boolean,
+  ): Promise<T> {
+    const dropped = this.fontRegistry.filter((f) => f.owner !== null);
+    if (dropped.length > 0) {
+      const keep = this.fontRegistry.filter((f) => f.owner === null);
+      this.fontRegistry.length = 0;
+      this.post({ kind: "clearFontRegistry", payload: null }).catch(() => undefined);
+      for (const face of keep) this.repostFace(face);
+    }
+    const pending = start();
+    this.loading = pending;
+    try {
+      const result = await pending;
+      if (!loaded(result)) for (const face of dropped) this.repostFace(face);
+      return result;
+    } catch (err) {
+      for (const face of dropped) this.repostFace(face);
+      throw err;
+    } finally {
+      if (this.loading === pending) this.loading = null;
     }
   }
 
