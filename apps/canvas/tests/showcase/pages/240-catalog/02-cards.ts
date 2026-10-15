@@ -52,6 +52,7 @@ import {
   clickLower,
   fieldValue,
   importOrders,
+  readFields,
   units,
   wizardMapSingle,
 } from "./00-support";
@@ -152,6 +153,11 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     for (const [i, line] of CARD_LINES.entries()) {
       await wizardMapSingle(page, line.column);
       const bindingId = `v_${line.column}`;
+      // The field must land IN this line's story, at the caret: the
+      // plugin's text-variable carrier is not addressed by story, so the
+      // story growing is the evidence the caret door was asked.
+      const charsBefore = await doc.storyChars(lines[i].storyId);
+      let inStory = false;
       await withActivePage(page, pageId, async () => {
         // The caret goes AFTER the label — offsets here are single-
         // paragraph ASCII, so byte and character spaces agree.
@@ -162,15 +168,21 @@ export async function build(ctx: PageContext): Promise<PageReport> {
           async () => (await fieldValue(page, bindingId)) !== null,
           30_000,
         );
+        inStory = (await doc.storyChars(lines[i].storyId)) > charsBefore;
         if (!landed) {
           notes.push(
             `the wizard-mapped binding ${bindingId} lowered no field within 30 s — ` +
               "the D-01 placeholder lane did not commit on this lane.",
           );
+        } else if (!inStory) {
+          notes.push(
+            `the wizard-mapped binding ${bindingId} resolved, but nothing landed ` +
+              "in its card line's story — the caret lane did not place it.",
+          );
         }
       });
       const value = await fieldValue(page, bindingId);
-      if (value !== null) {
+      if (value !== null && inStory) {
         resolved.push(`${line.column} → “${value}”`);
         chapterData.cardFields.push({
           binding: bindingId,
@@ -194,9 +206,15 @@ export async function build(ctx: PageContext): Promise<PageReport> {
         "plugin-platform.text-caret-door",
         "stories-text.fields.insert",
       );
+      const asVariables = (await readFields(page)).some((f) =>
+        f.storyId.startsWith("textVariable:"),
+      );
       statusText =
-        "All three fields above are tagged placeholder runs, not pasted " +
-        `text. The engine resolved them from the first order: ${resolved.join(
+        `All three fields above are ${
+          asVariables
+            ? "live text variables the document keeps (paged:<binding>)"
+            : "tagged placeholder runs"
+        }, not pasted text. The engine resolved them from the first order: ${resolved.join(
           " · ",
         )}. The expression behind each is the engine's own suggestion from ` +
         "the mapping wizard — a bare column reference in the plugin's " +
