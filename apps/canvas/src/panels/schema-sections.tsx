@@ -57,6 +57,9 @@ export interface FieldSpec {
   /** §12.8 — a struct path's fields / a list path's item presentation. */
   fields?: FieldPresentation["fields"];
   items?: FieldPresentation["items"];
+  /** A path laid out ahead of the engine: shown only once the target's
+   *  schema and the running engine both report it. */
+  hideUnreported?: boolean;
 }
 
 export interface SectionSpec {
@@ -147,6 +150,7 @@ export function SchemaSections({
                 collection={f.collection}
                 fields={f.fields}
                 items={f.items}
+                hideUnreported={f.hideUnreported}
               />
             ))}
           </div>

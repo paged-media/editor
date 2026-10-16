@@ -76,11 +76,12 @@ editor does not load the slide bundle yet.
 | Stroke | 9 | — |
 | Text Frame Options | 7 | — |
 | Text Wrap | 5 | — |
-| Character | 16 schema fields; family select and OpenType chips (bespoke) | — |
-| Paragraph | 21 schema fields | rule above / below (no schema row: whole-struct `paragraphRule`) |
+| Character | 16 schema fields (+ No break, shown once the engine reports it); family select and OpenType chips (bespoke) | — |
+| Paragraph | 21 schema fields (+ last line indent, auto leading, single word justification, balance ragged lines, shown once the engine reports them) | rule above / below (no schema row: whole-struct `paragraphRule`) |
 | Frame Fitting | 3 schema fields; reference-point grid, fill-proportionally (bespoke) | — |
 | Color | fill (swatch collection select), tint; the mixer's Apply (`frameFillColor`, or `doc.defaultFillColor` with nothing selected) | — |
-| Effects | 57 per-effect schema fields; opacity, blend, 8 enable pills (bespoke) | — |
+| Effects | 62 per-effect schema fields; the transparency targets (Object, Stroke, Fill, Text or Graphic), each with its opacity and blend; 8 enable pills; a group's Isolate blending and Knockout group (bespoke) | — |
+| Global Light (new, Object ▸ Effects) | angle and altitude on `doc` | — |
 | Gradients, Swatches | the fill field (collection select) | swatch edit (`editSwatch` writes the whole colour; `swatch.space` / `swatch.value` alone would lose tint and model) |
 | Bullets & Numbering | list type, two marker character styles; format, expression, glyph, text after, start at (bespoke); Assign | numbering continue (three-state on the wire, `text` in the schema) |
 | Object / Transform | opacity; W/H over `frameBounds`, rotation, scale X/Y, flip H (bespoke) | X/Y (the transformed footprint; written by the nudge's translation plan) |
@@ -107,8 +108,12 @@ swatch, a page, `doc`, …) binds the address itself, whose IDML Self id round-t
 keep the name or `x-paged:oid` target.
 
 Engine gaps the specs record as expected failures (protocol 71 local build): undo does not
-restore colour settings written through `doc.renderingIntent` (`setColorSettings`), and
-`cell.cellFillTint` has no read arm in core's `Get`.
+restore colour settings written through `doc.renderingIntent` (`setColorSettings`).
+
+A field marked `hideUnreported` is laid out ahead of the engine: it renders only when the
+target's schema has the row and the running engine reads the path (`RequestGet` does not answer
+`noSuchPath`). The paragraph's line setting and the character's No break (core ADR 153, after
+engine 0.71.11) are laid out that way in the Paragraph and Character panels and in Style Options.
 
 Not migrated yet: Tabs (`paragraphTabStops` has no schema row), the paragraph rules (whole-struct
 `paragraphRule`), the story's page-growth rows (`flowGrow*`) and the collection panels
@@ -117,7 +122,10 @@ documents' collections rather than properties. Plugin panels migrate in their ow
 
 The table addresses go through an editor-side extension of the SDK's core seam, because
 the published seam answers `unmapped` for `cell:` and `table:` and its cell address does
-not carry the story; it moves into the SDK (or core's `Set`) when they map them.
+not carry the story; it moves into the SDK (or core's `Set`) when they map them. A second
+extension carries the rows the pinned engine has and the SDK's vendored catalog does not
+(a cell style's fill tint) or marks read-only although the engine now stores them (a cell's
+fill tint, engine 0.71.11); each applies only while the SDK's rows disagree.
 
 ## Limits of what is shipped
 

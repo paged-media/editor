@@ -48,15 +48,24 @@ test.describe("Phase 5 — Effects panel", () => {
     // W2.2 — every top field + effect pill is LIVE now, so all show
     // the em-dash mixed sentinel without a selection: Opacity metric
     // + Blend select + 8 effect pills (Drop/Inner shadow, Outer/Inner
-    // glow, Bevel, Satin, Feather, Directional feather). The per-field
-    // editors only render inside an expanded (enabled) row, which
-    // never happens at no-selection.
+    // glow, Bevel, Satin, Feather, Directional feather) + the two group
+    // options (Isolate blending, Knockout group). The per-field editors
+    // only render inside an expanded (enabled) row, which never happens
+    // at no-selection.
     await expect(
       page.locator('[data-effects-panel="ready"] [data-mixed]').first(),
     ).toBeVisible();
     await expect(
       page.locator('[data-effects-panel="ready"] [data-mixed]'),
-    ).toHaveCount(10);
+    ).toHaveCount(12);
+    // The four transparency targets (engine 0.71.8), Object first.
+    await expect(
+      page.locator('[data-effects-panel="ready"] [data-effects-target]'),
+    ).toHaveCount(4);
+    await expect(page.locator('[data-effects-panel="ready"]')).toHaveAttribute(
+      "data-effects-target-active",
+      "object",
+    );
     // No more honest-seam pills — every effect family flipped live.
     await expect(
       page.locator('[data-effects-panel="ready"] [data-effect-row][data-seam]'),

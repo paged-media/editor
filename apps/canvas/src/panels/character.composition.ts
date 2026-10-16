@@ -43,6 +43,7 @@
 // binding hook maps the selection to a StoryRange.
 
 import type { CompositionNode } from "@paged-media/catalog";
+import type { PropertyPath } from "@paged-media/client";
 import {
   PAGED_INPUT_COLOR_SWATCH,
   PAGED_INPUT_LENGTH,
@@ -288,6 +289,21 @@ export const characterComposition: CompositionNode = asPropertyFields({
           kind: "selectionProperty",
           scope: "content",
           path: "characterLigatures",
+        },
+      },
+    },
+    {
+      // InDesign's Character panel menu ▸ No Break. Laid out ahead of the
+      // pinned engine (core ADR 153): shown once the schema and the
+      // running engine report the path; the pinned wire's `PropertyPath`
+      // union does not name it yet, hence the cast.
+      catalogId: PAGED_INPUT_TOGGLE_SWITCH,
+      props: { label: "No break", hideUnreported: true },
+      bindings: {
+        value: {
+          kind: "selectionProperty",
+          scope: "content",
+          path: "characterNoBreak" as PropertyPath,
         },
       },
     },

@@ -29,6 +29,9 @@
 // schema rows, and rows the schema adds for the family that no section
 // names appear under "More". "Next style" and the bullet / numbering /
 // region cell styles are refs picked from the style collections.
+// Fields marked `hideUnreported` are laid out ahead of the engine (a
+// paragraph's line setting, a character's No Break): they appear once
+// the style's schema and the running engine both report them.
 //
 // The style panels open it on their applied style ("Style Options…").
 
@@ -77,6 +80,7 @@ const CHARACTER_SECTIONS: readonly SectionSpec[] = [
       { path: "characterUnderline", label: "Underline" },
       { path: "characterStrikethru", label: "Strikethrough" },
       { path: "characterLigatures", label: "Ligatures" },
+      { path: "characterNoBreak", label: "No break", hideUnreported: true },
     ],
   },
   {
@@ -98,9 +102,11 @@ const PARAGRAPH_SECTIONS: readonly SectionSpec[] = [
     title: "Indents and Spacing",
     fields: [
       { path: "paragraphJustification", label: "Alignment" },
+      { path: "paragraphBalanceRaggedLines", label: "Balance ragged lines", hideUnreported: true },
       { path: "paragraphLeftIndent", label: "Left indent" },
       { path: "paragraphRightIndent", label: "Right indent" },
       { path: "paragraphFirstLineIndent", label: "First line" },
+      { path: "paragraphLastLineIndent", label: "Last line", hideUnreported: true },
       { path: "paragraphSpaceBefore", label: "Space before" },
       { path: "paragraphSpaceAfter", label: "Space after" },
     ],
@@ -129,7 +135,11 @@ const PARAGRAPH_SECTIONS: readonly SectionSpec[] = [
   },
   {
     title: "Justification",
-    fields: [{ path: "paragraphComposer", label: "Composer" }],
+    fields: [
+      { path: "paragraphAutoLeading", label: "Auto leading", hideUnreported: true },
+      { path: "paragraphSingleWordJustification", label: "Single word", hideUnreported: true },
+      { path: "paragraphComposer", label: "Composer" },
+    ],
   },
   {
     title: "Span Columns",
@@ -195,7 +205,10 @@ const CELL_SECTIONS: readonly SectionSpec[] = [
   },
   {
     title: "Fill",
-    fields: [{ path: "cellFillColor", label: "Fill", collection: "swatches" }],
+    fields: [
+      { path: "cellFillColor", label: "Fill", collection: "swatches" },
+      { path: "cellFillTint", label: "Tint" },
+    ],
   },
   {
     title: "Strokes",

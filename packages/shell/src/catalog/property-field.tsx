@@ -43,6 +43,7 @@ import type { LeafProps } from "@paged-media/catalog";
 import type { Value } from "@paged-media/client";
 
 import { Input } from "../components/ui/input";
+import { useOptionalCanvasClient } from "../state/canvas-client-context";
 import {
   BoundsLeaf,
   CollectionSelectLeaf,
@@ -92,6 +93,74 @@ export interface PropertyFieldProps extends FieldPresentation {
   autoLabel?: boolean;
   /** ADR 323 — how "Bind to data…" reaches a plugin object durably. */
   bindScope?: BindScopeOf;
+  /** A row laid out ahead of the engine: render it only when the
+   *  target's schema reports the row AND the running engine reads the
+   *  path. Otherwise render nothing (not a disabled field). */
+  hideUnreported?: boolean;
+}
+
+/** `<address kind>|<path>` → does the running engine read the path?
+ *  One engine per page, so an answer holds for the session. */
+const engineReads = new Map<string, boolean>();
+
+/** `frame` for `frame:u1`, `style:paragraph` for a paragraph style. */
+function engineKindOf(address: string): string {
+  const colon = address.indexOf(":");
+  if (colon < 0) return address;
+  const head = address.slice(0, colon);
+  if (head !== "style") return head;
+  const slash = address.indexOf("/", colon);
+  return slash < 0 ? address : address.slice(0, slash);
+}
+
+/**
+ * `hideUnreported`: is the row there? Two sources must agree. The
+ * schema (`host.objects.schema`) types the field; the ENGINE is asked
+ * directly (`RequestGet` on the first target), because the schema can
+ * come from a catalog newer than the engine running in this page, and
+ * an engine without the path answers `noSuchPath`.
+ */
+function useReported(
+  enabled: boolean,
+  path: string,
+  row: ShellPropertySchema | null,
+  address: string | undefined,
+): boolean {
+  const client = useOptionalCanvasClient();
+  const key = enabled && address ? `${engineKindOf(address)}|${path}` : null;
+  const [reads, setReads] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!key || !client || !address) {
+      setReads(null);
+      return;
+    }
+    const cached = engineReads.get(key);
+    if (cached !== undefined) {
+      setReads(cached);
+      return;
+    }
+    let cancelled = false;
+    void client
+      .send({ kind: "requestGet", payload: { address, path } } as never)
+      .then(
+        (reply) => {
+          const r = reply as { kind: string; payload?: { code?: string | null } };
+          if (r.kind !== "propertyValue") return;
+          const code = r.payload?.code ?? null;
+          // No document, or an address that names nothing: no answer
+          // about the path.
+          if (code === "notFound" || code === "noDocument" || code === "badAddress") return;
+          engineReads.set(key, code !== "noSuchPath");
+          if (!cancelled) setReads(code !== "noSuchPath");
+        },
+        () => {},
+      );
+    return () => {
+      cancelled = true;
+    };
+  }, [key, client, address, path]);
+  if (!enabled) return true;
+  return row !== null && reads !== false;
 }
 
 const UNIT_SUFFIX: Record<string, string> = { percent: "%", deg: "°" };
@@ -469,6 +538,8 @@ export function PropertyField(props: PropertyFieldProps) {
   });
 
   const row = field.row;
+  const reported = useReported(props.hideUnreported === true, path, row, field.addresses[0]);
+  if (!reported) return null;
   // No row yet (schema loading, or no model): render as the field's
   // nominal widget, disabled — never a guessed type that might write.
   const type: ShellValueType = row?.type ?? { kind: "text" };
@@ -660,6 +731,7 @@ export function PropertyFieldLeaf({ props }: LeafProps) {
     collectionName,
     fields,
     items,
+    hideUnreported,
     ...chrome
   } = props as Record<string, unknown>;
   if (typeof path !== "string") {
@@ -685,6 +757,7 @@ export function PropertyFieldLeaf({ props }: LeafProps) {
       bindable={typeof bindable === "boolean" ? bindable : undefined}
       fields={Array.isArray(fields) ? (fields as FieldPresentation["fields"]) : undefined}
       items={items && typeof items === "object" ? (items as ListPresentation) : undefined}
+      hideUnreported={hideUnreported === true}
       chrome={chrome}
     />
   );

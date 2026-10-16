@@ -71,6 +71,14 @@ function para(path: PropertyPath): Record<string, Binding> {
   };
 }
 
+/** A paragraph path laid out ahead of the pinned engine (a paragraph's
+ *  line setting, core ADR 153): the field renders only once the schema
+ *  and the running engine report it (`hideUnreported`). The pinned wire's
+ *  `PropertyPath` union does not name it yet, hence the cast. */
+function paraAhead(path: string): Record<string, Binding> {
+  return para(path as PropertyPath);
+}
+
 /** The "inherit" option every paragraph-level enum select carries: the
  *  engine stores the empty string as "no override", so the paragraph
  *  takes its style's value. */
@@ -288,6 +296,11 @@ export const paragraphComposition: CompositionNode = asPropertyFields({
       ],
     },
     {
+      catalogId: PAGED_INPUT_LENGTH,
+      props: { label: "Last line indent", icon: "ui-align-right", showUnit: false, hideUnreported: true },
+      bindings: paraAhead("paragraphLastLineIndent"),
+    },
+    {
       catalogId: PAGED_LAYOUT_CLUSTER,
       props: { count: 2 },
       bindings: {},
@@ -355,6 +368,43 @@ export const paragraphComposition: CompositionNode = asPropertyFields({
           path: "paragraphHyphenation",
         },
       },
+    },
+    // InDesign's Paragraph panel menu ▸ Balance Ragged Lines and its
+    // Justification dialog (Auto Leading, Single Word Justification).
+    {
+      catalogId: PAGED_INPUT_SELECT,
+      props: {
+        label: "Balance ragged lines",
+        hideUnreported: true,
+        options: [
+          STYLE_DEFAULT,
+          { value: "NoBalancing", label: "No balancing" },
+          { value: "FullyBalanced", label: "Fully balanced" },
+          { value: "PyramidShape", label: "Pyramid" },
+          { value: "VeeShape", label: "Vee" },
+        ],
+      },
+      bindings: paraAhead("paragraphBalanceRaggedLines"),
+    },
+    {
+      catalogId: PAGED_INPUT_NUMERIC_SCRUB,
+      props: { label: "Auto leading", suffix: "%", hideUnreported: true },
+      bindings: paraAhead("paragraphAutoLeading"),
+    },
+    {
+      catalogId: PAGED_INPUT_SELECT,
+      props: {
+        label: "Single word",
+        hideUnreported: true,
+        options: [
+          STYLE_DEFAULT,
+          { value: "FullyJustified", label: "Full justify" },
+          { value: "LeftAlign", label: "Align left" },
+          { value: "CenterAlign", label: "Align center" },
+          { value: "RightAlign", label: "Align right" },
+        ],
+      },
+      bindings: paraAhead("paragraphSingleWordJustification"),
     },
     {
       // Engine gap — no align-to-baseline-grid PropertyPath on the
