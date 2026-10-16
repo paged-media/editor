@@ -23,13 +23,14 @@
 // geometry in that page's space. An item whose centre is on the
 // pasteboard belongs to no page: it answers in its SPREAD's space, with
 // the spread's id (C-23). The canvas lays pages out one under another, so
-// spread space has no place on it until it is tied to a page, and nothing
-// in the engine's answers says where a page sits in its spread except
-// `pageOrigin` on a page-owned item's geometry. These helpers collect
-// those origins, ask for them when a pasteboard item's spread has none
-// yet, and re-express each pasteboard item against the nearest page of
-// its spread. The result is page space that runs past the page's edges,
-// which is what the chrome draws in and what a gesture's anchor speaks.
+// spread space has no place on it until it is tied to a page. Engine
+// 0.71.13 says where every page sits on its page summary (`pageOrigin`,
+// `spreadId`); before it, only `pageOrigin` on a page-owned item's
+// geometry did. These helpers collect those origins, ask for them when a
+// pasteboard item's spread has none yet, and re-express each pasteboard
+// item against the nearest page of its spread. The result is page space
+// that runs past the page's edges, which is what the chrome draws in and
+// what a gesture's anchor speaks.
 
 import type {
   CanvasClient,
@@ -86,24 +87,61 @@ export function unplacedSpreads(
   return [...out];
 }
 
+/** A page summary with the fields engine 0.71.13 added; older workers
+ *  omit them. */
+type PlacedPageSummary = PageSummary & {
+  pageOrigin?: [number, number];
+  spreadId?: string;
+};
+
+/** Every page whose summary says where it sits in its spread. */
+export function spreadPagesFromSummaries(
+  pages: readonly PlacedPageSummary[],
+): SpreadPages {
+  const out = new Map<string, PageInSpread[]>();
+  for (const p of pages) {
+    if (!p.spreadId || !p.pageOrigin) continue;
+    const list = out.get(p.spreadId) ?? [];
+    list.push({ pageId: p.selfId, origin: [p.pageOrigin[0], p.pageOrigin[1]] });
+    out.set(p.spreadId, list);
+  }
+  return out;
+}
+
+/** `known` plus the pages `found` places; `found` wins for a page both
+ *  name. Returns `known` itself when `found` is empty. */
+export function mergeSpreadPages(known: SpreadPages, found: SpreadPages): SpreadPages {
+  if (found.size === 0) return known;
+  const next = new Map(known);
+  for (const [spreadId, pages] of found) {
+    const kept = (known.get(spreadId) ?? []).filter(
+      (p) => !pages.some((q) => q.pageId === p.pageId),
+    );
+    next.set(spreadId, [...kept, ...pages]);
+  }
+  return next;
+}
+
 /** Larger than any pasteboard, smaller than f32 trouble. */
 const EVERYWHERE = 1e6;
 
 /**
- * The page-owned items of one spread, for their `pageOrigin`. A marquee
- * on any page of a spread tests every item of that spread, so one marquee
- * over everything finds them. Empty when the spread holds no page-owned
- * item that a marquee can reach (hidden and locked layers are skipped):
- * then nothing says where its pages sit.
+ * Where the pages of `spreadId` sit. The page summaries say so for every
+ * spread at once (engine 0.71.13). An older worker's do not; then the
+ * page-owned items of the spread say it, through their `pageOrigin`: a
+ * marquee on any page of a spread tests every item of that spread, so
+ * one marquee over everything finds them. Empty when neither answers (a
+ * spread with no page-owned item a marquee can reach — hidden and locked
+ * layers are skipped).
  */
 export async function probeSpreadPages(
   client: Pick<CanvasClient, "collection" | "marqueeHits" | "elementGeometry">,
   spreadId: string,
-): Promise<ElementGeometryItem[]> {
-  const [spreads, pages] = await Promise.all([
-    client.collection<SpreadSummary>("spreads"),
-    client.collection<PageSummary>("pages"),
-  ]);
+): Promise<SpreadPages> {
+  const pages = await client.collection<PlacedPageSummary>("pages");
+  const summarised = spreadPagesFromSummaries(pages);
+  if (summarised.size > 0) return summarised;
+  const spreads = await client.collection<SpreadSummary>("spreads");
   // Both collections run in document order; a spread's pages follow the
   // pages of the spreads before it.
   let first = 0;
@@ -113,17 +151,17 @@ export async function probeSpreadPages(
       continue;
     }
     const pageId = pages[first]?.selfId;
-    if (!pageId || spread.pageCount === 0) return [];
+    if (!pageId || spread.pageCount === 0) return NO_SPREAD_PAGES;
     const ids = await client.marqueeHits(pageId, [
       -EVERYWHERE,
       -EVERYWHERE,
       EVERYWHERE,
       EVERYWHERE,
     ]);
-    if (ids.length === 0) return [];
-    return (await client.elementGeometry(ids)).filter((g) => g.pageId && g.pageOrigin);
+    if (ids.length === 0) return NO_SPREAD_PAGES;
+    return learnSpreadPages(NO_SPREAD_PAGES, await client.elementGeometry(ids));
   }
-  return [];
+  return NO_SPREAD_PAGES;
 }
 
 type Affine = [number, number, number, number, number, number];

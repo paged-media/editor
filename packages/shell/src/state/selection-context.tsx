@@ -44,6 +44,7 @@ import { useOptionalDocument } from "./document-context";
 import { followScriptSelection } from "./script-selection";
 import {
   learnSpreadPages,
+  mergeSpreadPages,
   NO_SPREAD_PAGES,
   placeOnPages,
   probeSpreadPages,
@@ -279,10 +280,10 @@ function usePlacedGeometry(
       if (asked.current.has(ask)) continue;
       asked.current.add(ask);
       probeSpreadPages(client, spreadId)
-        .then((items) =>
+        .then((found) =>
           setLearned((prev) =>
             prev.key === pagesKey
-              ? { key: pagesKey, pages: learnSpreadPages(prev.pages, items) }
+              ? { key: pagesKey, pages: mergeSpreadPages(prev.pages, found) }
               : prev,
           ),
         )

@@ -14,6 +14,7 @@
     "test:boot-coi": "node --experimental-strip-types scripts/cross-origin-isolation-check.test.mjs",
     "test:network-policy": "node --experimental-strip-types scripts/network-policy.test.mjs",
     "test:modules": "node --experimental-strip-types scripts/modules.test.mjs",
+    "test:spread-pages": "node --experimental-strip-types scripts/spread-pages.test.mjs",
     "test:thresholds": "node scripts/fidelity-thresholds-schema.test.mjs",
     "test:journal": "node --experimental-strip-types scripts/journal.test.mjs",
     "test:object-model": "node --experimental-strip-types scripts/object-model.test.mjs",

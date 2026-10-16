@@ -624,7 +624,7 @@ layout / masters / groups fixtures on 0.71.9, and was removed; the
 selection chrome, Transform ▸ X / Y, the thread lines and the path-edit
 session read the engine's geometry as it answers it.
 
-## 18. A pasteboard item answers in spread space, and no read says where its spread's pages are (OPEN)
+## 18. A pasteboard item answers in spread space, and no read says where its spread's pages are (FIXED in 0.71.13)
 
 Found 2026-10-15 drawing selection chrome for items hanging off the page.
 
@@ -647,15 +647,21 @@ geometry. The pasteboard item is then re-expressed in the nearest known
 page's space, where the chrome draws and the gestures anchor. When
 nothing places it, it still draws no chrome.
 
-**Likely fix.** Carry the page origin on a page read: `pageOrigin` (and
-`spreadId`) on `PageSummary`, or, for a pageless item, the nearest page
-of its spread and its geometry in that page's space alongside the
-spread-space answer.
+**RESOLVED (core v0.71.13, 2026-10-16).** `PageSummary` carries
+`pageOrigin` (the page's top-left in its spread, the convention of
+geometry's `pageOrigin`) and `spreadId`. `spread-pages.ts` reads them off
+the `pages` collection when present, for every spread at once, so no
+marquee is needed and a pasteboard item on a spread whose pages hold
+nothing gets chrome; the derivation above stays the fallback for a worker
+that omits them. The editor's pin is still 0.71.12 at the time of
+writing, so the browser suite exercises the fallback; the fields' path is
+covered by `scripts/spread-pages.test.mjs` with a fixture page list.
 
 **Suite anchor.** `e2e/pasteboard-chrome.spec.ts`: AC-PASTEBOARD-1
 places by the marquee (nothing the selection held was on that page),
-AC-PASTEBOARD-2 by an origin the selection held. A pasteboard item on a
-spread with nothing else on its pages would still show the gap.
+AC-PASTEBOARD-2 by an origin the selection held;
+`scripts/spread-pages.test.mjs` (`pnpm test:spread-pages`) the page
+summaries' path.
 
 ---
 
