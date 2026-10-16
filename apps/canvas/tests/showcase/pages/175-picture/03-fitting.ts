@@ -22,10 +22,9 @@
 // One photograph, four fittings — contain, cover, stretch, and a
 // pan/zoom through the inner image transform — each labeled with the
 // exact properties that produced it. The fitting ENUM is persisted
-// intent; what moves pixels is the CROPS (IDML spells "cover" as
-// negative crops, and this engine draws that overhang unclipped, so
-// the left exhibit shows its spill rather than hiding it) and the
-// inner transform (the one fitting that IS clipped to the frame).
+// intent; what moves pixels is the CROPS (the engine spells "cover" as
+// negative crops — InDesign's are positive, in picture units — and the
+// frame clips the overhang, as InDesign does) and the inner transform.
 //
 // The bottom band is the persistence argument: a frame whose link
 // cannot resolve renders InDesign's grey placeholder once it is an
@@ -113,12 +112,12 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   // the slack becomes positive top/bottom crops (bands of paper).
   const containH = FRAME_W / aspect;
   const containBand = (FRAME_H - containH) / 2;
-  // Cover: the drawn rect keeps the aspect OVER the frame; IDML spells
-  // the overhang as NEGATIVE left/right crops.
+  // Cover: the drawn rect keeps the aspect OVER the frame; the engine
+  // spells the overhang as NEGATIVE left/right crops (frame-space insets).
   const coverW = FRAME_H * aspect;
   const coverOverhang = (coverW - FRAME_W) / 2;
 
-  // (a) cover, left — its spill into the margin is shown, not hidden.
+  // (a) cover, left — its overhang is clipped by the frame.
   await exhibit(
     [60, 150, 60 + FRAME_W, 150 + FRAME_H],
     [
@@ -129,7 +128,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       },
     ],
     [60, 304, 250, 352],
-    `a · FillProportionally — cover. Crops 0 / ${-coverOverhang.toFixed(1)} / 0 / ${-coverOverhang.toFixed(1)}: the overhang is negative crop, drawn unclipped — the spill is the demonstration.`,
+    `a · FillProportionally — cover. Crops 0 / ${-coverOverhang.toFixed(1)} / 0 / ${-coverOverhang.toFixed(1)}: the overhang is negative crop, and the frame clips it, as InDesign does.`,
   );
 
   // (b) contain, right.
@@ -232,7 +231,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   await marginNote(
     ctx,
     page,
-    "Fitting enums, the reference point and auto-fit are persisted intent — the geometry above comes from the crops and the inner transform; the cover fit draws its overhang unclipped, shown rather than hidden. → Appendix A",
+    "Fitting enums, the reference point and auto-fit are persisted intent — the geometry above comes from the crops and the inner transform; the cover fit's overhang is clipped by its frame, as InDesign clips it. → Appendix A",
   );
   elements.push(
     await specLabel(ctx, page, [
