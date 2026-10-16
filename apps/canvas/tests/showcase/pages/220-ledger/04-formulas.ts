@@ -47,6 +47,7 @@ import { LAYER, STYLE, TABLE_STYLE, p } from "../../names-annual";
 import { partitionByPage, removeRefs } from "../../plugin-support";
 import type { PageContext, PageReport } from "../../types";
 import {
+  GRID_PANEL,
   SHEET_CMD,
   WORKBOOK_PANEL,
   enterCell,
@@ -121,6 +122,18 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   elements.push(head.frameId);
 
   // ── import through the importXlsx COMMAND (host picker lane) ─────
+  // The command reveals the workbook panel once the import has finished,
+  // and on a book this size that is well after the panel first shows the
+  // new file name: the import persists the workbook into the container
+  // before it resolves. A grid opened inside that window was put back
+  // behind the workbook tab by the late reveal, and the formula bar
+  // vanished mid-drive. So put the workbook panel away first (it shares
+  // a dock group with the grid); its return is the completion signal.
+  await openPanel(page, GRID_PANEL);
+  await expect(
+    page.locator('[data-sheet-panel="workbook"]'),
+    "the workbook panel is put away before the import",
+  ).toHaveCount(0, { timeout: 30_000 });
   const chooser = page
     .waitForEvent("filechooser", { timeout: 120_000 })
     .catch(() => null);
@@ -139,8 +152,8 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   }
   await expect(
     page.locator('[data-sheet-panel="workbook"]'),
-    "the formula workbook parsed",
-  ).toContainText("sheet-02-formulas.xlsx", { timeout: 30_000 });
+    "the formula workbook parsed, persisted, and the command revealed it",
+  ).toContainText("sheet-02-formulas.xlsx", { timeout: 120_000 });
 
   // ── the calc engine, through the formula bar ─────────────────────
   await doc.runCommand(`${SHEET_CMD}.openGrid`);

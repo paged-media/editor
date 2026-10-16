@@ -26,7 +26,7 @@
 //     every reload with no plugin engine anywhere in the pipeline.
 //   · p108 (verso) — the LIVE lane. The same source authored through
 //     the source PANEL (make-web-frame → editors → "Save to document",
-//     which persists the envelope AND its container part) and rendered
+//     which persists the envelope) and rendered
 //     by the engine into a C-1 scene layer. Alive, editable — and gone
 //     the moment this chapter's checkpoint reloads.
 //
@@ -255,16 +255,27 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     ]);
     elements.push(cap107.frameId);
 
-    // The container's answer: which web parts travel with the file.
+    // The container's answer: which web parts travel with the file. A
+    // source rides its frame's label and moves into a content-addressed
+    // part (`sources/<hash>.json`) only once it outgrows the label, so
+    // for this chapter's exhibits the honest answer can be none — the
+    // flows page reads the chains back from those labels. The door
+    // itself must still answer with real content: this book's plugin
+    // namespace is never empty.
     const parts = await listParts(page, WEB_PARTS_PREFIX);
+    const pluginParts = await listParts(page, "paged/");
     expect(
-      parts.length,
-      "the container carries paged/media.paged.web/* source parts",
+      pluginParts.length,
+      "the parts door lists the plugin parts this container carries",
     ).toBeGreaterThan(0);
     covers.push("package-anatomy.paged-parts-door");
+    const webAnswer =
+      parts.length > 0
+        ? parts.map((path) => path.replace(WEB_PARTS_PREFIX, "")).join(" · ")
+        : "none — every web source here fits its frame's label";
     notes.push(
-      `listPagedParts ${WEB_PARTS_PREFIX} — ${parts.length} part(s): ` +
-        parts.map((path) => path.replace(WEB_PARTS_PREFIX, "")).join(", "),
+      `listPagedParts ${WEB_PARTS_PREFIX} — ${parts.length} part(s): ${webAnswer} ` +
+        `(${pluginParts.length} plugin part(s) in the container)`,
     );
     // Below the bake's own spill: the pull-quote path the bake minted
     // reaches ~590 pt, so the apparatus line clears it at 600.
@@ -272,7 +283,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       {
         text:
           `listPagedParts ${WEB_PARTS_PREFIX} → ${parts.length} part(s): ` +
-          parts.map((path) => path.replace(WEB_PARTS_PREFIX, "")).join(" · "),
+          webAnswer,
         style: STYLE.codeBlock,
       },
     ]);

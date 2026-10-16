@@ -24,8 +24,9 @@
 // (threadWebFlow — untagged recipients belong to the primary flow) and
 // routes a third recipient to the sidebar flow (threadWebFlowNamed —
 // the second `flow-into` in declaration order). The persisted chain
-// rides the source envelope AND its container part, which is where
-// this page goes to VERIFY what it did: the part's JSON is read back
+// rides the source envelope — the frame's label, or the container part
+// it points at once the source outgrows the label — which is where this
+// page goes to VERIFY what it did: the persisted record is read back
 // and its recipients — including the one tagged `sidebar-flow` — are
 // the oracle, not wishful thinking about a command that returned.
 //
@@ -45,7 +46,7 @@ import {
   WEB_CMD,
   armMutationFailureTap,
   hairline,
-  partRecipients,
+  persistedRecipients,
   readMutationFailures,
   readReport,
   runOnSelection,
@@ -77,7 +78,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
         "The article declares flow-into: article-flow; its route notes " +
         "declare flow-into: sidebar-flow. Frames are the real Regions " +
         "consumers here — the chain below is persisted in the source's " +
-        "envelope and container part, and this page reads the part back " +
+        "envelope in the document, and this page reads that record back " +
         "as its proof.",
       style: STYLE.bodySmall,
     },
@@ -101,7 +102,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   await runOnSelection(ctx, [ref(src), ref(r1), ref(r2)], `${WEB_CMD}.threadWebFlow`);
   const threaded = await settle(
     page,
-    async () => ((await partRecipients(doc, src)) ?? []).length === 2,
+    async () => ((await persistedRecipients(doc, src)) ?? []).length === 2,
     10_000,
   );
   expect(
@@ -112,10 +113,10 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   await runOnSelection(ctx, [ref(src), ref(sidebar)], `${WEB_CMD}.threadWebFlowNamed`);
   await settle(
     page,
-    async () => ((await partRecipients(doc, src)) ?? []).length === 3,
+    async () => ((await persistedRecipients(doc, src)) ?? []).length === 3,
     10_000,
   );
-  const recipients = (await partRecipients(doc, src)) ?? [];
+  const recipients = (await persistedRecipients(doc, src)) ?? [];
   expect(recipients.length, "three recipients persisted").toBe(3);
   // The part records ENGINE ids; `sidebar` may still be a handle.
   const [sidebarId] = await doc.ids(sidebar);
@@ -133,22 +134,22 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     await runOnSelection(ctx, [ref(src), ref(scratch)], `${WEB_CMD}.threadWebFlow`);
     const grew = await settle(
       page,
-      async () => ((await partRecipients(doc, src)) ?? []).length === 4,
+      async () => ((await persistedRecipients(doc, src)) ?? []).length === 4,
       10_000,
     );
     await runOnSelection(ctx, [ref(src), ref(scratch)], `${WEB_CMD}.unthreadWebFlow`);
     const shrank = await settle(
       page,
-      async () => ((await partRecipients(doc, src)) ?? []).length === 3,
+      async () => ((await persistedRecipients(doc, src)) ?? []).length === 3,
       10_000,
     );
     await doc.mutate("deleteFrame", { frameId: scratch });
     notes.push(
       grew && shrank
-        ? "unthreadWebFlow round trip verified through the container part " +
+        ? "unthreadWebFlow round trip verified through the persisted envelope " +
           "(chain 3 → 4 → 3); the scratch frame was deleted — demonstrated, " +
           "not resident"
-        : "the unthread round trip could not be verified through the part " +
+        : "the unthread round trip could not be verified through the envelope " +
           `(grew=${grew}, shrank=${shrank})`,
     );
   });
@@ -220,7 +221,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       p(105),
       "The flow renders above are scene layers — session state that the " +
         "chapter checkpoint will drop. The CHAIN is not: it rides the " +
-        "source envelope and the container part, and reopening the file " +
+        "source envelope in the document, and reopening the file " +
         "re-renders it on any engine-capable lane. → Appendix A",
     ),
   );
@@ -230,7 +231,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       "Specimen No. 172",
       "threadWebFlow ×2 · threadWebFlowNamed · unthreadWebFlow",
       "renderWebFlow — every flow group",
-      "chain verified via paged/media.paged.web/<id>/source.json",
+      "chain verified via the x-paged:media.paged.web label",
     ]),
   );
 
