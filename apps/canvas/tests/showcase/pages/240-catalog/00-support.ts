@@ -203,8 +203,11 @@ export async function spreadOffset(
 
 // ── read doors ───────────────────────────────────────────────────────
 
-/** A placeholder FIELD as the engine's read door reports it — the D-01
- *  tagged run a lowered variable places. */
+/** A paged.data FIELD as the document carries it. Where the host has
+ *  text variables the plugin lowers a variable as an InDesign custom
+ *  text variable named `paged:<key>` (`storyId` is then the variable's
+ *  `textVariable:<id>` address — a variable is not in one story);
+ *  otherwise as a D-01 tagged placeholder run. */
 export interface FieldRecord {
   plugin: string;
   key: string;
@@ -213,42 +216,99 @@ export interface FieldRecord {
   value: string | null;
 }
 
-/** Every paged.data placeholder field in the document, via the same
- *  wire door the plugin's own refresh loop enumerates. */
+/** paged.data's own text variables are named with this prefix. */
+const DATA_VARIABLE_PREFIX = "paged:";
+
+/** Every paged.data field in the document, on either carrier: the
+ *  placeholder runs (the wire door the plugin's refresh loop enumerates)
+ *  and the plugin's text variables (the object-model query and property
+ *  doors the plugin itself reads them through). A variable still showing
+ *  its `<key>` stand-in has no value yet. */
 export async function readFields(page: Page): Promise<FieldRecord[]> {
-  const items = await page.evaluate(async () => {
+  const raw = await page.evaluate(async (prefix) => {
     const c = (
       globalThis as unknown as {
         __canvas: {
           client: {
             send: (m: unknown) => Promise<{
               kind: string;
-              payload: { items?: unknown[] };
+              payload: {
+                items?: unknown[];
+                addresses?: string[];
+                value?: { type?: string; value?: unknown } | null;
+              };
             }>;
           };
         };
       }
     ).__canvas;
+    let placeholders: Array<Record<string, unknown>> = [];
     try {
       const reply = await c.client.send({
         kind: "requestDocumentPlaceholders",
       });
-      return reply.kind === "documentPlaceholders"
-        ? ((reply.payload.items ?? []) as Array<Record<string, unknown>>)
-        : [];
+      if (reply.kind === "documentPlaceholders") {
+        placeholders = (reply.payload.items ?? []) as Array<
+          Record<string, unknown>
+        >;
+      }
     } catch {
-      return [];
+      placeholders = [];
     }
-  });
-  return items
-    .map((i) => ({
-      plugin: String(i.plugin ?? ""),
-      key: String(i.key ?? ""),
-      storyId: String(i.storyId ?? ""),
-      offset: Number(i.offset ?? 0),
-      value: (i.value ?? null) as string | null,
-    }))
-    .filter((f) => f.plugin.startsWith("media.paged.data"));
+    const variables: Array<{
+      address: string;
+      name: string | null;
+      contents: string | null;
+    }> = [];
+    try {
+      const q = await c.client.send({
+        kind: "requestQuery",
+        payload: { selector: `textVariable[name^="${prefix}"]` },
+      });
+      const text = async (address: string, path: string) => {
+        const r = await c.client.send({
+          kind: "requestGet",
+          payload: { address, path },
+        });
+        const v = r.kind === "propertyValue" ? r.payload.value : null;
+        return typeof v?.value === "string" ? v.value : null;
+      };
+      for (const address of q.kind === "queryResult"
+        ? (q.payload.addresses ?? [])
+        : []) {
+        variables.push({
+          address,
+          name: await text(address, "textVariableName"),
+          contents: await text(address, "textVariableContents"),
+        });
+      }
+    } catch {
+      // A host without text variables answers with placeholders only.
+    }
+    return { placeholders, variables };
+  }, DATA_VARIABLE_PREFIX);
+  const fromPlaceholders = raw.placeholders.map((i) => ({
+    plugin: String(i.plugin ?? ""),
+    key: String(i.key ?? ""),
+    storyId: String(i.storyId ?? ""),
+    offset: Number(i.offset ?? 0),
+    value: (i.value ?? null) as string | null,
+  }));
+  const fromVariables = raw.variables
+    .filter((v) => v.name?.startsWith(DATA_VARIABLE_PREFIX))
+    .map((v) => {
+      const key = (v.name as string).slice(DATA_VARIABLE_PREFIX.length);
+      return {
+        plugin: "media.paged.data",
+        key,
+        storyId: v.address,
+        offset: 0,
+        value: v.contents === null || v.contents === `<${key}>` ? null : v.contents,
+      };
+    });
+  return [...fromPlaceholders, ...fromVariables].filter((f) =>
+    f.plugin.startsWith("media.paged.data"),
+  );
 }
 
 /** One field's current display, by binding key; null when absent. */

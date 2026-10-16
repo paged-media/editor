@@ -252,9 +252,8 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       value: { type: "colorRef", value: accentTint },
     },
   });
-  // (No cellFillTint here: the engine models no per-cell tint — the write
-  // is accepted and dropped — so the note cell's tint comes from its
-  // colour, `accentTint`.)
+  // (No cellFillTint here: the note cell's pale fill is its own colour,
+  // the `accentTint` swatch.)
   decor.push({
     op: "setElementProperty",
     args: {

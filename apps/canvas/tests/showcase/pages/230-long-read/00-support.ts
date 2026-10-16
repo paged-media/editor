@@ -134,30 +134,88 @@ export async function readPartText(
   }, path);
 }
 
-/** The persisted flow recipients of a source frame, read from its
- *  container part — `null` when the part (or its flow) is absent. */
-export async function partRecipients(
-  doc: ShowcaseDoc,
-  frameId: string,
-): Promise<Array<{ id: string; flow?: string }> | null> {
-  // The part PATH is text: a handle spelled into it reaches no rewrite
-  // rule (the flows page read `paged/media.paged.web/$h:m3/source.json`
-  // for ten seconds and called the thread unpersisted), so the frame's
-  // real id is resolved before the path is built.
-  const [realId] = await doc.ids(frameId);
-  const text = await readPartText(
-    doc.page,
-    `${WEB_PARTS_PREFIX}${realId}/source.json`,
+/** The frame's paged.web label (its `x-paged:media.paged.web`
+ *  metadata), parsed — `null` when the frame carries none. */
+export async function readWebLabel(
+  page: Page,
+  id: { kind: string; id: string },
+): Promise<WebEnvelope | null> {
+  const raw = await page.evaluate(
+    async ({ id, key }) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              elementProperties: (id: unknown) => Promise<{
+                entries?: Array<{
+                  value?: {
+                    type?: string;
+                    value?: { key?: string; value?: string };
+                  } | null;
+                }>;
+              } | null>;
+            };
+          };
+        }
+      ).__canvas;
+      const props = await c.client.elementProperties(id);
+      for (const e of props?.entries ?? []) {
+        const v = e.value;
+        if (v?.type === "pluginMetadata" && v.value?.key === key) {
+          return v.value.value ?? null;
+        }
+      }
+      return null;
+    },
+    { id, key: WEB_KEY },
   );
-  if (!text) return null;
+  if (!raw) return null;
   try {
-    const envelope = JSON.parse(text) as {
-      data?: { flow?: { recipients?: Array<{ id: string; flow?: string }> } };
-    };
-    return envelope.data?.flow?.recipients ?? null;
+    return JSON.parse(raw) as WebEnvelope;
   } catch {
     return null;
   }
+}
+
+/** The v1 source envelope as the document persists it: the source
+ *  inline, or a reference to the container part that holds it. */
+export interface WebEnvelope {
+  v?: number;
+  data?: {
+    flow?: { recipients?: Array<{ id: string; flow?: string }> };
+    ref?: { hash?: string; bytes?: number };
+  };
+}
+
+/**
+ * The persisted flow recipients of a source frame — `null` when the
+ * frame carries no source (or no chain). paged.web keeps a source in
+ * the frame's label and moves it into a content-addressed container
+ * part (`sources/<hash>.json`) only when it outgrows the label, so this
+ * reads the label and follows its reference when there is one: the
+ * answer is always the document's record, never the bundle's session.
+ */
+export async function persistedRecipients(
+  doc: ShowcaseDoc,
+  frameId: string,
+): Promise<Array<{ id: string; flow?: string }> | null> {
+  // A handle reaches no read door, so resolve the frame's real id first.
+  const [realId] = await doc.ids(frameId);
+  let envelope = await readWebLabel(doc.page, { kind: "rectangle", id: realId });
+  const hash = envelope?.data?.ref?.hash;
+  if (typeof hash === "string") {
+    const text = await readPartText(
+      doc.page,
+      `${WEB_PARTS_PREFIX}sources/${hash}.json`,
+    );
+    if (!text) return null;
+    try {
+      envelope = JSON.parse(text) as WebEnvelope;
+    } catch {
+      return null;
+    }
+  }
+  return envelope?.data?.flow?.recipients ?? null;
 }
 
 /** Select `refs` in order (source first) and invoke a web command — the

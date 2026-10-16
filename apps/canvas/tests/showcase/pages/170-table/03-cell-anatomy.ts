@@ -90,7 +90,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   const tableNumber = await doc.paragraphStyle(STYLE.tableNumber);
   const labels: Array<[number, number, string, string]> = [
     [0, 0, "cellFillColor", tableBody],
-    [0, 1, "cellFillTint 30 (not stored)", tableBody],
+    [0, 1, "cellFillTint 30", tableBody],
     [0, 2, "Annual TH", tableBody],
     [0, 3, "TD Number", tableBody],
     [1, 0, "cellInsetTop 16", tableBody],
@@ -187,8 +187,8 @@ export async function build(ctx: PageContext): Promise<PageReport> {
         "Twenty property paths on one grid; the twenty-first, " +
         "appliedTableStyle, dresses the long table overleaf. The EDGE " +
         "tints paint — the pale right edge is the vermilion at 40 — " +
-        "while the FILL tint is recorded but composites at full " +
-        "strength on this build; the margin says so.",
+        "and so does the FILL tint: the second cell is the same " +
+        "vermilion at 30.",
       style: STYLE.caption,
     },
   ]);
@@ -197,12 +197,12 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   await marginNote(
     ctx,
     p(68),
-    "cellFillTint is NOT modelled per cell: the engine accepts the write but does not store it, a read answers null, and the cell paints at full strength (the two vermilion cells above match) — edge-stroke tints DO paint. Alternating row fills are a table-style region property — no per-table wire path; they arrive through an applied style (the ledger overleaf, dressed in Annual Table). → Appendix A",
+    "cellFillTint is stored per cell: a read answers 30, and the second cell paints the vermilion at that tint beside the full-strength first — edge-stroke tints paint the same way. Alternating row fills are a table-style region property — no per-table wire path; they arrive through an applied style (the ledger overleaf, dressed in Annual Table). → Appendix A",
   );
   elements.push(
     await specLabel(ctx, p(68), [
       "Specimen No. 103",
-      "cellFillColor (cellFillTint: not stored)",
+      "cellFillColor + cellFillTint",
       "cellInsetTop/Left/Bottom/Right",
       "cellVerticalJustification incl. JustifyAlign",
       "12 × cell edge stroke paths",
@@ -213,10 +213,9 @@ export async function build(ctx: PageContext): Promise<PageReport> {
   return {
     title: "Cell anatomy — the property paths",
     notes: [
-      "cellFillTint: KNOWN GAP — the engine models no per-cell tint; the " +
-        "write is accepted but not stored (a read answers null) and the cell " +
-        "fill paints at full strength — measured on this page (the tinted " +
-        "cell matches the untinted one); edge-stroke tints render correctly",
+      "cellFillTint: stored per cell and painted (a read answers the " +
+        "tint; the tinted cell is lighter than the untinted one); " +
+        "edge-stroke tints render the same way",
     ],
     covers: [
       "tables.model",

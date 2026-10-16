@@ -53,7 +53,12 @@ import {
 } from "../../annual-support";
 import { LAYER, STYLE, SWATCH, contentBox, p } from "../../names-annual";
 import type { PageContext, PageReport } from "../../types";
-import { corner, elementCenter, elementGeometry } from "./wire";
+import {
+  corner,
+  elementCenter,
+  elementGeometry,
+  storedTransform,
+} from "./wire";
 
 /** The pennant: asymmetric on both axes, 96 x 56, at page (x, y). */
 const PENNANT = (
@@ -240,9 +245,11 @@ export async function build(ctx: PageContext): Promise<PageReport> {
       value: w2,
     });
     // Read P back: if frameTransform composed, P would carry w1*w2 and
-    // sit 26 pt higher. It must carry w2 exactly.
+    // sit 26 pt higher. It must carry w2 exactly. The geometry door
+    // answers page-local, so fold the page origin back in before
+    // comparing with the spread-space matrix that was written.
     const g = await elementGeometry(ctx, { kind: "polygon", id: pId });
-    const got = g.itemTransform ?? [1, 0, 0, 1, 0, 0];
+    const got = storedTransform(g);
     for (const [i, want] of w2.entries()) {
       if (Math.abs(got[i] - want) > 1e-4) {
         throw new Error(
