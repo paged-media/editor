@@ -76,7 +76,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
         "shows at a moment can be captured as a named data set and applied " +
         "back later — many fields, one undo step. The ledger below is this " +
         "page's lab notebook: each line was read from the document's own " +
-        "placeholder door at that step of the drive, and the card was left " +
+        "field records at that step of the drive, and the card was left " +
         "as the chapter found it.",
       style: STYLE.bodySmall,
     },
