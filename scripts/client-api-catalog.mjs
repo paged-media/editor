@@ -254,9 +254,10 @@ function exportOrigins(indexSrc) {
 /**
  * The wire kinds this client NAMES — its column of the parity matrix.
  *
- * Scraped from `this.send({ kind: "…" })` call sites specifically, NOT
- * from every `kind:` in the file: the worker shell takes its own
- * envelope (`{ kind: "channel" }`, `{ kind: "gestureSab" }`) on the
+ * Scraped from `this.send({ kind: "…" })` call sites (and `this.post`,
+ * the primitive under `send` the font registry posts through)
+ * specifically, NOT from every `kind:` in the file: the worker shell
+ * takes its own envelope (`{ kind: "channel" }`, `{ kind: "gestureSab" }`) on the
  * same postMessage port, and counting those would inflate this column
  * with messages that never reach `WorkerCore::dispatch`. The first
  * scrape did exactly that and read 59 where the wire has 62 kinds —
@@ -264,7 +265,7 @@ function exportOrigins(indexSrc) {
  */
 function wireKinds(src) {
   const kinds = new Set();
-  for (const m of src.matchAll(/this\.send\(\s*\{\s*kind:\s*"([a-z][A-Za-z0-9]*)"/g)) {
+  for (const m of src.matchAll(/this\.(?:send|post)\(\s*\{\s*kind:\s*"([a-z][A-Za-z0-9]*)"/g)) {
     kinds.add(m[1]);
   }
   for (const { envelope, kind } of SHELL_ENVELOPES) {

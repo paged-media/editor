@@ -3,7 +3,7 @@
   "package": "@paged-media/client",
   "protocol": 71,
   "counts": {
-    "clientMembers": 75,
+    "clientMembers": 76,
     "wireKinds": 52,
     "exports": 72
   },
@@ -475,6 +475,12 @@
           "kind": "method",
           "signature": "async registerFont( family: string, bytes: Uint8Array, style: string | null",
           "summary": "Register a font in the worker's family resolver."
+        },
+        {
+          "name": "CanvasClient.registerDocumentFont",
+          "kind": "method",
+          "signature": "async registerDocumentFont( family: string, bytes: Uint8Array, style: string | null",
+          "summary": "Put a face in the engine's DOCUMENT font registry for the document open now (plugin-sdk ADR 330)."
         },
         {
           "name": "CanvasClient.clearFontRegistry",
