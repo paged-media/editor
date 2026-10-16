@@ -32,11 +32,16 @@
 //     pairs — NOT the wire's [top, left, bottom, right] bounds order).
 //
 // Coordinate note, learned from the d.ts: `requestPathAnchors` and
-// `requestElementGeometry` answer in the element's own STORED space
-// (spread coords for live-inserted items, before item_transform), and
-// the pathPoint* ops take positions in that same space — so every
-// edit position in this chapter is derived from a read, never from
-// page arithmetic.
+// `requestElementGeometry` answer bounds and anchors in the element's
+// own STORED inner space (spread coords for live-inserted items, before
+// item_transform), and the pathPoint* ops take positions in that same
+// space — so every edit position in this chapter is derived from a
+// read, never from page arithmetic. Their `itemTransform`, though, is
+// PAGE-local: the owning page's origin inside its spread is folded in
+// and reported beside it as `pageOrigin`, while the `frameTransform`
+// property reads and writes the stored SPREAD-space matrix. On a verso
+// of this book the two differ by a page width; `storedTransform` puts
+// the origin back so a read compares like with like.
 
 import type { PageContext } from "../../types";
 
@@ -52,7 +57,10 @@ export interface GeometryItem {
   spreadId?: string | null;
   /** `[top, left, bottom, right]` in the element's stored space. */
   bounds: [number, number, number, number];
+  /** Into the owning PAGE's coordinates (page origin folded in). */
   itemTransform?: [number, number, number, number, number, number] | null;
+  /** The page's origin inside its spread; absent for a pageless item. */
+  pageOrigin?: [number, number] | null;
 }
 
 export interface AnchorTriple {
@@ -109,6 +117,18 @@ export async function elementGeometry(
     );
   }
   return item;
+}
+
+/**
+ * The stored spread-space matrix — what the `frameTransform` property
+ * holds — from a geometry read: `translate(pageOrigin) ∘ itemTransform`.
+ */
+export function storedTransform(
+  g: GeometryItem,
+): [number, number, number, number, number, number] {
+  const [a, b, c, d, tx, ty] = g.itemTransform ?? [1, 0, 0, 1, 0, 0];
+  const [ox, oy] = g.pageOrigin ?? [0, 0];
+  return [a, b, c, d, tx + ox, ty + oy];
 }
 
 /** Centre of an element's stored bounds — the pivot the transform
