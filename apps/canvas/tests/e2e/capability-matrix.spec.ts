@@ -208,6 +208,31 @@ async function scratchNote(page: Page, fx: LoadedFixture): Promise<string | null
   });
 }
 
+/** A scratch endnote on the story's second character (insertEndnote,
+ *  classified above; the first one makes the endnote story on a new
+ *  page); its `id` off the endnotes collection, whose rows carry `id`. */
+async function scratchEndnote(page: Page, fx: LoadedFixture): Promise<string | null> {
+  if (!fx.firstStory) return null;
+  const ids = () =>
+    page.evaluate(async () => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: { collection: (n: string) => Promise<Array<{ id: string }>> };
+          };
+        }
+      ).__canvas;
+      return (await c.client.collection("endnotes")).map((e) => e.id);
+    });
+  const before = new Set(await ids());
+  const made = await tryMutate(page, {
+    op: "insertEndnote",
+    args: { storyId: fx.firstStory.selfId, offset: 1, text: "Scratch endnote." },
+  });
+  if (!made.ok) return null;
+  return (await ids()).find((id) => !before.has(id)) ?? null;
+}
+
 /** The navigation fixture's first bookmark, off the bookmarks collection. */
 async function firstBookmarkId(page: Page): Promise<string | null> {
   return (await collectionIds(page, "bookmarks")).values().next().value ?? null;
@@ -1389,6 +1414,49 @@ const TEXT_PROBES: Probe[] = [
       return noteId ? { op: "convertNoteToText", args: { noteId } } : null;
     },
     setupUndo: 1, // the scratch insertNote
+  },
+  // protocol 73 in core 0.73.0 (ADR 174): endnotes. No editor UI of its
+  // own yet.
+  {
+    op: "insertEndnote",
+    // ADR 174 — the reference at a story offset; the first endnote of a
+    // document also makes the endnote story on a page of its own.
+    build: async ({ fx }) =>
+      fx.firstStory
+        ? {
+            op: "insertEndnote",
+            args: { storyId: fx.firstStory.selfId, offset: 1, text: "Probe endnote." },
+          }
+        : null,
+  },
+  {
+    op: "deleteEndnote",
+    build: async ({ page, fx }) => {
+      const endnoteId = await scratchEndnote(page, fx);
+      return endnoteId ? { op: "deleteEndnote", args: { endnoteId } } : null;
+    },
+    setupUndo: 1, // the scratch insertEndnote
+  },
+  {
+    op: "convertFootnoteToEndnote",
+    // A scratch footnote first, by its id off the footnotes collection.
+    build: async ({ page, fx }) => {
+      if (!fx.firstStory) return null;
+      const before = await collectionIds(page, "footnotes");
+      const made = await tryMutate(page, {
+        op: "insertFootnote",
+        args: { storyId: fx.firstStory.selfId, offset: 1, text: "Scratch." },
+      });
+      if (!made.ok) return null;
+      const footnoteId = await newCollectionId(page, "footnotes", before);
+      return footnoteId
+        ? {
+            op: "convertFootnoteToEndnote",
+            args: { storyId: fx.firstStory.selfId, footnoteId },
+          }
+        : null;
+    },
+    setupUndo: 1, // the scratch insertFootnote
   },
   {
     op: "setFlowGrowRule",

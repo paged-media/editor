@@ -331,6 +331,11 @@ export const CAPABILITIES: Capability[] = [
   { op: "renameBookmark", status: "supported", note: "proto 72, ADR 173; {bookmarkId, name}; probed on the navigation fixture's first bookmark; the Bookmarks panel is read-only" },
   { op: "moveBookmark", status: "supported", note: "proto 72, ADR 173; {bookmarkId, parent?, index?}; probed moving the navigation fixture's first bookmark to the end; the Bookmarks panel is read-only" },
   { op: "deleteBookmark", status: "supported", note: "proto 72, ADR 173; {bookmarkId}; probed on the navigation fixture's first bookmark; the Bookmarks panel is read-only" },
+  // endnotes (protocol 73, core 0.73.0 — ADR 174). No editor UI issues
+  // any of them yet.
+  { op: "insertEndnote", status: "supported", note: "proto 73, ADR 174; {storyId, offset, paragraph?, text}; the first endnote also makes the endnote story on a new page; endnotes collection rows carry `id`; no editor UI" },
+  { op: "deleteEndnote", status: "supported", note: "proto 73, ADR 174; {endnoteId}; probed on a scratch endnote; no editor UI" },
+  { op: "convertFootnoteToEndnote", status: "supported", note: "proto 73, ADR 174; {storyId, footnoteId}; the footnote's removal and an endnote of its text, one undo step; probed on a scratch footnote; no editor UI" },
 ];
 
 export function expectedStatus(op: string): Capability | undefined {
