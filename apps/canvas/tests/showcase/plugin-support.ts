@@ -176,12 +176,23 @@ export async function partitionByPage(
   return { here, elsewhere };
 }
 
-/** Remove page items as ONE undo step. No-op for an empty list. */
+/** Remove page items as ONE undo step. No-op for an empty list.
+ *
+ *  Core has no delete for a group: `deleteFrame` on one refuses, and the
+ *  refusal sinks the whole batch. A group in `refs` is dissolved first
+ *  (its members are expected in `refs` too — a plugin's lowering lists
+ *  the group and every member), the way the sheet bundle removes its
+ *  own charts. */
 export async function removeRefs(doc: ShowcaseDoc, refs: Ref[]): Promise<void> {
   if (refs.length === 0) return;
-  await doc.batch(
-    refs.map((r) => ({ op: "deleteFrame", args: { frameId: r.id } })),
-  );
+  await doc.batch([
+    ...refs
+      .filter((r) => r.kind === "group")
+      .map((r) => ({ op: "dissolveGroup", args: { groupId: r.id } })),
+    ...refs
+      .filter((r) => r.kind !== "group")
+      .map((r) => ({ op: "deleteFrame", args: { frameId: r.id } })),
+  ]);
 }
 
 /**
