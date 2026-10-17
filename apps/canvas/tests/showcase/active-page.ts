@@ -78,21 +78,59 @@ export async function clearActivePage(page: Page): Promise<void> {
   });
 }
 
+/** Report `pageId` and park the host's own push until {@link releaseActivePage}. */
+async function holdActivePage(page: Page, pageId: string): Promise<void> {
+  await page.evaluate((id) => {
+    const client = (
+      globalThis as unknown as {
+        __canvas: { client: { setActivePage: (p: string | null) => void } };
+      }
+    ).__canvas.client;
+    Object.getPrototypeOf(client).setActivePage.call(client, id);
+    // An own property shadows the method, so the app's per-render
+    // `client.setActivePage(cameraPage)` lands here and is dropped.
+    client.setActivePage = () => undefined;
+  }, pageId);
+}
+
+/** Give the method back (drop the shadow) and the engine's own answer. */
+async function releaseActivePage(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const client = (
+      globalThis as unknown as {
+        __canvas: { client: { setActivePage: (p: string | null) => void } };
+      }
+    ).__canvas.client;
+    delete (client as { setActivePage?: unknown }).setActivePage;
+    client.setActivePage(null);
+  });
+}
+
 /**
- * Run `fn` with `pageId` reported as the document's active page, then
+ * Run `fn` with `pageId` held as the document's active page, then
  * restore. Everything a plugin does inside — including work it defers
  * to a microtask it started before returning — lands on that page.
+ *
+ * HELD, not just set. The app re-derives the active page from the
+ * camera on every render (`main.tsx`: `client.setActivePage(target?.pageId)`
+ * in an effect on handle/camera/viewport), so a bare `setActivePage` is
+ * a hint with no tenure: any render between setting it and a plugin
+ * reading it puts the camera's page back (the crest repair on p77
+ * documents the first casualty). A plugin that awaits a few reads
+ * before it asks — paged.sheet's chart placement reads the selection
+ * and the pages first — lost the race on every chart of the wall's
+ * recto. So for the duration the host's own push is parked.
  */
 export async function withActivePage<T>(
   page: Page,
   pageId: string,
   fn: () => Promise<T>,
 ): Promise<T> {
-  await setActivePage(page, pageId);
+  await holdActivePage(page, pageId);
   try {
     return await fn();
   } finally {
-    await clearActivePage(page);
+    await releaseActivePage(page);
   }
 }
 

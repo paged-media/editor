@@ -30,10 +30,15 @@
 // ChartGeometry IR that the bundle writes out as paths and text frames.
 // Nothing on these two pages is a picture of a chart.
 //
-// Each lowering lands at the plugin's fixed 24 pt inset, so the wall
-// then applies ONE `frameTransform` batch per chart — a uniform
-// scale-about-origin plus translate — which preserves the plugin's own
-// measured geometry and only chooses the specimen's size and slot.
+// Where a lowering lands is the bundle's decision: beside the current
+// selection, or the active page's margin-box corner with nothing
+// selected. The bundle selects every chart it places, so the wall
+// clears the selection before each lowering (else the next chart goes
+// beside the last one, or onto ITS page), MEASURES the corner the chart
+// landed at, and then applies ONE `frameTransform` batch per chart — a
+// uniform scale plus translate from that corner — which preserves the
+// plugin's own measured geometry and only chooses the specimen's size
+// and slot.
 // The kind labels under the slots are read from the panel's own chart
 // list, never from a hand-kept list: which kinds exist is a Rust
 // decision, and the wall repeats the panel's answer.
@@ -46,7 +51,7 @@ import { openPanel } from "../../../fidelity/canvas-driver";
 import { withActivePage } from "../../active-page";
 import { proseFrame, specLabel } from "../../annual-support";
 import { STYLE, p } from "../../names-annual";
-import { partitionByPage, removeRefs } from "../../plugin-support";
+import { geometryOf, partitionByPage, removeRefs } from "../../plugin-support";
 import type { PageContext, PageReport } from "../../types";
 import {
   SHEET_CMD,
@@ -75,6 +80,41 @@ const SLOT_W = 210;
 interface ChartRow {
   index: number;
   kind: string;
+}
+
+/** Nothing selected, as the bundle reads it: its next chart then takes
+ *  the active page's margin-box corner instead of a place beside the
+ *  chart it placed (and selected) last. Both halves: the worker's
+ *  selection, and the main-thread mirror a plugin's `selection.get()`
+ *  answers from — clearing only the worker left the last chart
+ *  selected for the bundle, and the recto's charts went beside it, on
+ *  the verso. */
+async function clearSelection(page: PageContext["page"]): Promise<void> {
+  await page.evaluate(async () => {
+    const c = (
+      globalThis as unknown as {
+        __canvas: {
+          client: { setElementSelection: (ids: unknown[], mode: string) => Promise<unknown> };
+          setElementSelection?: (ids: unknown[], mode: string) => void;
+        };
+      }
+    ).__canvas;
+    await c.client.setElementSelection([], "replace");
+    c.setElementSelection?.([], "replace");
+  });
+}
+
+/** The top-left of a lowered chart in its own content space: the least
+ *  `[left, top]` over its items' bounds. */
+async function contentCorner(
+  page: PageContext["page"],
+  els: El[],
+): Promise<[number, number]> {
+  const boxes = (await geometryOf(page, els))
+    .map((g) => g.bounds)
+    .filter((b): b is [number, number, number, number] => b !== null);
+  if (boxes.length === 0) throw new Error("a lowered chart answered no geometry");
+  return [Math.min(...boxes.map((b) => b[1])), Math.min(...boxes.map((b) => b[0]))];
 }
 
 export async function build(ctx: PageContext): Promise<PageReport> {
@@ -172,6 +212,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
 
     const before = await treeElements(page);
     let fresh: El[] = [];
+    await clearSelection(page);
     await withActivePage(page, pageId, async () => {
       if (i === 0) {
         // The command lane — `lowerChartToFrame` lowers the FIRST chart.
@@ -195,7 +236,7 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     // never left on someone else's spread.
     const { here, elsewhere } = await partitionByPage(page, fresh, pageId);
     if (elsewhere.length > 0) {
-      await removeRefs(doc, elsewhere).catch(() => undefined);
+      await removeRefs(doc, elsewhere);
       notes.push(
         `chart #${chart.index} (${chart.kind}) put ${elsewhere.length} ` +
           "item(s) on another page despite the supplied active page; removed",
@@ -218,17 +259,26 @@ export async function build(ctx: PageContext): Promise<PageReport> {
     if (late.length > 0) {
       const parts = await partitionByPage(page, late, pageId);
       if (parts.elsewhere.length > 0) {
-        await removeRefs(doc, parts.elsewhere).catch(() => undefined);
+        await removeRefs(doc, parts.elsewhere);
       }
       here.push(...parts.here);
     }
+    expect(
+      here.length,
+      `chart #${chart.index} (${chart.kind}) landed on its own page`,
+    ).toBeGreaterThan(0);
 
+    // `frameTransform` REPLACES the item transform, so the chart's
+    // corner in its own content space is what the scale acts on; the
+    // translate then puts that corner at the slot (D folds the page
+    // into the spread's stored coordinates).
+    const [cx, cy] = await contentCorner(page, here);
     await placeElements(
       doc,
       here,
       S,
-      slotX + 16 - 24 * S + D[0] * (1 - S),
-      slotY + 4 - 24 * S + D[1] * (1 - S),
+      slotX + 16 + D[0] - cx * S,
+      slotY + 4 + D[1] - cy * S,
       notes,
     );
 
