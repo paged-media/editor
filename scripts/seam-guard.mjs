@@ -60,7 +60,6 @@ const SEAMS = [
   { text: "Go to link — awaiting engine support", op: "revealLink" },
   { text: "New condition — awaiting engine support", op: "createCondition" },
   { text: "Filter — awaiting engine support", op: "setConditionFilter" },
-  { text: "Generate index — awaiting engine support", op: "generateIndex" },
   { text: "Gap colour — awaiting engine support", op: "frameStrokeGapColor" },
   {
     text: "Clear override — awaiting engine support",

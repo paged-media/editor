@@ -121,6 +121,17 @@
 // probes make their own scratch note or link and read its id off the
 // footnotes / hyperlinks collection), the TOC update on sample.idml's TOC
 // story. None has an editor UI of its own yet.
+//
+// 2026-10-17: the pin moved to canvas-wasm 0.72.0 (protocol 72).
+// AC-E2E-CAPS-COVER named ten new Mutation ops (core ADRs 168, 169, 172,
+// 173): generateIndex, updateCrossReferences, insertNote, editNote,
+// deleteNote, convertNoteToText, createBookmark, renameBookmark,
+// moveBookmark, deleteBookmark. Each got a real-args probe: Generate
+// Index and the note ops on the `text` fixture (the edit / delete /
+// convert probes make their own scratch note and read its `id` off the
+// notes collection — a note has no InDesign Self), cross-references and
+// the bookmark ops on the `navigation` fixture (its cross-reference
+// source and its two bookmarks). None has an editor UI of its own yet.
 
 export type CapabilityStatus = "supported" | "unsupported";
 
@@ -308,6 +319,18 @@ export const CAPABILITIES: Capability[] = [
   { op: "deleteHyperlink", status: "supported", note: "0.71.13, ADR 164; {hyperlinkId} — the Hyperlink's Self id off the hyperlinks collection; probed on a scratch link; the Hyperlinks panel is read-only" },
   { op: "editHyperlink", status: "supported", note: "0.71.13, ADR 164; {hyperlinkId, name?, url?, page?}; probed renaming and re-pointing a scratch link; the Hyperlinks panel is read-only" },
   { op: "updateTableOfContents", status: "supported", note: "0.71.13, ADR 165; {storyId} of a story or frame that names a TOC style (refused otherwise); probed on sample.idml's TOC story u28e69; no editor UI" },
+  // generated text, editorial notes and bookmarks (protocol 72, core
+  // 0.72.0 — ADRs 168, 169, 172, 173). No editor UI issues any of them yet.
+  { op: "generateIndex", status: "supported", note: "proto 72, ADR 168; {storyId} — the index replaces the story's text; probed on the text fixture's first story; no editor UI" },
+  { op: "updateCrossReferences", status: "supported", note: "proto 72, ADR 169; {sourceId?} — every source without one; probed on the navigation fixture; the Cross-References panel is read-only" },
+  { op: "insertNote", status: "supported", note: "proto 72, ADR 172; {storyId, offset, paragraph?, text, user?, date?}; the model mints the note id (notes collection, rows carry `id`); no editor UI" },
+  { op: "editNote", status: "supported", note: "proto 72, ADR 172; {noteId, text, date?}; probed on a scratch note; no editor UI" },
+  { op: "deleteNote", status: "supported", note: "proto 72, ADR 172; {noteId}; probed on a scratch note; no editor UI" },
+  { op: "convertNoteToText", status: "supported", note: "proto 72, ADR 172; {noteId}; probed on a scratch note; no editor UI" },
+  { op: "createBookmark", status: "supported", note: "proto 72, ADR 173; {name, page? | destination?, parent?, index?}; probed to the navigation fixture's first page; the Bookmarks panel is read-only" },
+  { op: "renameBookmark", status: "supported", note: "proto 72, ADR 173; {bookmarkId, name}; probed on the navigation fixture's first bookmark; the Bookmarks panel is read-only" },
+  { op: "moveBookmark", status: "supported", note: "proto 72, ADR 173; {bookmarkId, parent?, index?}; probed moving the navigation fixture's first bookmark to the end; the Bookmarks panel is read-only" },
+  { op: "deleteBookmark", status: "supported", note: "proto 72, ADR 173; {bookmarkId}; probed on the navigation fixture's first bookmark; the Bookmarks panel is read-only" },
 ];
 
 export function expectedStatus(op: string): Capability | undefined {

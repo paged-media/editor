@@ -185,6 +185,34 @@ async function scratchHyperlink(page: Page, fx: LoadedFixture): Promise<string |
   return made.ok ? newCollectionId(page, "hyperlinks", before) : null;
 }
 
+/** A scratch editorial note on the story's second character (insertNote,
+ *  classified above); its `id` off the notes collection — the rows carry
+ *  `id`, not `selfId`, since InDesign writes no Self for a note. */
+async function scratchNote(page: Page, fx: LoadedFixture): Promise<string | null> {
+  if (!fx.firstStory) return null;
+  const made = await tryMutate(page, {
+    op: "insertNote",
+    args: { storyId: fx.firstStory.selfId, offset: 1, text: "Scratch note." },
+  });
+  if (!made.ok) return null;
+  return page.evaluate(async () => {
+    const c = (
+      globalThis as unknown as {
+        __canvas: {
+          client: { collection: (n: string) => Promise<Array<{ id: string }>> };
+        };
+      }
+    ).__canvas;
+    const notes = await c.client.collection("notes");
+    return notes[notes.length - 1]?.id ?? null;
+  });
+}
+
+/** The navigation fixture's first bookmark, off the bookmarks collection. */
+async function firstBookmarkId(page: Page): Promise<string | null> {
+  return (await collectionIds(page, "bookmarks")).values().next().value ?? null;
+}
+
 async function firstLayerId(page: Page): Promise<string | null> {
   return page.evaluate(async () => {
     const c = (
@@ -1317,6 +1345,50 @@ const TEXT_PROBES: Probe[] = [
         : null;
     },
     setupUndo: 1, // the scratch insertHyperlink
+  },
+  // protocol 72 in core 0.72.0 (ADRs 168, 172): Generate Index and the
+  // editorial-note ops. No editor UI of its own yet.
+  {
+    op: "generateIndex",
+    // ADR 168 — the index replaces the story's text (a title only when the
+    // fixture has no topics).
+    build: async ({ fx }) =>
+      fx.firstStory ? { op: "generateIndex", args: { storyId: fx.firstStory.selfId } } : null,
+  },
+  {
+    op: "insertNote",
+    // ADR 172 — a note is one character of the text that prints nothing.
+    build: async ({ fx }) =>
+      fx.firstStory
+        ? {
+            op: "insertNote",
+            args: { storyId: fx.firstStory.selfId, offset: 1, text: "Probe note." },
+          }
+        : null,
+  },
+  {
+    op: "editNote",
+    build: async ({ page, fx }) => {
+      const noteId = await scratchNote(page, fx);
+      return noteId ? { op: "editNote", args: { noteId, text: "Edited." } } : null;
+    },
+    setupUndo: 1, // the scratch insertNote
+  },
+  {
+    op: "deleteNote",
+    build: async ({ page, fx }) => {
+      const noteId = await scratchNote(page, fx);
+      return noteId ? { op: "deleteNote", args: { noteId } } : null;
+    },
+    setupUndo: 1, // the scratch insertNote
+  },
+  {
+    op: "convertNoteToText",
+    build: async ({ page, fx }) => {
+      const noteId = await scratchNote(page, fx);
+      return noteId ? { op: "convertNoteToText", args: { noteId } } : null;
+    },
+    setupUndo: 1, // the scratch insertNote
   },
   {
     op: "setFlowGrowRule",
@@ -2522,6 +2594,47 @@ const SAMPLE_PROBES: Probe[] = [
   },
 ];
 
+// ── probes on the `navigation` fixture ─────────────────────────
+// protocol 72 in core 0.72.0 (ADRs 169, 173): cross-references updated,
+// bookmarks created / renamed / moved / deleted. The fixture carries a
+// cross-reference source and two bookmarks to text destinations.
+const NAVIGATION_PROBES: Probe[] = [
+  {
+    op: "updateCrossReferences",
+    build: async () => ({ op: "updateCrossReferences", args: {} }),
+  },
+  {
+    op: "createBookmark",
+    build: async ({ fx }) => ({
+      op: "createBookmark",
+      args: { name: "Probe bookmark", page: fx.pages[0].pageId },
+    }),
+  },
+  {
+    op: "renameBookmark",
+    build: async ({ page }) => {
+      const bookmarkId = await firstBookmarkId(page);
+      return bookmarkId
+        ? { op: "renameBookmark", args: { bookmarkId, name: "Renamed by the probe" } }
+        : null;
+    },
+  },
+  {
+    op: "moveBookmark",
+    build: async ({ page }) => {
+      const bookmarkId = await firstBookmarkId(page);
+      return bookmarkId ? { op: "moveBookmark", args: { bookmarkId } } : null;
+    },
+  },
+  {
+    op: "deleteBookmark",
+    build: async ({ page }) => {
+      const bookmarkId = await firstBookmarkId(page);
+      return bookmarkId ? { op: "deleteBookmark", args: { bookmarkId } } : null;
+    },
+  },
+];
+
 async function runProbes(
   page: Page,
   probes: Probe[],
@@ -2602,6 +2715,9 @@ test("AC-E2E-CAPS — every wire op's engine support matches the table", async (
 
   const sampleFx = await loadFixture(page, "sample");
   await runProbes(page, SAMPLE_PROBES, sampleFx, results);
+
+  const navFx = await loadFixture(page, "navigation");
+  await runProbes(page, NAVIGATION_PROBES, navFx, results);
 
   // ── report ────────────────────────────────────────────────────
   const table = results
