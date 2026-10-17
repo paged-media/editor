@@ -39,13 +39,15 @@ import { applyAffine } from "./affine";
  * registry's standard `OverlayProps`.
  */
 function SelectionChromeRender(props: OverlayProps) {
-  const { elementGeometry } = useSelection();
+  // Placed: a pasteboard item is drawn against the nearest page of its
+  // spread, in that page's space (see `spread-pages`).
+  const { placedGeometry: elementGeometry } = useSelection();
   if (elementGeometry.length === 0) return null;
 
   const out: ReactNode[] = [];
   for (const g of elementGeometry) {
     const pr = g.pageId ? props.pageRects.get(g.pageId) : undefined;
-    if (!pr) continue; // C-23 — pageless ⇒ no page-local chrome
+    if (!pr) continue; // C-23 — no page found for it ⇒ no chrome
     const [top, left, bottom, right] = g.bounds;
     const corners: Array<[number, number]> = [
       [left, top],
@@ -114,12 +116,10 @@ export function groupByPage(
 ): Map<string, ElementGeometryItem[]> {
   const byPage = new Map<string, ElementGeometryItem[]>();
   for (const g of geometry) {
-    // C-23 — `pageId` is nullable once the engine reports PASTEBOARD
-    // elements (it used to omit them entirely). An element on no page
-    // has no page-local space to draw chrome in, so it is not grouped
-    // and gets no chrome. Written as a guard NOW, ahead of the wasm
-    // bump that narrows the type, so the change lands in one place
-    // instead of surfacing as a type error across six overlays.
+    // C-23 — `pageId` is null for a PASTEBOARD element. The selection
+    // overlays group `placedGeometry`, where such an element already sits
+    // on a page; one that is still pageless has no space to be drawn in,
+    // so it is not grouped and gets no chrome.
     if (!g.pageId) continue;
     const list = byPage.get(g.pageId) ?? [];
     list.push(g);

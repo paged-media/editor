@@ -133,3 +133,8 @@ export function useDocument(): DocumentContextValue {
   }
   return ctx;
 }
+
+/** The document context, or `null` outside a DocumentProvider. */
+export function useOptionalDocument(): DocumentContextValue | null {
+  return useContext(Context);
+}

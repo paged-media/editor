@@ -143,11 +143,12 @@ test.describe("selection box follows a programmatic selection", () => {
     const designer = new Designer(page);
     await designer.open();
     await designer.newDocument();
-    // High on the page: the chart lands under the selected frame, and a
-    // chart that hangs off the page has no page to draw its box on.
-    const table = await filledRect(designer, { x0: 60, y0: 100, x1: 200, y1: 200 });
+    // Low on the page, as the showcase has it: the chart lands under the
+    // selected frame and hangs off the page. Its box and handles are
+    // drawn on the pasteboard.
+    const table = await filledRect(designer, { x0: 60, y0: 600, x1: 200, y1: 700 });
 
-    await clickAt(page, 130, 150);
+    await clickAt(page, 130, 650);
     await expect.poll(async () => (await selectionState(page)).box).toEqual([key(table)]);
     await expect(drawnBoxes(page)).toHaveCount(1);
 
@@ -171,6 +172,7 @@ test.describe("selection box follows a programmatic selection", () => {
     await expect.poll(async () => (await selectionState(page)).box).toEqual(await clickGeometry(page));
     expect((await selectionState(page)).box).not.toContain(key(table));
     await expect(drawnBoxes(page)).toHaveCount(1);
+    await expect(page.locator("[data-selection-handle]")).toHaveCount(8);
   });
 
   test("a live script's editor.select selects in the engine and moves the box @feat:editor-tools.overlays @feat:scripting.visible-results @level:happy", async ({
