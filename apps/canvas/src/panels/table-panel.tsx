@@ -582,6 +582,27 @@ export function TablePanel() {
         </div>
       </CockpitSection>
 
+      {/* The selected cell's ROW (core 0.73.1, ADR 175), as InDesign's
+          Table Options ▸ Rows and Columns ▸ Keep Options: where the row
+          starts, and whether it keeps with the next. Schema fields on the
+          cell address — the row is reached through any of its cells. */}
+      <CockpitSection title="Keep options">
+        <CockpitRow label="Start row">
+          <PropertyField
+            path="rowStartRow"
+            targets={cellAddress ? [cellAddress] : NO_TARGETS}
+            schemaKind="cell"
+          />
+        </CockpitRow>
+        <CockpitRow label="Keep with next row">
+          <PropertyField
+            path="rowKeepWithNext"
+            targets={cellAddress ? [cellAddress] : NO_TARGETS}
+            schemaKind="cell"
+          />
+        </CockpitRow>
+      </CockpitSection>
+
       <CockpitSection title="Cell">
         <CockpitRow label="Fill">
 <ObjectFieldFrame field={cellFields.cellFillColor} className="relative inline-flex w-full">
