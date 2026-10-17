@@ -42,7 +42,7 @@ import { groupByPage, unionAabb } from "./selection-chrome";
  * pointerdown reads the dataset to begin the correct resize gesture.
  */
 function ResizeHandlesRender(props: OverlayProps) {
-  const { elementGeometry, pathEditMode } = useSelection();
+  const { placedGeometry: elementGeometry, pathEditMode } = useSelection();
   // Path-edit mode edits the element's POINTS, and every press on the
   // canvas is the path's there — a frame handle would be drawn and
   // dead. The outline stays; the handles come back with the mode off.
@@ -55,9 +55,10 @@ function ResizeHandlesRender(props: OverlayProps) {
 }
 
 function renderSingle(item: ElementGeometryItem, props: OverlayProps) {
-  // C-23 — pageless ⇒ no page-local space to draw in.
-  const pr = item.pageId ? props.pageRects.get(item.pageId) : undefined;
-  if (!pr) return null;
+  // C-23 — no page found for it ⇒ no space to draw in.
+  const pageId = item.pageId;
+  const pr = pageId ? props.pageRects.get(pageId) : undefined;
+  if (!pageId || !pr) return null;
   const [top, left, bottom, right] = item.bounds;
   const cx = (left + right) * 0.5;
   const cy = (top + bottom) * 0.5;
@@ -69,6 +70,7 @@ function renderSingle(item: ElementGeometryItem, props: OverlayProps) {
         const [wx, wy] = applyAffine(item.itemTransform, local[0], local[1]);
         return renderHandle(
           name,
+          pageId,
           pr.x + wx,
           pr.y + wy,
           inv,
@@ -106,6 +108,7 @@ function renderUnion(
       out.push(
         renderHandle(
           name,
+          pageId,
           pr.x + local[0],
           pr.y + local[1],
           inv,
@@ -144,6 +147,7 @@ function handlePositions(
 
 function renderHandle(
   name: ResizeHandle,
+  pageId: string,
   x: number,
   y: number,
   inv: number,
@@ -152,11 +156,15 @@ function renderHandle(
 ) {
   const visiblePx = 8;
   const hitPx = 12;
+  // `data-handle-page`: the page whose space the handle's box is in —
+  // the canvas names its gesture's anchor and pivot on that page, which
+  // is not always the page under the pointer.
   return (
     <g
       key={key}
       transform={`translate(${x}, ${y}) scale(${inv})`}
       data-selection-handle={name}
+      data-handle-page={pageId}
     >
       <rect
         x={-hitPx / 2}

@@ -279,6 +279,20 @@ test.describe("U6 — story row selects + reveals its first frame", () => {
     });
     expect(expected.frameId).not.toBeNull();
 
+    const readCamera = () =>
+      page.evaluate(() =>
+        (
+          globalThis as unknown as {
+            __canvas: {
+              client: {
+                camera: { read: () => { scale: number; tx: number; ty: number } };
+              };
+            };
+          }
+        ).__canvas.client.camera.read(),
+      );
+    const before = await readCamera();
+
     await page.locator("[data-story-list] [data-list-row]").first().click();
 
     // 1. The element selection mirror carries the chain's first frame.
@@ -299,74 +313,93 @@ test.describe("U6 — story row selects + reveals its first frame", () => {
       )
       .toBe(expected.frameId);
 
-    // 2. The camera landed on the frame: its doc-space rect (page rect
-    // from the vertical-stack layout math + the frame's page-local
-    // bounds) sits fully inside the canvas viewport. Poll — the reveal
-    // is an animated tween.
+    // 2. The camera landed on the frame: wait for the reveal's tween to
+    // move the camera and come to rest. Judged earlier, the check read the
+    // camera from before the reveal, which shows the whole page.
+    let last: typeof before | null = null;
     await expect
-      .poll(async () =>
-        page.evaluate(async (frameId) => {
-          const c = (
-            globalThis as unknown as {
-              __canvas: {
-                handle: {
-                  pageIds: string[];
-                  pageSizesPt: [number, number][];
-                };
-                client: {
-                  camera: {
-                    read: () => { scale: number; tx: number; ty: number };
-                  };
-                  elementGeometry: (
-                    ids: Array<{ kind: string; id: string }>,
-                  ) => Promise<
-                    Array<{
-                      pageId?: string | null;
-                      bounds: [number, number, number, number];
-                    }>
-                  >;
-                };
+      .poll(async () => {
+        const cam = await readCamera();
+        const same = (a: typeof before, b: typeof before) =>
+          a.scale === b.scale && a.tx === b.tx && a.ty === b.ty;
+        const settled = last !== null && same(cam, last) && !same(cam, before);
+        last = cam;
+        return settled;
+      })
+      .toBe(true);
+
+    // Its doc-space rect (page rect from the vertical-stack layout math +
+    // the frame's bounds through its transform, as the reveal and the
+    // selection chrome place it) sits fully inside the canvas viewport.
+    const placement = await page.evaluate(async (frameId) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            handle: {
+              pageIds: string[];
+              pageSizesPt: [number, number][];
+            };
+            client: {
+              camera: {
+                read: () => { scale: number; tx: number; ty: number };
               };
-            }
-          ).__canvas;
-          const [g] = await c.client.elementGeometry([
-            { kind: "textFrame", id: frameId },
-          ]);
-          if (!g || !g.pageId) return "no-geometry";
-          const pageIndex = c.handle.pageIds.indexOf(g.pageId);
-          if (pageIndex < 0) return "no-page";
-          // Mirror layoutPages: vertical stack, 24pt gap.
-          let y = 0;
-          for (let i = 0; i < pageIndex; i++) {
-            y += c.handle.pageSizesPt[i][1] + 24;
-          }
-          const [top, left, bottom, right] = g.bounds;
-          const r = {
-            x: 0 + left,
-            y: y + top,
-            w: Math.max(right - left, 1),
-            h: Math.max(bottom - top, 1),
+              elementGeometry: (
+                ids: Array<{ kind: string; id: string }>,
+              ) => Promise<
+                Array<{
+                  pageId?: string | null;
+                  bounds: [number, number, number, number];
+                  itemTransform?: [number, number, number, number, number, number] | null;
+                }>
+              >;
+            };
           };
-          const cam = c.client.camera.read();
-          const el = document.querySelector<HTMLElement>(
-            "[data-paged-canvas]",
-          );
-          if (!el) return "no-canvas";
-          const vw = el.clientWidth;
-          const vh = el.clientHeight;
-          const x0 = r.x * cam.scale + cam.tx;
-          const y0 = r.y * cam.scale + cam.ty;
-          const x1 = (r.x + r.w) * cam.scale + cam.tx;
-          const y1 = (r.y + r.h) * cam.scale + cam.ty;
-          const slop = 1.5;
-          return x0 >= -slop &&
-            y0 >= -slop &&
-            x1 <= vw + slop &&
-            y1 <= vh + slop
-            ? "contained"
-            : `outside ${JSON.stringify({ x0, y0, x1, y1, vw, vh })}`;
-        }, expected.frameId as string),
-      )
-      .toBe("contained");
+        }
+      ).__canvas;
+      const [g] = await c.client.elementGeometry([
+        { kind: "textFrame", id: frameId },
+      ]);
+      if (!g || !g.pageId) return "no-geometry";
+      const pageIndex = c.handle.pageIds.indexOf(g.pageId);
+      if (pageIndex < 0) return "no-page";
+      // Mirror layoutPages: vertical stack, 24pt gap.
+      let y = 0;
+      for (let i = 0; i < pageIndex; i++) {
+        y += c.handle.pageSizesPt[i][1] + 24;
+      }
+      const [top, left, bottom, right] = g.bounds;
+      const [a, b, cc, d, tx, ty] = g.itemTransform ?? [1, 0, 0, 1, 0, 0];
+      const xs: number[] = [];
+      const ys: number[] = [];
+      for (const [px, py] of [
+        [left, top],
+        [right, top],
+        [right, bottom],
+        [left, bottom],
+      ]) {
+        xs.push(a * px + cc * py + tx);
+        ys.push(b * px + d * py + ty);
+      }
+      const r = {
+        x: Math.min(...xs),
+        y: y + Math.min(...ys),
+        w: Math.max(Math.max(...xs) - Math.min(...xs), 1),
+        h: Math.max(Math.max(...ys) - Math.min(...ys), 1),
+      };
+      const cam = c.client.camera.read();
+      const el = document.querySelector<HTMLElement>("[data-paged-canvas]");
+      if (!el) return "no-canvas";
+      const vw = el.clientWidth;
+      const vh = el.clientHeight;
+      const x0 = r.x * cam.scale + cam.tx;
+      const y0 = r.y * cam.scale + cam.ty;
+      const x1 = (r.x + r.w) * cam.scale + cam.tx;
+      const y1 = (r.y + r.h) * cam.scale + cam.ty;
+      const slop = 1.5;
+      return x0 >= -slop && y0 >= -slop && x1 <= vw + slop && y1 <= vh + slop
+        ? "contained"
+        : `outside ${JSON.stringify({ x0, y0, x1, y1, vw, vh })}`;
+    }, expected.frameId as string);
+    expect(placement).toBe("contained");
   });
 });

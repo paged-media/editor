@@ -34,13 +34,13 @@ import { applyAffine } from "./affine";
  * permanent; users learned to ignore it, defeating the affordance.
  */
 function ContentGrabberRender(props: OverlayProps) {
-  const { elementGeometry } = useSelection();
+  const { placedGeometry: elementGeometry } = useSelection();
   const modifiers = useModifierState();
   if (!modifiers.cmd) return null;
   if (elementGeometry.length !== 1) return null;
   const item = elementGeometry[0];
   if (item.hasImage !== true) return null;
-  // C-23 — pageless ⇒ no page-local space to draw in.
+  // C-23 — no page found for it ⇒ no space to draw in.
   const pr = item.pageId ? props.pageRects.get(item.pageId) : undefined;
   if (!pr) return null;
   const [top, left, bottom, right] = item.bounds;

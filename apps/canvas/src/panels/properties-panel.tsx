@@ -26,14 +26,16 @@
 //   - Element(s) whose geometry hosts a placed image ⇒ Image:
 //     Object Transform + Frame fitting + Stroke.
 //   - Other element(s) ⇒ Frame: Object Transform + Stroke (+ the
-//     text-frame compositions ride the content selection).
+//     text-frame compositions ride the content selection). Titled
+//     "Group" for groups, "Objects" for groups and frames together.
 //   - Nothing selected ⇒ the panel-rail steer (`inspectorContext`)
 //     picks the Page summary or a per-kind guidance hint.
 //
 // The AI Assistant lives in its own panel (ADR 221); this one links to it.
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import type { ElementId } from "@paged-media/client";
 import {
   CatalogRegistryProvider,
   CockpitBtn,
@@ -50,9 +52,11 @@ import {
   useSelection,
   useSelectionMetadataOwner,
   useSelectionObjectType,
+  useOptionalCanvasClient,
   useOptionalThreading,
 } from "@paged-media/shell";
 
+import { groupMembersOf } from "../object-commands";
 import { appCatalogRegistry } from "./catalog-registry";
 import { characterComposition } from "./character.composition";
 import { frameFittingComposition } from "./frame-fitting.composition";
@@ -119,6 +123,15 @@ export function PropertiesPanel() {
           : "frame"
         : (steer ?? "none");
 
+  // A group is not a frame: InDesign names it "Group". A selection of
+  // groups and frames together is named for both.
+  const groups = elementSelection.filter((id) => id.kind === "group").length;
+  const frames = elementSelection.length - groups;
+  const noun = groups === 0 ? "Frame" : frames === 0 ? "Group" : "Objects";
+  const loneGroup =
+    groups === 1 && frames === 0 ? groupIdOf(elementSelection[0]) : null;
+  const members = useGroupMemberCount(loneGroup, elementGeometry);
+
   const ownedTitle =
     kind === "frame" && owned ? humanizeType(owned.objectType.type) : null;
   const title =
@@ -128,19 +141,28 @@ export function PropertiesPanel() {
       : kind === "image"
         ? "Image"
         : kind === "frame"
-          ? "Frame"
+          ? noun
           : kind === "page"
             ? "Page"
             : "Properties");
 
-  // The gallery's selection sub-header — "Text · 1 frame".
+  // The gallery's selection sub-header — "Text · 1 frame", "Group · 2
+  // objects" (a lone group counts what is in it).
+  const counted = loneGroup
+    ? members === null
+      ? null
+      : plural(members, "object")
+    : [
+        groups > 0 ? plural(groups, "group") : null,
+        frames > 0 ? plural(frames, "frame") : null,
+      ]
+        .filter(Boolean)
+        .join(", ");
   const selectionLabel =
     kind === "text"
       ? "Text selection"
       : hasElement
-        ? `${kind === "image" ? "Image" : "Frame"} · ${
-            elementSelection.length
-          } frame${elementSelection.length === 1 ? "" : "s"}`
+        ? [kind === "image" ? "Image" : noun, counted].filter(Boolean).join(" · ")
         : null;
 
   return (
@@ -291,6 +313,37 @@ export function PropertiesPanel() {
       </div>
     </CatalogRegistryProvider>
   );
+}
+
+function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? "" : "s"}`;
+}
+
+function groupIdOf(id: ElementId | undefined): string | null {
+  return id?.kind === "group" && typeof id.id === "string" ? id.id : null;
+}
+
+/** How many objects the group holds directly (a nested group is one),
+ *  read off the scene tree; null until it has answered. `refresh` is the
+ *  geometry mirror, which every change to the selection's content
+ *  replaces. */
+function useGroupMemberCount(groupId: string | null, refresh: unknown): number | null {
+  const client = useOptionalCanvasClient();
+  const [answer, setAnswer] = useState<{ groupId: string; count: number } | null>(null);
+  useEffect(() => {
+    if (!client || !groupId) return;
+    let live = true;
+    client
+      .sceneTree()
+      .then((roots) => {
+        if (live) setAnswer({ groupId, count: groupMembersOf(roots, groupId).length });
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [client, groupId, refresh]);
+  return answer && answer.groupId === groupId ? answer.count : null;
 }
 
 /** "webFrame" → "Web frame" — the breadcrumb's title-casing rule. */

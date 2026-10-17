@@ -135,6 +135,11 @@ jobs:
       - name: module door (module manifest)
         run: pnpm test:modules
 
+      # Selection chrome on the pasteboard: where a page sits in its spread,
+      # from the page summaries (engine 0.71.13) or the older fallback.
+      - name: pasteboard placement (spread pages)
+        run: pnpm test:spread-pages
+
       # Every gated fidelity pack must carry a threshold entry, or the
       # fidelity gate silently skips it.
       - name: fidelity thresholds schema

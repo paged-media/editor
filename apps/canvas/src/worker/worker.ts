@@ -854,6 +854,12 @@ async function dispatch(data: IncomingMessage): Promise<void> {
   if (!worker) {
     return;
   }
+  // A commit can arrive between the pointer's last SAB update and the
+  // drain tick that would apply it; the gesture then committed one
+  // pointer sample short of where the pointer let go. Apply it first.
+  if (data.kind === "channel" && data.msg.kind === "commitGesture") {
+    drainGestureSab();
+  }
   const replyJson = worker.handleMessage(JSON.stringify(data.msg));
   if (replyJson) {
     const reply = JSON.parse(replyJson) as WorkerToMain;
@@ -953,44 +959,49 @@ function startGestureDrain() {
   if (gestureDrainHandle !== null) return;
   const tick = () => {
     gestureDrainHandle = setTimeout(tick, GESTURE_DRAIN_INTERVAL_MS);
-    if (!worker || !gestureBuffer) return;
-    const record = gestureBuffer.drainLatest();
-    if (!record) return;
-    const handleLo = Number(record.handle & 0xffff_ffffn);
-    const handleHi = Number((record.handle >> 32n) & 0xffff_ffffn);
-    let mods = 0;
-    if (record.modifiers.shift) mods |= 0b001;
-    if (record.modifiers.alt) mods |= 0b010;
-    if (record.modifiers.disableSnap) mods |= 0b100;
-    const outcomeJson = worker.updateGestureRaw(
-      handleLo,
-      handleHi,
-      record.dx,
-      record.dy,
-      mods,
-    );
-    if (!outcomeJson) {
-      // Stale handle or no document. The main thread's
-      // `cancelGesture` path will clear the overlay separately.
-      return;
-    }
-    let outcome: GestureRawOutcome;
-    try {
-      outcome = JSON.parse(outcomeJson) as GestureRawOutcome;
-    } catch (e) {
-      console.warn("updateGestureRaw outcome parse failed:", e);
-      return;
-    }
-    renderer?.markDirty(outcome.pageIds);
-    // Empty `snapLines` is meaningful — the gesture left a
-    // previously-snapped axis and the overlay must clear its stale
-    // guides. Post unconditionally so subscribers see every drain.
-    postBack({
-      seq: null,
-      protocol: PROTOCOL_VERSION,
-      kind: "gestureSnapLines",
-      payload: { snapLines: outcome.snapLines },
-    });
+    drainGestureSab();
   };
   tick();
+}
+
+/** Apply the gesture SAB's latest update, if one is waiting. */
+function drainGestureSab() {
+  if (!worker || !gestureBuffer) return;
+  const record = gestureBuffer.drainLatest();
+  if (!record) return;
+  const handleLo = Number(record.handle & 0xffff_ffffn);
+  const handleHi = Number((record.handle >> 32n) & 0xffff_ffffn);
+  let mods = 0;
+  if (record.modifiers.shift) mods |= 0b001;
+  if (record.modifiers.alt) mods |= 0b010;
+  if (record.modifiers.disableSnap) mods |= 0b100;
+  const outcomeJson = worker.updateGestureRaw(
+    handleLo,
+    handleHi,
+    record.dx,
+    record.dy,
+    mods,
+  );
+  if (!outcomeJson) {
+    // Stale handle or no document. The main thread's
+    // `cancelGesture` path will clear the overlay separately.
+    return;
+  }
+  let outcome: GestureRawOutcome;
+  try {
+    outcome = JSON.parse(outcomeJson) as GestureRawOutcome;
+  } catch (e) {
+    console.warn("updateGestureRaw outcome parse failed:", e);
+    return;
+  }
+  renderer?.markDirty(outcome.pageIds);
+  // Empty `snapLines` is meaningful — the gesture left a
+  // previously-snapped axis and the overlay must clear its stale
+  // guides. Post unconditionally so subscribers see every drain.
+  postBack({
+    seq: null,
+    protocol: PROTOCOL_VERSION,
+    kind: "gestureSnapLines",
+    payload: { snapLines: outcome.snapLines },
+  });
 }
