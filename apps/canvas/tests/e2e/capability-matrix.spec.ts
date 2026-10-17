@@ -132,6 +132,59 @@ async function lastCollectionId(
   }, name);
 }
 
+/** The `selfId` of a collection item that was not there before. */
+async function newCollectionId(
+  page: Page,
+  name: string,
+  before: ReadonlySet<string>,
+): Promise<string | null> {
+  return page.evaluate(
+    async ({ n, seen }) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              collection: (n: string) => Promise<Array<{ selfId: string }>>;
+            };
+          };
+        }
+      ).__canvas;
+      const items = await c.client.collection(n);
+      return items.find((i) => !seen.includes(i.selfId))?.selfId ?? null;
+    },
+    { n: name, seen: [...before] },
+  );
+}
+
+async function collectionIds(page: Page, name: string): Promise<Set<string>> {
+  return new Set(
+    await page.evaluate(async (n) => {
+      const c = (
+        globalThis as unknown as {
+          __canvas: {
+            client: {
+              collection: (n: string) => Promise<Array<{ selfId: string }>>;
+            };
+          };
+        }
+      ).__canvas;
+      return (await c.client.collection(n)).map((i) => i.selfId);
+    }, name),
+  );
+}
+
+/** A scratch hyperlink on the story's first character (insertHyperlink,
+ *  classified above); its `Hyperlink` id off the hyperlinks collection. */
+async function scratchHyperlink(page: Page, fx: LoadedFixture): Promise<string | null> {
+  if (!fx.firstStory || fx.firstStory.characterCount < 2) return null;
+  const before = await collectionIds(page, "hyperlinks");
+  const made = await tryMutate(page, {
+    op: "insertHyperlink",
+    args: { storyId: fx.firstStory.selfId, start: 0, end: 1, url: "https://paged.media/probe-scratch" },
+  });
+  return made.ok ? newCollectionId(page, "hyperlinks", before) : null;
+}
+
 async function firstLayerId(page: Page): Promise<string | null> {
   return page.evaluate(async () => {
     const c = (
@@ -1206,6 +1259,64 @@ const TEXT_PROBES: Probe[] = [
             },
           }
         : null,
+  },
+  // v73 in core 0.71.13 (ADRs 163–164): footnotes and hyperlink edits
+  // over the wire. The editor has no UI of its own for any of them; the
+  // paged.* script functions, the wire and the generic core-command
+  // picker reach them.
+  {
+    op: "insertFootnote",
+    // ADR 163 — the reference at a contiguous char offset, the note's
+    // text after its number and separator.
+    build: async ({ fx }) =>
+      fx.firstStory
+        ? {
+            op: "insertFootnote",
+            args: { storyId: fx.firstStory.selfId, offset: 1, text: "Probe note." },
+          }
+        : null,
+  },
+  {
+    op: "deleteFootnote",
+    // Deletes a scratch footnote this probe inserts first, addressed by
+    // the note's id off the footnotes collection.
+    build: async ({ page, fx }) => {
+      if (!fx.firstStory) return null;
+      const before = await collectionIds(page, "footnotes");
+      const made = await tryMutate(page, {
+        op: "insertFootnote",
+        args: { storyId: fx.firstStory.selfId, offset: 1, text: "Scratch." },
+      });
+      if (!made.ok) return null;
+      const footnoteId = await newCollectionId(page, "footnotes", before);
+      return footnoteId
+        ? { op: "deleteFootnote", args: { storyId: fx.firstStory.selfId, footnoteId } }
+        : null;
+    },
+    setupUndo: 1, // the scratch insertFootnote
+  },
+  {
+    op: "deleteHyperlink",
+    // ADR 164 — by the Hyperlink's Self id; a scratch link made first.
+    build: async ({ page, fx }) => {
+      const hyperlinkId = await scratchHyperlink(page, fx);
+      return hyperlinkId ? { op: "deleteHyperlink", args: { hyperlinkId } } : null;
+    },
+    setupUndo: 1, // the scratch insertHyperlink
+  },
+  {
+    op: "editHyperlink",
+    // ADR 164 — rename and re-point a scratch link.
+    build: async ({ page, fx }) => {
+      const hyperlinkId = await scratchHyperlink(page, fx);
+      return hyperlinkId
+        ? {
+            op: "editHyperlink",
+            args: { hyperlinkId, name: "Probe link", url: "https://paged.media/probe-edited" },
+          }
+        : null;
+    },
+    setupUndo: 1, // the scratch insertHyperlink
   },
   {
     op: "setFlowGrowRule",
@@ -2394,6 +2505,23 @@ const TABLE_PROBES: Probe[] = [
   },
 ];
 
+// ── probes on the `sample` fixture (an InDesign document) ───────
+// v73 in core 0.71.13 (ADR 165): Update Table of Contents rewrites a
+// TOC story from its TOC style over the current layout, and refuses a
+// story that names none. No generated fixture carries one; sample.idml
+// does: Story_u28e69 applies "TOCStyle/TOC Style". Wire / script only
+// in the editor (no Layout ▸ Update Table of Contents yet).
+const SAMPLE_TOC_STORY = "u28e69";
+const SAMPLE_PROBES: Probe[] = [
+  {
+    op: "updateTableOfContents",
+    build: async () => ({
+      op: "updateTableOfContents",
+      args: { storyId: SAMPLE_TOC_STORY },
+    }),
+  },
+];
+
 async function runProbes(
   page: Page,
   probes: Probe[],
@@ -2471,6 +2599,9 @@ test("AC-E2E-CAPS — every wire op's engine support matches the table", async (
     process.stdout.write(`[tables] firstCell=${JSON.stringify(TABLE_CELL)}\n`);
   }
   await runProbes(page, TABLE_PROBES, tableFx, results);
+
+  const sampleFx = await loadFixture(page, "sample");
+  await runProbes(page, SAMPLE_PROBES, sampleFx, results);
 
   // ── report ────────────────────────────────────────────────────
   const table = results

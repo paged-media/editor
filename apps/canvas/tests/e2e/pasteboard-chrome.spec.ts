@@ -113,6 +113,16 @@ async function hangingRectangle(page: Page, how: "drawn" | "wire"): Promise<Ref>
   await expect
     .poll(() => page.evaluate(() => (globalThis as unknown as CanvasGlobal).__canvas.elementSelection.map((r) => r.id)))
     .toEqual([id]);
+  // The pan reaches the overlay a render after the camera: wait until the
+  // south-east handle sits on the item's corner in the current view, or a
+  // handle read now is where it was before the pan.
+  await expect
+    .poll(async () => {
+      const at = await screenPoint(page, 200, 860);
+      const b = await page.locator('[data-handle="southEast"]').first().boundingBox();
+      return b !== null && Math.hypot(b.x + b.width / 2 - at.x, b.y + b.height / 2 - at.y) < 1;
+    })
+    .toBe(true);
   return rect;
 }
 

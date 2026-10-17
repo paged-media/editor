@@ -112,6 +112,15 @@
 // 2026-10-11: the pin moved to canvas-wasm 0.71.1 (protocol 71).
 // AC-E2E-CAPS-COVER named three new Mutation ops — set,
 // createTextVariable, deleteTextVariable — each probed with real args.
+//
+// 2026-10-17: the pin moved to canvas-wasm 0.71.13 (additive on protocol
+// 71). AC-E2E-CAPS-COVER named five new Mutation ops from core's v73 wire
+// (ADRs 163–165): insertFootnote, deleteFootnote, deleteHyperlink,
+// editHyperlink, updateTableOfContents. Each got a real-args probe: the
+// footnote and hyperlink ops on the `text` fixture (the delete / edit
+// probes make their own scratch note or link and read its id off the
+// footnotes / hyperlinks collection), the TOC update on sample.idml's TOC
+// story. None has an editor UI of its own yet.
 
 export type CapabilityStatus = "supported" | "unsupported";
 
@@ -290,6 +299,15 @@ export const CAPABILITIES: Capability[] = [
   { op: "createTextVariable", status: "supported", note: "proto 71; a custom text variable {name, contents?, textBefore?, textAfter?}; id dTextVariablen<name>; Text Variables panel ▸ New" },
   { op: "deleteTextVariable", status: "supported", note: "proto 71; {variableId}; probed on a scratch variable; Text Variables panel ▸ Delete" },
   { op: "onMaster", status: "supported", note: "proto 70; wraps a page-item/style/property mutation to apply to a master's spread (page/spread-list ops are refused inside); probed as an insertGuide on a scratch master; wire-only, no editor UI" },
+  // footnotes, hyperlink edits and the TOC over the wire (v73, core
+  // 0.71.13 — ADRs 163–165). No editor UI issues any of them (the
+  // Hyperlinks panel lists links read-only); reached via paged.* scripts,
+  // the wire and the generic core-command picker.
+  { op: "insertFootnote", status: "supported", note: "0.71.13, ADR 163; {storyId, offset, paragraph?, text}; the model mints the note id (footnotes collection); no editor UI" },
+  { op: "deleteFootnote", status: "supported", note: "0.71.13, ADR 163; {storyId, footnoteId} — the note's Self id off the footnotes collection; probed on a scratch note; no editor UI" },
+  { op: "deleteHyperlink", status: "supported", note: "0.71.13, ADR 164; {hyperlinkId} — the Hyperlink's Self id off the hyperlinks collection; probed on a scratch link; the Hyperlinks panel is read-only" },
+  { op: "editHyperlink", status: "supported", note: "0.71.13, ADR 164; {hyperlinkId, name?, url?, page?}; probed renaming and re-pointing a scratch link; the Hyperlinks panel is read-only" },
+  { op: "updateTableOfContents", status: "supported", note: "0.71.13, ADR 165; {storyId} of a story or frame that names a TOC style (refused otherwise); probed on sample.idml's TOC story u28e69; no editor UI" },
 ];
 
 export function expectedStatus(op: string): Capability | undefined {
